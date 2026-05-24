@@ -1,0 +1,38 @@
+<resources>
+    <string name="app_name">SlideDo</string>
+    <string name="status_format">%1$s   Time: %2$ds   Best: %3$s</string>
+    <string name="status_solved_format">Solved! Moves: %1$d   Time: %2$ds   Best: %3$s</string>
+    <string name="status_solving">Solving with %1$s...</string>
+    <string name="best_empty">--</string>
+    <string name="best_format">%1$s, %2$ds</string>
+    <string name="button_3x3">3x3</string>
+    <string name="button_4x4">4x4</string>
+    <string name="button_5x5">5x5</string>
+    <string name="button_undo">Undo</string>
+    <string name="button_restart">Restart</string>
+    <string name="button_save">Save</string>
+    <string name="button_load">Load</string>
+    <string name="button_solver_bfs">BFS</string>
+    <string name="button_solver_astar">A*</string>
+    <string name="button_solver_idastar">IDA*</string>
+    <string name="toast_game_saved">Game saved.</string>
+    <string name="toast_game_loaded">Game loaded!</string>
+    <string name="toast_no_save">No save file found.</string>
+    <string name="dialog_solved_title">Solved</string>
+    <string name="dialog_solved_message">You won in %1$s.\nTime: %2$ds</string>
+    <string name="dialog_new_game">New game</string>
+    <string name="dialog_close">Close</string>
+    <string name="dialog_continue">Continue</string>
+    <string name="dialog_animate">Animate</string>
+    <string name="dialog_solver_warning_title">Warning</string>
+    <string name="dialog_solver_warning_bfs">BFS on 4x4 or larger may be slow or run out of memory. Continue?</string>
+    <string name="dialog_solver_warning_astar">A* on 5x5 can be very slow or memory-heavy. Continue?</string>
+    <string name="dialog_solver_warning_idastar">IDA* on 5x5 can take a long time. Continue?</string>
+    <string name="dialog_solver_result_title">Solution</string>
+    <string name="dialog_solver_found">Solution found: %1$d moves.\nAnimate it now?</string>
+    <string name="dialog_solver_failed">No solution found or timed out.</string>
+    <plurals name="moves_count">
+        <item quantity="one">%d move</item>
+        <item quantity="other">%d moves</item>
+    </plurals>
+</resources>

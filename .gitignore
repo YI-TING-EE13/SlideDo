@@ -1,0 +1,25 @@
+# Java / desktop build output
+bin/
+*.class
+
+# Android / Gradle build output
+.gradle/
+build/
+android/.gradle/
+android/build/
+android/app/build/
+
+# Local machine configuration
+android/local.properties
+
+# Game runtime data
+klotski_save.json
+klotski_save.dat
+klotski_records.json
+
+# Editor and OS files
+.idea/
+.vscode/
+*.iml
+Thumbs.db
+.DS_Store
