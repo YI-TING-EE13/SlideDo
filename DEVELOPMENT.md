@@ -213,7 +213,71 @@ UX acceptance criteria completed in the 2026-05-25 Android navigation pass:
 - In-game controls remain usable on a 1080 x 2400 emulator without overlap.
 - Existing save/load, undo, restart, best records, and solver-assisted record protection still work.
 
-## Recommended Next Tasks
+## Product And UX Assessment
+
+This section captures the current Android app experience from a product
+engineering and UI/UX engineering perspective. It should be used as the product
+planning layer above implementation tickets.
+
+### Current Experience Snapshot
+
+- First-run experience is improved because the app now starts on Home, but it is
+  still not complete: new players can choose Play and read How to Play, yet the
+  app does not proactively guide them through the first move, first undo, or
+  whole-line slide concept.
+- Home is understandable and appropriately simple. Continue, New Game, How to
+  Play, and Records are clear, but Settings is still missing and Records does
+  not yet explain how records are earned or why assisted wins are excluded.
+- Mode Select communicates size and rough difficulty, but it does not yet show
+  expected session length, scramble difficulty, or recommended first choice for
+  new players.
+- How to Play explains the objective and controls, but it is still text-heavy.
+  The app needs visual examples for tap, whole-line slide, swipe, undo, restart,
+  and solver-assisted completion rules.
+- The in-game hierarchy is now much closer to a product app: board first,
+  progress visible, Undo/Restart available, secondary actions behind Menu and
+  Assist. The next UX risk is that all controls are still text buttons and the
+  screen has limited visual personality.
+- Navigation is reasonable for the current one-Activity architecture. Back
+  behavior returns from Game to Home and from informational screens to the right
+  context. Longer-term, the app needs a clearer navigation model before adding
+  Settings, Results, Daily Puzzle, and deeper Stats surfaces.
+- Current persistence is adequate for a simple casual game: one autosave, manual
+  Save/Load, last selected mode, and per-size records. It is not yet a polished
+  product save system because it lacks explicit resume metadata, multiple
+  puzzle slots, save freshness display, and cloud/back-up strategy.
+- The app does not yet have audio, haptic settings, themes, hints, onboarding
+  state, accessibility labels, crash reporting, analytics, Play Store metadata,
+  privacy disclosures, or release signing planning.
+- As of this pass, SlideDo is no longer just a raw feature demo, but it is not
+  yet a complete mobile game product. The core gameplay works; the missing work
+  is mostly onboarding, polish, product systems, release readiness, and
+  repeat-play motivation.
+
+### Product Readiness Gaps
+
+- Missing first-run guided path: no onboarding carousel, guided first puzzle, or
+  first-move coaching.
+- Missing Settings: no haptic toggle, sound toggle, theme choice, animation
+  preference, or reset local data action.
+- Missing Results screen: win handling still uses a dialog instead of a
+  product-style post-game screen with record status and next actions.
+- Missing complete feedback system: no sound, celebratory animation, progression
+  feedback, or differentiated assisted-completion treatment beyond text.
+- Missing hint system: Assist is solver-oriented and can feel like a developer
+  tool. Casual players need lightweight hints that preserve agency.
+- Missing progression loops: no daily puzzle, streak, recent games, difficulty
+  progression, achievements, or session goals.
+- Missing accessibility pass: text buttons are usable, but the app needs content
+  descriptions, larger touch-target review, color-contrast review, screen-reader
+  wording, and reduced-motion support.
+- Missing Play Store readiness systems: release signing, app icon polish,
+  adaptive icons, screenshots, privacy policy, data safety notes, crash
+  reporting, and versioning discipline.
+
+## Roadmap And Planning
+
+### To-Do Items
 
 ### 1. Add Android Instrumentation Tests
 
@@ -226,16 +290,46 @@ Priority: High
 - Verify whole-line move count and undo after entering Game.
 - Verify save/load and rotation behavior.
 
-### 2. Add Remaining Casual-App Surfaces
+### 2. Add First-Run Onboarding
 
-Priority: Medium
+Priority: High
 
-- Add a Settings screen for haptics, sound, and theme preferences.
-- Replace the win dialog with a Results screen that shows moves, time, record status, Play Again, New Size, and Home.
-- Add first-run tutorial prompting without blocking returning players.
-- Add accessibility labels and larger touch targets where Android lint or manual smoke tests identify gaps.
+- Add a lightweight first-run state in `SharedPreferences`.
+- Show a short onboarding flow before the first game, with a Skip option.
+- Recommend 3x3 as the first puzzle for new players.
+- Teach goal, tap, whole-line slide, swipe, undo, restart, and records.
+- Re-open onboarding from Home or Settings.
 
-### 3. Add CI For Build Quality
+### 3. Replace Text-Only How To Play With Visual Learning
+
+Priority: High
+
+- Add small board diagrams or inline demo panels for tap and whole-line slides.
+- Show the empty cell explicitly in each example.
+- Make the examples short enough to scan before starting a game.
+- Add a compact reminder from the in-game Menu.
+- Keep all puzzle-rule explanations aligned with `GameModel` semantics.
+
+### 4. Add Settings
+
+Priority: High
+
+- Add haptic feedback toggle.
+- Add sound effects toggle after audio exists.
+- Add theme selection after at least one alternate theme exists.
+- Add reduced-motion preference before adding heavier animations.
+- Add reset local data actions for save and records, behind confirmation.
+
+### 5. Add Results Screen
+
+Priority: High
+
+- Replace the solved-game dialog with a full Results screen.
+- Show size, moves, time, previous best, and whether the player set a new best.
+- Show solver-assisted completions with distinct wording and no record write.
+- Offer Play Again, New Size, Home, and optionally Share later.
+
+### 6. Add CI For Build Quality
 
 Priority: Medium
 
@@ -244,7 +338,51 @@ Priority: Medium
 - Run Android assemble/lint.
 - Run public Javadoc doclint checks where practical.
 
-### 4. Game Polish Backlog
+### UX Improvement Directions
+
+- Use icon-plus-text buttons for Home, Menu, Assist, Undo, Restart, Save, Load,
+  and Settings once the app has a stable visual language.
+- Strengthen Home as a game entry screen with a small playable board preview or
+  animated tile motif instead of only text and buttons.
+- Make Mode Select more informative: show best record, difficulty, estimated
+  solve length, and recommended first mode.
+- Make in-game controls feel compact and native: keep primary actions visible,
+  move rare actions behind Menu, and avoid exposing solver terminology too early.
+- Separate Assist from Solver. Assist should first offer one-step hints or
+  highlight movable lines; full solver playback can remain in an advanced Tools
+  area.
+- Add stronger completion feedback: board settle animation, short celebration,
+  record badge, and clear next action.
+- Add clear empty-cell affordance and movable-tile hints for first-time players.
+- Review typography and spacing on smaller emulator profiles, not only
+  1080 x 2400.
+- Add accessibility labels for custom board content, especially tile positions
+  and the empty cell.
+- Add orientation and background/resume validation whenever screen state expands.
+
+### Technical Improvement Directions
+
+- Keep `GameModel` platform-independent and continue to route all puzzle-rule
+  changes through shared core tests.
+- Keep the current one-Activity screen-state architecture until Settings,
+  Results, and onboarding make `MainActivity` too large; then split package-
+  private screen builders or a small navigation controller.
+- Add stable identifiers or test hooks for important Android controls so
+  instrumentation tests do not rely on text or screen coordinates.
+- Add a small Android state model for screen state, selected mode, first-run
+  status, settings, and pending results.
+- Move Android persistence helpers out of `MainActivity` when save, settings,
+  records, and onboarding state grow.
+- Add explicit save metadata: saved size, moves, elapsed time, updated-at
+  timestamp, and solved/active status for better Continue UI.
+- Add release build checks before Google Play planning: signed release APK/AAB,
+  minification decision, versionCode/versionName policy, and reproducible build
+  commands.
+- Add lint and instrumentation checks to CI before expanding visual complexity.
+- Add screenshot-based smoke tests for Home, Mode Select, Game, How to Play,
+  Settings, Results, and Records.
+
+### Mid- And Long-Term Planning
 
 Priority: Low to Medium
 
@@ -256,6 +394,30 @@ Priority: Low to Medium
 - Lightweight hint system separate from full solver playback.
 - Completion celebration.
 - Accessibility labels and larger touch targets.
+- Recent games or session history.
+- Achievements for first solve, low-move solve, fast solve, and daily streak.
+- Optional cloud backup only after local data and privacy expectations are clear.
+- Tablet and foldable layouts after phone layout stabilizes.
+- Localization after English UI copy and layout constraints are stable.
+
+### Google Play Readiness Planning
+
+- Prepare adaptive launcher icon, feature graphic, screenshots, and short/long
+  store descriptions that show the actual game UI.
+- Create a privacy policy before adding analytics, crash reporting, cloud save,
+  ads, or account features.
+- Define Data Safety answers based on actual collection behavior; keep local-only
+  gameplay data local unless there is a clear product reason to sync it.
+- Add crash reporting and basic performance telemetry only after privacy wording
+  and user consent expectations are settled.
+- Add release signing, Play App Bundle generation, versioning, and release notes
+  workflow.
+- Run pre-launch checks on multiple device sizes, API levels, rotations, and
+  background/resume flows.
+- Add accessibility review before store submission, including screen reader
+  labels for the board and settings for reduced motion/audio.
+- Decide whether solver features are player-facing, debug-only, or advanced
+  tools before presenting screenshots or store copy.
 
 ## Development Log
 
@@ -267,6 +429,7 @@ Priority: Low to Medium
 - Planned the next product direction: a common casual-game app experience with Home, Mode Select, How to Play, Settings, Game, Pause, and Results surfaces.
 - Implemented the Android product-style navigation pass: Home launch, Continue from save, Mode Select, How to Play, Records, compact in-game controls, Menu, and Assist.
 - Kept `GameModel` unchanged for navigation work and added a `KlotskiView` busy-state callback so controls visibly disable during animation and solver work.
+- Added product engineering and UI/UX engineering assessment notes to turn the Android roadmap into a product-planning document, including onboarding, Settings, Results, visual learning, technical improvements, and Google Play readiness planning.
 
 ### 2026-05-24
 
