@@ -1,6 +1,6 @@
 # SlideDo Development Guide
 
-This is the single source of truth for SlideDo development planning, feature behavior, product direction, and local workflow notes. Keep future planning records here instead of splitting them across `DESKTOP_FEATURE_SPEC.md` and `NEXT_STEPS.md`.
+This is the single source of truth for SlideDo development planning, feature behavior, product direction, and local workflow notes.
 
 ## Git Workflow
 
@@ -274,6 +274,7 @@ Priority: Low to Medium
 ### 2026-05-25
 
 - Consolidated development planning and desktop/Android feature reference into `DEVELOPMENT.md`.
+- Removed the old `DESKTOP_FEATURE_SPEC.md` and `NEXT_STEPS.md` pointer files after consolidation.
 - Recorded local Git workflow rule: initialize Git locally, commit cohesive changes, and do not push until explicitly requested.
 - Planned the next product direction: a common casual-game app experience with Home, Mode Select, How to Play, Settings, Game, Pause, and Results surfaces.
 

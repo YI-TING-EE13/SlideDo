@@ -278,7 +278,7 @@ build-debug.bat :app:assembleDebug :app:lintDebug
 
 ## Development Notes
 
-Development planning, Git workflow rules, desktop/Android behavior parity, and the current roadmap are maintained in [DEVELOPMENT.md](DEVELOPMENT.md). `DESKTOP_FEATURE_SPEC.md` and `NEXT_STEPS.md` are retained as pointers for older references.
+Development planning, Git workflow rules, desktop/Android behavior parity, and the current roadmap are maintained in [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ### Java Runtime Notes
 
