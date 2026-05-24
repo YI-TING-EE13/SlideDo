@@ -27,24 +27,25 @@
           <a href="#intro">0. 手冊定位</a>
           <a href="#workflow">1. 開發流程全貌</a>
           <a href="#environment">2. 開發環境設定</a>
-          <a href="#initialize">3. 從零初始化專案</a>
-          <a href="#structure">4. SlideDo 專案結構</a>
-          <a href="#gradle">5. Gradle 基礎</a>
-          <a href="#architecture">6. 架構模式</a>
-          <a href="#planning">7. 功能與流程規劃</a>
-          <a href="#ui">8. 畫面開發</a>
-          <a href="#resources">9. 資源管理</a>
-          <a href="#state">10. 狀態與資料保存</a>
-          <a href="#gameplay">11. 共用遊戲核心</a>
-          <a href="#build">12. 編譯與安裝</a>
-          <a href="#testing">13. 實機與模擬器測試</a>
-          <a href="#logcat">14. Logcat 與除錯</a>
-          <a href="#troubleshooting">15. 常見錯誤排查</a>
-          <a href="#git">16. Git 版本控管</a>
-          <a href="#maintenance">17. 維護與擴充</a>
-          <a href="#roadmap">18. 新手學習路線</a>
-          <a href="#faq">19. FAQ</a>
-          <a href="#appendix">20. 附錄</a>
+          <a href="#avd">3. Android Studio 建立模擬器</a>
+          <a href="#initialize">4. 從零初始化專案</a>
+          <a href="#structure">5. SlideDo 專案結構</a>
+          <a href="#gradle">6. Gradle 基礎</a>
+          <a href="#architecture">7. 架構模式</a>
+          <a href="#planning">8. 功能與流程規劃</a>
+          <a href="#ui">9. 畫面開發</a>
+          <a href="#resources">10. 資源管理</a>
+          <a href="#state">11. 狀態與資料保存</a>
+          <a href="#gameplay">12. 共用遊戲核心</a>
+          <a href="#build">13. 編譯與安裝</a>
+          <a href="#testing">14. 實機與模擬器測試</a>
+          <a href="#logcat">15. Logcat 與除錯</a>
+          <a href="#troubleshooting">16. 常見錯誤排查</a>
+          <a href="#git">17. Git 版本控管</a>
+          <a href="#maintenance">18. 維護與擴充</a>
+          <a href="#roadmap">19. 新手學習路線</a>
+          <a href="#faq">20. FAQ</a>
+          <a href="#appendix">21. 附錄</a>
         </nav>
       </div>
     </aside>
@@ -105,11 +106,11 @@
 
         <h3>如何使用這份手冊</h3>
         <ol>
-          <li>第一次閱讀時，先看第 1 章到第 6 章，建立 Android 專案全貌。</li>
-          <li>實際操作時，從第 2、3、12、13 章開始，確認環境、建置與安裝流程能跑通。</li>
-          <li>要改功能時，讀第 7 到第 11 章，理解畫面、狀態、資源與共用核心的分工。</li>
-          <li>遇到問題時，直接查第 14、15 章的 Logcat 與錯誤排查。</li>
-          <li>想長期維護時，讀第 16 到第 18 章，建立版本控管、測試與擴充習慣。</li>
+          <li>第一次閱讀時，先看第 1 章到第 7 章，建立 Android 專案全貌。</li>
+          <li>實際操作時，從第 2、3、13、14 章開始，確認環境、模擬器、建置與安裝流程能跑通。</li>
+          <li>要改功能時，讀第 8 到第 12 章，理解畫面、狀態、資源與共用核心的分工。</li>
+          <li>遇到問題時，直接查第 15、16 章的 Logcat 與錯誤排查。</li>
+          <li>想長期維護時，讀第 17 到第 19 章，建立版本控管、測試與擴充習慣。</li>
         </ol>
 
         <h3>本專案目前的 Android 事實</h3>
@@ -275,8 +276,8 @@
           <li>安裝 Android Studio。</li>
           <li>開啟 <strong>SDK Manager</strong>，確認已安裝 Android SDK Platform 36。</li>
           <li>在 <strong>SDK Tools</strong> 勾選 Android SDK Platform-Tools、Android SDK Build-Tools、Android Emulator。</li>
-          <li>開啟 <strong>Device Manager</strong>，建立 Pixel 系列模擬器，例如 Pixel 7 或 Pixel 8。</li>
-          <li>選擇 Google APIs x86_64 或 arm64 系統映像，API 35 或 API 36 都可用於此專案測試。</li>
+          <li>開啟 <strong>Device Manager</strong>，建立 Pixel 系列模擬器，例如 Pixel 7 或 Pixel 8；完整流程見第 3 章。</li>
+          <li>依功能需求選擇 Google APIs 或 Google Play 系統映像；SlideDo 目前不依賴 Google 服務，API 35 或 API 36 都可用於一般測試。</li>
           <li>第一次開啟專案時，選擇 <code>SlideDo/android</code> 這個資料夾，而不是整個 repo 根目錄。</li>
         </ol>
 
@@ -317,9 +318,418 @@ gradlew.bat :app:assembleDebug</code></pre>
         </dl>
       </section>
 
-      <section id="initialize" class="chapter" data-keywords="初始化 new project package minSdk empty activity Android Studio">
+      <section id="avd" class="chapter" data-keywords="AVD Android Studio Device Manager emulator virtual device Google APIs Google Play system image Play Store Play services RAM CPU API Level Firebase Maps Billing">
         <div class="chapter-heading">
           <p class="chapter-number">3</p>
+          <div>
+            <h2>Android Studio 建立模擬器（AVD）</h2>
+            <p>模擬器不是隨便選一台手機就好，而是根據專案需求建立可重複測試的 Android 裝置環境。</p>
+          </div>
+        </div>
+
+        <div class="callout info">
+          <strong>SlideDo 的建議起始 AVD</strong>
+          <p>
+            先建立一台 <code>Pixel 7</code> 或 <code>Pixel 8</code>、API 35 或 API 36、Google APIs 或 Google Play
+            系統映像、Portrait 啟動方向、Graphics 設為 Automatic、RAM 約 2 GB 到 4 GB 的手機模擬器。
+            SlideDo 的 <code>minSdk</code> 是 26，所以任何低於 API 26 的系統映像都不能作為這個 App 的測試裝置。
+          </p>
+        </div>
+
+        <h3>AVD 是什麼</h3>
+        <p>
+          AVD 是 Android Virtual Device，也就是 Android Emulator 使用的一組裝置設定。
+          它包含硬體 profile、系統映像、儲存空間、螢幕尺寸、解析度、皮膚、相機、感測器、RAM、CPU、圖形加速與啟動方式。
+          你可以把它想成「一台由 Android Studio 管理的測試手機」。
+        </p>
+
+        <h3>從 Android Studio 建立 AVD 的完整流程</h3>
+        <ol>
+          <li>開啟 Android Studio。</li>
+          <li>如果還在 Welcome screen，點 <strong>More Actions</strong>，再選 <strong>Virtual Device Manager</strong>。</li>
+          <li>如果已經開啟專案，從主選單選 <strong>View</strong> → <strong>Tool Windows</strong> → <strong>Device Manager</strong>。</li>
+          <li>在 Device Manager 的 <strong>Virtual</strong> 分頁點 <strong>+</strong> 或 <strong>Create Device</strong>。</li>
+          <li>在 <strong>Select Hardware</strong> 選一個硬體 profile，例如 Pixel 7、Pixel 8、Pixel Tablet。</li>
+          <li>點 <strong>Next</strong> 進入 <strong>System Image</strong>。</li>
+          <li>選擇 Android API Level 與映像類型。若尚未下載，點下載圖示，等待 SDK Manager 下載完成。</li>
+          <li>點 <strong>Next</strong> 進入 <strong>Verify Configuration</strong>。</li>
+          <li>確認 AVD 名稱、啟動方向、Graphics、RAM、內部儲存空間等設定；需要時點 <strong>Show Advanced Settings</strong>。</li>
+          <li>點 <strong>Finish</strong> 建立 AVD。</li>
+          <li>回到 Device Manager，點該 AVD 旁邊的啟動按鈕。</li>
+          <li>啟動後用 <code>adb devices</code> 確認電腦能看到模擬器。</li>
+        </ol>
+
+        <pre><code class="language-bat">adb devices
+adb shell getprop ro.build.version.sdk
+adb shell getprop ro.product.cpu.abi</code></pre>
+
+        <h3>如何選擇模擬器機型</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>目標</th>
+              <th>建議機型</th>
+              <th>判斷依據</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>日常開發</td>
+              <td>Pixel 7 或 Pixel 8</td>
+              <td>接近現代主流手機尺寸，效能與解析度適中，適合快速迭代。</td>
+            </tr>
+            <tr>
+              <td>小螢幕檢查</td>
+              <td>較小 Pixel 或自訂小尺寸 profile</td>
+              <td>確認按鈕、狀態列、棋盤與文字不會擠在一起。</td>
+            </tr>
+            <tr>
+              <td>大螢幕或平板</td>
+              <td>Pixel Tablet</td>
+              <td>確認 layout 在寬螢幕不會過度拉伸，也能看出是否需要雙欄或置中限制。</td>
+            </tr>
+            <tr>
+              <td>Google Play 相關功能</td>
+              <td>Play Store 欄位有 Google Play 圖示的 Phone profile</td>
+              <td>這類 profile 才能搭配包含 Play Store 的系統映像，適合測試 Play Billing、Play Integrity、Play Store 帳號流程。</td>
+            </tr>
+            <tr>
+              <td>底層除錯或需要 root</td>
+              <td>AOSP 系統映像</td>
+              <td>Google Play Store 映像以 release key 簽署，通常不能 <code>adb root</code>；需要 root 時選 AOSP 映像。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>API Level 怎麼選</h3>
+        <p>
+          API Level 必須符合兩個方向：第一，不能低於 App 的 <code>minSdk</code>；第二，應該至少測目前目標 SDK 或主流新版系統。
+          SlideDo 的 Android 設定是 <code>minSdk 26</code>、<code>targetSdk 36</code>、<code>compileSdk 36</code>。
+        </p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>測試目的</th>
+              <th>建議 API</th>
+              <th>原因</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>最低相容性</td>
+              <td>API 26</td>
+              <td>確認 App 在宣告支援的最低版本仍能安裝與執行。</td>
+            </tr>
+            <tr>
+              <td>日常開發</td>
+              <td>API 35 或 API 36</td>
+              <td>更接近目前 Android Studio 與 SDK 的預設測試環境。</td>
+            </tr>
+            <tr>
+              <td>target SDK 行為</td>
+              <td>API 36</td>
+              <td>確認權限、背景限制、UI 行為與 target SDK 的相容性。</td>
+            </tr>
+            <tr>
+              <td>回歸測試</td>
+              <td>一台最低 API + 一台最新 API</td>
+              <td>可以同時守住舊裝置相容性與新系統行為。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout warning">
+          <strong>API Level 不相容的典型症狀</strong>
+          <p>
+            如果 AVD 的 API Level 低於 App 的 <code>minSdk</code>，APK 可能無法安裝，或 Android Studio 會直接不讓你選該裝置作為執行目標。
+            如果只在最新 API 測試，則可能漏掉舊版系統上的權限、字型、尺寸或平台 API 差異。
+          </p>
+        </div>
+
+        <h3>CPU 架構、RAM 與效能設定</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>設定</th>
+              <th>建議</th>
+              <th>理由</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>CPU / ABI</td>
+              <td>優先使用 Android Studio 推薦且符合主機架構的映像，例如 Windows x86_64 主機用 x86_64，Apple Silicon 用 arm64-v8a。</td>
+              <td>跨架構模擬通常較慢；符合主機架構比較容易使用硬體加速。</td>
+            </tr>
+            <tr>
+              <td>RAM</td>
+              <td>一般手機 App 可從 2 GB 開始；畫面多、Google Play 映像或主機 RAM 足夠時可用 4 GB。</td>
+              <td>RAM 太少會卡頓，太多會拖慢主機。不要把主機大部分記憶體都分給 emulator。</td>
+            </tr>
+            <tr>
+              <td>Multi-Core CPU</td>
+              <td>2 到 4 cores 通常足夠。</td>
+              <td>核心數增加可改善速度，但會占用更多主機 CPU。</td>
+            </tr>
+            <tr>
+              <td>Graphics</td>
+              <td>先用 Automatic 或 Hardware；畫面異常時再改 Software。</td>
+              <td>硬體圖形加速通常較快；Software 可避開顯示卡或 driver 問題。</td>
+            </tr>
+            <tr>
+              <td>Boot option</td>
+              <td>日常用 Quick Boot；遇到奇怪狀態時改 Cold Boot Now。</td>
+              <td>Quick Boot 快，但會保存舊狀態；Cold Boot 比較像重新開機。</td>
+            </tr>
+            <tr>
+              <td>Internal Storage</td>
+              <td>至少保留數 GB；Google Play 映像、Play Store 更新與測試資料會需要更多空間。</td>
+              <td>空間不足會造成啟動失敗、安裝失敗或 snapshot 問題。</td>
+            </tr>
+            <tr>
+              <td>Startup orientation</td>
+              <td>SlideDo 可用 Portrait 起始，並保留旋轉測試。</td>
+              <td>遊戲主要是直向操作，但仍需確認旋轉後狀態不遺失。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Google APIs、Google Play 與 AOSP 系統映像差異</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>系統映像</th>
+              <th>是否有 Google Play Services</th>
+              <th>是否有 Play Store</th>
+              <th>適合情境</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>AOSP</td>
+              <td>否</td>
+              <td>否</td>
+              <td>測試無 Google 服務環境、需要 <code>adb root</code> 的底層除錯、確認 App 不依賴 GMS 也能基本運作。</td>
+            </tr>
+            <tr>
+              <td>Google APIs</td>
+              <td>有</td>
+              <td>通常沒有</td>
+              <td>測試 Maps、Location、部分 Google Play services API；不需要 Play Store 介面的日常開發。</td>
+            </tr>
+            <tr>
+              <td>Google Play</td>
+              <td>有</td>
+              <td>有</td>
+              <td>測試 Google 帳號、Play Store、Play Billing、Play Integrity、In-App Updates、In-App Reviews、接近一般使用者裝置的 Play 環境。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout tip">
+          <strong>新手選擇原則</strong>
+          <p>
+            如果 App 完全不使用 Google 服務，先選 Google APIs 或 AOSP 都可以；若你想貼近一般 Pixel 使用者環境，選 Google Play。
+            如果 App 使用 Firebase、Google Login、Google Maps、FCM、Play Billing、Play Integrity 或任何需要 Play Store 帳號的功能，優先建立 Google Play 映像，並準備一台實機做交叉驗證。
+          </p>
+        </div>
+
+        <h3>不同 Google 功能對系統映像的影響</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>功能</th>
+              <th>Google APIs 可否測</th>
+              <th>Google Play 是否建議</th>
+              <th>實務判斷</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>SlideDo 目前功能</td>
+              <td>可以</td>
+              <td>非必要</td>
+              <td>SlideDo 目前沒有 Google 登入、地圖、推播或內購，使用一般 Google APIs / Google Play / AOSP API 35 或 36 都能測核心 UI 與遊戲流程。</td>
+            </tr>
+            <tr>
+              <td>Firebase</td>
+              <td>視 SDK 而定</td>
+              <td>建議</td>
+              <td>部分 Firebase Android SDK 依賴 Google Play services；若功能需要 GMS、帳號或推播，選 Google Play 或實機更穩。</td>
+            </tr>
+            <tr>
+              <td>Google Login</td>
+              <td>可能不足</td>
+              <td>建議</td>
+              <td>登入流程常涉及 Google 帳號、Play services、Credential Manager 與裝置帳號狀態，Google Play 映像或實機較接近使用者環境。</td>
+            </tr>
+            <tr>
+              <td>Google Maps</td>
+              <td>通常可以</td>
+              <td>建議</td>
+              <td>Maps SDK 需要 Google Play services；Google APIs 映像可用於基本地圖測試，Play 映像更適合完整服務狀態與更新測試。</td>
+            </tr>
+            <tr>
+              <td>FCM 推播通知</td>
+              <td>視情境而定</td>
+              <td>建議</td>
+              <td>通知 token、背景接收與 Play services 狀態有關；正式前一定要搭配實機測試。</td>
+            </tr>
+            <tr>
+              <td>In-App Billing</td>
+              <td>不完整</td>
+              <td>必要</td>
+              <td>Play Billing 依賴 Play Store 與 Google Play 測試帳號；需要 Google Play 映像或有 Play Store 的實機。</td>
+            </tr>
+            <tr>
+              <td>Google Play 驗證 / Play Integrity / Licensing</td>
+              <td>不完整</td>
+              <td>必要</td>
+              <td>這些功能和 Play 環境、帳號、簽章、Console 設定密切相關，應使用 Google Play 映像與真機交叉測試。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>如何確認模擬器是否有 Play Store 與 Play services</h3>
+        <pre><code class="language-bat">adb shell pm list packages | findstr com.google.android.gms
+adb shell pm list packages | findstr com.android.vending</code></pre>
+
+        <p>
+          <code>com.google.android.gms</code> 代表 Google Play services。
+          <code>com.android.vending</code> 代表 Google Play Store。
+          如果你的測試需要 Play Store，但第二個命令沒有結果，通常表示你選到 Google APIs 或 AOSP 映像，而不是 Google Play 映像。
+        </p>
+
+        <h3>實機測試與模擬器測試的差異</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>項目</th>
+              <th>模擬器</th>
+              <th>實機</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>速度與重現性</td>
+              <td>可快速重建、wipe data、切換 API Level，適合日常回歸。</td>
+              <td>受品牌、系統、硬體、電池與廠商客製影響，較接近真實使用。</td>
+            </tr>
+            <tr>
+              <td>感測器與硬體</td>
+              <td>可模擬 GPS、旋轉、網路，但觸感、效能、相機、藍牙不一定真實。</td>
+              <td>最能驗證觸控延遲、震動、螢幕亮度、相機、藍牙、電池與熱 throttling。</td>
+            </tr>
+            <tr>
+              <td>Google Play 功能</td>
+              <td>Google Play 映像可測很多 Play 流程，但仍可能和真機有差異。</td>
+              <td>Play Store、帳號、付款、推播與廠商系統行為更真實。</td>
+            </tr>
+            <tr>
+              <td>適用時機</td>
+              <td>每日開發、API 版本矩陣、UI smoke test、自動化測試。</td>
+              <td>發佈前、效能手感、Google Play 相關功能、裝置相容性、使用者回報重現。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>模擬器常見問題與排查</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>問題</th>
+              <th>可能原因</th>
+              <th>處理方式</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>啟動很慢或操作卡頓</td>
+              <td>硬體加速未啟用、Graphics 設定不合、主機 RAM / CPU 不足、防毒軟體掃描 emulator 檔案。</td>
+              <td>確認 BIOS / Windows 虛擬化已啟用；Graphics 用 Automatic 或 Hardware；關閉重負載程式；將 Android Emulator 加到防毒信任清單。</td>
+            </tr>
+            <tr>
+              <td>AVD 無法啟動</td>
+              <td>磁碟空間不足、映像下載不完整、虛擬化或 hypervisor 衝突。</td>
+              <td>保留至少數 GB 空間；重新下載 system image；重開 Android Studio；必要時刪除 AVD 後重建。</td>
+            </tr>
+            <tr>
+              <td>Windows 上特定 AVD 名稱啟動失敗</td>
+              <td>AVD 名稱含 Unicode 或特殊字元。</td>
+              <td>AVD 名稱使用英文字母、數字、底線或短橫線，例如 <code>Pixel_8_API_36_Play</code>。</td>
+            </tr>
+            <tr>
+              <td>畫面比例或尺寸異常</td>
+              <td>選到平板、摺疊、橫向或自訂 skin 尺寸過大。</td>
+              <td>改用 Pixel phone profile；Startup orientation 設 Portrait；關閉不必要的 device frame；測試不同尺寸確認 layout 響應式。</td>
+            </tr>
+            <tr>
+              <td>APK 無法安裝</td>
+              <td>API Level 低於 <code>minSdk</code>、版本降級、儲存空間不足。</td>
+              <td>改用 API 26+ AVD；卸載舊版或提高 <code>versionCode</code>；Wipe Data 或增加 storage。</td>
+            </tr>
+            <tr>
+              <td>Google Login、Billing、Play Integrity 無法測</td>
+              <td>選到 AOSP 或 Google APIs 映像，沒有 Play Store；或未登入測試帳號。</td>
+              <td>建立 Google Play 映像；登入 Google 帳號；確認 Play Console 測試人員、套件名稱與簽章設定。</td>
+            </tr>
+            <tr>
+              <td>Google Maps 空白或服務不可用</td>
+              <td>API key、Google Play services、system image 或網路設定問題。</td>
+              <td>確認 API key、manifest metadata、Google Play services package、網路連線；改用 Google Play 映像或真機交叉測試。</td>
+            </tr>
+            <tr>
+              <td>狀態怪異，重裝 App 還是復現</td>
+              <td>Quick Boot snapshot 或 AVD user data 保留舊狀態。</td>
+              <td>Device Manager 對該 AVD 執行 <strong>Cold Boot Now</strong> 或 <strong>Wipe Data</strong>。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>SlideDo 建議的 AVD 組合</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>名稱範例</th>
+              <th>設定</th>
+              <th>用途</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>Pixel_8_API_36_Play</code></td>
+              <td>Pixel 8、API 36、Google Play、Portrait、Graphics Automatic、RAM 4 GB</td>
+              <td>日常 UI 與接近一般 Pixel 使用者環境的 smoke test。</td>
+            </tr>
+            <tr>
+              <td><code>Pixel_5_API_26_AOSP</code></td>
+              <td>較小手機、API 26、AOSP 或 Google APIs、RAM 2 GB</td>
+              <td>最低 SDK 相容性與小螢幕測試。</td>
+            </tr>
+            <tr>
+              <td><code>Pixel_Tablet_API_36</code></td>
+              <td>Pixel Tablet、API 36、Google APIs 或 Google Play</td>
+              <td>寬螢幕、平板、棋盤縮放與文字排版檢查。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>官方參考</h3>
+        <ul>
+          <li><a href="https://developer.android.com/studio/run/managing-avds">Create and manage virtual devices</a></li>
+          <li><a href="https://developer.android.com/studio/run/emulator-acceleration">Configure hardware acceleration for the Android Emulator</a></li>
+          <li><a href="https://developer.android.com/studio/run/emulator-troubleshooting">Troubleshoot known issues with Android Emulator</a></li>
+          <li><a href="https://developers.google.com/android/guides/setup">Set up Google Play services</a></li>
+          <li><a href="https://firebase.google.com/docs/android/android-play-services">Dependencies of Firebase Android SDKs on Google Play services</a></li>
+          <li><a href="https://developers.google.com/maps/documentation/android-sdk/config">Set up an Android Studio project for Maps SDK for Android</a></li>
+          <li><a href="https://developer.android.com/google/play/billing/test">Test your Google Play Billing Library integration</a></li>
+        </ul>
+      </section>
+
+      <section id="initialize" class="chapter" data-keywords="初始化 new project package minSdk empty activity Android Studio">
+        <div class="chapter-heading">
+          <p class="chapter-number">4</p>
           <div>
             <h2>從零初始化一個 Android App</h2>
             <p>這一章用「如果今天要從零建立 SlideDo Android」的角度說明。</p>
@@ -409,7 +819,7 @@ gradlew.bat :app:assembleDebug</code></pre>
 
       <section id="structure" class="chapter" data-keywords="專案結構 src android manifest resources tests">
         <div class="chapter-heading">
-          <p class="chapter-number">4</p>
+          <p class="chapter-number">5</p>
           <div>
             <h2>SlideDo 專案結構說明</h2>
             <p>讀懂檔案位置，才知道改功能時應該改哪裡。</p>
@@ -497,7 +907,7 @@ gradlew.bat :app:assembleDebug</code></pre>
 
       <section id="gradle" class="chapter" data-keywords="Gradle build.gradle plugin wrapper sourceSets dependencies assemble lint sync">
         <div class="chapter-heading">
-          <p class="chapter-number">5</p>
+          <p class="chapter-number">6</p>
           <div>
             <h2>Gradle 基礎</h2>
             <p>Gradle 是 Android 專案的建置系統。新手不必一次學完，但一定要懂常用檔案與任務。</p>
@@ -569,7 +979,7 @@ gradlew.bat :app:assembleDebug</code></pre>
 
       <section id="architecture" class="chapter" data-keywords="架構 MVC MVVM Activity View Observer GameModel separation of concerns">
         <div class="chapter-heading">
-          <p class="chapter-number">6</p>
+          <p class="chapter-number">7</p>
           <div>
             <h2>架構模式與分層思維</h2>
             <p>架構不是為了複雜，而是為了讓修改範圍可控。</p>
@@ -656,7 +1066,7 @@ gradlew.bat :app:assembleDebug</code></pre>
 
       <section id="planning" class="chapter" data-keywords="功能規劃 screen flow user flow acceptance criteria onboarding records settings">
         <div class="chapter-heading">
-          <p class="chapter-number">7</p>
+          <p class="chapter-number">8</p>
           <div>
             <h2>系統功能規劃與使用流程設計</h2>
             <p>App 開發不只是把按鈕放上畫面，而是設計使用者完成任務的路徑。</p>
@@ -757,7 +1167,7 @@ Acceptance criteria:
 
       <section id="ui" class="chapter" data-keywords="UI Activity View custom view touch animation lifecycle navigation accessibility">
         <div class="chapter-heading">
-          <p class="chapter-number">8</p>
+          <p class="chapter-number">9</p>
           <div>
             <h2>畫面與互動開發</h2>
             <p>SlideDo 的 Android UI 展示了 Activity 建畫面、自訂 View 畫棋盤、觸控事件與動畫。</p>
@@ -857,7 +1267,7 @@ protected void onCreate(Bundle savedInstanceState) {
 
       <section id="resources" class="chapter" data-keywords="resources strings styles drawable localization density theme icon colors">
         <div class="chapter-heading">
-          <p class="chapter-number">9</p>
+          <p class="chapter-number">10</p>
           <div>
             <h2>資源管理</h2>
             <p>Android resource 系統讓文字、圖示、顏色、尺寸、語系與主題可以和程式碼分離。</p>
@@ -921,7 +1331,7 @@ protected void onCreate(Bundle savedInstanceState) {
 
       <section id="state" class="chapter" data-keywords="state persistence SharedPreferences save load records lifecycle onPause DataStore Room">
         <div class="chapter-heading">
-          <p class="chapter-number">10</p>
+          <p class="chapter-number">11</p>
           <div>
             <h2>狀態管理與資料保存</h2>
             <p>Android App 最容易出錯的地方之一，是使用者離開、旋轉或重新開啟後狀態不見。</p>
@@ -1005,7 +1415,7 @@ editor.apply();</code></pre>
 
       <section id="gameplay" class="chapter" data-keywords="GameModel rules Direction slideLineTo Observer solver BFS AStar IDA">
         <div class="chapter-heading">
-          <p class="chapter-number">11</p>
+          <p class="chapter-number">12</p>
           <div>
             <h2>共用遊戲核心與 Android 的分工</h2>
             <p>SlideDo 最值得學習的一點，是把遊戲規則和 Android 畫面拆開。</p>
@@ -1086,7 +1496,7 @@ editor.apply();</code></pre>
 
       <section id="build" class="chapter" data-keywords="build compile assembleDebug APK install adb Android Studio run">
         <div class="chapter-heading">
-          <p class="chapter-number">12</p>
+          <p class="chapter-number">13</p>
           <div>
             <h2>程式編譯、APK 產出與 App 安裝</h2>
             <p>能穩定 build 和 install，是 Android 開發的第一條底線。</p>
@@ -1134,7 +1544,7 @@ build-debug.bat :app:assembleDebug :app:lintDebug</code></pre>
 
       <section id="testing" class="chapter" data-keywords="測試 emulator device smoke unit instrumentation lint rotation resume adb">
         <div class="chapter-heading">
-          <p class="chapter-number">13</p>
+          <p class="chapter-number">14</p>
           <div>
             <h2>實機、模擬器與測試流程</h2>
             <p>Android 測試需要同時考慮程式規則、畫面行為、裝置差異與生命週期。</p>
@@ -1174,13 +1584,12 @@ build-debug.bat :app:assembleDebug :app:lintDebug</code></pre>
           </tbody>
         </table>
 
-        <h3>建立模擬器</h3>
-        <ol>
-          <li>Android Studio 開啟 Device Manager。</li>
-          <li>選擇 Pixel 7 或 Pixel 8。</li>
-          <li>系統映像選 Google APIs API 35 或 36。</li>
-          <li>啟動後執行 <code>adb devices</code>，應看到 <code>emulator-5554 device</code> 類似輸出。</li>
-        </ol>
+        <h3>測試裝置選擇</h3>
+        <p>
+          模擬器建立與系統映像選擇的完整流程見第 3 章。日常開發先用一台 Pixel phone AVD；
+          發佈前至少補一台最低 API、一次小螢幕測試、一次平板或大螢幕測試，以及一台實機。
+          如果功能牽涉 Google Play、Firebase、Google Login、Maps、FCM 或 Billing，請使用 Google Play 映像與實機交叉驗證。
+        </p>
 
         <h3>實機測試設定</h3>
         <ol>
@@ -1216,7 +1625,7 @@ build-debug.bat :app:assembleDebug :app:lintDebug</code></pre>
 
       <section id="logcat" class="chapter" data-keywords="Logcat debug crash stacktrace filter adb log">
         <div class="chapter-heading">
-          <p class="chapter-number">14</p>
+          <p class="chapter-number">15</p>
           <div>
             <h2>Logcat 使用與除錯方式</h2>
             <p>Logcat 是 Android 開發最重要的除錯工具之一。</p>
@@ -1270,7 +1679,7 @@ java.lang.NullPointerException
 
       <section id="troubleshooting" class="chapter" data-keywords="錯誤排查 Gradle SDK adb emulator crash install lint Java UTF-8">
         <div class="chapter-heading">
-          <p class="chapter-number">15</p>
+          <p class="chapter-number">16</p>
           <div>
             <h2>常見錯誤排查</h2>
             <p>新手遇到錯誤時，先分類：是環境、建置、安裝、執行、畫面，還是資料問題。</p>
@@ -1323,8 +1732,18 @@ java.lang.NullPointerException
             </tr>
             <tr>
               <td>模擬器很慢</td>
-              <td>硬體加速未啟用、RAM 太低、系統映像不適合。</td>
-              <td>使用 x86_64 / arm64 適合本機架構的映像，調高 RAM，關閉其他重負載程式。</td>
+              <td>硬體加速未啟用、RAM 太低、系統映像不適合、防毒或其他 VM 軟體干擾。</td>
+              <td>使用符合主機架構的 x86_64 / arm64 映像，Graphics 設 Automatic 或 Hardware，必要時改 Software；關閉重負載程式並檢查虛擬化設定。</td>
+            </tr>
+            <tr>
+              <td>Google Play 相關功能不能測</td>
+              <td>選到 AOSP 或 Google APIs 映像，沒有 Play Store；或未登入測試帳號。</td>
+              <td>改用 Play Store 欄位有 Google Play 圖示的硬體 profile 與 Google Play 系統映像，並確認 <code>com.android.vending</code> 存在。</td>
+            </tr>
+            <tr>
+              <td>模擬器啟動失敗或 snapshot 卡住</td>
+              <td>磁碟空間不足、AVD user data 壞掉、Quick Boot 保存了壞狀態。</td>
+              <td>Device Manager 執行 <strong>Cold Boot Now</strong> 或 <strong>Wipe Data</strong>；確認至少保留數 GB 可用磁碟空間。</td>
             </tr>
             <tr>
               <td>中文亂碼</td>
@@ -1353,7 +1772,7 @@ java.lang.NullPointerException
 
       <section id="git" class="chapter" data-keywords="Git commit status diff branch ignore gitattributes version control">
         <div class="chapter-heading">
-          <p class="chapter-number">16</p>
+          <p class="chapter-number">17</p>
           <div>
             <h2>Git 版本控管</h2>
             <p>Android 專案會產生很多本機檔案，Git 規則要清楚，否則 repo 很快變亂。</p>
@@ -1392,7 +1811,7 @@ build-debug.bat :app:assembleDebug :app:lintDebug</code></pre>
 
       <section id="maintenance" class="chapter" data-keywords="維護 擴充 CI release signing accessibility performance security privacy">
         <div class="chapter-heading">
-          <p class="chapter-number">17</p>
+          <p class="chapter-number">18</p>
           <div>
             <h2>後續維護與功能擴充</h2>
             <p>當 App 可以跑之後，真正的工程工作才開始：穩定、可測、可維護、可發佈。</p>
@@ -1466,7 +1885,7 @@ build-debug.bat :app:assembleDebug :app:lintDebug</code></pre>
 
       <section id="roadmap" class="chapter" data-keywords="學習路線 beginner roadmap exercises Android Studio Java UI testing release">
         <div class="chapter-heading">
-          <p class="chapter-number">18</p>
+          <p class="chapter-number">19</p>
           <div>
             <h2>新手 Android 工程師學習路線</h2>
             <p>用 SlideDo 當練習專案，可以依照階段逐步學。</p>
@@ -1525,7 +1944,7 @@ build-debug.bat :app:assembleDebug :app:lintDebug</code></pre>
 
       <section id="faq" class="chapter" data-keywords="FAQ 常見問題 Java Kotlin Compose XML SharedPreferences Activity">
         <div class="chapter-heading">
-          <p class="chapter-number">19</p>
+          <p class="chapter-number">20</p>
           <div>
             <h2>常見問題</h2>
             <p>整理新手最容易問的 Android 開發問題。</p>
@@ -1582,7 +2001,7 @@ build-debug.bat :app:assembleDebug :app:lintDebug</code></pre>
 
       <section id="appendix" class="chapter" data-keywords="附錄 command cheat sheet checklist glossary">
         <div class="chapter-heading">
-          <p class="chapter-number">20</p>
+          <p class="chapter-number">21</p>
           <div>
             <h2>附錄：命令速查與檢查表</h2>
             <p>實作時最常用的命令集中在這裡。</p>
