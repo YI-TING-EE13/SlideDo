@@ -1,0 +1,1649 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SlideDo Android App 開發操作手冊</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#content">跳到主要內容</a>
+
+  <header class="topbar">
+    <button class="icon-button" id="menuToggle" type="button" aria-label="開關目錄">☰</button>
+    <div>
+      <p class="eyebrow">SlideDo Android Learning Manual</p>
+      <h1>Android App 開發操作手冊</h1>
+    </div>
+    <button class="theme-button" id="themeToggle" type="button" aria-label="切換深色模式">深色</button>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar" id="sidebar" aria-label="章節目錄">
+      <div class="sidebar-inner">
+        <label class="search-label" for="sectionSearch">搜尋章節</label>
+        <input id="sectionSearch" class="section-search" type="search" placeholder="例如：Gradle、Logcat、測試">
+        <nav class="toc">
+          <a href="#intro">0. 手冊定位</a>
+          <a href="#workflow">1. 開發流程全貌</a>
+          <a href="#environment">2. 開發環境設定</a>
+          <a href="#initialize">3. 從零初始化專案</a>
+          <a href="#structure">4. SlideDo 專案結構</a>
+          <a href="#gradle">5. Gradle 基礎</a>
+          <a href="#architecture">6. 架構模式</a>
+          <a href="#planning">7. 功能與流程規劃</a>
+          <a href="#ui">8. 畫面開發</a>
+          <a href="#resources">9. 資源管理</a>
+          <a href="#state">10. 狀態與資料保存</a>
+          <a href="#gameplay">11. 共用遊戲核心</a>
+          <a href="#build">12. 編譯與安裝</a>
+          <a href="#testing">13. 實機與模擬器測試</a>
+          <a href="#logcat">14. Logcat 與除錯</a>
+          <a href="#troubleshooting">15. 常見錯誤排查</a>
+          <a href="#git">16. Git 版本控管</a>
+          <a href="#maintenance">17. 維護與擴充</a>
+          <a href="#roadmap">18. 新手學習路線</a>
+          <a href="#faq">19. FAQ</a>
+          <a href="#appendix">20. 附錄</a>
+        </nav>
+      </div>
+    </aside>
+
+    <main id="content" class="content">
+      <section class="hero">
+        <p class="eyebrow">以目前 SlideDo 專案為實際範例</p>
+        <h2>從一個可執行的 Android 遊戲專案，理解 App 開發的完整流程</h2>
+        <p>
+          這份手冊是一份獨立學習文件，放在 <code>android-dev-manual/</code>，不屬於產品最終交付規格。
+          它用 SlideDo 的 Android 版本示範如何從開發環境、專案初始化、架構拆分、畫面流程、資源管理、
+          編譯安裝、測試除錯，到 Git 維護與後續擴充，建立一個完整 Android App。
+        </p>
+        <div class="hero-grid">
+          <div class="stat-card">
+            <span>目前語言</span>
+            <strong>Java 17</strong>
+          </div>
+          <div class="stat-card">
+            <span>Android SDK</span>
+            <strong>min 26 / target 36</strong>
+          </div>
+          <div class="stat-card">
+            <span>建置工具</span>
+            <strong>Gradle 8.14.5</strong>
+          </div>
+          <div class="stat-card">
+            <span>核心模式</span>
+            <strong>Shared Core + Native UI</strong>
+          </div>
+        </div>
+      </section>
+
+      <section id="intro" class="chapter" data-keywords="手冊 目標 新手 閱讀方式 HTML">
+        <div class="chapter-heading">
+          <p class="chapter-number">0</p>
+          <div>
+            <h2>手冊定位與閱讀方式</h2>
+            <p>先理解這份文件要解決什麼問題，再開始照著做。</p>
+          </div>
+        </div>
+
+        <div class="callout info">
+          <strong>這份文件的角色</strong>
+          <p>
+            它不是 Android 官方文件的替代品，也不是 SlideDo 的產品規格。它是一份把「正在開發中的真實專案」
+            拆成新手可理解步驟的操作手冊。
+          </p>
+        </div>
+
+        <h3>適合誰閱讀</h3>
+        <ul>
+          <li>剛開始學 Android Studio、Gradle、ADB、Logcat 的新手工程師。</li>
+          <li>已經懂 Java，但不熟 Android app 生命週期與專案結構的人。</li>
+          <li>想理解桌面 Java 專案如何延伸出 Android 版本的人。</li>
+          <li>想用 SlideDo 作為練習範例，學會從零建立、編譯、安裝、測試與維護 App 的人。</li>
+        </ul>
+
+        <h3>如何使用這份手冊</h3>
+        <ol>
+          <li>第一次閱讀時，先看第 1 章到第 6 章，建立 Android 專案全貌。</li>
+          <li>實際操作時，從第 2、3、12、13 章開始，確認環境、建置與安裝流程能跑通。</li>
+          <li>要改功能時，讀第 7 到第 11 章，理解畫面、狀態、資源與共用核心的分工。</li>
+          <li>遇到問題時，直接查第 14、15 章的 Logcat 與錯誤排查。</li>
+          <li>想長期維護時，讀第 16 到第 18 章，建立版本控管、測試與擴充習慣。</li>
+        </ol>
+
+        <h3>本專案目前的 Android 事實</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>項目</th>
+              <th>目前狀態</th>
+              <th>對新手的意義</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>App 類型</td>
+              <td>原生 Android 遊戲 App</td>
+              <td>直接使用 Android SDK、Activity、View、SharedPreferences，不依賴跨平台框架。</td>
+            </tr>
+            <tr>
+              <td>語言</td>
+              <td>Java</td>
+              <td>適合理解 Android 基礎 API，也能和桌面 Java 核心共用程式碼。</td>
+            </tr>
+            <tr>
+              <td>UI 寫法</td>
+              <td>程式碼建立 View，另有自訂 <code>KlotskiView</code></td>
+              <td>可以直接看到畫面如何由 Activity 建出來，不需要先學 XML layout 或 Jetpack Compose。</td>
+            </tr>
+            <tr>
+              <td>遊戲規則</td>
+              <td><code>GameModel</code> 是唯一規則來源</td>
+              <td>Android UI 不重寫規則，只呼叫共用核心，避免桌面與手機版行為不一致。</td>
+            </tr>
+            <tr>
+              <td>保存資料</td>
+              <td><code>SharedPreferences</code></td>
+              <td>適合入門：少量 key-value 資料可以快速保存與讀取。</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="workflow" class="chapter" data-keywords="流程 planning build test deploy maintenance">
+        <div class="chapter-heading">
+          <p class="chapter-number">1</p>
+          <div>
+            <h2>Android App 開發流程全貌</h2>
+            <p>一個 App 通常不是先寫畫面，而是先釐清目標、限制與驗證方式。</p>
+          </div>
+        </div>
+
+        <div class="process">
+          <div>
+            <span>01</span>
+            <strong>定義目標</strong>
+            <p>SlideDo 的目標是「手機上可玩的數字滑塊遊戲」。</p>
+          </div>
+          <div>
+            <span>02</span>
+            <strong>建立專案</strong>
+            <p>用 Android Studio 或 Gradle 建立 app module。</p>
+          </div>
+          <div>
+            <span>03</span>
+            <strong>設計架構</strong>
+            <p>把規則、畫面、資料保存與建置設定分清楚。</p>
+          </div>
+          <div>
+            <span>04</span>
+            <strong>開發功能</strong>
+            <p>逐步完成 Home、Mode Select、Game、Records 等畫面。</p>
+          </div>
+          <div>
+            <span>05</span>
+            <strong>編譯安裝</strong>
+            <p>產生 debug APK，安裝到模擬器或實機。</p>
+          </div>
+          <div>
+            <span>06</span>
+            <strong>測試除錯</strong>
+            <p>用 JUnit、lint、Logcat、手動 smoke test 找問題。</p>
+          </div>
+          <div>
+            <span>07</span>
+            <strong>版本控管</strong>
+            <p>只提交源碼與文件，不提交 build output 或本機設定。</p>
+          </div>
+          <div>
+            <span>08</span>
+            <strong>維護擴充</strong>
+            <p>用小步驟新增 Settings、Results、CI、release signing。</p>
+          </div>
+        </div>
+
+        <h3>SlideDo 對應範例</h3>
+        <p>
+          SlideDo 的桌面版先存在於 <code>src/com/klotski</code>，Android 版本則放在 <code>android/</code>。
+          這代表它不是「完全從空白開始」的專案，而是「把已驗證的 Java 遊戲核心包成 Android App」。
+          這很適合學習，因為你可以清楚看到業務邏輯與平台 UI 的分界。
+        </p>
+
+        <div class="diagram" role="img" aria-label="SlideDo Android flow">
+          <div>使用者點擊或滑動</div>
+          <span>→</span>
+          <div><code>KlotskiView</code> 判斷手勢</div>
+          <span>→</span>
+          <div><code>GameModel</code> 執行規則</div>
+          <span>→</span>
+          <div><code>GameObserver</code> 通知 UI</div>
+          <span>→</span>
+          <div><code>MainActivity</code> 更新狀態與紀錄</div>
+        </div>
+      </section>
+
+      <section id="environment" class="chapter" data-keywords="環境 Android Studio JDK SDK ADB emulator JAVA_HOME">
+        <div class="chapter-heading">
+          <p class="chapter-number">2</p>
+          <div>
+            <h2>開發環境設定</h2>
+            <p>Android 開發最常見的卡關點，是 JDK、SDK、Gradle、ADB 版本或路徑不一致。</p>
+          </div>
+        </div>
+
+        <h3>必要工具</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>工具</th>
+              <th>用途</th>
+              <th>SlideDo 目前需求</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Android Studio</td>
+              <td>開啟專案、Sync Gradle、建立模擬器、執行 App、查看 Logcat。</td>
+              <td>建議安裝目前穩定版。</td>
+            </tr>
+            <tr>
+              <td>Android SDK</td>
+              <td>提供 compile SDK、platform tools、build tools、emulator。</td>
+              <td><code>compileSdk 36</code>，裝置需 API 26+。</td>
+            </tr>
+            <tr>
+              <td>JDK / JBR</td>
+              <td>Gradle 與 Java 編譯需要。</td>
+              <td>Java 17；若系統 JDK 太新，可用 Android Studio 內建 JBR。</td>
+            </tr>
+            <tr>
+              <td>Gradle Wrapper</td>
+              <td>使用專案指定的 Gradle 版本，不依賴全域安裝。</td>
+              <td><code>android/gradlew.bat</code> 指向 Gradle 8.14.5。</td>
+            </tr>
+            <tr>
+              <td>ADB</td>
+              <td>列出裝置、安裝 APK、啟動 Activity、讀取裝置 log。</td>
+              <td>由 Android SDK Platform Tools 提供。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Android Studio 初次設定</h3>
+        <ol>
+          <li>安裝 Android Studio。</li>
+          <li>開啟 <strong>SDK Manager</strong>，確認已安裝 Android SDK Platform 36。</li>
+          <li>在 <strong>SDK Tools</strong> 勾選 Android SDK Platform-Tools、Android SDK Build-Tools、Android Emulator。</li>
+          <li>開啟 <strong>Device Manager</strong>，建立 Pixel 系列模擬器，例如 Pixel 7 或 Pixel 8。</li>
+          <li>選擇 Google APIs x86_64 或 arm64 系統映像，API 35 或 API 36 都可用於此專案測試。</li>
+          <li>第一次開啟專案時，選擇 <code>SlideDo/android</code> 這個資料夾，而不是整個 repo 根目錄。</li>
+        </ol>
+
+        <div class="callout warning">
+          <strong>路徑重點</strong>
+          <p>
+            SlideDo 有根目錄 Gradle 專案，也有 <code>android/</code> 子專案。
+            Android Studio 要開 Android App 時，建議開 <code>android/</code>，這樣 IDE 會以
+            <code>SlideDoAndroid</code> 專案同步 app module。
+          </p>
+        </div>
+
+        <h3>命令列環境檢查</h3>
+        <p>在 Windows PowerShell 或 Command Prompt 中執行：</p>
+        <pre><code class="language-bat">java -version
+android\gradlew.bat -p android --version
+adb version
+adb devices</code></pre>
+
+        <p>如果 Gradle 因 Java 版本相容性失敗，可暫時使用 Android Studio 內建 JBR：</p>
+        <pre><code class="language-bat">set JAVA_HOME=C:\Program Files\Android\Android Studio\jbr
+set PATH=%JAVA_HOME%\bin;%PATH%
+cd android
+gradlew.bat :app:assembleDebug</code></pre>
+
+        <h3>新手應理解的環境名詞</h3>
+        <dl class="glossary">
+          <dt>SDK</dt>
+          <dd>Software Development Kit。Android SDK 提供編譯、模擬器、裝置工具與平台 API。</dd>
+          <dt>JDK</dt>
+          <dd>Java Development Kit。用來編譯 Java 程式與執行 Gradle。</dd>
+          <dt>JBR</dt>
+          <dd>JetBrains Runtime。Android Studio 內建的 Java runtime，通常與 IDE / Gradle 相容性較好。</dd>
+          <dt>ADB</dt>
+          <dd>Android Debug Bridge。電腦與 Android 裝置溝通的命令列工具。</dd>
+          <dt>AVD</dt>
+          <dd>Android Virtual Device。Android Studio 建立的模擬器裝置設定。</dd>
+        </dl>
+      </section>
+
+      <section id="initialize" class="chapter" data-keywords="初始化 new project package minSdk empty activity Android Studio">
+        <div class="chapter-heading">
+          <p class="chapter-number">3</p>
+          <div>
+            <h2>從零初始化一個 Android App</h2>
+            <p>這一章用「如果今天要從零建立 SlideDo Android」的角度說明。</p>
+          </div>
+        </div>
+
+        <h3>用 Android Studio 建立新專案</h3>
+        <ol>
+          <li>開啟 Android Studio，選擇 <strong>New Project</strong>。</li>
+          <li>若用 Java 入門，可選 <strong>Empty Views Activity</strong> 或 <strong>No Activity</strong> 後自行建立 Activity。</li>
+          <li>輸入 App 名稱，例如 <code>SlideDo</code>。</li>
+          <li>Package name 設為反向網域格式，例如 <code>com.klotski.android</code>。</li>
+          <li>Language 選 Java。</li>
+          <li>Minimum SDK 選 API 26 或更高，符合本專案目前設定。</li>
+          <li>建立後等待 Gradle Sync 完成。</li>
+        </ol>
+
+        <h3>新專案最小檔案</h3>
+        <p>一個原生 Android App 至少會有：</p>
+        <table>
+          <thead>
+            <tr>
+              <th>檔案</th>
+              <th>用途</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>settings.gradle</code></td>
+              <td>宣告專案名稱、module、plugin repository。</td>
+            </tr>
+            <tr>
+              <td><code>build.gradle</code></td>
+              <td>宣告 Android Gradle Plugin 版本與全域建置設定。</td>
+            </tr>
+            <tr>
+              <td><code>app/build.gradle</code></td>
+              <td>宣告 app 的 namespace、applicationId、SDK 版本、source set、依賴。</td>
+            </tr>
+            <tr>
+              <td><code>AndroidManifest.xml</code></td>
+              <td>宣告 App、Activity、權限、launcher 入口。</td>
+            </tr>
+            <tr>
+              <td><code>MainActivity.java</code></td>
+              <td>App 第一個畫面與主要互動入口。</td>
+            </tr>
+            <tr>
+              <td><code>res/values/strings.xml</code></td>
+              <td>集中管理畫面文字，方便修改與多語系。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>SlideDo 的特殊初始化策略</h3>
+        <p>
+          SlideDo 不是把所有程式碼都寫在 Android module 裡。它把共用遊戲規則保留在根目錄
+          <code>src/com/klotski/core</code>，Android module 再透過 Gradle source set 把這些 Java 檔案納入編譯。
+          這讓桌面版與 Android 版共用同一套規則。
+        </p>
+
+        <pre><code class="language-gradle">android {
+    namespace "com.klotski.android"
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "com.klotski.android"
+        minSdk 26
+        targetSdk 36
+        versionCode 1
+        versionName "1.0"
+    }
+
+    sourceSets {
+        main.java.srcDirs += ["../../src/com/klotski/core"]
+    }
+}</code></pre>
+
+        <div class="callout tip">
+          <strong>入門建議</strong>
+          <p>
+            如果你是完全新手，第一個 App 可以先不要共用桌面核心，直接在 Android module 裡完成一個小功能。
+            等你熟悉 Activity、View、Gradle、資源檔與 Logcat 後，再學 SlideDo 這種共用核心架構。
+          </p>
+        </div>
+      </section>
+
+      <section id="structure" class="chapter" data-keywords="專案結構 src android manifest resources tests">
+        <div class="chapter-heading">
+          <p class="chapter-number">4</p>
+          <div>
+            <h2>SlideDo 專案結構說明</h2>
+            <p>讀懂檔案位置，才知道改功能時應該改哪裡。</p>
+          </div>
+        </div>
+
+        <pre><code class="language-text">SlideDo/
+  src/com/klotski/core/                 共用遊戲規則與資料模型
+  src/com/klotski/ui/                   桌面 Swing UI
+  test/com/klotski/core/                共用核心 JUnit 測試
+  android/
+    app/build.gradle                    Android app module 設定
+    app/src/main/AndroidManifest.xml    App 入口與 manifest 設定
+    app/src/main/java/com/klotski/android/
+      MainActivity.java                 Android 畫面與控制流程
+      KlotskiView.java                  自訂棋盤 View、觸控與動畫
+    app/src/main/res/
+      drawable/ic_launcher.xml          啟動圖示
+      values/strings.xml                UI 文字資源
+      values/styles.xml                 App 主題
+    build-debug.bat                     本機 debug build 輔助腳本
+    gradlew.bat                         Gradle wrapper
+  build.gradle                          根目錄 Java / JUnit 測試設定
+  DEVELOPMENT.md                        專案開發紀錄與行為參考
+  README.md                             使用者導向專案說明</code></pre>
+
+        <h3>Android 主要檔案責任</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>檔案</th>
+              <th>責任</th>
+              <th>新手修改建議</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>MainActivity.java</code></td>
+              <td>控制 Home、Mode Select、How to Play、Records、Game 畫面；處理保存、讀取、紀錄、solver 選單。</td>
+              <td>新增畫面流程時先從這裡讀起。</td>
+            </tr>
+            <tr>
+              <td><code>KlotskiView.java</code></td>
+              <td>畫棋盤、偵測點擊與滑動、播放 tile animation、通知忙碌狀態。</td>
+              <td>修改棋盤外觀或觸控行為時才改。</td>
+            </tr>
+            <tr>
+              <td><code>strings.xml</code></td>
+              <td>集中 UI 文字，例如 Home、How to Play、dialog、button label。</td>
+              <td>新增按鈕文字不要硬寫在 Java 字串中。</td>
+            </tr>
+            <tr>
+              <td><code>styles.xml</code></td>
+              <td>App 主題，目前使用 Material Light NoActionBar。</td>
+              <td>修改全域 theme、status/navigation bar 風格時看這裡。</td>
+            </tr>
+            <tr>
+              <td><code>AndroidManifest.xml</code></td>
+              <td>宣告 launcher Activity、icon、theme、backup、RTL。</td>
+              <td>新增 Activity、權限、deep link 時會改。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Manifest 入口</h3>
+        <p>Android 透過 manifest 找到可從桌面啟動的 Activity：</p>
+        <pre><code class="language-xml">&lt;activity
+    android:name=".MainActivity"
+    android:exported="true"&gt;
+    &lt;intent-filter&gt;
+        &lt;action android:name="android.intent.action.MAIN" /&gt;
+        &lt;category android:name="android.intent.category.LAUNCHER" /&gt;
+    &lt;/intent-filter&gt;
+&lt;/activity&gt;</code></pre>
+
+        <div class="callout warning">
+          <strong>不要混淆兩套 UI</strong>
+          <p>
+            <code>src/com/klotski/ui</code> 是桌面 Swing UI；
+            <code>android/app/src/main/java/com/klotski/android</code> 才是 Android UI。
+            遊戲規則在 <code>src/com/klotski/core</code>，兩端都應共用它。
+          </p>
+        </div>
+      </section>
+
+      <section id="gradle" class="chapter" data-keywords="Gradle build.gradle plugin wrapper sourceSets dependencies assemble lint sync">
+        <div class="chapter-heading">
+          <p class="chapter-number">5</p>
+          <div>
+            <h2>Gradle 基礎</h2>
+            <p>Gradle 是 Android 專案的建置系統。新手不必一次學完，但一定要懂常用檔案與任務。</p>
+          </div>
+        </div>
+
+        <h3>Gradle 在 Android 中負責什麼</h3>
+        <ul>
+          <li>下載 Android Gradle Plugin 與第三方依賴。</li>
+          <li>讀取 source set，知道哪些 Java / Kotlin / resource 檔案要編譯。</li>
+          <li>把 Java 程式碼、Android resource、manifest 打包成 APK。</li>
+          <li>執行單元測試、lint、assembleDebug、assembleRelease 等任務。</li>
+          <li>和 Android Studio Sync，讓 IDE 知道專案設定。</li>
+        </ul>
+
+        <h3>SlideDo Android Gradle 檔案</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>檔案</th>
+              <th>重點</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>android/settings.gradle</code></td>
+              <td>宣告 repository 來源、root project name、include <code>:app</code>。</td>
+            </tr>
+            <tr>
+              <td><code>android/build.gradle</code></td>
+              <td>宣告 Android Gradle Plugin 版本：<code>com.android.application</code>。</td>
+            </tr>
+            <tr>
+              <td><code>android/app/build.gradle</code></td>
+              <td>宣告 namespace、applicationId、SDK、Java 17、共用 core source set。</td>
+            </tr>
+            <tr>
+              <td><code>android/gradle/wrapper/gradle-wrapper.properties</code></td>
+              <td>鎖定 Gradle 8.14.5。團隊成員用 wrapper 就會拿到一致版本。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>常用 Gradle 任務</h3>
+        <pre><code class="language-bat">cd android
+gradlew.bat :app:assembleDebug
+gradlew.bat :app:lintDebug
+gradlew.bat :app:clean
+gradlew.bat tasks</code></pre>
+
+        <h3>根目錄測試與 Android 子專案的差異</h3>
+        <p>
+          SlideDo 根目錄 <code>build.gradle</code> 是 Java / JUnit 測試設定，主要測
+          <code>src/com/klotski/core</code>。Android app 的建置則在 <code>android/</code>。
+          因此你會看到兩種常用命令：
+        </p>
+        <pre><code class="language-bat">android\gradlew.bat -p . test
+cd android
+gradlew.bat :app:assembleDebug</code></pre>
+
+        <div class="callout tip">
+          <strong>Gradle Sync 失敗時先看三件事</strong>
+          <p>
+            第一，Android SDK 是否安裝到正確位置。第二，JDK 是否與 Android Gradle Plugin 相容。
+            第三，網路是否能下載 Gradle wrapper 與 plugin dependencies。
+          </p>
+        </div>
+      </section>
+
+      <section id="architecture" class="chapter" data-keywords="架構 MVC MVVM Activity View Observer GameModel separation of concerns">
+        <div class="chapter-heading">
+          <p class="chapter-number">6</p>
+          <div>
+            <h2>架構模式與分層思維</h2>
+            <p>架構不是為了複雜，而是為了讓修改範圍可控。</p>
+          </div>
+        </div>
+
+        <h3>SlideDo 目前的實際架構</h3>
+        <div class="architecture-grid">
+          <div>
+            <h4>Core Layer</h4>
+            <p><code>GameModel</code>、<code>Direction</code>、<code>Solver</code>、<code>SaveManager</code>。負責規則、狀態、求解器與桌面保存格式。</p>
+          </div>
+          <div>
+            <h4>Android Controller Layer</h4>
+            <p><code>MainActivity</code>。負責畫面切換、按鈕、dialog、保存、紀錄、solver 執行緒。</p>
+          </div>
+          <div>
+            <h4>Android Rendering Layer</h4>
+            <p><code>KlotskiView</code>。負責棋盤繪製、手勢、動畫、busy state。</p>
+          </div>
+          <div>
+            <h4>Resource Layer</h4>
+            <p><code>res/values/strings.xml</code>、<code>styles.xml</code>、<code>drawable/</code>。負責文字、主題與圖示。</p>
+          </div>
+        </div>
+
+        <h3>目前不是完整 MVVM，這是合理的</h3>
+        <p>
+          SlideDo Android 目前使用單一 Activity，透過 <code>Screen</code> enum 管理簡單畫面狀態：
+        </p>
+        <pre><code class="language-java">private enum Screen {
+    HOME,
+    MODE_SELECT,
+    HOW_TO_PLAY,
+    RECORDS,
+    GAME
+}</code></pre>
+
+        <p>
+          對小型 App 或學習專案來說，這比一開始就導入 ViewModel、Repository、Navigation Component 更容易理解。
+          但隨著功能增加，應考慮逐步拆分：
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>現在的做法</th>
+              <th>何時會吃力</th>
+              <th>可演進方向</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>單一 <code>MainActivity</code> 建所有畫面</td>
+              <td>Settings、Results、Tutorial、排行榜都變複雜時</td>
+              <td>拆出 screen builder class，或改用 Fragment / Navigation。</td>
+            </tr>
+            <tr>
+              <td><code>SharedPreferences</code> 存全部狀態</td>
+              <td>資料型態變多、需要歷史紀錄或同步時</td>
+              <td>改用 DataStore 或 Room。</td>
+            </tr>
+            <tr>
+              <td>Java programmatic UI</td>
+              <td>畫面越來越多，樣式難以重用時</td>
+              <td>XML layout、custom components，或 Jetpack Compose。</td>
+            </tr>
+            <tr>
+              <td>Activity 直接管理 solver thread</td>
+              <td>背景工作變多、需要取消與生命週期保護時</td>
+              <td>Executor、ViewModel、WorkManager 或 coroutine-based 架構。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>最重要的架構原則</h3>
+        <ul>
+          <li><strong>不要在 Android UI 重寫遊戲規則：</strong>規則只放在 <code>GameModel</code>。</li>
+          <li><strong>不要讓 View 決定產品流程：</strong><code>KlotskiView</code> 只管棋盤與手勢，畫面流程由 <code>MainActivity</code> 管。</li>
+          <li><strong>不要讓背景工作阻塞主執行緒：</strong>solver 在背景 thread 跑，結果再 post 回主執行緒。</li>
+          <li><strong>保存資料要包含恢復所需欄位：</strong>尺寸、目前格子、初始格子、步數、 elapsed time 都要保存。</li>
+          <li><strong>功能先寫 acceptance criteria：</strong>例如「whole-line slide 只算一步」、「solver 輔助勝利不覆寫紀錄」。</li>
+        </ul>
+      </section>
+
+      <section id="planning" class="chapter" data-keywords="功能規劃 screen flow user flow acceptance criteria onboarding records settings">
+        <div class="chapter-heading">
+          <p class="chapter-number">7</p>
+          <div>
+            <h2>系統功能規劃與使用流程設計</h2>
+            <p>App 開發不只是把按鈕放上畫面，而是設計使用者完成任務的路徑。</p>
+          </div>
+        </div>
+
+        <h3>SlideDo 目前 Android 使用流程</h3>
+        <div class="flowchart">
+          <div>Home</div>
+          <span>→</span>
+          <div>Mode Select</div>
+          <span>→</span>
+          <div>Game</div>
+          <span>→</span>
+          <div>Solved Dialog</div>
+        </div>
+        <div class="flowchart secondary">
+          <div>Home</div>
+          <span>→</span>
+          <div>How to Play</div>
+          <span>→</span>
+          <div>Back</div>
+          <span>→</span>
+          <div>Home / Game</div>
+        </div>
+        <div class="flowchart secondary">
+          <div>Game</div>
+          <span>→</span>
+          <div>Menu</div>
+          <span>→</span>
+          <div>Save / Load / Records / Home</div>
+        </div>
+        <div class="flowchart secondary">
+          <div>Game</div>
+          <span>→</span>
+          <div>Assist</div>
+          <span>→</span>
+          <div>BFS / A* / IDA*</div>
+        </div>
+
+        <h3>畫面職責</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>畫面</th>
+              <th>使用者問題</th>
+              <th>目前功能</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Home</td>
+              <td>我可以開始或繼續嗎？</td>
+              <td>Continue、Play / New Game、How to Play、Records。</td>
+            </tr>
+            <tr>
+              <td>Mode Select</td>
+              <td>我要玩哪個難度？</td>
+              <td>3x3 Easy、4x4 Classic、5x5 Expert。</td>
+            </tr>
+            <tr>
+              <td>How to Play</td>
+              <td>這個遊戲怎麼玩？</td>
+              <td>說明目標、點擊、滑動、工具、紀錄。</td>
+            </tr>
+            <tr>
+              <td>Records</td>
+              <td>我的最佳成績是什麼？</td>
+              <td>依尺寸顯示本地最佳紀錄。</td>
+            </tr>
+            <tr>
+              <td>Game</td>
+              <td>我要實際遊玩。</td>
+              <td>棋盤、步數、時間、最佳紀錄、Undo、Restart、Assist、Menu。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>如何寫功能 acceptance criteria</h3>
+        <p>新功能不要只寫「新增 Settings」。要寫清楚使用者怎麼驗證它完成：</p>
+        <pre><code class="language-text">Feature: Haptics Setting
+
+Acceptance criteria:
+- Settings screen has a haptics toggle.
+- Default is enabled.
+- Turning it off stops board and win haptic feedback.
+- The choice persists after app restart.
+- The setting does not affect game save/load state.</code></pre>
+
+        <div class="callout tip">
+          <strong>規劃順序</strong>
+          <p>
+            對新手來說，最好的順序通常是：使用者流程 → 畫面草圖 → 狀態欄位 → 程式責任 → 測試清單。
+            直接寫程式很快，但後期最容易迷失。
+          </p>
+        </div>
+      </section>
+
+      <section id="ui" class="chapter" data-keywords="UI Activity View custom view touch animation lifecycle navigation accessibility">
+        <div class="chapter-heading">
+          <p class="chapter-number">8</p>
+          <div>
+            <h2>畫面與互動開發</h2>
+            <p>SlideDo 的 Android UI 展示了 Activity 建畫面、自訂 View 畫棋盤、觸控事件與動畫。</p>
+          </div>
+        </div>
+
+        <h3>Activity 負責畫面組裝</h3>
+        <p><code>MainActivity</code> 的 <code>onCreate</code> 會建立初始模型、註冊返回行為、顯示 Home，並啟動每秒更新 HUD 的 ticker：</p>
+        <pre><code class="language-java">@Override
+protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    getWindow().setStatusBarColor(COLOR_BACKGROUND);
+    getWindow().setNavigationBarColor(COLOR_BACKGROUND);
+
+    int lastSize = getSharedPreferences(PREFS, MODE_PRIVATE).getInt(KEY_LAST_SIZE, 4);
+    attachModel(new GameModel(lastSize));
+    registerBackHandler();
+    showHomeScreen();
+    handler.post(ticker);
+}</code></pre>
+
+        <h3>自訂 View 負責棋盤</h3>
+        <p>
+          <code>KlotskiView</code> 繼承 <code>View</code>，覆寫 <code>onDraw</code> 畫棋盤，
+          覆寫 <code>onTouchEvent</code> 偵測點擊與滑動。這種做法適合棋盤、圖表、遊戲、繪圖工具等需要精準繪製的畫面。
+        </p>
+
+        <pre><code class="language-java">public boolean onTouchEvent(MotionEvent event) {
+    if (model == null) {
+        return true;
+    }
+
+    switch (event.getActionMasked()) {
+        case MotionEvent.ACTION_DOWN:
+            if (isBusy() || model.isSolved()) {
+                clearTouchState();
+                return true;
+            }
+            downX = event.getX();
+            downY = event.getY();
+            return true;
+        case MotionEvent.ACTION_UP:
+            if (isBusy() || model.isSolved()) {
+                clearTouchState();
+                return true;
+            }
+            // Small movement is treated as tap; larger movement is treated as swipe.
+            return true;
+        default:
+            return true;
+    }
+}</code></pre>
+
+        <h3>Programmatic UI 與 XML Layout 的取捨</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>方式</th>
+              <th>優點</th>
+              <th>缺點</th>
+              <th>適合情境</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Programmatic UI</td>
+              <td>流程集中、動態產生容易、適合學習 View API。</td>
+              <td>大型畫面可讀性下降，設計預覽較弱。</td>
+              <td>小型 app、prototype、自訂畫面多。</td>
+            </tr>
+            <tr>
+              <td>XML Layout</td>
+              <td>結構清楚、可預覽、資源化較自然。</td>
+              <td>動態畫面需搭配 binding 或 findViewById。</td>
+              <td>傳統 Android app、多畫面表單與清單。</td>
+            </tr>
+            <tr>
+              <td>Jetpack Compose</td>
+              <td>宣告式 UI、狀態驅動、現代 Android 主流方向。</td>
+              <td>需學 Compose 思維，和 Java 專案整合不如 Kotlin 自然。</td>
+              <td>Kotlin 新專案、快速迭代 UI。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Android UI 實務注意事項</h3>
+        <ul>
+          <li>觸控目標建議至少約 48dp，避免按鈕太小。</li>
+          <li>長文字要允許換行，不要讓 status 或按鈕文字互相覆蓋。</li>
+          <li>動畫期間要鎖住輸入，避免同時修改模型造成狀態錯亂。</li>
+          <li>背景工作完成後，更新 UI 必須回到主執行緒。</li>
+          <li>支援返回鍵時，要想清楚每個畫面的返回目的地。</li>
+          <li>自訂 View 要實作 <code>performClick()</code>，讓 accessibility click dispatch 有基本支援。</li>
+          <li>旋轉、背景、回前景都要測，因為 Activity 生命週期會影響狀態保存。</li>
+        </ul>
+      </section>
+
+      <section id="resources" class="chapter" data-keywords="resources strings styles drawable localization density theme icon colors">
+        <div class="chapter-heading">
+          <p class="chapter-number">9</p>
+          <div>
+            <h2>資源管理</h2>
+            <p>Android resource 系統讓文字、圖示、顏色、尺寸、語系與主題可以和程式碼分離。</p>
+          </div>
+        </div>
+
+        <h3>SlideDo 目前的 resource</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>路徑</th>
+              <th>用途</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>android/app/src/main/res/values/strings.xml</code></td>
+              <td>App 名稱、Home、Mode Select、How to Play、Records、Game、dialog、toast、button 文字。</td>
+            </tr>
+            <tr>
+              <td><code>android/app/src/main/res/values/styles.xml</code></td>
+              <td>App theme、font family、navigation bar color、accent color。</td>
+            </tr>
+            <tr>
+              <td><code>android/app/src/main/res/drawable/ic_launcher.xml</code></td>
+              <td>Launcher icon。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>為什麼文字要放在 strings.xml</h3>
+        <pre><code class="language-xml">&lt;string name="home_continue"&gt;Continue&lt;/string&gt;
+&lt;string name="mode_title"&gt;Choose a Size&lt;/string&gt;
+&lt;string name="button_restart"&gt;Restart&lt;/string&gt;</code></pre>
+
+        <p>好處是：</p>
+        <ul>
+          <li>文字集中，修改時不用在 Java 檔案到處找。</li>
+          <li>Android lint 可以提醒硬編碼文字。</li>
+          <li>未來要支援繁體中文、英文、日文時，可以建立 <code>values-zh-rTW/strings.xml</code>。</li>
+          <li>格式化字串可以安全帶入參數，例如 <code>%1$dx%2$d Puzzle</code>。</li>
+        </ul>
+
+        <h3>資源命名習慣</h3>
+        <ul>
+          <li>用畫面或用途當 prefix，例如 <code>home_</code>、<code>mode_</code>、<code>dialog_</code>。</li>
+          <li>按鈕文字可用 <code>button_</code> prefix。</li>
+          <li>同一組文字不要同時寫在 Java 和 XML，避免後續不同步。</li>
+          <li>圖片與 icon 使用小寫加底線，例如 <code>ic_launcher</code>。</li>
+        </ul>
+
+        <div class="callout warning">
+          <strong>目前可改善點</strong>
+          <p>
+            SlideDo 的部分顏色常數目前寫在 <code>MainActivity</code>。小專案這樣可接受，
+            但若要建立主題切換或設計系統，建議把顏色移到 <code>colors.xml</code>，尺寸移到
+            <code>dimens.xml</code>。
+          </p>
+        </div>
+      </section>
+
+      <section id="state" class="chapter" data-keywords="state persistence SharedPreferences save load records lifecycle onPause DataStore Room">
+        <div class="chapter-heading">
+          <p class="chapter-number">10</p>
+          <div>
+            <h2>狀態管理與資料保存</h2>
+            <p>Android App 最容易出錯的地方之一，是使用者離開、旋轉或重新開啟後狀態不見。</p>
+          </div>
+        </div>
+
+        <h3>SlideDo 目前保存哪些資料</h3>
+        <p><code>MainActivity</code> 使用 <code>SharedPreferences</code>，保存：</p>
+        <ul>
+          <li><code>size</code>：棋盤尺寸。</li>
+          <li><code>grid</code>：目前棋盤。</li>
+          <li><code>initial_grid</code>：本局初始棋盤，Restart 需要。</li>
+          <li><code>moves</code>：步數。</li>
+          <li><code>elapsed</code>：已花時間。</li>
+          <li><code>last_size</code>：上次選擇尺寸。</li>
+          <li><code>best_3_moves</code>、<code>best_3_time</code> 等：各尺寸最佳紀錄。</li>
+        </ul>
+
+        <h3>保存時機</h3>
+        <p>當 Activity 進入背景時，<code>onPause()</code> 會保存遊戲：</p>
+        <pre><code class="language-java">@Override
+protected void onPause() {
+    super.onPause();
+    saveGame();
+}</code></pre>
+
+        <p>保存內容會從 <code>GameModel</code> 取出可恢復狀態：</p>
+        <pre><code class="language-java">SharedPreferences.Editor editor = getSharedPreferences(PREFS, MODE_PRIVATE).edit();
+editor.putInt(KEY_SIZE, model.getSize());
+editor.putString(KEY_GRID, flatten(model.getGridCopy()));
+editor.putString(KEY_INITIAL_GRID, flatten(model.getInitialGridCopy()));
+editor.putInt(KEY_MOVES, model.getMoveCount());
+editor.putLong(KEY_ELAPSED, elapsed);
+editor.apply();</code></pre>
+
+        <h3>什麼情境用 SharedPreferences</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>資料類型</th>
+              <th>適合 SharedPreferences 嗎</th>
+              <th>更進階選項</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>設定開關、上次選項、小量狀態</td>
+              <td>適合</td>
+              <td>DataStore</td>
+            </tr>
+            <tr>
+              <td>一筆小型遊戲存檔</td>
+              <td>可接受</td>
+              <td>DataStore 或 JSON file</td>
+            </tr>
+            <tr>
+              <td>大量排行榜、歷史紀錄、關卡資料</td>
+              <td>不適合</td>
+              <td>Room database</td>
+            </tr>
+            <tr>
+              <td>圖片、音效、二進位檔</td>
+              <td>不適合</td>
+              <td>App-specific files</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>生命週期基本概念</h3>
+        <dl class="glossary">
+          <dt><code>onCreate()</code></dt>
+          <dd>Activity 初次建立，通常初始化 UI 與狀態。</dd>
+          <dt><code>onPause()</code></dt>
+          <dd>畫面即將失去焦點，是保存輕量狀態的好時機。</dd>
+          <dt><code>onResume()</code></dt>
+          <dd>畫面回到前景，可恢復感測器、動畫、刷新狀態。</dd>
+          <dt>Configuration change</dt>
+          <dd>例如旋轉螢幕，可能導致 Activity 重建。新手一定要測。</dd>
+        </dl>
+      </section>
+
+      <section id="gameplay" class="chapter" data-keywords="GameModel rules Direction slideLineTo Observer solver BFS AStar IDA">
+        <div class="chapter-heading">
+          <p class="chapter-number">11</p>
+          <div>
+            <h2>共用遊戲核心與 Android 的分工</h2>
+            <p>SlideDo 最值得學習的一點，是把遊戲規則和 Android 畫面拆開。</p>
+          </div>
+        </div>
+
+        <h3>核心規則</h3>
+        <ul>
+          <li>空格是 <code>0</code>。</li>
+          <li>完成狀態是 row-major 順序，<code>0</code> 在最後一格。</li>
+          <li><code>Direction</code> 表示空格移動方向，不是數字 tile 的移動方向。</li>
+          <li><code>GameModel.move(Direction)</code> 是單步移動。</li>
+          <li><code>GameModel.slideLineTo(row, col)</code> 是整列或整欄滑動，一次手勢只算一步。</li>
+          <li>Restart 回到 <code>initialGrid</code>，不是重新亂數洗牌。</li>
+          <li>solver 輔助完成不能覆寫玩家最佳紀錄。</li>
+        </ul>
+
+        <h3>整列滑動的核心範例</h3>
+        <pre><code class="language-java">public boolean slideLineTo(int row, int col) {
+    if (!isGameRunning || !isValid(row, col) || (row == emptyRow && col == emptyCol)) {
+        return false;
+    }
+
+    Direction dir;
+    int steps;
+    if (row == emptyRow) {
+        dir = col &lt; emptyCol ? Direction.LEFT : Direction.RIGHT;
+        steps = Math.abs(col - emptyCol);
+    } else if (col == emptyCol) {
+        dir = row &lt; emptyRow ? Direction.UP : Direction.DOWN;
+        steps = Math.abs(row - emptyRow);
+    } else {
+        return false;
+    }
+
+    undoStack.push(copyGrid(grid));
+    for (int i = 0; i &lt; steps; i++) {
+        moveInternal(dir, false, false, false, false);
+    }
+
+    moveCount++;
+    notifyLineMove(dir, steps);
+    notifyGridChanged();
+    checkWin();
+    return true;
+}</code></pre>
+
+        <h3>Observer 模式</h3>
+        <p>
+          <code>GameModel</code> 不知道 Android View 怎麼畫，也不知道 Swing UI 怎麼畫。
+          它只通知觀察者發生了什麼：
+        </p>
+        <ul>
+          <li><code>onGridChanged()</code>：棋盤狀態變了。</li>
+          <li><code>onMove(Direction dir)</code>：單步移動發生。</li>
+          <li><code>onLineMove(Direction dir, int steps)</code>：整列或整欄滑動發生。</li>
+          <li><code>onGameWon(int moves, long timeMs)</code>：遊戲完成。</li>
+        </ul>
+
+        <h3>Solver 實務</h3>
+        <p>
+          BFS、A*、IDA* 都可能耗時。Android UI thread 不能被長時間阻塞，所以
+          <code>MainActivity</code> 會開背景 thread 執行 solver，完成後再用 <code>Handler</code> 回到主執行緒更新 UI。
+        </p>
+        <pre><code class="language-java">new Thread(() -&gt; {
+    List&lt;Direction&gt; solution = solver.solve(model);
+    handler.post(() -&gt; finishSolver(solver, solution));
+}, "SlideDoSolver").start();</code></pre>
+
+        <div class="callout danger">
+          <strong>新手常犯錯</strong>
+          <p>
+            不要為了 Android 觸控方便，在 <code>KlotskiView</code> 裡自己改二維陣列。
+            任何棋盤變化都應該透過 <code>GameModel</code>，否則 undo、save、records、solver 很容易全部失準。
+          </p>
+        </div>
+      </section>
+
+      <section id="build" class="chapter" data-keywords="build compile assembleDebug APK install adb Android Studio run">
+        <div class="chapter-heading">
+          <p class="chapter-number">12</p>
+          <div>
+            <h2>程式編譯、APK 產出與 App 安裝</h2>
+            <p>能穩定 build 和 install，是 Android 開發的第一條底線。</p>
+          </div>
+        </div>
+
+        <h3>Android Studio 執行</h3>
+        <ol>
+          <li>用 Android Studio 開啟 <code>SlideDo/android</code>。</li>
+          <li>等待 Gradle Sync 完成。</li>
+          <li>在 Device Manager 啟動模擬器，或連接實機。</li>
+          <li>選擇 <code>app</code> run configuration。</li>
+          <li>按 Run。Android Studio 會編譯、安裝、啟動 App。</li>
+        </ol>
+
+        <h3>命令列編譯 debug APK</h3>
+        <pre><code class="language-bat">cd android
+build-debug.bat</code></pre>
+
+        <p>或直接呼叫 Gradle：</p>
+        <pre><code class="language-bat">cd android
+gradlew.bat :app:assembleDebug</code></pre>
+
+        <p>產出的 APK 位置：</p>
+        <pre><code class="language-text">android/app/build/outputs/apk/debug/app-debug.apk</code></pre>
+
+        <h3>安裝與啟動</h3>
+        <pre><code class="language-bat">adb devices
+adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+adb shell am start -n com.klotski.android/.MainActivity</code></pre>
+
+        <h3>常用建置檢查</h3>
+        <pre><code class="language-bat">android\gradlew.bat -p . test
+cd android
+build-debug.bat :app:assembleDebug :app:lintDebug</code></pre>
+
+        <div class="callout info">
+          <strong>Debug APK 與 Release APK</strong>
+          <p>
+            Debug APK 用於本機開發與測試，通常可以直接安裝。Release APK 或 AAB 則要設定簽章、版本號、
+            混淆與發佈流程。SlideDo 目前主要是 debug build 流程。
+          </p>
+        </div>
+      </section>
+
+      <section id="testing" class="chapter" data-keywords="測試 emulator device smoke unit instrumentation lint rotation resume adb">
+        <div class="chapter-heading">
+          <p class="chapter-number">13</p>
+          <div>
+            <h2>實機、模擬器與測試流程</h2>
+            <p>Android 測試需要同時考慮程式規則、畫面行為、裝置差異與生命週期。</p>
+          </div>
+        </div>
+
+        <h3>測試層級</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>測試類型</th>
+              <th>SlideDo 目前做法</th>
+              <th>適合驗證</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Unit Test</td>
+              <td><code>test/com/klotski/core</code> 的 JUnit 測試。</td>
+              <td>遊戲規則、save/load、solver 基本行為。</td>
+            </tr>
+            <tr>
+              <td>Lint</td>
+              <td><code>:app:lintDebug</code>。</td>
+              <td>Android API、resource、可用性、潛在錯誤。</td>
+            </tr>
+            <tr>
+              <td>Manual Smoke Test</td>
+              <td>在 emulator 或 device 手動操作。</td>
+              <td>Home、Mode Select、手勢、旋轉、保存、dialog。</td>
+            </tr>
+            <tr>
+              <td>Instrumentation Test</td>
+              <td>尚未建立，是後續高優先項目。</td>
+              <td>自動化點擊、畫面導航、Activity 行為。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>建立模擬器</h3>
+        <ol>
+          <li>Android Studio 開啟 Device Manager。</li>
+          <li>選擇 Pixel 7 或 Pixel 8。</li>
+          <li>系統映像選 Google APIs API 35 或 36。</li>
+          <li>啟動後執行 <code>adb devices</code>，應看到 <code>emulator-5554 device</code> 類似輸出。</li>
+        </ol>
+
+        <h3>實機測試設定</h3>
+        <ol>
+          <li>手機開啟 Developer options。</li>
+          <li>啟用 USB debugging。</li>
+          <li>USB 連接電腦後，手機上允許這台電腦偵錯。</li>
+          <li>執行 <code>adb devices</code>，確認裝置狀態是 <code>device</code> 而不是 <code>unauthorized</code>。</li>
+        </ol>
+
+        <h3>SlideDo Android 手動 smoke test</h3>
+        <ul class="checklist">
+          <li>啟動 App，確認進入 Home，不是直接進入棋盤。</li>
+          <li>從 Home 開 How to Play，返回後仍在正確畫面。</li>
+          <li>從 New Game 進 Mode Select，分別啟動 3x3、4x4、5x5。</li>
+          <li>點擊相鄰且對齊空格的 tile，步數增加一。</li>
+          <li>點擊同列或同欄但非相鄰 tile，整列滑動且步數只增加一。</li>
+          <li>整列滑動後按 Undo，整個手勢一次復原。</li>
+          <li>Restart 後步數與時間重置，棋盤回到本局初始狀態。</li>
+          <li>Menu 裡 Save，Restart 後 Load，確認棋盤、步數、時間、初始棋盤可恢復。</li>
+          <li>Assist 中在 4x4 開 BFS，確認昂貴操作警告出現。</li>
+          <li>背景 App 後再回來，確認 autosave 有保留目前棋盤。</li>
+          <li>旋轉螢幕後回到直向，確認狀態沒有遺失。</li>
+        </ul>
+
+        <div class="callout tip">
+          <strong>測試不是只看有沒有 crash</strong>
+          <p>
+            對遊戲 App 來說，還要看步數是否正確、動畫期間是否鎖 input、保存是否完整、返回鍵是否合理、
+            solver 是否阻塞 UI、輔助完成是否污染玩家紀錄。
+          </p>
+        </div>
+      </section>
+
+      <section id="logcat" class="chapter" data-keywords="Logcat debug crash stacktrace filter adb log">
+        <div class="chapter-heading">
+          <p class="chapter-number">14</p>
+          <div>
+            <h2>Logcat 使用與除錯方式</h2>
+            <p>Logcat 是 Android 開發最重要的除錯工具之一。</p>
+          </div>
+        </div>
+
+        <h3>在 Android Studio 看 Logcat</h3>
+        <ol>
+          <li>開啟底部 <strong>Logcat</strong> 工具視窗。</li>
+          <li>選擇目前裝置與 <code>com.klotski.android</code> process。</li>
+          <li>重現問題。</li>
+          <li>搜尋 <code>FATAL EXCEPTION</code>、<code>AndroidRuntime</code>、<code>Exception</code>。</li>
+          <li>從 stack trace 最上方屬於專案的行號開始看。</li>
+        </ol>
+
+        <h3>命令列 Logcat</h3>
+        <pre><code class="language-bat">adb logcat
+adb logcat AndroidRuntime:E *:S
+adb logcat | findstr com.klotski.android</code></pre>
+
+        <h3>在程式中加 log</h3>
+        <p>Java Android 程式可以用 <code>android.util.Log</code>：</p>
+        <pre><code class="language-java">private static final String TAG = "SlideDo";
+
+Log.d(TAG, "Starting new game: " + size);
+Log.w(TAG, "No saved game found");
+Log.e(TAG, "Failed to load game", exception);</code></pre>
+
+        <h3>讀 stack trace 的方法</h3>
+        <pre><code class="language-text">FATAL EXCEPTION: main
+java.lang.NullPointerException
+    at com.klotski.android.MainActivity.updateStatus(MainActivity.java:552)
+    at com.klotski.android.MainActivity.onGridChanged(MainActivity.java:903)</code></pre>
+
+        <p>閱讀順序：</p>
+        <ol>
+          <li>先看 exception 類型，例如 <code>NullPointerException</code>。</li>
+          <li>找第一個屬於你的 package 的行號。</li>
+          <li>回到該行，確認哪個變數可能是 null。</li>
+          <li>往下看呼叫鏈，了解它從哪個事件進來。</li>
+          <li>修正後重新 build、install、重現流程。</li>
+        </ol>
+
+        <div class="callout warning">
+          <strong>不要用 Toast 取代 Logcat</strong>
+          <p>
+            Toast 適合告訴使用者「已保存」這類結果，不適合除錯。除錯資訊應寫 log，並避免在正式版輸出敏感資料。
+          </p>
+        </div>
+      </section>
+
+      <section id="troubleshooting" class="chapter" data-keywords="錯誤排查 Gradle SDK adb emulator crash install lint Java UTF-8">
+        <div class="chapter-heading">
+          <p class="chapter-number">15</p>
+          <div>
+            <h2>常見錯誤排查</h2>
+            <p>新手遇到錯誤時，先分類：是環境、建置、安裝、執行、畫面，還是資料問題。</p>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>症狀</th>
+              <th>常見原因</th>
+              <th>處理方式</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Gradle Sync 失敗</td>
+              <td>JDK 不相容、SDK 缺失、plugin 下載失敗。</td>
+              <td>改用 Android Studio JBR，確認 SDK Manager，重試 Sync。</td>
+            </tr>
+            <tr>
+              <td><code>SDK location not found</code></td>
+              <td><code>local.properties</code> 不存在或 SDK path 錯。</td>
+              <td>用 Android Studio 開專案自動產生，或手動設定 <code>sdk.dir</code>。</td>
+            </tr>
+            <tr>
+              <td><code>adb devices</code> 空白</td>
+              <td>模擬器未啟動、USB debug 未允許、platform tools path 問題。</td>
+              <td>重啟 emulator，確認手機授權，執行 <code>adb kill-server</code> / <code>adb start-server</code>。</td>
+            </tr>
+            <tr>
+              <td><code>INSTALL_FAILED_VERSION_DOWNGRADE</code></td>
+              <td>手機已有較高 versionCode 的 App。</td>
+              <td>卸載舊版或提高 <code>versionCode</code>。</td>
+            </tr>
+            <tr>
+              <td>App 一開就 crash</td>
+              <td><code>onCreate</code> 初始化錯誤、resource 找不到、NullPointerException。</td>
+              <td>看 Logcat 的 <code>FATAL EXCEPTION</code> 和第一個專案行號。</td>
+            </tr>
+            <tr>
+              <td>按鈕點了沒反應</td>
+              <td>listener 沒設、狀態判斷阻擋、View 被覆蓋、正在 busy。</td>
+              <td>檢查 <code>setOnClickListener</code>、<code>canAcceptCommand()</code>、Logcat。</td>
+            </tr>
+            <tr>
+              <td>畫面旋轉後資料遺失</td>
+              <td>沒有保存狀態，或只保留在 Activity 欄位。</td>
+              <td>用 <code>SharedPreferences</code>、<code>onSaveInstanceState</code> 或 ViewModel 保存。</td>
+            </tr>
+            <tr>
+              <td>模擬器很慢</td>
+              <td>硬體加速未啟用、RAM 太低、系統映像不適合。</td>
+              <td>使用 x86_64 / arm64 適合本機架構的映像，調高 RAM，關閉其他重負載程式。</td>
+            </tr>
+            <tr>
+              <td>中文亂碼</td>
+              <td>檔案編碼或命令列輸出編碼不一致。</td>
+              <td>源碼與文件使用 UTF-8；Java 編譯使用 <code>-encoding UTF-8</code>。</td>
+            </tr>
+            <tr>
+              <td>Lint 報硬編碼文字</td>
+              <td>Java / XML 直接寫 UI 字串。</td>
+              <td>移到 <code>strings.xml</code>，用 <code>getString()</code> 取用。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>排查順序建議</h3>
+        <ol>
+          <li>先確認 Git 工作區，避免不小心混入其他變更。</li>
+          <li>重現問題，記下明確步驟。</li>
+          <li>看 Logcat 或 Gradle output 的第一個真正錯誤。</li>
+          <li>找出是環境、建置、安裝、runtime、UI、資料哪一層。</li>
+          <li>做最小修改。</li>
+          <li>跑最小相關驗證。</li>
+          <li>再跑較廣的 smoke test 或 lint。</li>
+        </ol>
+      </section>
+
+      <section id="git" class="chapter" data-keywords="Git commit status diff branch ignore gitattributes version control">
+        <div class="chapter-heading">
+          <p class="chapter-number">16</p>
+          <div>
+            <h2>Git 版本控管</h2>
+            <p>Android 專案會產生很多本機檔案，Git 規則要清楚，否則 repo 很快變亂。</p>
+          </div>
+        </div>
+
+        <h3>基本工作流</h3>
+        <pre><code class="language-bat">git status --short
+git diff
+git add android-dev-manual/index.html android-dev-manual/styles.css android-dev-manual/script.js
+git commit -m "Add Android development manual"</code></pre>
+
+        <h3>SlideDo 不應提交的檔案</h3>
+        <ul>
+          <li><code>bin/</code>、<code>*.class</code>：桌面 Java 編譯輸出。</li>
+          <li><code>.gradle/</code>、<code>build/</code>、<code>android/build/</code>、<code>android/app/build/</code>：Gradle build output。</li>
+          <li><code>android/local.properties</code>：本機 SDK 路徑。</li>
+          <li><code>klotski_save.json</code>、<code>klotski_save.dat</code>、<code>klotski_records.json</code>：本機遊戲資料。</li>
+          <li><code>.idea/</code>、<code>.vscode/</code>、<code>*.iml</code>：IDE 或本機設定。</li>
+        </ul>
+
+        <h3>Commit 前檢查</h3>
+        <pre><code class="language-bat">git status --short
+git diff --check
+android\gradlew.bat -p . test
+cd android
+build-debug.bat :app:assembleDebug :app:lintDebug</code></pre>
+
+        <div class="callout info">
+          <strong>文件變更也要小心</strong>
+          <p>
+            即使只是新增 HTML 手冊，也要確認只新增預期資料夾，沒有順手改到 README、DEVELOPMENT 或 IDE 設定。
+          </p>
+        </div>
+      </section>
+
+      <section id="maintenance" class="chapter" data-keywords="維護 擴充 CI release signing accessibility performance security privacy">
+        <div class="chapter-heading">
+          <p class="chapter-number">17</p>
+          <div>
+            <h2>後續維護與功能擴充</h2>
+            <p>當 App 可以跑之後，真正的工程工作才開始：穩定、可測、可維護、可發佈。</p>
+          </div>
+        </div>
+
+        <h3>適合 SlideDo 的後續功能</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>功能</th>
+              <th>修改範圍</th>
+              <th>注意事項</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Settings</td>
+              <td><code>MainActivity</code> 新增 screen；<code>strings.xml</code> 新增文字；<code>SharedPreferences</code> 保存設定。</td>
+              <td>先做 haptics toggle、theme toggle、sound toggle。</td>
+            </tr>
+            <tr>
+              <td>Results screen</td>
+              <td>把 win dialog 演進成完整結果畫面。</td>
+              <td>清楚標示 solver-assisted completion 不記錄。</td>
+            </tr>
+            <tr>
+              <td>Instrumentation tests</td>
+              <td>新增 <code>androidTest</code>。</td>
+              <td>測 Home → Mode Select → Game，save/load，rotation。</td>
+            </tr>
+            <tr>
+              <td>CI</td>
+              <td>GitHub Actions 或其他 CI。</td>
+              <td>跑 JUnit、desktop compile、Android assemble/lint。</td>
+            </tr>
+            <tr>
+              <td>Release signing</td>
+              <td>Gradle signing config、keystore、versionCode。</td>
+              <td>不要提交 keystore 與密碼。</td>
+            </tr>
+            <tr>
+              <td>Accessibility</td>
+              <td>content description、觸控尺寸、對比、TalkBack。</td>
+              <td>自訂 View 需要額外設計可存取性。</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>維護時的工程習慣</h3>
+        <ul>
+          <li>改共用核心前先跑 root JUnit tests。</li>
+          <li>改 Android UI 後至少跑 assembleDebug、lintDebug、emulator smoke test。</li>
+          <li>新增畫面文字時更新 <code>strings.xml</code>。</li>
+          <li>新增保存欄位時同時檢查 save、load、restart、rotation。</li>
+          <li>新增 solver 或背景工作時確認不阻塞 UI thread，且可取消或避免重複觸發。</li>
+          <li>新增依賴前先確認它是否真的必要，並了解 license 與 APK size 影響。</li>
+          <li>發佈前確認版本號、簽章、隱私權、權限、crash 監控與 release notes。</li>
+        </ul>
+
+        <h3>何時重構</h3>
+        <p>新手常以為重構越早越好，其實應看訊號：</p>
+        <ul>
+          <li>同樣的 UI 建立邏輯重複三次以上。</li>
+          <li><code>MainActivity</code> 太長，新增功能時很難找到位置。</li>
+          <li>保存欄位越來越多，手寫 parse/flatten 容易出錯。</li>
+          <li>測試很難寫，因為邏輯和 Android API 綁太緊。</li>
+          <li>每次改一個畫面，都意外影響其他畫面。</li>
+        </ul>
+      </section>
+
+      <section id="roadmap" class="chapter" data-keywords="學習路線 beginner roadmap exercises Android Studio Java UI testing release">
+        <div class="chapter-heading">
+          <p class="chapter-number">18</p>
+          <div>
+            <h2>新手 Android 工程師學習路線</h2>
+            <p>用 SlideDo 當練習專案，可以依照階段逐步學。</p>
+          </div>
+        </div>
+
+        <div class="learning-path">
+          <div>
+            <h3>階段 1：跑起來</h3>
+            <ul>
+              <li>安裝 Android Studio、SDK、emulator。</li>
+              <li>開啟 <code>android/</code>，完成 Gradle Sync。</li>
+              <li>用 Android Studio Run 安裝 App。</li>
+              <li>用 <code>adb devices</code> 與 <code>adb install</code> 走一次命令列流程。</li>
+            </ul>
+          </div>
+          <div>
+            <h3>階段 2：讀懂程式</h3>
+            <ul>
+              <li>閱讀 <code>GameModel</code>，理解規則。</li>
+              <li>閱讀 <code>MainActivity</code>，理解畫面切換。</li>
+              <li>閱讀 <code>KlotskiView</code>，理解繪製與觸控。</li>
+              <li>閱讀 <code>strings.xml</code>，理解 resource。</li>
+            </ul>
+          </div>
+          <div>
+            <h3>階段 3：做小功能</h3>
+            <ul>
+              <li>新增 Settings screen 的 haptics toggle。</li>
+              <li>把一個顏色常數搬到 <code>colors.xml</code>。</li>
+              <li>新增一個簡單 instrumentation test。</li>
+              <li>新增 Results screen 原型。</li>
+            </ul>
+          </div>
+          <div>
+            <h3>階段 4：工程化</h3>
+            <ul>
+              <li>建立 CI。</li>
+              <li>整理 UI helper 或 screen classes。</li>
+              <li>加 release signing 文件與流程。</li>
+              <li>做 accessibility pass。</li>
+            </ul>
+          </div>
+        </div>
+
+        <h3>推薦練習題</h3>
+        <ol>
+          <li>在 Home 加一個「Settings」按鈕，但只做空畫面與返回。</li>
+          <li>把 <code>MainActivity</code> 裡的顏色常數移到 Android resource。</li>
+          <li>加一個「關閉震動」設定，並讓它真的影響 haptic feedback。</li>
+          <li>寫一個測試，驗證 <code>GameModel.slideLineTo</code> 一次只增加一個 move count。</li>
+          <li>用 Logcat 找出 App 啟動時的生命週期順序。</li>
+          <li>在 emulator 中旋轉螢幕，觀察哪些欄位會重新初始化。</li>
+        </ol>
+      </section>
+
+      <section id="faq" class="chapter" data-keywords="FAQ 常見問題 Java Kotlin Compose XML SharedPreferences Activity">
+        <div class="chapter-heading">
+          <p class="chapter-number">19</p>
+          <div>
+            <h2>常見問題</h2>
+            <p>整理新手最容易問的 Android 開發問題。</p>
+          </div>
+        </div>
+
+        <details>
+          <summary>為什麼 SlideDo 用 Java，不用 Kotlin？</summary>
+          <p>
+            因為它本來有 Java 桌面核心，Android 版可以直接共用。新專案若沒有共用 Java 需求，
+            Kotlin 通常是現代 Android 的主流選擇。
+          </p>
+        </details>
+
+        <details>
+          <summary>為什麼不用 XML layout？</summary>
+          <p>
+            目前畫面數量不多，而且棋盤本身需要自訂繪製。Programmatic UI 讓控制流程集中在
+            <code>MainActivity</code>。若畫面變多，XML 或 Compose 會更利於維護。
+          </p>
+        </details>
+
+        <details>
+          <summary>為什麼保存不用 Room database？</summary>
+          <p>
+            SlideDo 目前只需要保存一筆遊戲狀態與少量最佳紀錄，<code>SharedPreferences</code> 已足夠。
+            若未來要保存大量歷史紀錄、每日關卡、玩家資料，再考慮 Room。
+          </p>
+        </details>
+
+        <details>
+          <summary>為什麼 Android UI 不直接修改棋盤陣列？</summary>
+          <p>
+            因為棋盤規則、undo、restart、win detection、solver、save/load 都依賴 <code>GameModel</code>。
+            UI 直接改陣列會破壞單一真相來源。
+          </p>
+        </details>
+
+        <details>
+          <summary>debug build 可以拿去發佈嗎？</summary>
+          <p>
+            不應該。Debug build 適合本機測試；正式發佈要建立 release build、簽章、版本號、隱私權與測試流程。
+          </p>
+        </details>
+
+        <details>
+          <summary>我應該先學 Compose 還是傳統 View？</summary>
+          <p>
+            如果你的目標是現代新專案，Compose 很值得學。如果你要讀現有專案、維護 Java app、
+            或理解 Android 底層 View 事件，傳統 View 仍然很重要。SlideDo 屬於後者的好範例。
+          </p>
+        </details>
+      </section>
+
+      <section id="appendix" class="chapter" data-keywords="附錄 command cheat sheet checklist glossary">
+        <div class="chapter-heading">
+          <p class="chapter-number">20</p>
+          <div>
+            <h2>附錄：命令速查與檢查表</h2>
+            <p>實作時最常用的命令集中在這裡。</p>
+          </div>
+        </div>
+
+        <h3>命令速查</h3>
+        <pre><code class="language-bat">rem 查看 Git 狀態
+git status --short
+
+rem 跑共用核心測試
+android\gradlew.bat -p . test
+
+rem 編譯 Android debug APK
+cd android
+gradlew.bat :app:assembleDebug
+
+rem 跑 Android lint
+gradlew.bat :app:lintDebug
+
+rem 查看裝置
+adb devices
+
+rem 安裝 APK
+adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+
+rem 啟動 App
+adb shell am start -n com.klotski.android/.MainActivity
+
+rem 查看 crash log
+adb logcat AndroidRuntime:E *:S</code></pre>
+
+        <h3>新增 Android 功能檢查表</h3>
+        <ul class="checklist">
+          <li>功能是否有明確使用者流程？</li>
+          <li>是否需要新增 resource 字串？</li>
+          <li>是否會影響 <code>GameModel</code> 規則？</li>
+          <li>是否需要保存新狀態？</li>
+          <li>是否需要處理返回鍵？</li>
+          <li>是否需要在動畫或背景工作期間鎖定輸入？</li>
+          <li>是否需要 Logcat 訊息協助除錯？</li>
+          <li>是否已跑最小相關測試？</li>
+          <li>是否已確認 Git 只包含預期變更？</li>
+        </ul>
+
+        <h3>發佈前檢查表</h3>
+        <ul class="checklist">
+          <li>版本號與版本名稱已更新。</li>
+          <li>Release signing 已設定，且 keystore 未提交。</li>
+          <li>Debug log 與測試-only 功能已清理或保護。</li>
+          <li>權限清單合理且有使用者說明。</li>
+          <li>隱私權政策與資料保存行為清楚。</li>
+          <li>核心測試、Android build、lint、手動 smoke test 通過。</li>
+          <li>不同螢幕尺寸與方向已檢查。</li>
+          <li>無障礙基本項目已檢查。</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <button class="back-to-top" id="backToTop" type="button" aria-label="回到頂部">↑</button>
+  <script src="script.js"></script>
+</body>
+</html>
