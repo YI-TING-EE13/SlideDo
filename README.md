@@ -20,10 +20,12 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
   - Arrow keys move the empty space one step.
   - Movable tiles show a hand cursor on hover.
 - **Mobile-Ready Interaction Model**:
+  - Android opens on a Home screen with Continue, New Game, How to Play, and Records.
+  - Mode Select starts 3x3, 4x4, or 5x5 games after the player chooses a size.
   - Whole-line tap behavior maps naturally to touch screens.
   - One user gesture counts as one move.
   - Undo restores the entire previous user action.
-  - Android includes manual save/load, autosave, haptics, local best records, and solver playback.
+  - Android includes compact in-game controls, menu-based save/load, autosave, haptics, local best records, and solver playback through Assist.
 - **Quality-of-Life Gameplay**:
   - Undo.
   - Restart current puzzle without reshuffling.
@@ -38,7 +40,7 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
 - **Native Android Project**:
   - Gradle wrapper included.
   - Custom Android view.
-  - Touch controls, synchronized whole-line animation, haptics, autosave, manual save/load, best records, and solver controls.
+  - Home, Mode Select, How to Play, Records, touch controls, synchronized whole-line animation, haptics, autosave, manual save/load, best records, and solver controls.
 
 ---
 
@@ -139,9 +141,10 @@ adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 adb shell am start -n com.klotski.android/.MainActivity
 ```
 
-The Android UI exposes 3x3, 4x4, and 5x5 new-game buttons, Undo, Restart,
-Save, Load, and BFS / A* / IDA* solver actions. Solver-assisted wins do not
-overwrite player best records.
+The Android UI opens on Home, offers Continue when a valid save exists, and
+starts new games through Mode Select. During gameplay, Undo and Restart stay
+visible while Save/Load and BFS / A* / IDA* solver actions live in Menu and
+Assist. Solver-assisted wins do not overwrite player best records.
 
 ### Suggested Emulator Profile
 
@@ -241,7 +244,7 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
 - Undo after a whole-line slide.
 - Android debug build with Gradle.
 - Android lint with no reported issues during the latest local run.
-- Android emulator smoke testing for launch, size switching, whole-line movement, undo, restart, save/load, solver warning dialog, rotation, and background resume.
+- Android emulator smoke testing for Home launch, mode selection, whole-line movement, undo, restart, save/load, solver warning dialog, rotation, and background resume.
 
 ### Useful Commands
 

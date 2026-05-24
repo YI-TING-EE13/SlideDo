@@ -58,6 +58,7 @@ public class KlotskiView extends View implements GameObserver {
     private float animationProgress = 1f;
     private boolean inputLocked;
     private boolean trackingTouch;
+    private Runnable busyStateListener;
 
     /**
      * Creates an unbound board view for programmatic construction.
@@ -125,6 +126,7 @@ public class KlotskiView extends View implements GameObserver {
         this.model = model;
         this.model.addObserver(this);
         invalidate();
+        notifyBusyStateChanged();
     }
 
     /**
@@ -143,6 +145,16 @@ public class KlotskiView extends View implements GameObserver {
      */
     public void setInputLocked(boolean inputLocked) {
         this.inputLocked = inputLocked;
+        notifyBusyStateChanged();
+    }
+
+    /**
+     * Registers a callback for animation, solver playback, and input lock changes.
+     *
+     * @param busyStateListener callback to run when {@link #isBusy()} may have changed
+     */
+    public void setBusyStateListener(Runnable busyStateListener) {
+        this.busyStateListener = busyStateListener;
     }
 
     /**
@@ -155,6 +167,7 @@ public class KlotskiView extends View implements GameObserver {
             return;
         }
         moveQueue.addAll(dirs);
+        notifyBusyStateChanged();
         playQueuedMove();
     }
 
@@ -427,6 +440,7 @@ public class KlotskiView extends View implements GameObserver {
         animToCol = oldEmptyC;
         animationProgress = 0f;
         isAnimating = true;
+        notifyBusyStateChanged();
 
         ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
         animator.setDuration(140);
@@ -444,6 +458,7 @@ public class KlotskiView extends View implements GameObserver {
                 skipCol = -1;
                 invalidate();
                 playQueuedMove();
+                notifyBusyStateChanged();
             }
         });
         animator.start();
@@ -493,6 +508,7 @@ public class KlotskiView extends View implements GameObserver {
 
         animationProgress = 0f;
         isAnimating = true;
+        notifyBusyStateChanged();
         ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
         animator.setDuration(140);
         animator.setInterpolator(new DecelerateInterpolator());
@@ -507,6 +523,7 @@ public class KlotskiView extends View implements GameObserver {
                 animatedTiles.clear();
                 invalidate();
                 playQueuedMove();
+                notifyBusyStateChanged();
             }
         });
         animator.start();
@@ -521,6 +538,7 @@ public class KlotskiView extends View implements GameObserver {
     @Override
     public void onGameWon(int moves, long timeMs) {
         moveQueue.clear();
+        notifyBusyStateChanged();
     }
 
     private boolean isValidCell(int row, int col) {
@@ -533,6 +551,12 @@ public class KlotskiView extends View implements GameObserver {
 
     private float dp(float value) {
         return value * getResources().getDisplayMetrics().density;
+    }
+
+    private void notifyBusyStateChanged() {
+        if (busyStateListener != null) {
+            busyStateListener.run();
+        }
     }
 
     /**

@@ -2,18 +2,26 @@ package com.klotski.android;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.annotation.SuppressLint;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.window.OnBackInvokedCallback;
+import android.window.OnBackInvokedDispatcher;
 
 import com.klotski.core.AStarSolver;
 import com.klotski.core.BfsSolver;
@@ -24,15 +32,16 @@ import com.klotski.core.IdaStarSolver;
 import com.klotski.core.SaveManager;
 import com.klotski.core.Solver;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Native Android entry point for SlideDo.
  * <p>
- * The activity wires the shared {@link GameModel} to Android controls, local
- * persistence, best-record tracking, solver actions, and completion dialogs.
- * Gameplay rules remain in the shared core so Android behavior stays aligned
- * with the desktop Swing reference.
+ * The activity owns the mobile app flow and wires the shared {@link GameModel}
+ * to Android screens, local persistence, best-record tracking, solver actions,
+ * and completion dialogs. Gameplay rules remain in the shared core so Android
+ * behavior stays aligned with the desktop Swing reference.
  * </p>
  */
 public class MainActivity extends Activity implements GameObserver {
@@ -42,16 +51,31 @@ public class MainActivity extends Activity implements GameObserver {
     private static final String KEY_INITIAL_GRID = "initial_grid";
     private static final String KEY_MOVES = "moves";
     private static final String KEY_ELAPSED = "elapsed";
+    private static final String KEY_LAST_SIZE = "last_size";
     private static final String KEY_BEST_PREFIX = "best_";
+
+    private static final int COLOR_BACKGROUND = Color.rgb(17, 24, 39);
+    private static final int COLOR_PANEL = Color.rgb(31, 41, 55);
+    private static final int COLOR_PANEL_LIGHT = Color.rgb(55, 65, 81);
+    private static final int COLOR_PRIMARY = Color.rgb(46, 125, 50);
+    private static final int COLOR_ACCENT = Color.rgb(245, 158, 11);
+    private static final int COLOR_MUTED_TEXT = Color.rgb(209, 213, 219);
+
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private final List<Button> commandButtons = new ArrayList<>();
 
     private GameModel model;
     private KlotskiView boardView;
     private TextView statusText;
+    private TextView gameTitleText;
     private PendingWin pendingWin;
+    private OnBackInvokedCallback backCallback;
+    private Screen currentScreen = Screen.HOME;
+    private Screen infoReturnScreen = Screen.HOME;
     private boolean solverRunning;
     private boolean assistedSolveActive;
+    private boolean gameStarted;
     private long lastWinTimeMs = -1;
-    private final Handler handler = new Handler(Looper.getMainLooper());
 
     /**
      * Creates the Android activity instance used by the platform launcher.
@@ -59,16 +83,26 @@ public class MainActivity extends Activity implements GameObserver {
     public MainActivity() {
     }
 
+    private enum Screen {
+        HOME,
+        MODE_SELECT,
+        HOW_TO_PLAY,
+        RECORDS,
+        GAME
+    }
+
     private final Runnable ticker = new Runnable() {
         @Override
         public void run() {
-            updateStatus();
+            if (currentScreen == Screen.GAME) {
+                updateStatus();
+            }
             handler.postDelayed(this, 1000);
         }
     };
 
     /**
-     * Builds the Android game screen and starts from an autosave or a new 4x4 puzzle.
+     * Builds the Android app shell and starts on the product-style home screen.
      *
      * @param savedInstanceState Android activity restore bundle, unused because the
      *                           game state is restored from app preferences
@@ -76,114 +110,16 @@ public class MainActivity extends Activity implements GameObserver {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getWindow().setStatusBarColor(COLOR_BACKGROUND);
+        getWindow().setNavigationBarColor(COLOR_BACKGROUND);
 
-        model = new GameModel(4);
-        model.addObserver(this);
-
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.rgb(17, 24, 39));
-        root.setPadding(dp(16), dp(18), dp(16), dp(16));
-
-        TextView titleText = new TextView(this);
-        titleText.setText(R.string.app_name);
-        titleText.setTextColor(Color.WHITE);
-        titleText.setTextSize(28);
-        titleText.setGravity(Gravity.CENTER);
-        titleText.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-        root.addView(titleText, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT));
-
-        statusText = new TextView(this);
-        statusText.setTextColor(Color.WHITE);
-        statusText.setTextSize(16);
-        statusText.setGravity(Gravity.CENTER);
-        statusText.setPadding(0, dp(4), 0, dp(12));
-        root.addView(statusText, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT));
-
-        boardView = new KlotskiView(this, model);
-        LinearLayout.LayoutParams boardParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f);
-        root.addView(boardView, boardParams);
-
-        LinearLayout sizes = new LinearLayout(this);
-        sizes.setGravity(Gravity.CENTER);
-        sizes.setPadding(0, dp(12), 0, 0);
-        sizes.setOrientation(LinearLayout.HORIZONTAL);
-        root.addView(sizes, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT));
-
-        addButton(sizes, R.string.button_3x3, v -> startNewGame(3));
-        addButton(sizes, R.string.button_4x4, v -> startNewGame(4));
-        addButton(sizes, R.string.button_5x5, v -> startNewGame(5));
-
-        LinearLayout actions = new LinearLayout(this);
-        actions.setGravity(Gravity.CENTER);
-        actions.setPadding(0, dp(8), 0, 0);
-        actions.setOrientation(LinearLayout.HORIZONTAL);
-        root.addView(actions, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT));
-
-        addButton(actions, R.string.button_undo, v -> {
-            if (canAcceptCommand()) {
-                model.undo();
-                boardView.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
-                updateStatus();
-            }
-        });
-        addButton(actions, R.string.button_restart, v -> {
-            if (canAcceptCommand()) {
-                restartCurrentGame();
-            }
-        });
-
-        LinearLayout saveLoad = new LinearLayout(this);
-        saveLoad.setGravity(Gravity.CENTER);
-        saveLoad.setPadding(0, dp(8), 0, 0);
-        saveLoad.setOrientation(LinearLayout.HORIZONTAL);
-        root.addView(saveLoad, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT));
-
-        addButton(saveLoad, R.string.button_save, v -> {
-            if (canAcceptCommand()) {
-                saveGame();
-                Toast.makeText(this, R.string.toast_game_saved, Toast.LENGTH_SHORT).show();
-            }
-        });
-        addButton(saveLoad, R.string.button_load, v -> {
-            if (canAcceptCommand()) {
-                if (loadGame()) {
-                    pendingWin = null;
-                    assistedSolveActive = false;
-                    Toast.makeText(this, R.string.toast_game_loaded, Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(this, R.string.toast_no_save, Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
-
-        LinearLayout solvers = new LinearLayout(this);
-        solvers.setGravity(Gravity.CENTER);
-        solvers.setPadding(0, dp(8), 0, 0);
-        solvers.setOrientation(LinearLayout.HORIZONTAL);
-        root.addView(solvers, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT));
-
-        addButton(solvers, R.string.button_solver_bfs, v -> runSolver(new BfsSolver()));
-        addButton(solvers, R.string.button_solver_astar, v -> runSolver(new AStarSolver()));
-        addButton(solvers, R.string.button_solver_idastar, v -> runSolver(new IdaStarSolver()));
-
-        setContentView(root);
-        if (!loadGame()) {
-            startNewGame(4);
+        int lastSize = getSharedPreferences(PREFS, MODE_PRIVATE).getInt(KEY_LAST_SIZE, 4);
+        if (lastSize < 3 || lastSize > 5) {
+            lastSize = 4;
         }
+        attachModel(new GameModel(lastSize));
+        registerBackHandler();
+        showHomeScreen();
         handler.post(ticker);
     }
 
@@ -202,49 +138,426 @@ public class MainActivity extends Activity implements GameObserver {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        unregisterBackHandler();
         handler.removeCallbacks(ticker);
     }
 
-    private void addButton(LinearLayout parent, int textResId, View.OnClickListener listener) {
-        Button button = new Button(this);
-        button.setText(textResId);
-        button.setAllCaps(false);
-        button.setOnClickListener(listener);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(48), 1f);
-        params.setMargins(dp(4), 0, dp(4), 0);
-        parent.addView(button, params);
+    @SuppressLint("GestureBackNavigation")
+    @Override
+    public void onBackPressed() {
+        handleBackNavigation();
     }
 
-    private boolean canAcceptCommand() {
-        return !solverRunning && !boardView.isBusy();
-    }
-
-    private void startNewGame(int size) {
-        if (!canAcceptCommand()) {
-            return;
+    private void handleBackNavigation() {
+        if (currentScreen == Screen.GAME) {
+            saveGame();
+            showHomeScreen();
+        } else if (currentScreen == Screen.HOME) {
+            finish();
+        } else if ((currentScreen == Screen.HOW_TO_PLAY || currentScreen == Screen.RECORDS)
+                && infoReturnScreen == Screen.GAME && gameStarted) {
+            showGameScreen();
+        } else {
+            showHomeScreen();
         }
-        model.removeObserver(this);
-        model = new GameModel(size);
+    }
+
+    private void registerBackHandler() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            backCallback = this::handleBackNavigation;
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                    OnBackInvokedDispatcher.PRIORITY_DEFAULT, backCallback);
+        }
+    }
+
+    private void unregisterBackHandler() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && backCallback != null) {
+            getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(backCallback);
+            backCallback = null;
+        }
+    }
+
+    private void attachModel(GameModel newModel) {
+        if (model != null) {
+            model.removeObserver(this);
+        }
+        model = newModel;
         model.addObserver(this);
-        boardView.setModel(model);
-        model.scramble(size * size * 5);
-        pendingWin = null;
-        assistedSolveActive = false;
-        lastWinTimeMs = -1;
-        boardView.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+        if (boardView != null) {
+            boardView.setModel(model);
+        }
+    }
+
+    private void showHomeScreen() {
+        currentScreen = Screen.HOME;
+        infoReturnScreen = Screen.HOME;
+        statusText = null;
+        gameTitleText = null;
+        commandButtons.clear();
+
+        ScreenLayout screen = createScreenLayout();
+        screen.content.setGravity(Gravity.CENTER_HORIZONTAL);
+        addScreenHeader(screen.content, getString(R.string.app_name), getString(R.string.home_tagline));
+
+        TextView summary = createText(getString(R.string.home_summary), 16, COLOR_MUTED_TEXT, Typeface.NORMAL);
+        summary.setGravity(Gravity.CENTER);
+        summary.setLineSpacing(0, 1.12f);
+        LinearLayout.LayoutParams summaryParams = fullWidthParams();
+        summaryParams.setMargins(0, dp(8), 0, dp(24));
+        screen.content.addView(summary, summaryParams);
+
+        boolean hasSave = hasSavedGame();
+        if (hasSave) {
+            addWideButton(screen.content, R.string.home_continue, COLOR_PRIMARY, v -> continueSavedGame());
+        }
+        addWideButton(screen.content, hasSave ? R.string.home_new_game : R.string.home_play,
+                hasSave ? COLOR_PANEL_LIGHT : COLOR_PRIMARY, v -> showModeSelectScreen());
+        addWideButton(screen.content, R.string.home_how_to_play, COLOR_PANEL, v -> showHowToScreen(Screen.HOME));
+        addWideButton(screen.content, R.string.home_records, COLOR_PANEL, v -> showRecordsScreen(Screen.HOME));
+
+        setContentView(screen.root);
+    }
+
+    private void showModeSelectScreen() {
+        currentScreen = Screen.MODE_SELECT;
+        statusText = null;
+        gameTitleText = null;
+        commandButtons.clear();
+
+        ScreenLayout screen = createScreenLayout();
+        addScreenHeader(screen.content, getString(R.string.mode_title), getString(R.string.mode_subtitle));
+        addModeRow(screen.content, 3, R.string.mode_easy, R.string.mode_easy_detail);
+        addModeRow(screen.content, 4, R.string.mode_classic, R.string.mode_classic_detail);
+        addModeRow(screen.content, 5, R.string.mode_expert, R.string.mode_expert_detail);
+        addWideButton(screen.content, R.string.nav_home, COLOR_PANEL, v -> showHomeScreen());
+
+        setContentView(screen.root);
+    }
+
+    private void showHowToScreen(Screen returnScreen) {
+        currentScreen = Screen.HOW_TO_PLAY;
+        infoReturnScreen = returnScreen;
+        statusText = null;
+        gameTitleText = null;
+        commandButtons.clear();
+
+        ScreenLayout screen = createScreenLayout();
+        addScreenHeader(screen.content, getString(R.string.how_title), getString(R.string.how_subtitle));
+        addInstruction(screen.content, R.string.how_goal_title, R.string.how_goal_body);
+        addInstruction(screen.content, R.string.how_tap_title, R.string.how_tap_body);
+        addInstruction(screen.content, R.string.how_swipe_title, R.string.how_swipe_body);
+        addInstruction(screen.content, R.string.how_tools_title, R.string.how_tools_body);
+        addInstruction(screen.content, R.string.how_records_title, R.string.how_records_body);
+        addWideButton(screen.content, R.string.nav_back, COLOR_PRIMARY, v -> returnFromInfoScreen());
+
+        setContentView(screen.root);
+    }
+
+    private void showRecordsScreen(Screen returnScreen) {
+        currentScreen = Screen.RECORDS;
+        infoReturnScreen = returnScreen;
+        statusText = null;
+        gameTitleText = null;
+        commandButtons.clear();
+
+        ScreenLayout screen = createScreenLayout();
+        addScreenHeader(screen.content, getString(R.string.records_title), getString(R.string.records_subtitle));
+        addRecordRow(screen.content, 3, R.string.mode_easy);
+        addRecordRow(screen.content, 4, R.string.mode_classic);
+        addRecordRow(screen.content, 5, R.string.mode_expert);
+        addWideButton(screen.content, R.string.nav_back, COLOR_PRIMARY, v -> returnFromInfoScreen());
+
+        setContentView(screen.root);
+    }
+
+    private void returnFromInfoScreen() {
+        if (infoReturnScreen == Screen.GAME && gameStarted) {
+            showGameScreen();
+        } else {
+            showHomeScreen();
+        }
+    }
+
+    private void showGameScreen() {
+        currentScreen = Screen.GAME;
+        statusText = null;
+        gameTitleText = null;
+        commandButtons.clear();
+
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(COLOR_BACKGROUND);
+        root.setPadding(dp(12), systemBarHeight("status_bar_height") + dp(12),
+                dp(12), systemBarHeight("navigation_bar_height") + dp(12));
+
+        LinearLayout topBar = new LinearLayout(this);
+        topBar.setGravity(Gravity.CENTER_VERTICAL);
+        topBar.setOrientation(LinearLayout.HORIZONTAL);
+        root.addView(topBar, fullWidthParams());
+
+        Button homeButton = createButton(getString(R.string.nav_home), COLOR_PANEL);
+        homeButton.setOnClickListener(v -> {
+            if (canAcceptCommand()) {
+                saveGame();
+                showHomeScreen();
+            }
+        });
+        commandButtons.add(homeButton);
+        topBar.addView(homeButton, fixedButtonParams(88));
+
+        gameTitleText = createText("", 20, Color.WHITE, Typeface.BOLD);
+        gameTitleText.setGravity(Gravity.CENTER);
+        topBar.addView(gameTitleText, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+        Button menuButton = createButton(getString(R.string.game_menu), COLOR_PANEL);
+        menuButton.setOnClickListener(v -> {
+            if (canAcceptCommand()) {
+                showPauseMenu();
+            }
+        });
+        commandButtons.add(menuButton);
+        topBar.addView(menuButton, fixedButtonParams(88));
+
+        statusText = createText("", 15, Color.WHITE, Typeface.NORMAL);
+        statusText.setGravity(Gravity.CENTER);
+        statusText.setSingleLine(false);
+        LinearLayout.LayoutParams statusParams = fullWidthParams();
+        statusParams.setMargins(0, dp(8), 0, dp(8));
+        root.addView(statusText, statusParams);
+
+        ensureBoardView();
+        ViewParentRemover.removeFromParent(boardView);
+        LinearLayout.LayoutParams boardParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f);
+        root.addView(boardView, boardParams);
+
+        LinearLayout actions = new LinearLayout(this);
+        actions.setGravity(Gravity.CENTER);
+        actions.setPadding(0, dp(10), 0, 0);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        root.addView(actions, fullWidthParams());
+
+        addGameButton(actions, R.string.button_undo, v -> {
+            if (canAcceptCommand()) {
+                model.undo();
+                performBoardHaptic(HapticFeedbackConstants.VIRTUAL_KEY);
+                updateStatus();
+            }
+        });
+        addGameButton(actions, R.string.button_restart, v -> {
+            if (canAcceptCommand()) {
+                restartCurrentGame();
+            }
+        });
+        addGameButton(actions, R.string.game_assist, v -> {
+            if (canAcceptCommand()) {
+                showAssistMenu();
+            }
+        });
+
+        setContentView(root);
         updateStatus();
     }
 
+    private void ensureBoardView() {
+        if (boardView == null) {
+            boardView = new KlotskiView(this, model);
+            boardView.setBusyStateListener(this::updateControlsEnabled);
+        } else {
+            boardView.setModel(model);
+            boardView.setBusyStateListener(this::updateControlsEnabled);
+        }
+    }
+
+    private void addModeRow(LinearLayout parent, int size, int difficultyResId, int detailResId) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.VERTICAL);
+        row.setPadding(dp(16), dp(14), dp(16), dp(14));
+        row.setBackground(makePanelBackground(COLOR_PANEL));
+        row.setClickable(true);
+        row.setOnClickListener(v -> beginNewGame(size));
+
+        TextView title = createText(getString(R.string.mode_card_title, size, size), 22, Color.WHITE, Typeface.BOLD);
+        TextView difficulty = createText(getString(difficultyResId), 15, COLOR_ACCENT, Typeface.BOLD);
+        TextView detail = createText(getString(detailResId), 15, COLOR_MUTED_TEXT, Typeface.NORMAL);
+        TextView best = createText(getString(R.string.mode_best_label, formatBestForCard(size)),
+                14, COLOR_MUTED_TEXT, Typeface.NORMAL);
+
+        row.addView(title, fullWidthParams());
+        row.addView(difficulty, fullWidthParams());
+        LinearLayout.LayoutParams detailParams = fullWidthParams();
+        detailParams.setMargins(0, dp(8), 0, 0);
+        row.addView(detail, detailParams);
+        LinearLayout.LayoutParams bestParams = fullWidthParams();
+        bestParams.setMargins(0, dp(8), 0, 0);
+        row.addView(best, bestParams);
+
+        LinearLayout.LayoutParams rowParams = fullWidthParams();
+        rowParams.setMargins(0, 0, 0, dp(12));
+        parent.addView(row, rowParams);
+    }
+
+    private void addRecordRow(LinearLayout parent, int size, int difficultyResId) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.VERTICAL);
+        row.setPadding(dp(16), dp(14), dp(16), dp(14));
+        row.setBackground(makePanelBackground(COLOR_PANEL));
+
+        TextView title = createText(getString(R.string.records_row_title, size, size, getString(difficultyResId)),
+                20, Color.WHITE, Typeface.BOLD);
+        TextView best = createText(formatBestForCard(size), 15, COLOR_MUTED_TEXT, Typeface.NORMAL);
+
+        row.addView(title, fullWidthParams());
+        LinearLayout.LayoutParams bestParams = fullWidthParams();
+        bestParams.setMargins(0, dp(6), 0, 0);
+        row.addView(best, bestParams);
+
+        LinearLayout.LayoutParams rowParams = fullWidthParams();
+        rowParams.setMargins(0, 0, 0, dp(12));
+        parent.addView(row, rowParams);
+    }
+
+    private void addInstruction(LinearLayout parent, int titleResId, int bodyResId) {
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(16), dp(14), dp(16), dp(14));
+        panel.setBackground(makePanelBackground(COLOR_PANEL));
+
+        TextView title = createText(getString(titleResId), 18, Color.WHITE, Typeface.BOLD);
+        TextView body = createText(getString(bodyResId), 15, COLOR_MUTED_TEXT, Typeface.NORMAL);
+        body.setLineSpacing(0, 1.12f);
+
+        panel.addView(title, fullWidthParams());
+        LinearLayout.LayoutParams bodyParams = fullWidthParams();
+        bodyParams.setMargins(0, dp(6), 0, 0);
+        panel.addView(body, bodyParams);
+
+        LinearLayout.LayoutParams panelParams = fullWidthParams();
+        panelParams.setMargins(0, 0, 0, dp(12));
+        parent.addView(panel, panelParams);
+    }
+
+    private void showPauseMenu() {
+        String[] items = new String[] {
+                getString(R.string.menu_resume),
+                getString(R.string.button_save),
+                getString(R.string.button_load),
+                getString(R.string.button_restart),
+                getString(R.string.menu_new_size),
+                getString(R.string.home_how_to_play),
+                getString(R.string.home_records),
+                getString(R.string.nav_home)
+        };
+
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.menu_title)
+                .setItems(items, (dialog, which) -> {
+                    switch (which) {
+                        case 1 -> {
+                            saveGame();
+                            Toast.makeText(this, R.string.toast_game_saved, Toast.LENGTH_SHORT).show();
+                        }
+                        case 2 -> {
+                            if (loadGame()) {
+                                pendingWin = null;
+                                assistedSolveActive = false;
+                                showGameScreen();
+                                Toast.makeText(this, R.string.toast_game_loaded, Toast.LENGTH_SHORT).show();
+                            } else {
+                                Toast.makeText(this, R.string.toast_no_save, Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                        case 3 -> restartCurrentGame();
+                        case 4 -> {
+                            saveGame();
+                            showModeSelectScreen();
+                        }
+                        case 5 -> showHowToScreen(Screen.GAME);
+                        case 6 -> showRecordsScreen(Screen.GAME);
+                        case 7 -> {
+                            saveGame();
+                            showHomeScreen();
+                        }
+                        default -> {
+                        }
+                    }
+                })
+                .show();
+    }
+
+    private void showAssistMenu() {
+        String[] items = new String[] {
+                getString(R.string.button_solver_bfs),
+                getString(R.string.button_solver_astar),
+                getString(R.string.button_solver_idastar)
+        };
+
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.assist_title)
+                .setItems(items, (dialog, which) -> {
+                    if (which == 0) {
+                        runSolver(new BfsSolver());
+                    } else if (which == 1) {
+                        runSolver(new AStarSolver());
+                    } else if (which == 2) {
+                        runSolver(new IdaStarSolver());
+                    }
+                })
+                .show();
+    }
+
+    private void continueSavedGame() {
+        if (loadGame()) {
+            pendingWin = null;
+            assistedSolveActive = false;
+            showGameScreen();
+        } else {
+            Toast.makeText(this, R.string.toast_no_save, Toast.LENGTH_SHORT).show();
+            showHomeScreen();
+        }
+    }
+
+    private void beginNewGame(int size) {
+        if (solverRunning) {
+            return;
+        }
+        attachModel(new GameModel(size));
+        model.scramble(size * size * 5);
+        gameStarted = true;
+        pendingWin = null;
+        assistedSolveActive = false;
+        lastWinTimeMs = -1;
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putInt(KEY_LAST_SIZE, size).apply();
+        performBoardHaptic(HapticFeedbackConstants.VIRTUAL_KEY);
+        showGameScreen();
+    }
+
     private void restartCurrentGame() {
+        if (!canAcceptCommand()) {
+            return;
+        }
         model.restartCurrentGame();
         pendingWin = null;
         assistedSolveActive = false;
         lastWinTimeMs = -1;
-        boardView.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+        performBoardHaptic(HapticFeedbackConstants.VIRTUAL_KEY);
         updateStatus();
     }
 
+    private boolean canAcceptCommand() {
+        return currentScreen == Screen.GAME && boardView != null && !solverRunning && !boardView.isBusy();
+    }
+
     private void updateStatus() {
+        if (currentScreen != Screen.GAME || statusText == null || model == null) {
+            return;
+        }
+
+        if (gameTitleText != null) {
+            gameTitleText.setText(getString(R.string.game_title_format, model.getSize(), model.getSize()));
+        }
+
         Best best = getBest(model.getSize());
         String bestText = best == null
                 ? getString(R.string.best_empty)
@@ -254,19 +567,34 @@ public class MainActivity extends Activity implements GameObserver {
                     ? lastWinTimeMs / 1000
                     : Math.max(0, System.currentTimeMillis() - model.getStartTime()) / 1000;
             statusText.setText(getString(R.string.status_solved_format, model.getMoveCount(), elapsed, bestText));
+            updateControlsEnabled();
             return;
         }
 
         long elapsed = Math.max(0, System.currentTimeMillis() - model.getStartTime()) / 1000;
         statusText.setText(getString(R.string.status_format, formatMoves(model.getMoveCount()), elapsed, bestText));
+        updateControlsEnabled();
+    }
+
+    private void updateControlsEnabled() {
+        boolean enabled = canAcceptCommand();
+        for (Button button : commandButtons) {
+            button.setEnabled(enabled);
+            button.setAlpha(enabled ? 1f : 0.45f);
+        }
     }
 
     private void saveGame() {
+        if (!gameStarted || model == null) {
+            return;
+        }
+
         SharedPreferences.Editor editor = getSharedPreferences(PREFS, MODE_PRIVATE).edit();
         editor.putInt(KEY_SIZE, model.getSize());
         editor.putString(KEY_GRID, flatten(model.getGridCopy()));
         editor.putString(KEY_INITIAL_GRID, flatten(model.getInitialGridCopy()));
         editor.putInt(KEY_MOVES, model.getMoveCount());
+        editor.putInt(KEY_LAST_SIZE, model.getSize());
         long elapsed = model.isSolved() && lastWinTimeMs >= 0
                 ? lastWinTimeMs
                 : Math.max(0, System.currentTimeMillis() - model.getStartTime());
@@ -300,15 +628,22 @@ public class MainActivity extends Activity implements GameObserver {
         data.moveCount = prefs.getInt(KEY_MOVES, 0);
         data.elapsedTime = prefs.getLong(KEY_ELAPSED, 0);
 
-        model.removeObserver(this);
-        model = new GameModel(size);
-        model.addObserver(this);
-        boardView.setModel(model);
+        attachModel(new GameModel(size));
         model.loadState(data);
         lastWinTimeMs = model.isSolved() ? data.elapsedTime : -1;
         assistedSolveActive = false;
-        updateStatus();
+        gameStarted = true;
         return true;
+    }
+
+    private boolean hasSavedGame() {
+        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+        if (!prefs.contains(KEY_GRID)) {
+            return false;
+        }
+
+        int size = prefs.getInt(KEY_SIZE, 4);
+        return size >= 3 && size <= 5 && parseGrid(prefs.getString(KEY_GRID, ""), size) != null;
     }
 
     private String flatten(int[][] grid) {
@@ -409,6 +744,7 @@ public class MainActivity extends Activity implements GameObserver {
     private void startSolver(Solver solver) {
         solverRunning = true;
         boardView.setInputLocked(true);
+        updateControlsEnabled();
         statusText.setText(getString(R.string.status_solving, solver.getName()));
         new Thread(() -> {
             List<Direction> solution = solver.solve(model);
@@ -449,8 +785,114 @@ public class MainActivity extends Activity implements GameObserver {
                 .show();
     }
 
+    private ScreenLayout createScreenLayout() {
+        ScrollView root = new ScrollView(this);
+        root.setFillViewport(true);
+        root.setBackgroundColor(COLOR_BACKGROUND);
+
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(dp(18), systemBarHeight("status_bar_height") + dp(26),
+                dp(18), systemBarHeight("navigation_bar_height") + dp(18));
+        root.addView(content, new ScrollView.LayoutParams(
+                ScrollView.LayoutParams.MATCH_PARENT,
+                ScrollView.LayoutParams.WRAP_CONTENT));
+        return new ScreenLayout(root, content);
+    }
+
+    private void addScreenHeader(LinearLayout parent, String title, String subtitle) {
+        TextView titleText = createText(title, 34, Color.WHITE, Typeface.BOLD);
+        titleText.setGravity(Gravity.CENTER);
+        parent.addView(titleText, fullWidthParams());
+
+        TextView subtitleText = createText(subtitle, 16, COLOR_MUTED_TEXT, Typeface.NORMAL);
+        subtitleText.setGravity(Gravity.CENTER);
+        subtitleText.setLineSpacing(0, 1.12f);
+        LinearLayout.LayoutParams subtitleParams = fullWidthParams();
+        subtitleParams.setMargins(0, dp(8), 0, dp(24));
+        parent.addView(subtitleText, subtitleParams);
+    }
+
+    private void addWideButton(LinearLayout parent, int textResId, int color, View.OnClickListener listener) {
+        Button button = createButton(getString(textResId), color);
+        button.setOnClickListener(listener);
+        LinearLayout.LayoutParams params = fullWidthParams();
+        params.setMargins(0, 0, 0, dp(10));
+        parent.addView(button, params);
+    }
+
+    private void addGameButton(LinearLayout parent, int textResId, View.OnClickListener listener) {
+        Button button = createButton(getString(textResId), COLOR_PANEL_LIGHT);
+        button.setOnClickListener(listener);
+        commandButtons.add(button);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(48), 1f);
+        params.setMargins(dp(4), 0, dp(4), 0);
+        parent.addView(button, params);
+    }
+
+    private Button createButton(String text, int color) {
+        Button button = new Button(this);
+        button.setText(text);
+        button.setTextColor(Color.WHITE);
+        button.setAllCaps(false);
+        button.setTextSize(14);
+        button.setMinHeight(dp(48));
+        button.setBackground(makePanelBackground(color));
+        return button;
+    }
+
+    private TextView createText(CharSequence text, int sp, int color, int style) {
+        TextView textView = new TextView(this);
+        textView.setText(text);
+        textView.setTextSize(sp);
+        textView.setTextColor(color);
+        textView.setTypeface(Typeface.DEFAULT, style);
+        return textView;
+    }
+
+    private LinearLayout.LayoutParams fullWidthParams() {
+        return new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+    }
+
+    private LinearLayout.LayoutParams fixedButtonParams(int widthDp) {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dp(widthDp), dp(44));
+        params.setMargins(dp(4), 0, dp(4), 0);
+        return params;
+    }
+
+    private GradientDrawable makePanelBackground(int color) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(color);
+        drawable.setCornerRadius(dp(8));
+        drawable.setStroke(dp(1), Color.argb(80, 255, 255, 255));
+        return drawable;
+    }
+
+    private String formatBestForCard(int size) {
+        Best best = getBest(size);
+        return best == null
+                ? getString(R.string.records_empty)
+                : getString(R.string.best_format, formatMoves(best.moves), best.timeMs / 1000);
+    }
+
+    private void performBoardHaptic(int feedbackConstant) {
+        if (boardView != null) {
+            boardView.performHapticFeedback(feedbackConstant);
+        }
+    }
+
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private int systemBarHeight(String resourceName) {
+        int resourceId = getResources().getIdentifier(resourceName, "dimen", "android");
+        if (resourceId == 0) {
+            return 0;
+        }
+        return getResources().getDimensionPixelSize(resourceId);
     }
 
     /**
@@ -480,7 +922,7 @@ public class MainActivity extends Activity implements GameObserver {
     @Override
     public void onGameWon(int moves, long timeMs) {
         lastWinTimeMs = timeMs;
-        pendingWin = new PendingWin(model.getSize(), moves, timeMs);
+        pendingWin = new PendingWin(model.getSize(), moves, timeMs, assistedSolveActive);
         handler.postDelayed(this::showWinWhenReady, 180);
     }
 
@@ -488,29 +930,55 @@ public class MainActivity extends Activity implements GameObserver {
         if (pendingWin == null) {
             return;
         }
-        if (boardView.isBusy()) {
+        if (boardView != null && boardView.isBusy()) {
             handler.postDelayed(this::showWinWhenReady, 80);
             return;
         }
 
         PendingWin win = pendingWin;
         pendingWin = null;
-        if (!assistedSolveActive) {
+        if (!win.assisted) {
             recordBest(win.size, win.moves, win.timeMs);
         }
         assistedSolveActive = false;
-        boardView.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+        performBoardHaptic(HapticFeedbackConstants.LONG_PRESS);
         updateStatus();
+        int message = win.assisted ? R.string.dialog_solved_assisted_message : R.string.dialog_solved_message;
         new AlertDialog.Builder(this)
                 .setTitle(R.string.dialog_solved_title)
-                .setMessage(getString(R.string.dialog_solved_message, formatMoves(win.moves), win.timeMs / 1000))
-                .setPositiveButton(R.string.dialog_new_game, (dialog, which) -> startNewGame(model.getSize()))
+                .setMessage(getString(message, formatMoves(win.moves), win.timeMs / 1000))
+                .setPositiveButton(R.string.dialog_new_game, (dialog, which) -> beginNewGame(model.getSize()))
                 .setNegativeButton(R.string.dialog_close, null)
+                .setNeutralButton(R.string.nav_home, (dialog, which) -> {
+                    saveGame();
+                    showHomeScreen();
+                })
                 .show();
     }
 
     private String formatMoves(int moves) {
         return getResources().getQuantityString(R.plurals.moves_count, moves, moves);
+    }
+
+    private static class ScreenLayout {
+        final ScrollView root;
+        final LinearLayout content;
+
+        ScreenLayout(ScrollView root, LinearLayout content) {
+            this.root = root;
+            this.content = content;
+        }
+    }
+
+    private static class ViewParentRemover {
+        private ViewParentRemover() {
+        }
+
+        static void removeFromParent(View view) {
+            if (view != null && view.getParent() instanceof ViewGroup) {
+                ((ViewGroup) view.getParent()).removeView(view);
+            }
+        }
     }
 
     private static class Best {
@@ -527,11 +995,13 @@ public class MainActivity extends Activity implements GameObserver {
         final int size;
         final int moves;
         final long timeMs;
+        final boolean assisted;
 
-        PendingWin(int size, int moves, long timeMs) {
+        PendingWin(int size, int moves, long timeMs, boolean assisted) {
             this.size = size;
             this.moves = moves;
             this.timeMs = timeMs;
+            this.assisted = assisted;
         }
     }
 }

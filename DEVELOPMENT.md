@@ -37,15 +37,19 @@ Desktop currently supports:
 
 Android currently supports:
 
+- Home screen launch instead of opening directly into the board.
+- Continue when a valid save exists.
+- Mode Select for 3x3, 4x4, and 5x5 games.
+- How to Play and Records screens before or during gameplay.
 - 3x3, 4x4, and 5x5 games.
 - Tap and swipe movement.
 - Whole-line slide behavior through `GameModel.slideLineTo(row, col)`.
 - Synchronized whole-line animation.
 - One move and one undo snapshot per user gesture.
-- Undo and restart.
-- Manual Save/Load plus autosave.
+- Compact in-game controls with Undo, Restart, Menu, and Assist.
+- Manual Save/Load plus autosave through the in-game menu.
 - Best records by puzzle size.
-- BFS, A*, and IDA* solver controls with expensive-operation warnings.
+- BFS, A*, and IDA* solver controls behind Assist with expensive-operation warnings.
 - Solver-assisted completion protection so player records are not overwritten.
 - Haptic feedback.
 
@@ -69,6 +73,10 @@ Core rules:
 
 Android parity checklist:
 
+- [x] Fresh launch shows Home instead of the board.
+- [x] Continue is shown only when a valid save exists.
+- [x] New Game opens Mode Select before starting a board.
+- [x] How to Play is reachable before gameplay.
 - [x] Default game is 4x4.
 - [x] 3x3, 4x4, and 5x5 are available.
 - [x] Generated boards are solvable.
@@ -187,16 +195,16 @@ Target experience:
 
 ### UX Engineering Direction
 
-Recommended implementation approach:
+Current implementation approach:
 
-- Keep one Android `Activity` for now and introduce an internal screen state such as `HOME`, `MODE_SELECT`, `HOW_TO_PLAY`, `GAME`, `SETTINGS`, and `RESULTS`.
+- Keep one Android `Activity` for now with internal screen state for `HOME`, `MODE_SELECT`, `HOW_TO_PLAY`, `RECORDS`, and `GAME`.
 - Build separate private view-construction methods in `MainActivity` or small package-private screen classes before introducing a larger architecture.
 - Keep `GameModel` unchanged for navigation work; the model should remain platform-independent.
 - Keep `KlotskiView` focused on board rendering and gestures only.
 - Store lightweight preferences for first-run state, settings, and last selected mode.
 - Continue to use `SharedPreferences` for local mobile saves until there is a concrete need for a database.
 
-UX acceptance criteria for the next feature pass:
+UX acceptance criteria completed in the 2026-05-25 Android navigation pass:
 
 - Fresh launch shows Home, not the board.
 - Continue is visible only when a saved game exists.
@@ -207,38 +215,9 @@ UX acceptance criteria for the next feature pass:
 
 ## Recommended Next Tasks
 
-### 1. Initialize Product-Style Android Navigation
+### 1. Add Android Instrumentation Tests
 
 Priority: High
-
-- Add Home, Mode Select, How to Play, and Game screen states.
-- Start the app on Home.
-- Continue should load the current save and enter Game.
-- New Game should open Mode Select.
-- Mode selection should start 3x3, 4x4, or 5x5 and enter Game.
-- Preserve current game screen behavior after entering Game.
-
-### 2. Rework In-Game Controls For Mobile
-
-Priority: High
-
-- Keep board, moves, timer, and best record visible.
-- Move Save/Load/Solver controls into a compact menu or assist panel.
-- Keep Undo and Restart accessible during gameplay.
-- Add a Home or Pause action.
-- Disable controls visually while animation or solver work is active.
-
-### 3. Add Onboarding And How-To Content
-
-Priority: Medium
-
-- Add first-run tutorial access from Home.
-- Add concise visual instructions for tap, whole-line slide, swipe, undo, and restart.
-- Add a reminder that solver-assisted wins do not count as best records.
-
-### 4. Add Android Instrumentation Tests
-
-Priority: Medium
 
 - Launch default Home screen.
 - Navigate Home -> Mode Select -> Game.
@@ -247,7 +226,16 @@ Priority: Medium
 - Verify whole-line move count and undo after entering Game.
 - Verify save/load and rotation behavior.
 
-### 5. Add CI For Build Quality
+### 2. Add Remaining Casual-App Surfaces
+
+Priority: Medium
+
+- Add a Settings screen for haptics, sound, and theme preferences.
+- Replace the win dialog with a Results screen that shows moves, time, record status, Play Again, New Size, and Home.
+- Add first-run tutorial prompting without blocking returning players.
+- Add accessibility labels and larger touch targets where Android lint or manual smoke tests identify gaps.
+
+### 3. Add CI For Build Quality
 
 Priority: Medium
 
@@ -256,7 +244,7 @@ Priority: Medium
 - Run Android assemble/lint.
 - Run public Javadoc doclint checks where practical.
 
-### 6. Game Polish Backlog
+### 4. Game Polish Backlog
 
 Priority: Low to Medium
 
@@ -277,6 +265,8 @@ Priority: Low to Medium
 - Removed the old `DESKTOP_FEATURE_SPEC.md` and `NEXT_STEPS.md` pointer files after consolidation.
 - Recorded local Git workflow rule: initialize Git locally, commit cohesive changes, and do not push until explicitly requested.
 - Planned the next product direction: a common casual-game app experience with Home, Mode Select, How to Play, Settings, Game, Pause, and Results surfaces.
+- Implemented the Android product-style navigation pass: Home launch, Continue from save, Mode Select, How to Play, Records, compact in-game controls, Menu, and Assist.
+- Kept `GameModel` unchanged for navigation work and added a `KlotskiView` busy-state callback so controls visibly disable during animation and solver work.
 
 ### 2026-05-24
 
