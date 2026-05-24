@@ -8,6 +8,7 @@ This is the single source of truth for SlideDo development planning, feature beh
 - Do not push to a remote repository until the project owner explicitly asks for it.
 - Commit cohesive changes with clear messages after implementation and verification.
 - Keep generated files, local runtime saves, IDE files, and machine-specific config out of Git.
+- Keep repository line endings stable through `.gitattributes`.
 - Do not rewrite history, squash, rebase, reset, or force-push unless the project owner explicitly requests it.
 - Before release or remote publication, verify `.gitignore` and ensure local files such as `klotski_save.json`, `klotski_save.dat`, `klotski_records.json`, `bin/`, `build/`, and Android build output are not tracked.
 
