@@ -38,9 +38,11 @@ Desktop currently supports:
 Android currently supports:
 
 - Home screen launch instead of opening directly into the board.
+- First-run onboarding before normal play, with Skip and Start 3x3 actions.
 - Continue when a valid save exists.
 - Mode Select for 3x3, 4x4, and 5x5 games.
 - How to Play and Records screens before or during gameplay.
+- Beginner Guide re-entry from Home.
 - 3x3, 4x4, and 5x5 games.
 - Tap and swipe movement.
 - Whole-line slide behavior through `GameModel.slideLineTo(row, col)`.
@@ -229,10 +231,10 @@ planning layer above implementation tickets.
 
 ### Current Experience Snapshot
 
-- First-run experience is improved because the app now starts on Home, but it is
-  still not complete: new players can choose Play and read How to Play, yet the
-  app does not proactively guide them through the first move, first undo, or
-  whole-line slide concept.
+- First-run experience is improved because the app now starts with lightweight
+  onboarding before normal play. It teaches the objective, tap/swipe movement,
+  whole-line slides, undo/restart, and record rules, but it is still text-first
+  rather than visual or interactive.
 - Home is understandable and appropriately simple. Continue, New Game, How to
   Play, and Records are clear, but Settings is still missing and Records does
   not yet explain how records are earned or why assisted wins are excluded.
@@ -264,8 +266,8 @@ planning layer above implementation tickets.
 
 ### Product Readiness Gaps
 
-- Missing first-run guided path: no onboarding carousel, guided first puzzle, or
-  first-move coaching.
+- First-run guided path is MVP-level: onboarding exists, but there is no guided
+  first puzzle, first-move coaching, or interactive whole-line slide practice.
 - Missing Settings: no haptic toggle, sound toggle, theme choice, animation
   preference, or reset local data action.
 - Missing Results screen: win handling still uses a dialog instead of a
@@ -289,22 +291,18 @@ planning layer above implementation tickets.
 
 ### Recommended Next Implementation Order
 
-The next product milestone should focus on first-time player comprehension
-before adding broader systems. Recommended order:
+The next product milestone should continue improving first-time player
+comprehension before adding broader systems. Recommended order:
 
-1. First-Run Onboarding MVP.
-2. Visual How to Play / interactive tutorial improvements.
-3. Settings for haptics, reduced motion, and local data reset.
-4. Results screen to replace the solved-game dialog.
-5. CI and release-readiness automation.
+1. Visual How to Play / interactive tutorial improvements.
+2. Settings for haptics, reduced motion, and local data reset.
+3. Results screen to replace the solved-game dialog.
+4. CI and release-readiness automation.
 
 Rationale:
 
-- Onboarding directly addresses the biggest current product gap: new players
-  can reach the board, but the app does not proactively teach the first move,
-  whole-line slide behavior, or restart/record expectations.
-- Visual How to Play should follow onboarding because both share teaching
-  content and board-example UI.
+- The First-Run Onboarding MVP now covers the basic teaching path, so visual How
+  to Play should follow it by reusing the same concepts with board examples.
 - Settings and Results make the app feel more complete, but they are more
   valuable after players understand the core loop.
 - CI should be added before release planning, but product-learning surfaces are
@@ -337,14 +335,14 @@ Implementation notes:
 
 Priority: High
 
-Recommended next implementation target.
+Status: Completed on 2026-05-25.
 
-- Add a lightweight first-run state in `SharedPreferences`.
-- Show a short onboarding flow before the first game, with Skip and Start 3x3
+- [x] Add a lightweight first-run state in `SharedPreferences`.
+- [x] Show a short onboarding flow before the first game, with Skip and Start 3x3
   actions.
-- Recommend 3x3 as the first puzzle for new players.
-- Teach goal, tap, whole-line slide, swipe, undo, restart, and records.
-- Re-open onboarding from Home or Settings.
+- [x] Recommend 3x3 as the first puzzle for new players.
+- [x] Teach goal, tap, whole-line slide, swipe, undo, restart, and records.
+- [x] Re-open onboarding from Home.
 
 MVP flow:
 
@@ -359,12 +357,12 @@ MVP flow:
 
 Acceptance criteria:
 
-- First install or cleared app data shows onboarding before normal play.
-- Returning users do not see onboarding automatically after Skip or Start 3x3.
-- Home exposes a way to re-open onboarding or the same beginner guide.
-- Instrumentation tests cover first launch onboarding, Skip persistence, Start
+- [x] First install or cleared app data shows onboarding before normal play.
+- [x] Returning users do not see onboarding automatically after Skip or Start 3x3.
+- [x] Home exposes a way to re-open onboarding or the same beginner guide.
+- [x] Instrumentation tests cover first launch onboarding, Skip persistence, Start
   3x3 navigation, and re-opening the guide.
-- The implementation keeps `GameModel` unchanged and confines first-run state to
+- [x] The implementation keeps `GameModel` unchanged and confines first-run state to
   Android UI/preferences code.
 
 ### 3. Replace Text-Only How To Play With Visual Learning
@@ -541,6 +539,8 @@ Priority: Low to Medium
 - Expanded the next-stage roadmap with recommended implementation order,
   onboarding MVP acceptance criteria, visual tutorial scope, Settings MVP,
   Results screen scope, and CI/release-readiness direction.
+- Implemented the First-Run Onboarding MVP with a four-page beginner flow,
+  persistent Skip/Start 3x3 state, Home re-entry, and instrumentation coverage.
 
 ### 2026-05-24
 

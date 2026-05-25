@@ -2,8 +2,15 @@
     <item name="home_root" type="id" />
     <item name="home_continue_button" type="id" />
     <item name="home_new_game_button" type="id" />
+    <item name="home_onboarding_button" type="id" />
     <item name="home_how_to_play_button" type="id" />
     <item name="home_records_button" type="id" />
+    <item name="onboarding_root" type="id" />
+    <item name="onboarding_progress_text" type="id" />
+    <item name="onboarding_next_button" type="id" />
+    <item name="onboarding_back_button" type="id" />
+    <item name="onboarding_skip_button" type="id" />
+    <item name="onboarding_start_3_button" type="id" />
     <item name="mode_root" type="id" />
     <item name="mode_3_button" type="id" />
     <item name="mode_4_button" type="id" />

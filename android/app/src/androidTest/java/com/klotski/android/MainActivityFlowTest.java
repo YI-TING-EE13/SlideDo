@@ -66,12 +66,76 @@ public class MainActivityFlowTest {
     }
 
     @Test
-    public void launchDefaultHomeScreenWithoutSave() throws Exception {
+    public void firstLaunchShowsOnboardingBeforeHome() throws Exception {
+        launchApp();
+
+        waitForId("onboarding_root");
+        waitForText("Start with the Basics");
+        waitForText("Page 1 of 4");
+        assertNotNull(findById("onboarding_next_button"));
+        assertNotNull(findById("onboarding_skip_button"));
+        assertNull(findById("home_root"));
+    }
+
+    @Test
+    public void onboardingSkipPersistsAndReturnsHome() throws Exception {
+        launchApp();
+
+        clickId(R.id.onboarding_skip_button);
+        waitForId("home_root");
+        assertTrue(isOnboardingSeen());
+
+        relaunchApp();
+
+        waitForId("home_root");
+        assertNull(findById("onboarding_root"));
+        waitForText("SlideDo");
+        assertNotNull(findById("home_new_game_button"));
+        assertNotNull(findById("home_onboarding_button"));
+        assertNotNull(findById("home_how_to_play_button"));
+        assertNotNull(findById("home_records_button"));
+        assertNull(findById("home_continue_button"));
+    }
+
+    @Test
+    public void onboardingStart3x3BeginsFirstPuzzle() throws Exception {
+        launchApp();
+
+        clickId(R.id.onboarding_next_button);
+        waitForText("Page 2 of 4");
+        clickId(R.id.onboarding_next_button);
+        waitForText("Page 3 of 4");
+        clickId(R.id.onboarding_next_button);
+        waitForText("Page 4 of 4");
+        clickId(R.id.onboarding_start_3_button);
+
+        waitForId("game_root");
+        waitForText("3x3 Puzzle");
+        assertTrue(isOnboardingSeen());
+    }
+
+    @Test
+    public void homeCanReopenBeginnerGuide() throws Exception {
+        markOnboardingSeen();
+        launchApp();
+
+        clickId(R.id.home_onboarding_button);
+        waitForId("onboarding_root");
+        waitForText("Start with the Basics");
+
+        clickId(R.id.onboarding_skip_button);
+        waitForId("home_root");
+    }
+
+    @Test
+    public void launchDefaultHomeScreenWithoutSaveAfterOnboarding() throws Exception {
+        markOnboardingSeen();
         launchApp();
 
         waitForId("home_root");
         waitForText("SlideDo");
         assertNotNull(findById("home_new_game_button"));
+        assertNotNull(findById("home_onboarding_button"));
         assertNotNull(findById("home_how_to_play_button"));
         assertNotNull(findById("home_records_button"));
         assertNull(findById("home_continue_button"));
@@ -79,6 +143,7 @@ public class MainActivityFlowTest {
 
     @Test
     public void navigateHomeToModeSelectToGame() throws Exception {
+        markOnboardingSeen();
         launchApp();
 
         clickId(R.id.home_new_game_button);
@@ -109,6 +174,7 @@ public class MainActivityFlowTest {
 
     @Test
     public void openHowToPlayFromHome() throws Exception {
+        markOnboardingSeen();
         launchApp();
 
         clickId(R.id.home_how_to_play_button);
@@ -182,6 +248,16 @@ public class MainActivityFlowTest {
         Thread.sleep(750);
     }
 
+    private void relaunchApp() throws Exception {
+        if (activity != null) {
+            Activity launchedActivity = activity;
+            instrumentation.runOnMainSync(launchedActivity::finish);
+            instrumentation.waitForIdleSync();
+            activity = null;
+        }
+        launchApp();
+    }
+
     private void waitForForegroundApp() throws Exception {
         long deadline = System.currentTimeMillis() + TIMEOUT_MS;
         while (System.currentTimeMillis() < deadline) {
@@ -210,7 +286,19 @@ public class MainActivityFlowTest {
         editor.putInt("moves", moves);
         editor.putLong("elapsed", 0);
         editor.putInt("last_size", 3);
+        editor.putBoolean("onboarding_seen", true);
         assertTrue(editor.commit());
+    }
+
+    private void markOnboardingSeen() {
+        assertTrue(targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putBoolean("onboarding_seen", true)
+                .commit());
+    }
+
+    private boolean isOnboardingSeen() {
+        return targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getBoolean("onboarding_seen", false);
     }
 
     private UiObject2 waitForId(String resourceName) {

@@ -53,9 +53,12 @@ public class MainActivity extends Activity implements GameObserver {
     private static final String KEY_ELAPSED = "elapsed";
     private static final String KEY_LAST_SIZE = "last_size";
     private static final String KEY_BEST_PREFIX = "best_";
+    private static final String KEY_ONBOARDING_SEEN = "onboarding_seen";
     private static final String STATE_SCREEN = "screen";
     private static final String STATE_INFO_RETURN_SCREEN = "info_return_screen";
     private static final String STATE_GAME_STARTED = "game_started";
+    private static final String STATE_ONBOARDING_PAGE = "onboarding_page";
+    private static final int ONBOARDING_PAGE_COUNT = 4;
 
     private static final int COLOR_BACKGROUND = Color.rgb(17, 24, 39);
     private static final int COLOR_PANEL = Color.rgb(31, 41, 55);
@@ -75,6 +78,7 @@ public class MainActivity extends Activity implements GameObserver {
     private OnBackInvokedCallback backCallback;
     private Screen currentScreen = Screen.HOME;
     private Screen infoReturnScreen = Screen.HOME;
+    private int onboardingPage;
     private boolean solverRunning;
     private boolean assistedSolveActive;
     private boolean gameStarted;
@@ -88,6 +92,7 @@ public class MainActivity extends Activity implements GameObserver {
 
     private enum Screen {
         HOME,
+        ONBOARDING,
         MODE_SELECT,
         HOW_TO_PLAY,
         RECORDS,
@@ -123,7 +128,11 @@ public class MainActivity extends Activity implements GameObserver {
         attachModel(new GameModel(lastSize));
         registerBackHandler();
         if (savedInstanceState == null || !restoreAppScreen(savedInstanceState)) {
-            showHomeScreen();
+            if (shouldShowOnboarding()) {
+                showOnboardingScreen(0);
+            } else {
+                showHomeScreen();
+            }
         }
         handler.post(ticker);
     }
@@ -139,6 +148,7 @@ public class MainActivity extends Activity implements GameObserver {
         outState.putString(STATE_SCREEN, currentScreen.name());
         outState.putString(STATE_INFO_RETURN_SCREEN, infoReturnScreen.name());
         outState.putBoolean(STATE_GAME_STARTED, gameStarted);
+        outState.putInt(STATE_ONBOARDING_PAGE, onboardingPage);
         super.onSaveInstanceState(outState);
     }
 
@@ -170,6 +180,8 @@ public class MainActivity extends Activity implements GameObserver {
     private void handleBackNavigation() {
         if (currentScreen == Screen.GAME) {
             saveGame();
+            showHomeScreen();
+        } else if (currentScreen == Screen.ONBOARDING) {
             showHomeScreen();
         } else if (currentScreen == Screen.HOME) {
             finish();
@@ -211,6 +223,7 @@ public class MainActivity extends Activity implements GameObserver {
         Screen savedScreen = readScreen(savedInstanceState, STATE_SCREEN, Screen.HOME);
         Screen savedReturnScreen = readScreen(savedInstanceState, STATE_INFO_RETURN_SCREEN, Screen.HOME);
         boolean savedGameStarted = savedInstanceState.getBoolean(STATE_GAME_STARTED, false);
+        int savedOnboardingPage = savedInstanceState.getInt(STATE_ONBOARDING_PAGE, 0);
 
         if (savedScreen == Screen.GAME) {
             if (savedGameStarted && loadGame()) {
@@ -228,6 +241,7 @@ public class MainActivity extends Activity implements GameObserver {
         }
 
         switch (savedScreen) {
+            case ONBOARDING -> showOnboardingScreen(savedOnboardingPage);
             case MODE_SELECT -> showModeSelectScreen();
             case HOW_TO_PLAY -> showHowToScreen(savedReturnScreen);
             case RECORDS -> showRecordsScreen(savedReturnScreen);
@@ -277,14 +291,69 @@ public class MainActivity extends Activity implements GameObserver {
             continueButton.setId(R.id.home_continue_button);
         }
         Button newGameButton = addWideButton(screen.content, hasSave ? R.string.home_new_game : R.string.home_play,
-                hasSave ? COLOR_PANEL_LIGHT : COLOR_PRIMARY, v -> showModeSelectScreen());
+                hasSave ? COLOR_PANEL_LIGHT : COLOR_PRIMARY, v -> {
+                    if (shouldShowOnboarding()) {
+                        showOnboardingScreen(0);
+                    } else {
+                        showModeSelectScreen();
+                    }
+                });
         newGameButton.setId(R.id.home_new_game_button);
+        Button onboardingButton = addWideButton(screen.content, R.string.home_beginner_guide, COLOR_PANEL,
+                v -> showOnboardingScreen(0));
+        onboardingButton.setId(R.id.home_onboarding_button);
         Button howToButton = addWideButton(screen.content, R.string.home_how_to_play, COLOR_PANEL,
                 v -> showHowToScreen(Screen.HOME));
         howToButton.setId(R.id.home_how_to_play_button);
         Button recordsButton = addWideButton(screen.content, R.string.home_records, COLOR_PANEL,
                 v -> showRecordsScreen(Screen.HOME));
         recordsButton.setId(R.id.home_records_button);
+
+        setContentView(screen.root);
+    }
+
+    private void showOnboardingScreen(int requestedPage) {
+        currentScreen = Screen.ONBOARDING;
+        infoReturnScreen = Screen.HOME;
+        statusText = null;
+        gameTitleText = null;
+        commandButtons.clear();
+        onboardingPage = clampOnboardingPage(requestedPage);
+
+        ScreenLayout screen = createScreenLayout();
+        screen.root.setId(R.id.onboarding_root);
+        addScreenHeader(screen.content, getString(R.string.onboarding_title),
+                getString(R.string.onboarding_subtitle));
+
+        TextView progress = createText(getString(R.string.onboarding_progress,
+                onboardingPage + 1, ONBOARDING_PAGE_COUNT), 14, COLOR_ACCENT, Typeface.BOLD);
+        progress.setId(R.id.onboarding_progress_text);
+        progress.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams progressParams = fullWidthParams();
+        progressParams.setMargins(0, 0, 0, dp(12));
+        screen.content.addView(progress, progressParams);
+
+        addOnboardingPage(screen.content);
+
+        if (onboardingPage < ONBOARDING_PAGE_COUNT - 1) {
+            Button nextButton = addWideButton(screen.content, R.string.onboarding_next, COLOR_PRIMARY,
+                    v -> showOnboardingScreen(onboardingPage + 1));
+            nextButton.setId(R.id.onboarding_next_button);
+        } else {
+            Button startButton = addWideButton(screen.content, R.string.onboarding_start_3, COLOR_PRIMARY,
+                    v -> startFirstPuzzle());
+            startButton.setId(R.id.onboarding_start_3_button);
+        }
+
+        if (onboardingPage > 0) {
+            Button backButton = addWideButton(screen.content, R.string.onboarding_back, COLOR_PANEL,
+                    v -> showOnboardingScreen(onboardingPage - 1));
+            backButton.setId(R.id.onboarding_back_button);
+        }
+
+        Button skipButton = addWideButton(screen.content, R.string.onboarding_skip, COLOR_PANEL,
+                v -> skipOnboarding());
+        skipButton.setId(R.id.onboarding_skip_button);
 
         setContentView(screen.root);
     }
@@ -513,6 +582,30 @@ public class MainActivity extends Activity implements GameObserver {
         parent.addView(row, rowParams);
     }
 
+    private void addOnboardingPage(LinearLayout parent) {
+        int titleResId;
+        int bodyResId;
+        switch (onboardingPage) {
+            case 0 -> {
+                titleResId = R.string.onboarding_goal_title;
+                bodyResId = R.string.onboarding_goal_body;
+            }
+            case 1 -> {
+                titleResId = R.string.onboarding_tap_title;
+                bodyResId = R.string.onboarding_tap_body;
+            }
+            case 2 -> {
+                titleResId = R.string.onboarding_line_title;
+                bodyResId = R.string.onboarding_line_body;
+            }
+            default -> {
+                titleResId = R.string.onboarding_tools_title;
+                bodyResId = R.string.onboarding_tools_body;
+            }
+        }
+        addInstruction(parent, titleResId, bodyResId);
+    }
+
     private void addInstruction(LinearLayout parent, int titleResId, int bodyResId) {
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
@@ -600,6 +693,36 @@ public class MainActivity extends Activity implements GameObserver {
                     }
                 })
                 .show();
+    }
+
+    private void startFirstPuzzle() {
+        markOnboardingSeen();
+        beginNewGame(3);
+    }
+
+    private void skipOnboarding() {
+        markOnboardingSeen();
+        showHomeScreen();
+    }
+
+    private boolean shouldShowOnboarding() {
+        return !getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_ONBOARDING_SEEN, false);
+    }
+
+    private void markOnboardingSeen() {
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+                .putBoolean(KEY_ONBOARDING_SEEN, true)
+                .apply();
+    }
+
+    private int clampOnboardingPage(int page) {
+        if (page < 0) {
+            return 0;
+        }
+        if (page >= ONBOARDING_PAGE_COUNT) {
+            return ONBOARDING_PAGE_COUNT - 1;
+        }
+        return page;
     }
 
     private void continueSavedGame() {
