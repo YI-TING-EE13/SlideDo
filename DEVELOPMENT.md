@@ -87,6 +87,7 @@ Android parity checklist:
 - [x] Undo after whole-line slide restores the previous board in one step.
 - [x] Restart restores the original generated puzzle and resets moves/timer.
 - [x] Save/resume preserves current grid, restart grid, moves, and elapsed time.
+- [x] Rotation keeps the current game screen and restored board state.
 - [x] Records are separated by puzzle size.
 - [x] Solver controls run off the UI thread and warn for expensive board sizes.
 
@@ -118,6 +119,13 @@ Android build and lint:
 ```bat
 cd android
 build-debug.bat :app:assembleDebug :app:lintDebug
+```
+
+Android instrumentation tests:
+
+```bat
+cd android
+build-debug.bat :app:connectedDebugAndroidTest
 ```
 
 Android install and launch:
@@ -283,12 +291,24 @@ planning layer above implementation tickets.
 
 Priority: High
 
-- Launch default Home screen.
-- Navigate Home -> Mode Select -> Game.
-- Continue from an existing save.
-- Open How to Play.
-- Verify whole-line move count and undo after entering Game.
-- Verify save/load and rotation behavior.
+Status: Completed on 2026-05-25.
+
+- [x] Launch default Home screen.
+- [x] Navigate Home -> Mode Select -> Game.
+- [x] Continue from an existing save.
+- [x] Open How to Play.
+- [x] Verify whole-line move count and undo after entering Game.
+- [x] Verify save/load persistence and rotation behavior.
+
+Implementation notes:
+
+- The Android app now exposes stable resource IDs for main navigation and game
+  controls so instrumentation tests do not rely on visible text or coordinates.
+- Instrumentation tests use the real `MainActivity`, shared preferences, and
+  `KlotskiView` touch dispatch to cover app-level behavior while avoiding
+  emulator launcher/input-sink flakiness.
+- Activity recreation now restores the active screen and reloads saved game
+  state when rotating during gameplay or an in-game informational screen.
 
 ### 2. Add First-Run Onboarding
 
@@ -430,6 +450,10 @@ Priority: Low to Medium
 - Implemented the Android product-style navigation pass: Home launch, Continue from save, Mode Select, How to Play, Records, compact in-game controls, Menu, and Assist.
 - Kept `GameModel` unchanged for navigation work and added a `KlotskiView` busy-state callback so controls visibly disable during animation and solver work.
 - Added product engineering and UI/UX engineering assessment notes to turn the Android roadmap into a product-planning document, including onboarding, Settings, Results, visual learning, technical improvements, and Google Play readiness planning.
+- Added Android instrumentation smoke tests for Home, Mode Select, Continue,
+  How to Play, whole-line move/undo, save/load persistence, and rotation.
+- Added stable Android view IDs for key screens and controls, plus Activity
+  screen-state restoration so rotation preserves the current game screen.
 
 ### 2026-05-24
 

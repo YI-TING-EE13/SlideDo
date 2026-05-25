@@ -53,6 +53,9 @@ public class MainActivity extends Activity implements GameObserver {
     private static final String KEY_ELAPSED = "elapsed";
     private static final String KEY_LAST_SIZE = "last_size";
     private static final String KEY_BEST_PREFIX = "best_";
+    private static final String STATE_SCREEN = "screen";
+    private static final String STATE_INFO_RETURN_SCREEN = "info_return_screen";
+    private static final String STATE_GAME_STARTED = "game_started";
 
     private static final int COLOR_BACKGROUND = Color.rgb(17, 24, 39);
     private static final int COLOR_PANEL = Color.rgb(31, 41, 55);
@@ -102,10 +105,10 @@ public class MainActivity extends Activity implements GameObserver {
     };
 
     /**
-     * Builds the Android app shell and starts on the product-style home screen.
+     * Builds the Android app shell and restores the current app screen when
+     * Android recreates the activity.
      *
-     * @param savedInstanceState Android activity restore bundle, unused because the
-     *                           game state is restored from app preferences
+     * @param savedInstanceState Android activity restore bundle
      */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -119,8 +122,24 @@ public class MainActivity extends Activity implements GameObserver {
         }
         attachModel(new GameModel(lastSize));
         registerBackHandler();
-        showHomeScreen();
+        if (savedInstanceState == null || !restoreAppScreen(savedInstanceState)) {
+            showHomeScreen();
+        }
         handler.post(ticker);
+    }
+
+    /**
+     * Persists the current navigation state before Android recreates the activity.
+     *
+     * @param outState Android activity state bundle
+     */
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        saveGame();
+        outState.putString(STATE_SCREEN, currentScreen.name());
+        outState.putString(STATE_INFO_RETURN_SCREEN, infoReturnScreen.name());
+        outState.putBoolean(STATE_GAME_STARTED, gameStarted);
+        super.onSaveInstanceState(outState);
     }
 
     /**
@@ -188,6 +207,50 @@ public class MainActivity extends Activity implements GameObserver {
         }
     }
 
+    private boolean restoreAppScreen(Bundle savedInstanceState) {
+        Screen savedScreen = readScreen(savedInstanceState, STATE_SCREEN, Screen.HOME);
+        Screen savedReturnScreen = readScreen(savedInstanceState, STATE_INFO_RETURN_SCREEN, Screen.HOME);
+        boolean savedGameStarted = savedInstanceState.getBoolean(STATE_GAME_STARTED, false);
+
+        if (savedScreen == Screen.GAME) {
+            if (savedGameStarted && loadGame()) {
+                showGameScreen();
+                return true;
+            }
+            gameStarted = false;
+            return false;
+        }
+
+        if ((savedScreen == Screen.HOW_TO_PLAY || savedScreen == Screen.RECORDS)
+                && savedReturnScreen == Screen.GAME && savedGameStarted && !loadGame()) {
+            savedReturnScreen = Screen.HOME;
+            gameStarted = false;
+        }
+
+        switch (savedScreen) {
+            case MODE_SELECT -> showModeSelectScreen();
+            case HOW_TO_PLAY -> showHowToScreen(savedReturnScreen);
+            case RECORDS -> showRecordsScreen(savedReturnScreen);
+            case HOME -> showHomeScreen();
+            default -> {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private Screen readScreen(Bundle bundle, String key, Screen fallback) {
+        String value = bundle.getString(key);
+        if (value == null) {
+            return fallback;
+        }
+        try {
+            return Screen.valueOf(value);
+        } catch (IllegalArgumentException e) {
+            return fallback;
+        }
+    }
+
     private void showHomeScreen() {
         currentScreen = Screen.HOME;
         infoReturnScreen = Screen.HOME;
@@ -196,6 +259,7 @@ public class MainActivity extends Activity implements GameObserver {
         commandButtons.clear();
 
         ScreenLayout screen = createScreenLayout();
+        screen.root.setId(R.id.home_root);
         screen.content.setGravity(Gravity.CENTER_HORIZONTAL);
         addScreenHeader(screen.content, getString(R.string.app_name), getString(R.string.home_tagline));
 
@@ -208,12 +272,19 @@ public class MainActivity extends Activity implements GameObserver {
 
         boolean hasSave = hasSavedGame();
         if (hasSave) {
-            addWideButton(screen.content, R.string.home_continue, COLOR_PRIMARY, v -> continueSavedGame());
+            Button continueButton = addWideButton(screen.content, R.string.home_continue, COLOR_PRIMARY,
+                    v -> continueSavedGame());
+            continueButton.setId(R.id.home_continue_button);
         }
-        addWideButton(screen.content, hasSave ? R.string.home_new_game : R.string.home_play,
+        Button newGameButton = addWideButton(screen.content, hasSave ? R.string.home_new_game : R.string.home_play,
                 hasSave ? COLOR_PANEL_LIGHT : COLOR_PRIMARY, v -> showModeSelectScreen());
-        addWideButton(screen.content, R.string.home_how_to_play, COLOR_PANEL, v -> showHowToScreen(Screen.HOME));
-        addWideButton(screen.content, R.string.home_records, COLOR_PANEL, v -> showRecordsScreen(Screen.HOME));
+        newGameButton.setId(R.id.home_new_game_button);
+        Button howToButton = addWideButton(screen.content, R.string.home_how_to_play, COLOR_PANEL,
+                v -> showHowToScreen(Screen.HOME));
+        howToButton.setId(R.id.home_how_to_play_button);
+        Button recordsButton = addWideButton(screen.content, R.string.home_records, COLOR_PANEL,
+                v -> showRecordsScreen(Screen.HOME));
+        recordsButton.setId(R.id.home_records_button);
 
         setContentView(screen.root);
     }
@@ -225,11 +296,13 @@ public class MainActivity extends Activity implements GameObserver {
         commandButtons.clear();
 
         ScreenLayout screen = createScreenLayout();
+        screen.root.setId(R.id.mode_root);
         addScreenHeader(screen.content, getString(R.string.mode_title), getString(R.string.mode_subtitle));
         addModeRow(screen.content, 3, R.string.mode_easy, R.string.mode_easy_detail);
         addModeRow(screen.content, 4, R.string.mode_classic, R.string.mode_classic_detail);
         addModeRow(screen.content, 5, R.string.mode_expert, R.string.mode_expert_detail);
-        addWideButton(screen.content, R.string.nav_home, COLOR_PANEL, v -> showHomeScreen());
+        Button homeButton = addWideButton(screen.content, R.string.nav_home, COLOR_PANEL, v -> showHomeScreen());
+        homeButton.setId(R.id.mode_home_button);
 
         setContentView(screen.root);
     }
@@ -242,13 +315,15 @@ public class MainActivity extends Activity implements GameObserver {
         commandButtons.clear();
 
         ScreenLayout screen = createScreenLayout();
+        screen.root.setId(R.id.how_root);
         addScreenHeader(screen.content, getString(R.string.how_title), getString(R.string.how_subtitle));
         addInstruction(screen.content, R.string.how_goal_title, R.string.how_goal_body);
         addInstruction(screen.content, R.string.how_tap_title, R.string.how_tap_body);
         addInstruction(screen.content, R.string.how_swipe_title, R.string.how_swipe_body);
         addInstruction(screen.content, R.string.how_tools_title, R.string.how_tools_body);
         addInstruction(screen.content, R.string.how_records_title, R.string.how_records_body);
-        addWideButton(screen.content, R.string.nav_back, COLOR_PRIMARY, v -> returnFromInfoScreen());
+        Button backButton = addWideButton(screen.content, R.string.nav_back, COLOR_PRIMARY, v -> returnFromInfoScreen());
+        backButton.setId(R.id.how_back_button);
 
         setContentView(screen.root);
     }
@@ -261,11 +336,13 @@ public class MainActivity extends Activity implements GameObserver {
         commandButtons.clear();
 
         ScreenLayout screen = createScreenLayout();
+        screen.root.setId(R.id.records_root);
         addScreenHeader(screen.content, getString(R.string.records_title), getString(R.string.records_subtitle));
         addRecordRow(screen.content, 3, R.string.mode_easy);
         addRecordRow(screen.content, 4, R.string.mode_classic);
         addRecordRow(screen.content, 5, R.string.mode_expert);
-        addWideButton(screen.content, R.string.nav_back, COLOR_PRIMARY, v -> returnFromInfoScreen());
+        Button backButton = addWideButton(screen.content, R.string.nav_back, COLOR_PRIMARY, v -> returnFromInfoScreen());
+        backButton.setId(R.id.records_back_button);
 
         setContentView(screen.root);
     }
@@ -285,6 +362,7 @@ public class MainActivity extends Activity implements GameObserver {
         commandButtons.clear();
 
         LinearLayout root = new LinearLayout(this);
+        root.setId(R.id.game_root);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(COLOR_BACKGROUND);
         root.setPadding(dp(12), systemBarHeight("status_bar_height") + dp(12),
@@ -296,6 +374,7 @@ public class MainActivity extends Activity implements GameObserver {
         root.addView(topBar, fullWidthParams());
 
         Button homeButton = createButton(getString(R.string.nav_home), COLOR_PANEL);
+        homeButton.setId(R.id.game_home_button);
         homeButton.setOnClickListener(v -> {
             if (canAcceptCommand()) {
                 saveGame();
@@ -306,11 +385,13 @@ public class MainActivity extends Activity implements GameObserver {
         topBar.addView(homeButton, fixedButtonParams(88));
 
         gameTitleText = createText("", 20, Color.WHITE, Typeface.BOLD);
+        gameTitleText.setId(R.id.game_title_text);
         gameTitleText.setGravity(Gravity.CENTER);
         topBar.addView(gameTitleText, new LinearLayout.LayoutParams(0,
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 
         Button menuButton = createButton(getString(R.string.game_menu), COLOR_PANEL);
+        menuButton.setId(R.id.game_menu_button);
         menuButton.setOnClickListener(v -> {
             if (canAcceptCommand()) {
                 showPauseMenu();
@@ -320,6 +401,7 @@ public class MainActivity extends Activity implements GameObserver {
         topBar.addView(menuButton, fixedButtonParams(88));
 
         statusText = createText("", 15, Color.WHITE, Typeface.NORMAL);
+        statusText.setId(R.id.game_status_text);
         statusText.setGravity(Gravity.CENTER);
         statusText.setSingleLine(false);
         LinearLayout.LayoutParams statusParams = fullWidthParams();
@@ -338,23 +420,26 @@ public class MainActivity extends Activity implements GameObserver {
         actions.setOrientation(LinearLayout.HORIZONTAL);
         root.addView(actions, fullWidthParams());
 
-        addGameButton(actions, R.string.button_undo, v -> {
+        Button undoButton = addGameButton(actions, R.string.button_undo, v -> {
             if (canAcceptCommand()) {
                 model.undo();
                 performBoardHaptic(HapticFeedbackConstants.VIRTUAL_KEY);
                 updateStatus();
             }
         });
-        addGameButton(actions, R.string.button_restart, v -> {
+        undoButton.setId(R.id.game_undo_button);
+        Button restartButton = addGameButton(actions, R.string.button_restart, v -> {
             if (canAcceptCommand()) {
                 restartCurrentGame();
             }
         });
-        addGameButton(actions, R.string.game_assist, v -> {
+        restartButton.setId(R.id.game_restart_button);
+        Button assistButton = addGameButton(actions, R.string.game_assist, v -> {
             if (canAcceptCommand()) {
                 showAssistMenu();
             }
         });
+        assistButton.setId(R.id.game_assist_button);
 
         setContentView(root);
         updateStatus();
@@ -363,15 +448,25 @@ public class MainActivity extends Activity implements GameObserver {
     private void ensureBoardView() {
         if (boardView == null) {
             boardView = new KlotskiView(this, model);
+            boardView.setId(R.id.game_board);
             boardView.setBusyStateListener(this::updateControlsEnabled);
         } else {
             boardView.setModel(model);
+            boardView.setId(R.id.game_board);
             boardView.setBusyStateListener(this::updateControlsEnabled);
         }
     }
 
     private void addModeRow(LinearLayout parent, int size, int difficultyResId, int detailResId) {
         LinearLayout row = new LinearLayout(this);
+        if (size == 3) {
+            row.setId(R.id.mode_3_button);
+        } else if (size == 4) {
+            row.setId(R.id.mode_4_button);
+        } else if (size == 5) {
+            row.setId(R.id.mode_5_button);
+        }
+        row.setContentDescription(getString(R.string.mode_card_title, size, size));
         row.setOrientation(LinearLayout.VERTICAL);
         row.setPadding(dp(16), dp(14), dp(16), dp(14));
         row.setBackground(makePanelBackground(COLOR_PANEL));
@@ -813,21 +908,23 @@ public class MainActivity extends Activity implements GameObserver {
         parent.addView(subtitleText, subtitleParams);
     }
 
-    private void addWideButton(LinearLayout parent, int textResId, int color, View.OnClickListener listener) {
+    private Button addWideButton(LinearLayout parent, int textResId, int color, View.OnClickListener listener) {
         Button button = createButton(getString(textResId), color);
         button.setOnClickListener(listener);
         LinearLayout.LayoutParams params = fullWidthParams();
         params.setMargins(0, 0, 0, dp(10));
         parent.addView(button, params);
+        return button;
     }
 
-    private void addGameButton(LinearLayout parent, int textResId, View.OnClickListener listener) {
+    private Button addGameButton(LinearLayout parent, int textResId, View.OnClickListener listener) {
         Button button = createButton(getString(textResId), COLOR_PANEL_LIGHT);
         button.setOnClickListener(listener);
         commandButtons.add(button);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(48), 1f);
         params.setMargins(dp(4), 0, dp(4), 0);
         parent.addView(button, params);
+        return button;
     }
 
     private Button createButton(String text, int color) {

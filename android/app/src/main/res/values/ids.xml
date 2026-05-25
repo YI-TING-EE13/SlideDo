@@ -1,0 +1,25 @@
+<resources>
+    <item name="home_root" type="id" />
+    <item name="home_continue_button" type="id" />
+    <item name="home_new_game_button" type="id" />
+    <item name="home_how_to_play_button" type="id" />
+    <item name="home_records_button" type="id" />
+    <item name="mode_root" type="id" />
+    <item name="mode_3_button" type="id" />
+    <item name="mode_4_button" type="id" />
+    <item name="mode_5_button" type="id" />
+    <item name="mode_home_button" type="id" />
+    <item name="how_root" type="id" />
+    <item name="how_back_button" type="id" />
+    <item name="records_root" type="id" />
+    <item name="records_back_button" type="id" />
+    <item name="game_root" type="id" />
+    <item name="game_home_button" type="id" />
+    <item name="game_menu_button" type="id" />
+    <item name="game_title_text" type="id" />
+    <item name="game_status_text" type="id" />
+    <item name="game_board" type="id" />
+    <item name="game_undo_button" type="id" />
+    <item name="game_restart_button" type="id" />
+    <item name="game_assist_button" type="id" />
+</resources>

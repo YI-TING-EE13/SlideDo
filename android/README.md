@@ -19,6 +19,7 @@ an emulator or connected Android device.
 - Compact in-game controls with Undo, Restart, Menu, and Assist actions
 - Manual Save and Load controls in the in-game menu
 - Auto-save through `SharedPreferences`
+- Rotation restore for the active game screen
 - Per-size best record tracking
 - BFS, A*, and IDA* solver controls in Assist with warnings for expensive board sizes
 - Solver-assisted completions do not overwrite player best records
@@ -40,6 +41,12 @@ To run the shared desktop/core JUnit tests from the repository root:
 
 ```bat
 android\gradlew.bat -p . test
+```
+
+To run Android instrumentation smoke tests on a connected emulator or device:
+
+```bat
+build-debug.bat :app:connectedDebugAndroidTest
 ```
 
 ## Emulator Smoke Test Checklist
