@@ -7,7 +7,7 @@
 
 **SlideDo** is a polished number Klotski / sliding puzzle game written in Java. It includes a desktop Swing edition and a native Android edition that share the same core puzzle model, move rules, save format, and solver interfaces.
 
-The design goal is simple: make sliding numbered tiles feel fast, clear, and satisfying. The desktop version supports mouse, keyboard, undo, restart, save/load, best records, and solver playback. The Android project is prepared so the same game logic can grow into a mobile app with touch-first controls.
+The design goal is simple: make sliding numbered tiles feel fast, clear, and satisfying. The desktop version supports mouse, keyboard, undo, restart, save/load, best records, and solver playback. The Android edition now opens as a touch-first mobile app with onboarding, mode selection, settings, results, records, and compact in-game controls.
 
 ---
 
@@ -20,12 +20,14 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
   - Arrow keys move the empty space one step.
   - Movable tiles show a hand cursor on hover.
 - **Mobile-Ready Interaction Model**:
-  - Android opens on a Home screen with Continue, New Game, How to Play, and Records.
+  - Android opens on Home with Continue, New Game, Beginner Guide, How to Play, Settings, and Records.
+  - First-run onboarding introduces the goal, tap/swipe input, whole-line slides, undo/restart, and record rules.
   - Mode Select starts 3x3, 4x4, or 5x5 games after the player chooses a size.
+  - Visual How to Play examples and an in-game Quick Reminder explain the key movement rules.
   - Whole-line tap behavior maps naturally to touch screens.
   - One user gesture counts as one move.
   - Undo restores the entire previous user action.
-  - Android includes compact in-game controls, menu-based save/load, autosave, haptics, local best records, and solver playback through Assist.
+  - Android includes compact in-game controls, menu-based save/load, autosave, haptic and reduced-motion settings, local best records, a results screen, and solver playback through Assist.
 - **Quality-of-Life Gameplay**:
   - Undo.
   - Restart current puzzle without reshuffling.
@@ -40,7 +42,7 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
 - **Native Android Project**:
   - Gradle wrapper included.
   - Custom Android view.
-  - Home, Mode Select, How to Play, Records, touch controls, synchronized whole-line animation, haptics, autosave, manual save/load, best records, and solver controls.
+  - Home, onboarding, Mode Select, visual How to Play, Settings, Records, Results, touch controls, synchronized whole-line animation, haptics, autosave, manual save/load, best records, solver controls, and instrumentation tests.
 
 ---
 
@@ -142,9 +144,19 @@ adb shell am start -n com.klotski.android/.MainActivity
 ```
 
 The Android UI opens on Home, offers Continue when a valid save exists, and
-starts new games through Mode Select. During gameplay, Undo and Restart stay
-visible while Save/Load and BFS / A* / IDA* solver actions live in Menu and
-Assist. Solver-assisted wins do not overwrite player best records.
+starts new games through Mode Select. First-run onboarding appears before normal
+play until the player skips it or starts 3x3. During gameplay, Undo and Restart
+stay visible while Save/Load, Quick Reminder, Settings, and BFS / A* / IDA*
+solver actions live in Menu and Assist. Solver-assisted wins show Results but
+do not overwrite player best records.
+
+If the emulator does not show SlideDo in the launcher, reinstall and start it
+directly:
+
+```bat
+adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+adb shell am start -n com.klotski.android/.MainActivity
+```
 
 ### Suggested Emulator Profile
 
@@ -244,9 +256,16 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
 - Undo after a whole-line slide.
 - Android debug build with Gradle.
 - Android lint with no reported issues during the latest local run.
-- Android emulator smoke testing for Home launch, mode selection, whole-line movement, undo, restart, save/load, solver warning dialog, rotation, and background resume.
+- Android instrumentation tests for onboarding, Home launch, mode selection, Continue, How to Play, Settings, Results, whole-line movement, undo, save/load persistence, rotation, and solver-assisted record protection.
+- Android emulator smoke testing for install/launch, Home visibility, whole-line movement, undo, restart, save/load, solver warning dialog, rotation, and background resume.
 
 ### Useful Commands
+
+One-command local verification:
+
+```bat
+verify.bat
+```
 
 Desktop compile:
 
@@ -270,10 +289,17 @@ cd android
 build-debug.bat :app:assembleDebug :app:lintDebug
 ```
 
+Android instrumentation tests on a connected emulator or device:
+
+```bat
+cd android
+build-debug.bat :app:connectedDebugAndroidTest
+```
+
 ### Current Limitations
 
 - Desktop UI tests are still manual/smoke-level.
-- Android interaction tests are currently emulator smoke tests rather than automated instrumentation tests.
+- Connected Android instrumentation tests still require a running emulator or device.
 - Solver performance is intentionally limited by timeouts.
 - The root Gradle build currently focuses on shared core tests; desktop packaging still uses `run.bat`.
 
@@ -312,13 +338,13 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
 
 ## Roadmap
 
-- Add Android instrumentation tests for touch, save/load, rotation, and solver warnings.
-- Add CI for root JUnit tests plus Android assemble/lint.
+- Add a deeper interactive Android tutorial with first-move coaching.
 - Add sound effects with a mute toggle.
 - Add theme selection.
 - Add daily puzzle mode.
 - Add difficulty presets based on scramble depth.
 - Add a lightweight hint system.
+- Add release-readiness checks for signed APK/AAB generation.
 - Add release signing configuration for Play Store distribution.
 - Consider moving desktop launch/package tasks fully into Gradle.
 

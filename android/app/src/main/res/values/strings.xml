@@ -103,10 +103,6 @@
     <string name="toast_no_save">No save file found.</string>
     <string name="toast_save_reset">Saved game reset.</string>
     <string name="toast_records_reset">Records reset.</string>
-    <string name="dialog_solved_title">Solved</string>
-    <string name="dialog_solved_message">You won in %1$s.\nTime: %2$ds</string>
-    <string name="dialog_solved_assisted_message">Solved with assist in %1$s.\nTime: %2$ds\nThis result was not saved as a player record.</string>
-    <string name="dialog_new_game">New game</string>
     <string name="dialog_close">Close</string>
     <string name="dialog_continue">Continue</string>
     <string name="dialog_animate">Animate</string>

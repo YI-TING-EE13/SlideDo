@@ -42,7 +42,7 @@ import java.util.List;
  * <p>
  * The activity owns the mobile app flow and wires the shared {@link GameModel}
  * to Android screens, local persistence, best-record tracking, solver actions,
- * and completion dialogs. Gameplay rules remain in the shared core so Android
+ * and completion results. Gameplay rules remain in the shared core so Android
  * behavior stays aligned with the desktop Swing reference.
  * </p>
  */
@@ -1535,7 +1535,7 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     /**
-     * Records a pending win and defers the completion dialog until animation ends.
+     * Records a pending win and defers the results screen until animation ends.
      *
      * @param moves final move count reported by the model
      * @param timeMs elapsed play time in milliseconds

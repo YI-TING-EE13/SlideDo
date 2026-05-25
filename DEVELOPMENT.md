@@ -235,11 +235,12 @@ planning layer above implementation tickets.
 
 - First-run experience is improved because the app now starts with lightweight
   onboarding before normal play. It teaches the objective, tap/swipe movement,
-  whole-line slides, undo/restart, and record rules, but it is still text-first
-  rather than visual or interactive.
+  whole-line slides, undo/restart, and record rules. How to Play now adds small
+  visual board examples, but there is still no interactive guided first puzzle.
 - Home is understandable and appropriately simple. Continue, New Game, How to
-  Play, and Records are clear, but Settings is still missing and Records does
-  not yet explain how records are earned or why assisted wins are excluded.
+  Play, Beginner Guide, Settings, and Records are clear. Records still needs
+  richer explanation for how records are earned and why assisted wins are
+  excluded.
 - Mode Select communicates size and rough difficulty, but it does not yet show
   expected session length, scramble difficulty, or recommended first choice for
   new players.
@@ -253,7 +254,7 @@ planning layer above implementation tickets.
 - Navigation is reasonable for the current one-Activity architecture. Back
   behavior returns from Game to Home and from informational screens to the right
   context. Longer-term, the app needs a clearer navigation model before adding
-  Settings, Results, Daily Puzzle, and deeper Stats surfaces.
+  Daily Puzzle, progression, and deeper Stats surfaces.
 - Current persistence is adequate for a simple casual game: one autosave, manual
   Save/Load, last selected mode, and per-size records. It is not yet a polished
   product save system because it lacks explicit resume metadata, multiple
@@ -272,10 +273,10 @@ planning layer above implementation tickets.
   first puzzle, first-move coaching, or interactive whole-line slide practice.
 - Settings are MVP-level: haptic feedback, reduced motion, reset save, and reset
   records exist, but sound and theme controls still wait on those systems.
-- Missing Results screen: win handling still uses a dialog instead of a
-  product-style post-game screen with record status and next actions.
+- Results are MVP-level: the post-game screen shows record status and next
+  actions, but there is no celebration animation, sharing, or progression hook.
 - Missing complete feedback system: no sound, celebratory animation, progression
-  feedback, or differentiated assisted-completion treatment beyond text.
+  feedback, or differentiated assisted-completion treatment beyond Results text.
 - Missing hint system: Assist is solver-oriented and can feel like a developer
   tool. Casual players need lightweight hints that preserve agency.
 - Missing progression loops: no daily puzzle, streak, recent games, difficulty
@@ -288,8 +289,6 @@ planning layer above implementation tickets.
   reporting, and versioning discipline.
 
 ## Roadmap And Planning
-
-### To-Do Items
 
 ### Recommended Next Implementation Order
 
@@ -306,6 +305,8 @@ Rationale:
   MVPs now cover the basic teaching, preference, completion, and quality paths.
 - Remaining items are broader product systems rather than prerequisite app
   structure.
+
+### Completed 2026-05-25 MVP Items
 
 ### 1. Add Android Instrumentation Tests
 
@@ -473,15 +474,15 @@ Recommended scope:
 
 - Keep `GameModel` platform-independent and continue to route all puzzle-rule
   changes through shared core tests.
-- Keep the current one-Activity screen-state architecture until Settings,
-  Results, and onboarding make `MainActivity` too large; then split package-
-  private screen builders or a small navigation controller.
+- The current one-Activity screen-state architecture is acceptable for the MVP,
+  but `MainActivity` should be split into package-private screen builders or a
+  small navigation controller before adding larger product systems.
 - Add stable identifiers or test hooks for important Android controls so
   instrumentation tests do not rely on text or screen coordinates.
 - Add a small Android state model for screen state, selected mode, first-run
   status, settings, and pending results.
-- Move Android persistence helpers out of `MainActivity` when save, settings,
-  records, and onboarding state grow.
+- Move Android persistence helpers out of `MainActivity` as save, settings,
+  records, results, and onboarding state continue to grow.
 - Add explicit save metadata: saved size, moves, elapsed time, updated-at
   timestamp, and solved/active status for better Continue UI.
 - Add release build checks before Google Play planning: signed release APK/AAB,
@@ -496,7 +497,6 @@ Recommended scope:
 Priority: Low to Medium
 
 - Sound effects with mute toggle.
-- Haptic toggle.
 - Theme selection.
 - Daily puzzle.
 - Difficulty presets based on scramble depth.
@@ -559,6 +559,8 @@ Priority: Low to Medium
   actions.
 - Added `verify.bat` as the local CI entry point for shared tests, desktop
   compile, Android assemble/lint, and public Javadocs.
+- Refreshed README, Android README, and development planning notes after the
+  Android onboarding/settings/results MVP pass.
 
 ### 2026-05-24
 
