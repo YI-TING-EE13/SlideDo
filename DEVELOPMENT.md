@@ -287,6 +287,29 @@ planning layer above implementation tickets.
 
 ### To-Do Items
 
+### Recommended Next Implementation Order
+
+The next product milestone should focus on first-time player comprehension
+before adding broader systems. Recommended order:
+
+1. First-Run Onboarding MVP.
+2. Visual How to Play / interactive tutorial improvements.
+3. Settings for haptics, reduced motion, and local data reset.
+4. Results screen to replace the solved-game dialog.
+5. CI and release-readiness automation.
+
+Rationale:
+
+- Onboarding directly addresses the biggest current product gap: new players
+  can reach the board, but the app does not proactively teach the first move,
+  whole-line slide behavior, or restart/record expectations.
+- Visual How to Play should follow onboarding because both share teaching
+  content and board-example UI.
+- Settings and Results make the app feel more complete, but they are more
+  valuable after players understand the core loop.
+- CI should be added before release planning, but product-learning surfaces are
+  higher leverage while the Android experience is still taking shape.
+
 ### 1. Add Android Instrumentation Tests
 
 Priority: High
@@ -314,11 +337,35 @@ Implementation notes:
 
 Priority: High
 
+Recommended next implementation target.
+
 - Add a lightweight first-run state in `SharedPreferences`.
-- Show a short onboarding flow before the first game, with a Skip option.
+- Show a short onboarding flow before the first game, with Skip and Start 3x3
+  actions.
 - Recommend 3x3 as the first puzzle for new players.
 - Teach goal, tap, whole-line slide, swipe, undo, restart, and records.
 - Re-open onboarding from Home or Settings.
+
+MVP flow:
+
+1. On first launch, show onboarding before the player starts their first game.
+2. Page 1: objective, ordered numbers, empty cell in the bottom-right corner.
+3. Page 2: tap a tile in the same row or column as the empty cell.
+4. Page 3: whole-line slide, where farther aligned tiles slide as one move.
+5. Page 4: Undo, Restart, Records, and solver-assisted records not counting as
+   player bests.
+6. Skip marks onboarding as seen and returns to Home.
+7. Start 3x3 marks onboarding as seen and starts a 3x3 game.
+
+Acceptance criteria:
+
+- First install or cleared app data shows onboarding before normal play.
+- Returning users do not see onboarding automatically after Skip or Start 3x3.
+- Home exposes a way to re-open onboarding or the same beginner guide.
+- Instrumentation tests cover first launch onboarding, Skip persistence, Start
+  3x3 navigation, and re-opening the guide.
+- The implementation keeps `GameModel` unchanged and confines first-run state to
+  Android UI/preferences code.
 
 ### 3. Replace Text-Only How To Play With Visual Learning
 
@@ -330,6 +377,15 @@ Priority: High
 - Add a compact reminder from the in-game Menu.
 - Keep all puzzle-rule explanations aligned with `GameModel` semantics.
 
+Recommended scope:
+
+- Reuse the onboarding teaching content where possible.
+- Add small static board examples before building a fully interactive tutorial.
+- Prioritize visual clarity for whole-line slide because it is the least obvious
+  mechanic for new players.
+- Add instrumentation or screenshot smoke coverage after stable IDs exist for
+  the visual examples.
+
 ### 4. Add Settings
 
 Priority: High
@@ -340,6 +396,14 @@ Priority: High
 - Add reduced-motion preference before adding heavier animations.
 - Add reset local data actions for save and records, behind confirmation.
 
+Recommended MVP scope:
+
+- Add Settings entry from Home and in-game Menu.
+- Store haptic feedback and reduced-motion preferences in `SharedPreferences`.
+- Apply haptic toggle to existing board/control feedback.
+- Add reset save and reset records actions behind confirmation dialogs.
+- Defer sound and theme controls until those systems exist.
+
 ### 5. Add Results Screen
 
 Priority: High
@@ -349,6 +413,15 @@ Priority: High
 - Show solver-assisted completions with distinct wording and no record write.
 - Offer Play Again, New Size, Home, and optionally Share later.
 
+Recommended MVP scope:
+
+- Replace the current solved dialog with an in-activity Results screen.
+- Preserve record comparison rules: fewer moves first, then lower time.
+- Keep solver-assisted completions visibly separate and excluded from player
+  best records.
+- Add instrumentation coverage for normal win result navigation and
+  solver-assisted no-record behavior after the screen exists.
+
 ### 6. Add CI For Build Quality
 
 Priority: Medium
@@ -357,6 +430,17 @@ Priority: Medium
 - Compile desktop Java.
 - Run Android assemble/lint.
 - Run public Javadoc doclint checks where practical.
+
+Recommended scope:
+
+- Start with a local one-command verification script if GitHub Actions is not
+  configured yet.
+- CI should run shared core tests, desktop compile, Android assemble/lint, and
+  API doclint.
+- Connected Android instrumentation tests can remain manual at first unless a
+  stable emulator runner is available in CI.
+- Add release-readiness checks later: signed release build, versioning, and Play
+  App Bundle generation.
 
 ### UX Improvement Directions
 
@@ -454,6 +538,9 @@ Priority: Low to Medium
   How to Play, whole-line move/undo, save/load persistence, and rotation.
 - Added stable Android view IDs for key screens and controls, plus Activity
   screen-state restoration so rotation preserves the current game screen.
+- Expanded the next-stage roadmap with recommended implementation order,
+  onboarding MVP acceptance criteria, visual tutorial scope, Settings MVP,
+  Results screen scope, and CI/release-readiness direction.
 
 ### 2026-05-24
 
