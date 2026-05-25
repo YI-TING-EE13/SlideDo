@@ -133,8 +133,7 @@ public class MainActivity extends Activity implements GameObserver {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getWindow().setStatusBarColor(COLOR_BACKGROUND);
-        getWindow().setNavigationBarColor(COLOR_BACKGROUND);
+        applyLegacySystemBarColors();
 
         int lastSize = getSharedPreferences(PREFS, MODE_PRIVATE).getInt(KEY_LAST_SIZE, 4);
         if (lastSize < 3 || lastSize > 5) {
@@ -188,6 +187,7 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     @SuppressLint("GestureBackNavigation")
+    @SuppressWarnings("deprecation")
     @Override
     public void onBackPressed() {
         handleBackNavigation();
@@ -222,6 +222,15 @@ public class MainActivity extends Activity implements GameObserver {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && backCallback != null) {
             getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(backCallback);
             backCallback = null;
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private void applyLegacySystemBarColors() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            // Android 15+ deprecates explicit system bar colors for edge-to-edge windows.
+            getWindow().setStatusBarColor(COLOR_BACKGROUND);
+            getWindow().setNavigationBarColor(COLOR_BACKGROUND);
         }
     }
 

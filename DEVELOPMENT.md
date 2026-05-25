@@ -561,6 +561,9 @@ Priority: Low to Medium
   compile, Android assemble/lint, and public Javadocs.
 - Refreshed README, Android README, and development planning notes after the
   Android onboarding/settings/results MVP pass.
+- Removed local verification warning noise by modernizing Android Gradle DSL
+  assignments, enabling native access for Gradle wrapper JVMs, and treating
+  Android Java deprecation warnings explicitly.
 
 ### 2026-05-24
 
