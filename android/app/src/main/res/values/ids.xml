@@ -17,6 +17,9 @@
     <item name="mode_5_button" type="id" />
     <item name="mode_home_button" type="id" />
     <item name="how_root" type="id" />
+    <item name="how_goal_example" type="id" />
+    <item name="how_tap_example" type="id" />
+    <item name="how_line_example" type="id" />
     <item name="how_back_button" type="id" />
     <item name="records_root" type="id" />
     <item name="records_back_button" type="id" />

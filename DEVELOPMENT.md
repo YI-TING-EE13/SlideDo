@@ -41,7 +41,7 @@ Android currently supports:
 - First-run onboarding before normal play, with Skip and Start 3x3 actions.
 - Continue when a valid save exists.
 - Mode Select for 3x3, 4x4, and 5x5 games.
-- How to Play and Records screens before or during gameplay.
+- Visual How to Play and Records screens before or during gameplay.
 - Beginner Guide re-entry from Home.
 - 3x3, 4x4, and 5x5 games.
 - Tap and swipe movement.
@@ -241,9 +241,9 @@ planning layer above implementation tickets.
 - Mode Select communicates size and rough difficulty, but it does not yet show
   expected session length, scramble difficulty, or recommended first choice for
   new players.
-- How to Play explains the objective and controls, but it is still text-heavy.
-  The app needs visual examples for tap, whole-line slide, swipe, undo, restart,
-  and solver-assisted completion rules.
+- How to Play now includes small static board examples for the solved goal,
+  adjacent tap moves, and whole-line slides. It still needs richer visual
+  examples for swipe, undo, restart, and solver-assisted completion rules.
 - The in-game hierarchy is now much closer to a product app: board first,
   progress visible, Undo/Restart available, secondary actions behind Menu and
   Assist. The next UX risk is that all controls are still text buttons and the
@@ -294,15 +294,16 @@ planning layer above implementation tickets.
 The next product milestone should continue improving first-time player
 comprehension before adding broader systems. Recommended order:
 
-1. Visual How to Play / interactive tutorial improvements.
-2. Settings for haptics, reduced motion, and local data reset.
-3. Results screen to replace the solved-game dialog.
-4. CI and release-readiness automation.
+1. Settings for haptics, reduced motion, and local data reset.
+2. Results screen to replace the solved-game dialog.
+3. CI and release-readiness automation.
+4. Deeper interactive tutorial improvements.
 
 Rationale:
 
-- The First-Run Onboarding MVP now covers the basic teaching path, so visual How
-  to Play should follow it by reusing the same concepts with board examples.
+- The First-Run Onboarding and Visual How to Play MVPs now cover the basic
+  teaching path. Settings and Results are the next highest-value product
+  surfaces for making the app feel complete.
 - Settings and Results make the app feel more complete, but they are more
   valuable after players understand the core loop.
 - CI should be added before release planning, but product-learning surfaces are
@@ -369,19 +370,21 @@ Acceptance criteria:
 
 Priority: High
 
-- Add small board diagrams or inline demo panels for tap and whole-line slides.
-- Show the empty cell explicitly in each example.
-- Make the examples short enough to scan before starting a game.
-- Add a compact reminder from the in-game Menu.
-- Keep all puzzle-rule explanations aligned with `GameModel` semantics.
+Status: Completed on 2026-05-25.
+
+- [x] Add small board diagrams or inline demo panels for tap and whole-line slides.
+- [x] Show the empty cell explicitly in each example.
+- [x] Make the examples short enough to scan before starting a game.
+- [x] Add a compact reminder from the in-game Menu.
+- [x] Keep all puzzle-rule explanations aligned with `GameModel` semantics.
 
 Recommended scope:
 
-- Reuse the onboarding teaching content where possible.
-- Add small static board examples before building a fully interactive tutorial.
-- Prioritize visual clarity for whole-line slide because it is the least obvious
+- [x] Reuse the onboarding teaching content where possible.
+- [x] Add small static board examples before building a fully interactive tutorial.
+- [x] Prioritize visual clarity for whole-line slide because it is the least obvious
   mechanic for new players.
-- Add instrumentation or screenshot smoke coverage after stable IDs exist for
+- [x] Add instrumentation or screenshot smoke coverage after stable IDs exist for
   the visual examples.
 
 ### 4. Add Settings
@@ -541,6 +544,9 @@ Priority: Low to Medium
   Results screen scope, and CI/release-readiness direction.
 - Implemented the First-Run Onboarding MVP with a four-page beginner flow,
   persistent Skip/Start 3x3 state, Home re-entry, and instrumentation coverage.
+- Replaced the text-only How to Play surface with visual 3x3 teaching examples
+  for the goal, tap movement, and whole-line slides, plus a compact in-game
+  Quick Reminder and instrumentation coverage.
 
 ### 2026-05-24
 

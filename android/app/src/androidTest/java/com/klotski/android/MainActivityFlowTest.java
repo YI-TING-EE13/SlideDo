@@ -20,6 +20,8 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.uiautomator.By;
 import androidx.test.uiautomator.UiDevice;
 import androidx.test.uiautomator.UiObject2;
+import androidx.test.uiautomator.UiScrollable;
+import androidx.test.uiautomator.UiSelector;
 import androidx.test.uiautomator.Until;
 
 import org.junit.After;
@@ -181,10 +183,33 @@ public class MainActivityFlowTest {
         waitForId("how_root");
         waitForText("Goal");
         waitForText("Tap");
-        waitForText("Swipe");
-        waitForText("Records");
+        waitForText("Whole-line slide");
+        waitForText("Empty");
+        assertNotNull(findById("how_goal_example"));
+        assertNotNull(findById("how_tap_example"));
+        assertNotNull(findById("how_line_example"));
+        scrollToText("Swipe");
+        scrollToText("Records");
         clickId(R.id.how_back_button);
         waitForId("home_root");
+    }
+
+    @Test
+    public void gameMenuShowsQuickReminder() throws Exception {
+        writeSavedGame(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 0);
+        launchApp();
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+
+        clickId(R.id.game_menu_button);
+        UiObject2 reminder = waitForText("Quick Reminder");
+        reminder.click();
+        device.waitForIdle();
+
+        waitForText("Move reminder");
+        waitForText("Tap or swipe any tile aligned with the empty cell. Farther aligned tiles slide the whole line as one move. Undo backs up one gesture.");
+        device.pressBack();
+        waitForId("game_root");
     }
 
     @Test
@@ -315,6 +340,15 @@ public class MainActivityFlowTest {
         UiObject2 object = device.wait(Until.findObject(By.text(text)), TIMEOUT_MS);
         assertNotNull("Missing text: " + text, object);
         return object;
+    }
+
+    private UiObject2 scrollToText(String text) throws Exception {
+        UiObject2 object = device.findObject(By.text(text));
+        if (object == null) {
+            new UiScrollable(new UiSelector().scrollable(true)).scrollTextIntoView(text);
+            device.waitForIdle();
+        }
+        return waitForText(text);
     }
 
     private void clickId(int resourceId) {

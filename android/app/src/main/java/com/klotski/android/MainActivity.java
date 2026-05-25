@@ -16,6 +16,7 @@ import android.view.HapticFeedbackConstants;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.GridLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -386,8 +387,12 @@ public class MainActivity extends Activity implements GameObserver {
         ScreenLayout screen = createScreenLayout();
         screen.root.setId(R.id.how_root);
         addScreenHeader(screen.content, getString(R.string.how_title), getString(R.string.how_subtitle));
-        addInstruction(screen.content, R.string.how_goal_title, R.string.how_goal_body);
-        addInstruction(screen.content, R.string.how_tap_title, R.string.how_tap_body);
+        addLearningExample(screen.content, R.id.how_goal_example, R.string.how_goal_title, R.string.how_goal_body,
+                new int[][] {{1, 2, 3}, {4, 5, 6}, {7, 8, 0}}, new int[] {});
+        addLearningExample(screen.content, R.id.how_tap_example, R.string.how_tap_title, R.string.how_tap_body,
+                new int[][] {{1, 2, 3}, {4, 5, 0}, {7, 8, 6}}, new int[] {5});
+        addLearningExample(screen.content, R.id.how_line_example, R.string.how_line_title, R.string.how_line_body,
+                new int[][] {{1, 2, 3}, {0, 4, 5}, {7, 8, 6}}, new int[] {4, 5});
         addInstruction(screen.content, R.string.how_swipe_title, R.string.how_swipe_body);
         addInstruction(screen.content, R.string.how_tools_title, R.string.how_tools_body);
         addInstruction(screen.content, R.string.how_records_title, R.string.how_records_body);
@@ -626,6 +631,71 @@ public class MainActivity extends Activity implements GameObserver {
         parent.addView(panel, panelParams);
     }
 
+    private void addLearningExample(LinearLayout parent, int viewId, int titleResId, int bodyResId,
+            int[][] grid, int[] highlightedValues) {
+        LinearLayout panel = new LinearLayout(this);
+        panel.setId(viewId);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(16), dp(14), dp(16), dp(14));
+        panel.setBackground(makePanelBackground(COLOR_PANEL));
+
+        TextView title = createText(getString(titleResId), 18, Color.WHITE, Typeface.BOLD);
+        TextView body = createText(getString(bodyResId), 15, COLOR_MUTED_TEXT, Typeface.NORMAL);
+        body.setLineSpacing(0, 1.12f);
+
+        panel.addView(title, fullWidthParams());
+        LinearLayout.LayoutParams bodyParams = fullWidthParams();
+        bodyParams.setMargins(0, dp(6), 0, dp(12));
+        panel.addView(body, bodyParams);
+        panel.addView(createLearningBoard(grid, highlightedValues), centeredWrapParams());
+
+        LinearLayout.LayoutParams panelParams = fullWidthParams();
+        panelParams.setMargins(0, 0, 0, dp(12));
+        parent.addView(panel, panelParams);
+    }
+
+    private GridLayout createLearningBoard(int[][] grid, int[] highlightedValues) {
+        GridLayout board = new GridLayout(this);
+        board.setColumnCount(3);
+        board.setRowCount(3);
+        board.setUseDefaultMargins(false);
+
+        for (int row = 0; row < grid.length; row++) {
+            for (int col = 0; col < grid[row].length; col++) {
+                int value = grid[row][col];
+                boolean highlighted = containsValue(highlightedValues, value);
+                TextView cell = createLearningCell(value, highlighted);
+                GridLayout.LayoutParams cellParams = new GridLayout.LayoutParams(
+                        GridLayout.spec(row), GridLayout.spec(col));
+                cellParams.width = dp(48);
+                cellParams.height = dp(48);
+                cellParams.setMargins(dp(3), dp(3), dp(3), dp(3));
+                board.addView(cell, cellParams);
+            }
+        }
+
+        return board;
+    }
+
+    private TextView createLearningCell(int value, boolean highlighted) {
+        TextView cell = createText(value == 0 ? getString(R.string.board_empty_cell_short) : String.valueOf(value),
+                value == 0 ? 10 : 18,
+                highlighted ? Color.BLACK : (value == 0 ? COLOR_ACCENT : Color.WHITE),
+                Typeface.BOLD);
+        cell.setGravity(Gravity.CENTER);
+        if (value == 0) {
+            cell.setBackground(makeCellBackground(COLOR_BACKGROUND, COLOR_ACCENT));
+            cell.setContentDescription(getString(R.string.board_empty_cell_description));
+        } else if (highlighted) {
+            cell.setBackground(makeCellBackground(COLOR_ACCENT, Color.WHITE));
+            cell.setContentDescription(getString(R.string.board_highlighted_tile_description, value));
+        } else {
+            cell.setBackground(makeCellBackground(COLOR_PANEL_LIGHT, Color.argb(80, 255, 255, 255)));
+            cell.setContentDescription(getString(R.string.board_tile_description, value));
+        }
+        return cell;
+    }
+
     private void showPauseMenu() {
         String[] items = new String[] {
                 getString(R.string.menu_resume),
@@ -633,6 +703,7 @@ public class MainActivity extends Activity implements GameObserver {
                 getString(R.string.button_load),
                 getString(R.string.button_restart),
                 getString(R.string.menu_new_size),
+                getString(R.string.menu_quick_reminder),
                 getString(R.string.home_how_to_play),
                 getString(R.string.home_records),
                 getString(R.string.nav_home)
@@ -661,9 +732,10 @@ public class MainActivity extends Activity implements GameObserver {
                             saveGame();
                             showModeSelectScreen();
                         }
-                        case 5 -> showHowToScreen(Screen.GAME);
-                        case 6 -> showRecordsScreen(Screen.GAME);
-                        case 7 -> {
+                        case 5 -> showQuickReminder();
+                        case 6 -> showHowToScreen(Screen.GAME);
+                        case 7 -> showRecordsScreen(Screen.GAME);
+                        case 8 -> {
                             saveGame();
                             showHomeScreen();
                         }
@@ -671,6 +743,14 @@ public class MainActivity extends Activity implements GameObserver {
                         }
                     }
                 })
+                .show();
+    }
+
+    private void showQuickReminder() {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.quick_reminder_title)
+                .setMessage(R.string.quick_reminder_message)
+                .setPositiveButton(R.string.dialog_close, null)
                 .show();
     }
 
@@ -1082,11 +1162,27 @@ public class MainActivity extends Activity implements GameObserver {
         return params;
     }
 
+    private LinearLayout.LayoutParams centeredWrapParams() {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        params.gravity = Gravity.CENTER_HORIZONTAL;
+        return params;
+    }
+
     private GradientDrawable makePanelBackground(int color) {
         GradientDrawable drawable = new GradientDrawable();
         drawable.setColor(color);
         drawable.setCornerRadius(dp(8));
         drawable.setStroke(dp(1), Color.argb(80, 255, 255, 255));
+        return drawable;
+    }
+
+    private GradientDrawable makeCellBackground(int color, int strokeColor) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(color);
+        drawable.setCornerRadius(dp(6));
+        drawable.setStroke(dp(1), strokeColor);
         return drawable;
     }
 
@@ -1101,6 +1197,15 @@ public class MainActivity extends Activity implements GameObserver {
         if (boardView != null) {
             boardView.performHapticFeedback(feedbackConstant);
         }
+    }
+
+    private boolean containsValue(int[] values, int target) {
+        for (int value : values) {
+            if (value == target) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private int dp(int value) {
