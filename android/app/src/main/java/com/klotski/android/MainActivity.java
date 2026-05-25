@@ -19,6 +19,7 @@ import android.widget.Button;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.window.OnBackInvokedCallback;
@@ -55,6 +56,8 @@ public class MainActivity extends Activity implements GameObserver {
     private static final String KEY_LAST_SIZE = "last_size";
     private static final String KEY_BEST_PREFIX = "best_";
     private static final String KEY_ONBOARDING_SEEN = "onboarding_seen";
+    private static final String KEY_HAPTIC_ENABLED = "haptic_enabled";
+    private static final String KEY_REDUCED_MOTION = "reduced_motion";
     private static final String STATE_SCREEN = "screen";
     private static final String STATE_INFO_RETURN_SCREEN = "info_return_screen";
     private static final String STATE_GAME_STARTED = "game_started";
@@ -97,6 +100,7 @@ public class MainActivity extends Activity implements GameObserver {
         MODE_SELECT,
         HOW_TO_PLAY,
         RECORDS,
+        SETTINGS,
         GAME
     }
 
@@ -186,7 +190,8 @@ public class MainActivity extends Activity implements GameObserver {
             showHomeScreen();
         } else if (currentScreen == Screen.HOME) {
             finish();
-        } else if ((currentScreen == Screen.HOW_TO_PLAY || currentScreen == Screen.RECORDS)
+        } else if ((currentScreen == Screen.HOW_TO_PLAY || currentScreen == Screen.RECORDS
+                || currentScreen == Screen.SETTINGS)
                 && infoReturnScreen == Screen.GAME && gameStarted) {
             showGameScreen();
         } else {
@@ -235,7 +240,8 @@ public class MainActivity extends Activity implements GameObserver {
             return false;
         }
 
-        if ((savedScreen == Screen.HOW_TO_PLAY || savedScreen == Screen.RECORDS)
+        if ((savedScreen == Screen.HOW_TO_PLAY || savedScreen == Screen.RECORDS
+                || savedScreen == Screen.SETTINGS)
                 && savedReturnScreen == Screen.GAME && savedGameStarted && !loadGame()) {
             savedReturnScreen = Screen.HOME;
             gameStarted = false;
@@ -246,6 +252,7 @@ public class MainActivity extends Activity implements GameObserver {
             case MODE_SELECT -> showModeSelectScreen();
             case HOW_TO_PLAY -> showHowToScreen(savedReturnScreen);
             case RECORDS -> showRecordsScreen(savedReturnScreen);
+            case SETTINGS -> showSettingsScreen(savedReturnScreen);
             case HOME -> showHomeScreen();
             default -> {
                 return false;
@@ -306,6 +313,9 @@ public class MainActivity extends Activity implements GameObserver {
         Button howToButton = addWideButton(screen.content, R.string.home_how_to_play, COLOR_PANEL,
                 v -> showHowToScreen(Screen.HOME));
         howToButton.setId(R.id.home_how_to_play_button);
+        Button settingsButton = addWideButton(screen.content, R.string.home_settings, COLOR_PANEL,
+                v -> showSettingsScreen(Screen.HOME));
+        settingsButton.setId(R.id.home_settings_button);
         Button recordsButton = addWideButton(screen.content, R.string.home_records, COLOR_PANEL,
                 v -> showRecordsScreen(Screen.HOME));
         recordsButton.setId(R.id.home_records_button);
@@ -421,6 +431,38 @@ public class MainActivity extends Activity implements GameObserver {
         setContentView(screen.root);
     }
 
+    private void showSettingsScreen(Screen returnScreen) {
+        currentScreen = Screen.SETTINGS;
+        infoReturnScreen = returnScreen;
+        statusText = null;
+        gameTitleText = null;
+        commandButtons.clear();
+
+        ScreenLayout screen = createScreenLayout();
+        screen.root.setId(R.id.settings_root);
+        addScreenHeader(screen.content, getString(R.string.settings_title), getString(R.string.settings_subtitle));
+        addSettingsSwitch(screen.content, R.id.settings_haptic_switch, R.string.settings_haptic_title,
+                R.string.settings_haptic_body, isHapticEnabled(), checked -> {
+                    setPreference(KEY_HAPTIC_ENABLED, checked);
+                    applySettingsToBoard();
+                });
+        addSettingsSwitch(screen.content, R.id.settings_reduced_motion_switch, R.string.settings_reduced_motion_title,
+                R.string.settings_reduced_motion_body, isReducedMotionEnabled(), checked -> {
+                    setPreference(KEY_REDUCED_MOTION, checked);
+                    applySettingsToBoard();
+                });
+        Button resetSaveButton = addWideButton(screen.content, R.string.settings_reset_save, COLOR_PANEL,
+                v -> confirmResetSave());
+        resetSaveButton.setId(R.id.settings_reset_save_button);
+        Button resetRecordsButton = addWideButton(screen.content, R.string.settings_reset_records, COLOR_PANEL,
+                v -> confirmResetRecords());
+        resetRecordsButton.setId(R.id.settings_reset_records_button);
+        Button backButton = addWideButton(screen.content, R.string.nav_back, COLOR_PRIMARY, v -> returnFromInfoScreen());
+        backButton.setId(R.id.settings_back_button);
+
+        setContentView(screen.root);
+    }
+
     private void returnFromInfoScreen() {
         if (infoReturnScreen == Screen.GAME && gameStarted) {
             showGameScreen();
@@ -529,6 +571,7 @@ public class MainActivity extends Activity implements GameObserver {
             boardView.setId(R.id.game_board);
             boardView.setBusyStateListener(this::updateControlsEnabled);
         }
+        applySettingsToBoard();
     }
 
     private void addModeRow(LinearLayout parent, int size, int difficultyResId, int detailResId) {
@@ -581,6 +624,40 @@ public class MainActivity extends Activity implements GameObserver {
         LinearLayout.LayoutParams bestParams = fullWidthParams();
         bestParams.setMargins(0, dp(6), 0, 0);
         row.addView(best, bestParams);
+
+        LinearLayout.LayoutParams rowParams = fullWidthParams();
+        rowParams.setMargins(0, 0, 0, dp(12));
+        parent.addView(row, rowParams);
+    }
+
+    private void addSettingsSwitch(LinearLayout parent, int switchId, int titleResId, int bodyResId,
+            boolean checked, SettingChangeListener listener) {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setPadding(dp(16), dp(14), dp(16), dp(14));
+        row.setBackground(makePanelBackground(COLOR_PANEL));
+
+        LinearLayout copy = new LinearLayout(this);
+        copy.setOrientation(LinearLayout.VERTICAL);
+        TextView title = createText(getString(titleResId), 18, Color.WHITE, Typeface.BOLD);
+        TextView body = createText(getString(bodyResId), 14, COLOR_MUTED_TEXT, Typeface.NORMAL);
+        body.setLineSpacing(0, 1.12f);
+        copy.addView(title, fullWidthParams());
+        LinearLayout.LayoutParams bodyParams = fullWidthParams();
+        bodyParams.setMargins(0, dp(5), 0, 0);
+        copy.addView(body, bodyParams);
+        row.addView(copy, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+        Switch toggle = new Switch(this);
+        toggle.setId(switchId);
+        toggle.setChecked(checked);
+        toggle.setContentDescription(getString(titleResId));
+        toggle.setOnCheckedChangeListener((buttonView, isChecked) -> listener.onChanged(isChecked));
+        LinearLayout.LayoutParams switchParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        switchParams.setMargins(dp(16), 0, 0, 0);
+        row.addView(toggle, switchParams);
 
         LinearLayout.LayoutParams rowParams = fullWidthParams();
         rowParams.setMargins(0, 0, 0, dp(12));
@@ -705,6 +782,7 @@ public class MainActivity extends Activity implements GameObserver {
                 getString(R.string.menu_new_size),
                 getString(R.string.menu_quick_reminder),
                 getString(R.string.home_how_to_play),
+                getString(R.string.home_settings),
                 getString(R.string.home_records),
                 getString(R.string.nav_home)
         };
@@ -734,8 +812,9 @@ public class MainActivity extends Activity implements GameObserver {
                         }
                         case 5 -> showQuickReminder();
                         case 6 -> showHowToScreen(Screen.GAME);
-                        case 7 -> showRecordsScreen(Screen.GAME);
-                        case 8 -> {
+                        case 7 -> showSettingsScreen(Screen.GAME);
+                        case 8 -> showRecordsScreen(Screen.GAME);
+                        case 9 -> {
                             saveGame();
                             showHomeScreen();
                         }
@@ -751,6 +830,32 @@ public class MainActivity extends Activity implements GameObserver {
                 .setTitle(R.string.quick_reminder_title)
                 .setMessage(R.string.quick_reminder_message)
                 .setPositiveButton(R.string.dialog_close, null)
+                .show();
+    }
+
+    private void confirmResetSave() {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.dialog_reset_save_title)
+                .setMessage(R.string.dialog_reset_save_message)
+                .setPositiveButton(R.string.dialog_reset, (dialog, which) -> {
+                    clearSavedGame();
+                    Toast.makeText(this, R.string.toast_save_reset, Toast.LENGTH_SHORT).show();
+                    showSettingsScreen(infoReturnScreen);
+                })
+                .setNegativeButton(R.string.dialog_cancel, null)
+                .show();
+    }
+
+    private void confirmResetRecords() {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.dialog_reset_records_title)
+                .setMessage(R.string.dialog_reset_records_message)
+                .setPositiveButton(R.string.dialog_reset, (dialog, which) -> {
+                    clearRecords();
+                    Toast.makeText(this, R.string.toast_records_reset, Toast.LENGTH_SHORT).show();
+                    showSettingsScreen(infoReturnScreen);
+                })
+                .setNegativeButton(R.string.dialog_cancel, null)
                 .show();
     }
 
@@ -944,6 +1049,16 @@ public class MainActivity extends Activity implements GameObserver {
         return size >= 3 && size <= 5 && parseGrid(prefs.getString(KEY_GRID, ""), size) != null;
     }
 
+    private void clearSavedGame() {
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+                .remove(KEY_SIZE)
+                .remove(KEY_GRID)
+                .remove(KEY_INITIAL_GRID)
+                .remove(KEY_MOVES)
+                .remove(KEY_ELAPSED)
+                .commit();
+    }
+
     private String flatten(int[][] grid) {
         StringBuilder sb = new StringBuilder();
         for (int r = 0; r < grid.length; r++) {
@@ -1005,6 +1120,15 @@ public class MainActivity extends Activity implements GameObserver {
                 .putInt(KEY_BEST_PREFIX + size + "_moves", moves)
                 .putLong(KEY_BEST_PREFIX + size + "_time", timeMs)
                 .apply();
+    }
+
+    private void clearRecords() {
+        SharedPreferences.Editor editor = getSharedPreferences(PREFS, MODE_PRIVATE).edit();
+        for (int size = 3; size <= 5; size++) {
+            editor.remove(KEY_BEST_PREFIX + size + "_moves");
+            editor.remove(KEY_BEST_PREFIX + size + "_time");
+        }
+        editor.commit();
     }
 
     private void runSolver(Solver solver) {
@@ -1194,8 +1318,29 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private void performBoardHaptic(int feedbackConstant) {
-        if (boardView != null) {
+        if (boardView != null && isHapticEnabled()) {
             boardView.performHapticFeedback(feedbackConstant);
+        }
+    }
+
+    private boolean isHapticEnabled() {
+        return getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_HAPTIC_ENABLED, true);
+    }
+
+    private boolean isReducedMotionEnabled() {
+        return getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_REDUCED_MOTION, false);
+    }
+
+    private void setPreference(String key, boolean value) {
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+                .putBoolean(key, value)
+                .apply();
+    }
+
+    private void applySettingsToBoard() {
+        if (boardView != null) {
+            boardView.setHapticFeedbackEnabled(isHapticEnabled());
+            boardView.setReducedMotionEnabled(isReducedMotionEnabled());
         }
     }
 
@@ -1328,5 +1473,9 @@ public class MainActivity extends Activity implements GameObserver {
             this.timeMs = timeMs;
             this.assisted = assisted;
         }
+    }
+
+    private interface SettingChangeListener {
+        void onChanged(boolean checked);
     }
 }

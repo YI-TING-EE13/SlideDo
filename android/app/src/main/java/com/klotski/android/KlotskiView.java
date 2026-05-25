@@ -58,6 +58,7 @@ public class KlotskiView extends View implements GameObserver {
     private float animationProgress = 1f;
     private boolean inputLocked;
     private boolean trackingTouch;
+    private boolean reducedMotionEnabled;
     private Runnable busyStateListener;
 
     /**
@@ -155,6 +156,15 @@ public class KlotskiView extends View implements GameObserver {
      */
     public void setBusyStateListener(Runnable busyStateListener) {
         this.busyStateListener = busyStateListener;
+    }
+
+    /**
+     * Enables or disables board movement animation for reduced-motion users.
+     *
+     * @param reducedMotionEnabled {@code true} to complete moves without transition animation
+     */
+    public void setReducedMotionEnabled(boolean reducedMotionEnabled) {
+        this.reducedMotionEnabled = reducedMotionEnabled;
     }
 
     /**
@@ -441,6 +451,10 @@ public class KlotskiView extends View implements GameObserver {
         animationProgress = 0f;
         isAnimating = true;
         notifyBusyStateChanged();
+        if (reducedMotionEnabled) {
+            finishSingleMoveAnimation();
+            return;
+        }
 
         ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
         animator.setDuration(140);
@@ -452,16 +466,20 @@ public class KlotskiView extends View implements GameObserver {
         animator.addListener(new android.animation.AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(android.animation.Animator animation) {
-                isAnimating = false;
-                movingValue = 0;
-                skipRow = -1;
-                skipCol = -1;
-                invalidate();
-                playQueuedMove();
-                notifyBusyStateChanged();
+                finishSingleMoveAnimation();
             }
         });
         animator.start();
+    }
+
+    private void finishSingleMoveAnimation() {
+        isAnimating = false;
+        movingValue = 0;
+        skipRow = -1;
+        skipCol = -1;
+        invalidate();
+        playQueuedMove();
+        notifyBusyStateChanged();
     }
 
     /**
@@ -509,6 +527,10 @@ public class KlotskiView extends View implements GameObserver {
         animationProgress = 0f;
         isAnimating = true;
         notifyBusyStateChanged();
+        if (reducedMotionEnabled) {
+            finishLineMoveAnimation();
+            return;
+        }
         ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
         animator.setDuration(140);
         animator.setInterpolator(new DecelerateInterpolator());
@@ -519,14 +541,18 @@ public class KlotskiView extends View implements GameObserver {
         animator.addListener(new android.animation.AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(android.animation.Animator animation) {
-                isAnimating = false;
-                animatedTiles.clear();
-                invalidate();
-                playQueuedMove();
-                notifyBusyStateChanged();
+                finishLineMoveAnimation();
             }
         });
         animator.start();
+    }
+
+    private void finishLineMoveAnimation() {
+        isAnimating = false;
+        animatedTiles.clear();
+        invalidate();
+        playQueuedMove();
+        notifyBusyStateChanged();
     }
 
     /**

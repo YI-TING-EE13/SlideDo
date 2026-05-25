@@ -53,6 +53,7 @@ Android currently supports:
 - Best records by puzzle size.
 - BFS, A*, and IDA* solver controls behind Assist with expensive-operation warnings.
 - Solver-assisted completion protection so player records are not overwritten.
+- Settings for haptic feedback, reduced motion, reset saved game, and reset records.
 - Haptic feedback.
 
 ## Behavioral Reference
@@ -256,9 +257,9 @@ planning layer above implementation tickets.
   Save/Load, last selected mode, and per-size records. It is not yet a polished
   product save system because it lacks explicit resume metadata, multiple
   puzzle slots, save freshness display, and cloud/back-up strategy.
-- The app does not yet have audio, haptic settings, themes, hints, onboarding
-  state, accessibility labels, crash reporting, analytics, Play Store metadata,
-  privacy disclosures, or release signing planning.
+- The app does not yet have audio, themes, hints, accessibility labels, crash
+  reporting, analytics, Play Store metadata, privacy disclosures, or release
+  signing planning.
 - As of this pass, SlideDo is no longer just a raw feature demo, but it is not
   yet a complete mobile game product. The core gameplay works; the missing work
   is mostly onboarding, polish, product systems, release readiness, and
@@ -268,8 +269,8 @@ planning layer above implementation tickets.
 
 - First-run guided path is MVP-level: onboarding exists, but there is no guided
   first puzzle, first-move coaching, or interactive whole-line slide practice.
-- Missing Settings: no haptic toggle, sound toggle, theme choice, animation
-  preference, or reset local data action.
+- Settings are MVP-level: haptic feedback, reduced motion, reset save, and reset
+  records exist, but sound and theme controls still wait on those systems.
 - Missing Results screen: win handling still uses a dialog instead of a
   product-style post-game screen with record status and next actions.
 - Missing complete feedback system: no sound, celebratory animation, progression
@@ -280,7 +281,7 @@ planning layer above implementation tickets.
   progression, achievements, or session goals.
 - Missing accessibility pass: text buttons are usable, but the app needs content
   descriptions, larger touch-target review, color-contrast review, screen-reader
-  wording, and reduced-motion support.
+  wording, and broader reduced-motion validation.
 - Missing Play Store readiness systems: release signing, app icon polish,
   adaptive icons, screenshots, privacy policy, data safety notes, crash
   reporting, and versioning discipline.
@@ -294,18 +295,16 @@ planning layer above implementation tickets.
 The next product milestone should continue improving first-time player
 comprehension before adding broader systems. Recommended order:
 
-1. Settings for haptics, reduced motion, and local data reset.
-2. Results screen to replace the solved-game dialog.
-3. CI and release-readiness automation.
-4. Deeper interactive tutorial improvements.
+1. Results screen to replace the solved-game dialog.
+2. CI and release-readiness automation.
+3. Deeper interactive tutorial improvements.
+4. Sound/theme settings after those systems exist.
 
 Rationale:
 
-- The First-Run Onboarding and Visual How to Play MVPs now cover the basic
-  teaching path. Settings and Results are the next highest-value product
-  surfaces for making the app feel complete.
-- Settings and Results make the app feel more complete, but they are more
-  valuable after players understand the core loop.
+- The First-Run Onboarding, Visual How to Play, and Settings MVPs now cover the
+  basic teaching and preference path. Results is the next highest-value product
+  surface for making wins feel complete.
 - CI should be added before release planning, but product-learning surfaces are
   higher leverage while the Android experience is still taking shape.
 
@@ -391,18 +390,20 @@ Recommended scope:
 
 Priority: High
 
-- Add haptic feedback toggle.
+Status: Completed on 2026-05-25.
+
+- [x] Add haptic feedback toggle.
 - Add sound effects toggle after audio exists.
 - Add theme selection after at least one alternate theme exists.
-- Add reduced-motion preference before adding heavier animations.
-- Add reset local data actions for save and records, behind confirmation.
+- [x] Add reduced-motion preference before adding heavier animations.
+- [x] Add reset local data actions for save and records, behind confirmation.
 
 Recommended MVP scope:
 
-- Add Settings entry from Home and in-game Menu.
-- Store haptic feedback and reduced-motion preferences in `SharedPreferences`.
-- Apply haptic toggle to existing board/control feedback.
-- Add reset save and reset records actions behind confirmation dialogs.
+- [x] Add Settings entry from Home and in-game Menu.
+- [x] Store haptic feedback and reduced-motion preferences in `SharedPreferences`.
+- [x] Apply haptic toggle to existing board/control feedback.
+- [x] Add reset save and reset records actions behind confirmation dialogs.
 - Defer sound and theme controls until those systems exist.
 
 ### 5. Add Results Screen
@@ -547,6 +548,9 @@ Priority: Low to Medium
 - Replaced the text-only How to Play surface with visual 3x3 teaching examples
   for the goal, tap movement, and whole-line slides, plus a compact in-game
   Quick Reminder and instrumentation coverage.
+- Implemented the Settings MVP with Home/Menu entry points, haptic and
+  reduced-motion toggles, reset-save/reset-records confirmation flows, and
+  instrumentation coverage.
 
 ### 2026-05-24
 

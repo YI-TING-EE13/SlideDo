@@ -4,6 +4,7 @@
     <item name="home_new_game_button" type="id" />
     <item name="home_onboarding_button" type="id" />
     <item name="home_how_to_play_button" type="id" />
+    <item name="home_settings_button" type="id" />
     <item name="home_records_button" type="id" />
     <item name="onboarding_root" type="id" />
     <item name="onboarding_progress_text" type="id" />
@@ -23,6 +24,12 @@
     <item name="how_back_button" type="id" />
     <item name="records_root" type="id" />
     <item name="records_back_button" type="id" />
+    <item name="settings_root" type="id" />
+    <item name="settings_haptic_switch" type="id" />
+    <item name="settings_reduced_motion_switch" type="id" />
+    <item name="settings_reset_save_button" type="id" />
+    <item name="settings_reset_records_button" type="id" />
+    <item name="settings_back_button" type="id" />
     <item name="game_root" type="id" />
     <item name="game_home_button" type="id" />
     <item name="game_menu_button" type="id" />

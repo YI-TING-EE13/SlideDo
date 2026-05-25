@@ -95,6 +95,7 @@ public class MainActivityFlowTest {
         assertNotNull(findById("home_new_game_button"));
         assertNotNull(findById("home_onboarding_button"));
         assertNotNull(findById("home_how_to_play_button"));
+        assertNotNull(findById("home_settings_button"));
         assertNotNull(findById("home_records_button"));
         assertNull(findById("home_continue_button"));
     }
@@ -139,6 +140,7 @@ public class MainActivityFlowTest {
         assertNotNull(findById("home_new_game_button"));
         assertNotNull(findById("home_onboarding_button"));
         assertNotNull(findById("home_how_to_play_button"));
+        assertNotNull(findById("home_settings_button"));
         assertNotNull(findById("home_records_button"));
         assertNull(findById("home_continue_button"));
     }
@@ -192,6 +194,84 @@ public class MainActivityFlowTest {
         scrollToText("Records");
         clickId(R.id.how_back_button);
         waitForId("home_root");
+    }
+
+    @Test
+    public void settingsFromHomeTogglesPreferences() throws Exception {
+        markOnboardingSeen();
+        launchApp();
+
+        clickId(R.id.home_settings_button);
+        waitForId("settings_root");
+        waitForText("Haptic feedback");
+        waitForText("Reduced motion");
+        assertNotNull(findById("settings_haptic_switch"));
+        assertNotNull(findById("settings_reduced_motion_switch"));
+
+        clickUiId("settings_haptic_switch");
+        clickUiId("settings_reduced_motion_switch");
+
+        SharedPreferences prefs = targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        assertFalse(prefs.getBoolean("haptic_enabled", true));
+        assertTrue(prefs.getBoolean("reduced_motion", false));
+    }
+
+    @Test
+    public void settingsCanResetSavedGame() throws Exception {
+        writeSavedGame(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 0);
+        launchApp();
+        assertNotNull(findById("home_continue_button"));
+
+        clickId(R.id.home_settings_button);
+        waitForId("settings_root");
+        clickId(R.id.settings_reset_save_button);
+        waitForText("Reset saved game?");
+        waitForText("RESET").click();
+        device.waitForIdle();
+        instrumentation.waitForIdleSync();
+
+        waitForId("settings_root");
+        clickId(R.id.settings_back_button);
+        waitForId("home_root");
+        assertNull(findById("home_continue_button"));
+    }
+
+    @Test
+    public void settingsCanResetRecords() throws Exception {
+        markOnboardingSeen();
+        writeBestRecords();
+        launchApp();
+
+        clickId(R.id.home_settings_button);
+        waitForId("settings_root");
+        clickId(R.id.settings_reset_records_button);
+        waitForText("Reset records?");
+        waitForText("RESET").click();
+        device.waitForIdle();
+        instrumentation.waitForIdleSync();
+
+        waitForId("settings_root");
+        clickId(R.id.settings_back_button);
+        waitForId("home_root");
+        clickId(R.id.home_records_button);
+        waitForId("records_root");
+        waitForText("No record yet");
+    }
+
+    @Test
+    public void gameMenuOpensSettingsAndBackReturnsToGame() throws Exception {
+        writeSavedGame(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 0);
+        launchApp();
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+
+        clickId(R.id.game_menu_button);
+        waitForText("Settings").click();
+        device.waitForIdle();
+
+        waitForId("settings_root");
+        clickId(R.id.settings_back_button);
+        waitForId("game_root");
     }
 
     @Test
@@ -326,6 +406,17 @@ public class MainActivityFlowTest {
                 .getBoolean("onboarding_seen", false);
     }
 
+    private void writeBestRecords() {
+        SharedPreferences.Editor editor = targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit();
+        editor.putInt("best_3_moves", 20);
+        editor.putLong("best_3_time", 30000);
+        editor.putInt("best_4_moves", 80);
+        editor.putLong("best_4_time", 120000);
+        editor.putInt("best_5_moves", 160);
+        editor.putLong("best_5_time", 300000);
+        assertTrue(editor.commit());
+    }
+
     private UiObject2 waitForId(String resourceName) {
         UiObject2 object = device.wait(Until.findObject(By.res(PACKAGE_NAME, resourceName)), TIMEOUT_MS);
         assertNotNull("Missing view id: " + resourceName, object);
@@ -340,6 +431,12 @@ public class MainActivityFlowTest {
         UiObject2 object = device.wait(Until.findObject(By.text(text)), TIMEOUT_MS);
         assertNotNull("Missing text: " + text, object);
         return object;
+    }
+
+    private void clickUiId(String resourceName) {
+        UiObject2 object = waitForId(resourceName);
+        object.click();
+        device.waitForIdle();
     }
 
     private UiObject2 scrollToText(String text) throws Exception {
