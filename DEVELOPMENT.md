@@ -12,6 +12,51 @@ This is the single source of truth for SlideDo development planning, feature beh
 - Do not rewrite history, squash, rebase, reset, or force-push unless the project owner explicitly requests it.
 - Before release or remote publication, verify `.gitignore` and ensure local files such as `klotski_save.json`, `klotski_save.dat`, `klotski_records.json`, `bin/`, `build/`, and Android build output are not tracked.
 
+## Next Session Bootstrap
+
+Use this section as the first stop in a fresh Codex conversation.
+
+Current handoff status:
+
+- Latest verified implementation baseline before this handoff:
+  `dc58eab Suppress local build warnings`.
+- This handoff guide is committed on top of that baseline; use `git log` to
+  confirm the current `HEAD` in a future session.
+- Working tree was clean after the handoff commit.
+- `DEVELOPMENT.md` is now the primary continuity artifact; older planning notes
+  were consolidated here.
+- The Android app has completed the MVP pass for Home, Mode Select, onboarding,
+  visual How to Play, Settings, Results, local records, save/load, and connected
+  instrumentation coverage.
+- The latest local verification pass was warning-clean for the previously noisy
+  Gradle DSL deprecation, Java native-access warning, and Android Java
+  deprecation note.
+
+Start a new implementation session by checking:
+
+```bat
+git status --short
+git log --oneline --decorate -5
+```
+
+Then run the smallest relevant verification for the planned change. For a broad
+Android or documentation-sensitive change, use:
+
+```bat
+verify.bat
+cd android
+build-debug.bat :app:connectedDebugAndroidTest --warning-mode all --console plain
+```
+
+Recommended next product task:
+
+1. Build a deeper interactive Android tutorial or guided first puzzle.
+2. Keep the first pass narrow: teach one first move, show or highlight movable
+   aligned tiles, and demonstrate whole-line sliding interactively.
+3. Preserve `GameModel` as the only puzzle-rule source; Android should only add
+   UI state, hints, and presentation.
+4. Add or extend instrumentation tests before committing the tutorial work.
+
 ## Current Project State
 
 SlideDo is a Java number Klotski / sliding puzzle game with:
@@ -22,6 +67,7 @@ SlideDo is a Java number Klotski / sliding puzzle game with:
 - Root Gradle/JUnit 5 tests for shared core behavior.
 - Android Gradle wrapper and debug APK build flow.
 - English API comments/Javadocs for public core, desktop, and Android APIs.
+- One-command local verification through `verify.bat`.
 
 Desktop currently supports:
 
@@ -56,6 +102,8 @@ Android currently supports:
 - Settings for haptic feedback, reduced motion, reset saved game, and reset records.
 - Results screen with player-record status and solver-assisted completion wording.
 - Haptic feedback.
+- Warning-clean local Gradle verification under `--warning-mode all` for the
+  root tests and Android assemble/lint flow.
 
 ## Behavioral Reference
 
@@ -103,6 +151,12 @@ Shared core tests:
 android\gradlew.bat -p . test
 ```
 
+One-command local verification:
+
+```bat
+verify.bat
+```
+
 Desktop compile:
 
 ```bat
@@ -130,6 +184,13 @@ Android instrumentation tests:
 ```bat
 cd android
 build-debug.bat :app:connectedDebugAndroidTest
+```
+
+Warning-clean Android instrumentation check:
+
+```bat
+cd android
+build-debug.bat :app:connectedDebugAndroidTest --warning-mode all --console plain
 ```
 
 Android install and launch:
@@ -209,7 +270,9 @@ Target experience:
 
 Current implementation approach:
 
-- Keep one Android `Activity` for now with internal screen state for `HOME`, `MODE_SELECT`, `HOW_TO_PLAY`, `RECORDS`, and `GAME`.
+- Keep one Android `Activity` for now with internal screen state for `HOME`,
+  `ONBOARDING`, `MODE_SELECT`, `HOW_TO_PLAY`, `RECORDS`, `SETTINGS`, `RESULTS`,
+  and `GAME`.
 - Build separate private view-construction methods in `MainActivity` or small package-private screen classes before introducing a larger architecture.
 - Keep `GameModel` unchanged for navigation work; the model should remain platform-independent.
 - Keep `KlotskiView` focused on board rendering and gestures only.
@@ -222,6 +285,8 @@ UX acceptance criteria completed in the 2026-05-25 Android navigation pass:
 - Continue is visible only when a saved game exists.
 - New Game leads to mode selection.
 - How to Play is reachable before starting a game.
+- First-run onboarding is available and can be reopened from Home.
+- Settings and Results are in-activity screens, not separate activities.
 - In-game controls remain usable on a 1080 x 2400 emulator without overlap.
 - Existing save/load, undo, restart, best records, and solver-assisted record protection still work.
 
