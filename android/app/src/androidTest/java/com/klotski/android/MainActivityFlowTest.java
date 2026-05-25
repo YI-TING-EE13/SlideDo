@@ -29,6 +29,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 /**
@@ -40,6 +41,7 @@ public class MainActivityFlowTest {
     private static final String PREFS = "slidedo";
     private static final long TIMEOUT_MS = 5000;
     private static final String LINE_SLIDE_GRID = "1,2,3,0,4,5,7,8,6";
+    private static final String ONE_MOVE_WIN_GRID = "1,2,3,4,5,0,7,8,6";
 
     private Instrumentation instrumentation;
     private Activity activity;
@@ -293,6 +295,70 @@ public class MainActivityFlowTest {
     }
 
     @Test
+    public void playerWinShowsResultsAndRecordsBest() throws Exception {
+        writeSavedGame(ONE_MOVE_WIN_GRID, ONE_MOVE_WIN_GRID, 0);
+        launchApp();
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+
+        tapCell(3, 2, 2);
+
+        waitForId("results_root");
+        waitForText("Results");
+        waitForText("Puzzle solved.");
+        waitForText("First player record for this size.");
+        assertNotNull(findById("results_play_again_button"));
+        assertNotNull(findById("results_new_size_button"));
+        assertNotNull(findById("results_home_button"));
+
+        clickId(R.id.results_home_button);
+        waitForId("home_root");
+        clickId(R.id.home_records_button);
+        waitForId("records_root");
+        waitForTextContaining("1 move");
+    }
+
+    @Test
+    public void assistedWinShowsResultsWithoutRecord() throws Exception {
+        writeSavedGame(ONE_MOVE_WIN_GRID, ONE_MOVE_WIN_GRID, 0);
+        launchApp();
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+        setActivityField("assistedSolveActive", true);
+
+        tapCell(3, 2, 2);
+
+        waitForId("results_root");
+        waitForText("Solved with assist.");
+        waitForText("Assist result not saved. Player best: No record yet");
+
+        clickId(R.id.results_home_button);
+        waitForId("home_root");
+        clickId(R.id.home_records_button);
+        waitForId("records_root");
+        waitForText("No record yet");
+    }
+
+    @Test
+    public void resultsActionsNavigateToReplayAndModeSelect() throws Exception {
+        writeSavedGame(ONE_MOVE_WIN_GRID, ONE_MOVE_WIN_GRID, 0);
+        launchApp();
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+        tapCell(3, 2, 2);
+        waitForId("results_root");
+
+        clickId(R.id.results_play_again_button);
+        waitForId("game_root");
+        waitForText("3x3 Puzzle");
+
+        invokeActivityMethod("onGameWon", new Class<?>[] {int.class, long.class}, 1, 0L);
+        waitForId("results_root");
+        clickId(R.id.results_new_size_button);
+        waitForId("mode_root");
+    }
+
+    @Test
     public void wholeLineMoveCountsOnceAndUndoRestoresIt() throws Exception {
         writeSavedGame(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 0);
         launchApp();
@@ -433,6 +499,12 @@ public class MainActivityFlowTest {
         return object;
     }
 
+    private UiObject2 waitForTextContaining(String text) {
+        UiObject2 object = device.wait(Until.findObject(By.textContains(text)), TIMEOUT_MS);
+        assertNotNull("Missing text containing: " + text, object);
+        return object;
+    }
+
     private void clickUiId(String resourceName) {
         UiObject2 object = waitForId(resourceName);
         object.click();
@@ -501,13 +573,17 @@ public class MainActivityFlowTest {
     }
 
     private Object invokeActivityMethod(String methodName) throws Exception {
+        return invokeActivityMethod(methodName, new Class<?>[0]);
+    }
+
+    private Object invokeActivityMethod(String methodName, Class<?>[] parameterTypes, Object... args) throws Exception {
         Object[] result = new Object[1];
         Throwable[] error = new Throwable[1];
         instrumentation.runOnMainSync(() -> {
             try {
-                Method method = MainActivity.class.getDeclaredMethod(methodName);
+                Method method = MainActivity.class.getDeclaredMethod(methodName, parameterTypes);
                 method.setAccessible(true);
-                result[0] = method.invoke(activity);
+                result[0] = method.invoke(activity, args);
             } catch (Throwable throwable) {
                 error[0] = throwable;
             }
@@ -517,5 +593,22 @@ public class MainActivityFlowTest {
             throw new AssertionError("Failed to invoke MainActivity." + methodName, error[0]);
         }
         return result[0];
+    }
+
+    private void setActivityField(String fieldName, Object value) throws Exception {
+        Throwable[] error = new Throwable[1];
+        instrumentation.runOnMainSync(() -> {
+            try {
+                Field field = MainActivity.class.getDeclaredField(fieldName);
+                field.setAccessible(true);
+                field.set(activity, value);
+            } catch (Throwable throwable) {
+                error[0] = throwable;
+            }
+        });
+        instrumentation.waitForIdleSync();
+        if (error[0] != null) {
+            throw new AssertionError("Failed to set MainActivity." + fieldName, error[0]);
+        }
     }
 }

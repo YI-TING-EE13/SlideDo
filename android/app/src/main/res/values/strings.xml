@@ -62,6 +62,17 @@
     <string name="settings_reduced_motion_body">Complete board moves without transition animation.</string>
     <string name="settings_reset_save">Reset Saved Game</string>
     <string name="settings_reset_records">Reset Records</string>
+    <string name="results_title">Results</string>
+    <string name="results_player_subtitle">Puzzle solved.</string>
+    <string name="results_assisted_subtitle">Solved with assist.</string>
+    <string name="results_size_format">%1$dx%2$d Puzzle</string>
+    <string name="results_stats_format">%1$s   Time: %2$ds</string>
+    <string name="results_first_record">First player record for this size.</string>
+    <string name="results_new_best">New best. Previous best: %1$s</string>
+    <string name="results_no_new_best">Best remains: %1$s</string>
+    <string name="results_assisted_record">Assist result not saved. Player best: %1$s</string>
+    <string name="results_play_again">Play Again</string>
+    <string name="results_new_size">New Size</string>
     <string name="game_title_format">%1$dx%2$d Puzzle</string>
     <string name="game_menu">Menu</string>
     <string name="game_assist">Assist</string>

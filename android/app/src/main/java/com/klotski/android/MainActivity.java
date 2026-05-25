@@ -62,6 +62,14 @@ public class MainActivity extends Activity implements GameObserver {
     private static final String STATE_INFO_RETURN_SCREEN = "info_return_screen";
     private static final String STATE_GAME_STARTED = "game_started";
     private static final String STATE_ONBOARDING_PAGE = "onboarding_page";
+    private static final String STATE_RESULT_AVAILABLE = "result_available";
+    private static final String STATE_RESULT_SIZE = "result_size";
+    private static final String STATE_RESULT_MOVES = "result_moves";
+    private static final String STATE_RESULT_TIME = "result_time";
+    private static final String STATE_RESULT_ASSISTED = "result_assisted";
+    private static final String STATE_RESULT_NEW_BEST = "result_new_best";
+    private static final String STATE_RESULT_PREVIOUS_BEST_MOVES = "result_previous_best_moves";
+    private static final String STATE_RESULT_PREVIOUS_BEST_TIME = "result_previous_best_time";
     private static final int ONBOARDING_PAGE_COUNT = 4;
 
     private static final int COLOR_BACKGROUND = Color.rgb(17, 24, 39);
@@ -79,6 +87,7 @@ public class MainActivity extends Activity implements GameObserver {
     private TextView statusText;
     private TextView gameTitleText;
     private PendingWin pendingWin;
+    private GameResult currentResult;
     private OnBackInvokedCallback backCallback;
     private Screen currentScreen = Screen.HOME;
     private Screen infoReturnScreen = Screen.HOME;
@@ -101,6 +110,7 @@ public class MainActivity extends Activity implements GameObserver {
         HOW_TO_PLAY,
         RECORDS,
         SETTINGS,
+        RESULTS,
         GAME
     }
 
@@ -154,6 +164,7 @@ public class MainActivity extends Activity implements GameObserver {
         outState.putString(STATE_INFO_RETURN_SCREEN, infoReturnScreen.name());
         outState.putBoolean(STATE_GAME_STARTED, gameStarted);
         outState.putInt(STATE_ONBOARDING_PAGE, onboardingPage);
+        saveResultState(outState);
         super.onSaveInstanceState(outState);
     }
 
@@ -183,7 +194,7 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private void handleBackNavigation() {
-        if (currentScreen == Screen.GAME) {
+        if (currentScreen == Screen.GAME || currentScreen == Screen.RESULTS) {
             saveGame();
             showHomeScreen();
         } else if (currentScreen == Screen.ONBOARDING) {
@@ -230,6 +241,7 @@ public class MainActivity extends Activity implements GameObserver {
         Screen savedReturnScreen = readScreen(savedInstanceState, STATE_INFO_RETURN_SCREEN, Screen.HOME);
         boolean savedGameStarted = savedInstanceState.getBoolean(STATE_GAME_STARTED, false);
         int savedOnboardingPage = savedInstanceState.getInt(STATE_ONBOARDING_PAGE, 0);
+        currentResult = restoreResultState(savedInstanceState);
 
         if (savedScreen == Screen.GAME) {
             if (savedGameStarted && loadGame()) {
@@ -237,6 +249,14 @@ public class MainActivity extends Activity implements GameObserver {
                 return true;
             }
             gameStarted = false;
+            return false;
+        }
+
+        if (savedScreen == Screen.RESULTS) {
+            if (currentResult != null) {
+                showResultsScreen();
+                return true;
+            }
             return false;
         }
 
@@ -271,6 +291,44 @@ public class MainActivity extends Activity implements GameObserver {
         } catch (IllegalArgumentException e) {
             return fallback;
         }
+    }
+
+    private void saveResultState(Bundle outState) {
+        if (currentResult == null) {
+            outState.putBoolean(STATE_RESULT_AVAILABLE, false);
+            return;
+        }
+        outState.putBoolean(STATE_RESULT_AVAILABLE, true);
+        outState.putInt(STATE_RESULT_SIZE, currentResult.size);
+        outState.putInt(STATE_RESULT_MOVES, currentResult.moves);
+        outState.putLong(STATE_RESULT_TIME, currentResult.timeMs);
+        outState.putBoolean(STATE_RESULT_ASSISTED, currentResult.assisted);
+        outState.putBoolean(STATE_RESULT_NEW_BEST, currentResult.newBest);
+        if (currentResult.previousBest == null) {
+            outState.putInt(STATE_RESULT_PREVIOUS_BEST_MOVES, -1);
+            outState.putLong(STATE_RESULT_PREVIOUS_BEST_TIME, -1);
+        } else {
+            outState.putInt(STATE_RESULT_PREVIOUS_BEST_MOVES, currentResult.previousBest.moves);
+            outState.putLong(STATE_RESULT_PREVIOUS_BEST_TIME, currentResult.previousBest.timeMs);
+        }
+    }
+
+    private GameResult restoreResultState(Bundle savedInstanceState) {
+        if (!savedInstanceState.getBoolean(STATE_RESULT_AVAILABLE, false)) {
+            return null;
+        }
+        int previousMoves = savedInstanceState.getInt(STATE_RESULT_PREVIOUS_BEST_MOVES, -1);
+        long previousTime = savedInstanceState.getLong(STATE_RESULT_PREVIOUS_BEST_TIME, -1);
+        Best previousBest = previousMoves < 0 || previousTime < 0
+                ? null
+                : new Best(previousMoves, previousTime);
+        return new GameResult(
+                savedInstanceState.getInt(STATE_RESULT_SIZE, 4),
+                savedInstanceState.getInt(STATE_RESULT_MOVES, 0),
+                savedInstanceState.getLong(STATE_RESULT_TIME, 0),
+                savedInstanceState.getBoolean(STATE_RESULT_ASSISTED, false),
+                savedInstanceState.getBoolean(STATE_RESULT_NEW_BEST, false),
+                previousBest);
     }
 
     private void showHomeScreen() {
@@ -459,6 +517,69 @@ public class MainActivity extends Activity implements GameObserver {
         resetRecordsButton.setId(R.id.settings_reset_records_button);
         Button backButton = addWideButton(screen.content, R.string.nav_back, COLOR_PRIMARY, v -> returnFromInfoScreen());
         backButton.setId(R.id.settings_back_button);
+
+        setContentView(screen.root);
+    }
+
+    private void showResultsScreen() {
+        if (currentResult == null) {
+            showHomeScreen();
+            return;
+        }
+
+        currentScreen = Screen.RESULTS;
+        infoReturnScreen = Screen.HOME;
+        statusText = null;
+        gameTitleText = null;
+        commandButtons.clear();
+
+        ScreenLayout screen = createScreenLayout();
+        screen.root.setId(R.id.results_root);
+        screen.content.setGravity(Gravity.CENTER_HORIZONTAL);
+        addScreenHeader(screen.content, getString(R.string.results_title),
+                getString(currentResult.assisted
+                        ? R.string.results_assisted_subtitle
+                        : R.string.results_player_subtitle));
+
+        TextView size = createText(getString(R.string.results_size_format,
+                currentResult.size, currentResult.size), 18, Color.WHITE, Typeface.BOLD);
+        size.setId(R.id.results_size_text);
+        size.setGravity(Gravity.CENTER);
+        screen.content.addView(size, fullWidthParams());
+
+        TextView stats = createText(getString(R.string.results_stats_format,
+                formatMoves(currentResult.moves), currentResult.timeMs / 1000),
+                24, Color.WHITE, Typeface.BOLD);
+        stats.setId(R.id.results_stats_text);
+        stats.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams statsParams = fullWidthParams();
+        statsParams.setMargins(0, dp(10), 0, dp(10));
+        screen.content.addView(stats, statsParams);
+
+        TextView record = createText(resultRecordText(currentResult), 16,
+                currentResult.newBest ? COLOR_ACCENT : COLOR_MUTED_TEXT, Typeface.BOLD);
+        record.setId(R.id.results_record_text);
+        record.setGravity(Gravity.CENTER);
+        record.setLineSpacing(0, 1.12f);
+        LinearLayout.LayoutParams recordParams = fullWidthParams();
+        recordParams.setMargins(0, 0, 0, dp(22));
+        screen.content.addView(record, recordParams);
+
+        Button playAgainButton = addWideButton(screen.content, R.string.results_play_again, COLOR_PRIMARY,
+                v -> beginNewGame(currentResult.size));
+        playAgainButton.setId(R.id.results_play_again_button);
+        Button newSizeButton = addWideButton(screen.content, R.string.results_new_size, COLOR_PANEL,
+                v -> {
+                    saveGame();
+                    showModeSelectScreen();
+                });
+        newSizeButton.setId(R.id.results_new_size_button);
+        Button homeButton = addWideButton(screen.content, R.string.nav_home, COLOR_PANEL,
+                v -> {
+                    saveGame();
+                    showHomeScreen();
+                });
+        homeButton.setId(R.id.results_home_button);
 
         setContentView(screen.root);
     }
@@ -913,6 +1034,7 @@ public class MainActivity extends Activity implements GameObserver {
     private void continueSavedGame() {
         if (loadGame()) {
             pendingWin = null;
+            currentResult = null;
             assistedSolveActive = false;
             showGameScreen();
         } else {
@@ -929,6 +1051,7 @@ public class MainActivity extends Activity implements GameObserver {
         model.scramble(size * size * 5);
         gameStarted = true;
         pendingWin = null;
+        currentResult = null;
         assistedSolveActive = false;
         lastWinTimeMs = -1;
         getSharedPreferences(PREFS, MODE_PRIVATE).edit().putInt(KEY_LAST_SIZE, size).apply();
@@ -942,6 +1065,7 @@ public class MainActivity extends Activity implements GameObserver {
         }
         model.restartCurrentGame();
         pendingWin = null;
+        currentResult = null;
         assistedSolveActive = false;
         lastWinTimeMs = -1;
         performBoardHaptic(HapticFeedbackConstants.VIRTUAL_KEY);
@@ -1035,6 +1159,7 @@ public class MainActivity extends Activity implements GameObserver {
         model.loadState(data);
         lastWinTimeMs = model.isSolved() ? data.elapsedTime : -1;
         assistedSolveActive = false;
+        currentResult = null;
         gameStarted = true;
         return true;
     }
@@ -1112,7 +1237,7 @@ public class MainActivity extends Activity implements GameObserver {
 
     private void recordBest(int size, int moves, long timeMs) {
         Best best = getBest(size);
-        if (best != null && (moves > best.moves || (moves == best.moves && timeMs >= best.timeMs))) {
+        if (!isBetterRecord(best, moves, timeMs)) {
             return;
         }
 
@@ -1120,6 +1245,10 @@ public class MainActivity extends Activity implements GameObserver {
                 .putInt(KEY_BEST_PREFIX + size + "_moves", moves)
                 .putLong(KEY_BEST_PREFIX + size + "_time", timeMs)
                 .apply();
+    }
+
+    private boolean isBetterRecord(Best best, int moves, long timeMs) {
+        return best == null || moves < best.moves || (moves == best.moves && timeMs < best.timeMs);
     }
 
     private void clearRecords() {
@@ -1317,6 +1446,28 @@ public class MainActivity extends Activity implements GameObserver {
                 : getString(R.string.best_format, formatMoves(best.moves), best.timeMs / 1000);
     }
 
+    private String resultRecordText(GameResult result) {
+        if (result.assisted) {
+            String previous = result.previousBest == null
+                    ? getString(R.string.records_empty)
+                    : getString(R.string.best_format, formatMoves(result.previousBest.moves),
+                            result.previousBest.timeMs / 1000);
+            return getString(R.string.results_assisted_record, previous);
+        }
+        if (result.newBest) {
+            return result.previousBest == null
+                    ? getString(R.string.results_first_record)
+                    : getString(R.string.results_new_best,
+                            getString(R.string.best_format, formatMoves(result.previousBest.moves),
+                                    result.previousBest.timeMs / 1000));
+        }
+        Best best = getBest(result.size);
+        String bestText = best == null
+                ? getString(R.string.records_empty)
+                : getString(R.string.best_format, formatMoves(best.moves), best.timeMs / 1000);
+        return getString(R.string.results_no_new_best, bestText);
+    }
+
     private void performBoardHaptic(int feedbackConstant) {
         if (boardView != null && isHapticEnabled()) {
             boardView.performHapticFeedback(feedbackConstant);
@@ -1407,23 +1558,16 @@ public class MainActivity extends Activity implements GameObserver {
 
         PendingWin win = pendingWin;
         pendingWin = null;
-        if (!win.assisted) {
+        Best previousBest = getBest(win.size);
+        boolean newBest = !win.assisted && isBetterRecord(previousBest, win.moves, win.timeMs);
+        if (newBest) {
             recordBest(win.size, win.moves, win.timeMs);
         }
+        currentResult = new GameResult(win.size, win.moves, win.timeMs, win.assisted, newBest, previousBest);
         assistedSolveActive = false;
         performBoardHaptic(HapticFeedbackConstants.LONG_PRESS);
         updateStatus();
-        int message = win.assisted ? R.string.dialog_solved_assisted_message : R.string.dialog_solved_message;
-        new AlertDialog.Builder(this)
-                .setTitle(R.string.dialog_solved_title)
-                .setMessage(getString(message, formatMoves(win.moves), win.timeMs / 1000))
-                .setPositiveButton(R.string.dialog_new_game, (dialog, which) -> beginNewGame(model.getSize()))
-                .setNegativeButton(R.string.dialog_close, null)
-                .setNeutralButton(R.string.nav_home, (dialog, which) -> {
-                    saveGame();
-                    showHomeScreen();
-                })
-                .show();
+        showResultsScreen();
     }
 
     private String formatMoves(int moves) {
@@ -1472,6 +1616,24 @@ public class MainActivity extends Activity implements GameObserver {
             this.moves = moves;
             this.timeMs = timeMs;
             this.assisted = assisted;
+        }
+    }
+
+    private static class GameResult {
+        final int size;
+        final int moves;
+        final long timeMs;
+        final boolean assisted;
+        final boolean newBest;
+        final Best previousBest;
+
+        GameResult(int size, int moves, long timeMs, boolean assisted, boolean newBest, Best previousBest) {
+            this.size = size;
+            this.moves = moves;
+            this.timeMs = timeMs;
+            this.assisted = assisted;
+            this.newBest = newBest;
+            this.previousBest = previousBest;
         }
     }
 

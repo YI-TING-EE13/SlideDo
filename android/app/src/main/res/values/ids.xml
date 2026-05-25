@@ -30,6 +30,13 @@
     <item name="settings_reset_save_button" type="id" />
     <item name="settings_reset_records_button" type="id" />
     <item name="settings_back_button" type="id" />
+    <item name="results_root" type="id" />
+    <item name="results_size_text" type="id" />
+    <item name="results_stats_text" type="id" />
+    <item name="results_record_text" type="id" />
+    <item name="results_play_again_button" type="id" />
+    <item name="results_new_size_button" type="id" />
+    <item name="results_home_button" type="id" />
     <item name="game_root" type="id" />
     <item name="game_home_button" type="id" />
     <item name="game_menu_button" type="id" />

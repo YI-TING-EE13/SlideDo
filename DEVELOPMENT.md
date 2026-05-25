@@ -54,6 +54,7 @@ Android currently supports:
 - BFS, A*, and IDA* solver controls behind Assist with expensive-operation warnings.
 - Solver-assisted completion protection so player records are not overwritten.
 - Settings for haptic feedback, reduced motion, reset saved game, and reset records.
+- Results screen with player-record status and solver-assisted completion wording.
 - Haptic feedback.
 
 ## Behavioral Reference
@@ -295,18 +296,16 @@ planning layer above implementation tickets.
 The next product milestone should continue improving first-time player
 comprehension before adding broader systems. Recommended order:
 
-1. Results screen to replace the solved-game dialog.
-2. CI and release-readiness automation.
-3. Deeper interactive tutorial improvements.
-4. Sound/theme settings after those systems exist.
+1. Deeper interactive tutorial improvements.
+2. Sound/theme settings after those systems exist.
+3. Daily puzzle, progression loops, and achievement systems.
 
 Rationale:
 
-- The First-Run Onboarding, Visual How to Play, and Settings MVPs now cover the
-  basic teaching and preference path. Results is the next highest-value product
-  surface for making wins feel complete.
-- CI should be added before release planning, but product-learning surfaces are
-  higher leverage while the Android experience is still taking shape.
+- The First-Run Onboarding, Visual How to Play, Settings, Results, and local CI
+  MVPs now cover the basic teaching, preference, completion, and quality paths.
+- Remaining items are broader product systems rather than prerequisite app
+  structure.
 
 ### 1. Add Android Instrumentation Tests
 
@@ -410,34 +409,38 @@ Recommended MVP scope:
 
 Priority: High
 
-- Replace the solved-game dialog with a full Results screen.
-- Show size, moves, time, previous best, and whether the player set a new best.
-- Show solver-assisted completions with distinct wording and no record write.
-- Offer Play Again, New Size, Home, and optionally Share later.
+Status: Completed on 2026-05-25.
+
+- [x] Replace the solved-game dialog with a full Results screen.
+- [x] Show size, moves, time, previous best, and whether the player set a new best.
+- [x] Show solver-assisted completions with distinct wording and no record write.
+- [x] Offer Play Again, New Size, Home, and optionally Share later.
 
 Recommended MVP scope:
 
-- Replace the current solved dialog with an in-activity Results screen.
-- Preserve record comparison rules: fewer moves first, then lower time.
-- Keep solver-assisted completions visibly separate and excluded from player
+- [x] Replace the current solved dialog with an in-activity Results screen.
+- [x] Preserve record comparison rules: fewer moves first, then lower time.
+- [x] Keep solver-assisted completions visibly separate and excluded from player
   best records.
-- Add instrumentation coverage for normal win result navigation and
+- [x] Add instrumentation coverage for normal win result navigation and
   solver-assisted no-record behavior after the screen exists.
 
 ### 6. Add CI For Build Quality
 
 Priority: Medium
 
-- Run root JUnit tests.
-- Compile desktop Java.
-- Run Android assemble/lint.
-- Run public Javadoc doclint checks where practical.
+Status: Completed on 2026-05-25.
+
+- [x] Run root JUnit tests.
+- [x] Compile desktop Java.
+- [x] Run Android assemble/lint.
+- [x] Run public Javadoc doclint checks where practical.
 
 Recommended scope:
 
-- Start with a local one-command verification script if GitHub Actions is not
+- [x] Start with a local one-command verification script if GitHub Actions is not
   configured yet.
-- CI should run shared core tests, desktop compile, Android assemble/lint, and
+- [x] CI should run shared core tests, desktop compile, Android assemble/lint, and
   API doclint.
 - Connected Android instrumentation tests can remain manual at first unless a
   stable emulator runner is available in CI.
@@ -551,6 +554,11 @@ Priority: Low to Medium
 - Implemented the Settings MVP with Home/Menu entry points, haptic and
   reduced-motion toggles, reset-save/reset-records confirmation flows, and
   instrumentation coverage.
+- Replaced the solved-game dialog with a Results screen that shows player
+  record status, assisted-completion wording, and Play Again/New Size/Home
+  actions.
+- Added `verify.bat` as the local CI entry point for shared tests, desktop
+  compile, Android assemble/lint, and public Javadocs.
 
 ### 2026-05-24
 
