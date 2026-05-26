@@ -7,7 +7,7 @@
 
 **SlideDo** is a polished number Klotski / sliding puzzle game written in Java. It includes a desktop Swing edition and a native Android edition that share the same core puzzle model, move rules, save format, and solver interfaces.
 
-The design goal is simple: make sliding numbered tiles feel fast, clear, and satisfying. The desktop version supports mouse, keyboard, undo, restart, save/load, best records, and solver playback. The Android edition now opens as a touch-first mobile app with onboarding, mode selection, settings, results, records, and compact in-game controls.
+The design goal is simple: make sliding numbered tiles feel fast, clear, and satisfying. The desktop version supports mouse, keyboard, undo, restart, save/load, best records, and solver playback. The Android edition now opens as a touch-first mobile app with onboarding, an interactive practice tutorial, mode selection, settings, results, records, and compact in-game controls.
 
 ---
 
@@ -20,8 +20,9 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
   - Arrow keys move the empty space one step.
   - Movable tiles show a hand cursor on hover.
 - **Mobile-Ready Interaction Model**:
-  - Android opens on Home with Continue, New Game, Beginner Guide, How to Play, Settings, and Records.
+  - Android opens on Home with Continue, New Game, Beginner Guide, Practice Tutorial, How to Play, Settings, and Records.
   - First-run onboarding introduces the goal, tap/swipe input, whole-line slides, undo/restart, and record rules.
+  - Practice Tutorial guides one first move, highlights movable aligned tiles, and demonstrates a whole-line slide through the shared model.
   - Mode Select starts 3x3, 4x4, or 5x5 games after the player chooses a size.
   - Visual How to Play examples and an in-game Quick Reminder explain the key movement rules.
   - Whole-line tap behavior maps naturally to touch screens.
@@ -42,7 +43,7 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
 - **Native Android Project**:
   - Gradle wrapper included.
   - Custom Android view.
-  - Home, onboarding, Mode Select, visual How to Play, Settings, Records, Results, touch controls, synchronized whole-line animation, haptics, autosave, manual save/load, best records, solver controls, and instrumentation tests.
+  - Home, onboarding, interactive Practice Tutorial, Mode Select, visual How to Play, Settings, Records, Results, touch controls, synchronized whole-line animation, haptics, autosave, manual save/load, best records, solver controls, and instrumentation tests.
 
 ---
 
@@ -145,10 +146,12 @@ adb shell am start -n com.klotski.android/.MainActivity
 
 The Android UI opens on Home, offers Continue when a valid save exists, and
 starts new games through Mode Select. First-run onboarding appears before normal
-play until the player skips it or starts 3x3. During gameplay, Undo and Restart
-stay visible while Save/Load, Quick Reminder, Settings, and BFS / A* / IDA*
-solver actions live in Menu and Assist. Solver-assisted wins show Results but
-do not overwrite player best records.
+play until the player skips it, starts 3x3, or opens Practice Tutorial. Practice
+Tutorial uses a small guided 3x3 puzzle to teach the first move, highlight
+movable aligned tiles, and demonstrate a whole-line slide. During gameplay, Undo
+and Restart stay visible while Save/Load, Quick Reminder, Settings, and BFS, A*,
+and IDA* solver actions live in Menu and Assist. Solver-assisted wins show
+Results but do not overwrite player best records.
 
 If the emulator does not show SlideDo in the launcher, reinstall and start it
 directly:
@@ -256,7 +259,7 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
 - Undo after a whole-line slide.
 - Android debug build with Gradle.
 - Android lint with no reported issues during the latest local run.
-- Android instrumentation tests for onboarding, Home launch, mode selection, Continue, How to Play, Settings, Results, whole-line movement, undo, save/load persistence, rotation, and solver-assisted record protection.
+- Android instrumentation tests for onboarding, Home launch, Practice Tutorial, mode selection, Continue, How to Play, Settings, Results, whole-line movement, undo, save/load persistence, rotation, and solver-assisted record protection.
 - Android emulator smoke testing for install/launch, Home visibility, whole-line movement, undo, restart, save/load, solver warning dialog, rotation, and background resume.
 
 ### Useful Commands
@@ -338,7 +341,7 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
 
 ## Roadmap
 
-- Add a deeper interactive Android tutorial with first-move coaching.
+- Extend Practice Tutorial into a fuller coached first game or lightweight hint system.
 - Add sound effects with a mute toggle.
 - Add theme selection.
 - Add daily puzzle mode.

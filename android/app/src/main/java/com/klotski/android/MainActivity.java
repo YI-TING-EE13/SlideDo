@@ -62,6 +62,7 @@ public class MainActivity extends Activity implements GameObserver {
     private static final String STATE_INFO_RETURN_SCREEN = "info_return_screen";
     private static final String STATE_GAME_STARTED = "game_started";
     private static final String STATE_ONBOARDING_PAGE = "onboarding_page";
+    private static final String STATE_TUTORIAL_STEP = "tutorial_step";
     private static final String STATE_RESULT_AVAILABLE = "result_available";
     private static final String STATE_RESULT_SIZE = "result_size";
     private static final String STATE_RESULT_MOVES = "result_moves";
@@ -71,6 +72,25 @@ public class MainActivity extends Activity implements GameObserver {
     private static final String STATE_RESULT_PREVIOUS_BEST_MOVES = "result_previous_best_moves";
     private static final String STATE_RESULT_PREVIOUS_BEST_TIME = "result_previous_best_time";
     private static final int ONBOARDING_PAGE_COUNT = 4;
+    private static final int TUTORIAL_FIRST_MOVE = 0;
+    private static final int TUTORIAL_LINE_SLIDE = 1;
+    private static final int TUTORIAL_COMPLETE = 2;
+    private static final int TUTORIAL_PAGE_COUNT = 2;
+    private static final int[][] TUTORIAL_FIRST_MOVE_GRID = {
+            {1, 2, 3},
+            {4, 5, 0},
+            {7, 8, 6}
+    };
+    private static final int[][] TUTORIAL_LINE_SLIDE_GRID = {
+            {1, 2, 3},
+            {0, 4, 5},
+            {7, 8, 6}
+    };
+    private static final int[][] TUTORIAL_LINE_COMPLETE_GRID = {
+            {1, 2, 3},
+            {4, 5, 0},
+            {7, 8, 6}
+    };
 
     private static final int COLOR_BACKGROUND = Color.rgb(17, 24, 39);
     private static final int COLOR_PANEL = Color.rgb(31, 41, 55);
@@ -86,15 +106,20 @@ public class MainActivity extends Activity implements GameObserver {
     private KlotskiView boardView;
     private TextView statusText;
     private TextView gameTitleText;
+    private TextView tutorialProgressText;
+    private TextView tutorialInstructionText;
+    private TextView tutorialStatusText;
     private PendingWin pendingWin;
     private GameResult currentResult;
     private OnBackInvokedCallback backCallback;
     private Screen currentScreen = Screen.HOME;
     private Screen infoReturnScreen = Screen.HOME;
     private int onboardingPage;
+    private int tutorialStep = TUTORIAL_FIRST_MOVE;
     private boolean solverRunning;
     private boolean assistedSolveActive;
     private boolean gameStarted;
+    private boolean tutorialAdvancePending;
     private long lastWinTimeMs = -1;
 
     /**
@@ -106,6 +131,7 @@ public class MainActivity extends Activity implements GameObserver {
     private enum Screen {
         HOME,
         ONBOARDING,
+        TUTORIAL,
         MODE_SELECT,
         HOW_TO_PLAY,
         RECORDS,
@@ -163,6 +189,7 @@ public class MainActivity extends Activity implements GameObserver {
         outState.putString(STATE_INFO_RETURN_SCREEN, infoReturnScreen.name());
         outState.putBoolean(STATE_GAME_STARTED, gameStarted);
         outState.putInt(STATE_ONBOARDING_PAGE, onboardingPage);
+        outState.putInt(STATE_TUTORIAL_STEP, tutorialStep);
         saveResultState(outState);
         super.onSaveInstanceState(outState);
     }
@@ -198,6 +225,8 @@ public class MainActivity extends Activity implements GameObserver {
             saveGame();
             showHomeScreen();
         } else if (currentScreen == Screen.ONBOARDING) {
+            showHomeScreen();
+        } else if (currentScreen == Screen.TUTORIAL) {
             showHomeScreen();
         } else if (currentScreen == Screen.HOME) {
             finish();
@@ -250,6 +279,7 @@ public class MainActivity extends Activity implements GameObserver {
         Screen savedReturnScreen = readScreen(savedInstanceState, STATE_INFO_RETURN_SCREEN, Screen.HOME);
         boolean savedGameStarted = savedInstanceState.getBoolean(STATE_GAME_STARTED, false);
         int savedOnboardingPage = savedInstanceState.getInt(STATE_ONBOARDING_PAGE, 0);
+        int savedTutorialStep = savedInstanceState.getInt(STATE_TUTORIAL_STEP, TUTORIAL_FIRST_MOVE);
         currentResult = restoreResultState(savedInstanceState);
 
         if (savedScreen == Screen.GAME) {
@@ -278,6 +308,7 @@ public class MainActivity extends Activity implements GameObserver {
 
         switch (savedScreen) {
             case ONBOARDING -> showOnboardingScreen(savedOnboardingPage);
+            case TUTORIAL -> showTutorialScreen(savedTutorialStep);
             case MODE_SELECT -> showModeSelectScreen();
             case HOW_TO_PLAY -> showHowToScreen(savedReturnScreen);
             case RECORDS -> showRecordsScreen(savedReturnScreen);
@@ -343,8 +374,12 @@ public class MainActivity extends Activity implements GameObserver {
     private void showHomeScreen() {
         currentScreen = Screen.HOME;
         infoReturnScreen = Screen.HOME;
+        tutorialAdvancePending = false;
         statusText = null;
         gameTitleText = null;
+        tutorialProgressText = null;
+        tutorialInstructionText = null;
+        tutorialStatusText = null;
         commandButtons.clear();
 
         ScreenLayout screen = createScreenLayout();
@@ -377,6 +412,9 @@ public class MainActivity extends Activity implements GameObserver {
         Button onboardingButton = addWideButton(screen.content, R.string.home_beginner_guide, COLOR_PANEL,
                 v -> showOnboardingScreen(0));
         onboardingButton.setId(R.id.home_onboarding_button);
+        Button tutorialButton = addWideButton(screen.content, R.string.home_tutorial, COLOR_PRIMARY,
+                v -> startGuidedTutorial());
+        tutorialButton.setId(R.id.home_tutorial_button);
         Button howToButton = addWideButton(screen.content, R.string.home_how_to_play, COLOR_PANEL,
                 v -> showHowToScreen(Screen.HOME));
         howToButton.setId(R.id.home_how_to_play_button);
@@ -418,7 +456,10 @@ public class MainActivity extends Activity implements GameObserver {
                     v -> showOnboardingScreen(onboardingPage + 1));
             nextButton.setId(R.id.onboarding_next_button);
         } else {
-            Button startButton = addWideButton(screen.content, R.string.onboarding_start_3, COLOR_PRIMARY,
+            Button tutorialButton = addWideButton(screen.content, R.string.onboarding_start_tutorial, COLOR_PRIMARY,
+                    v -> startGuidedTutorial());
+            tutorialButton.setId(R.id.onboarding_tutorial_button);
+            Button startButton = addWideButton(screen.content, R.string.onboarding_start_3, COLOR_PANEL,
                     v -> startFirstPuzzle());
             startButton.setId(R.id.onboarding_start_3_button);
         }
@@ -593,6 +634,101 @@ public class MainActivity extends Activity implements GameObserver {
         setContentView(screen.root);
     }
 
+    private void showTutorialScreen(int requestedStep) {
+        currentScreen = Screen.TUTORIAL;
+        infoReturnScreen = Screen.HOME;
+        tutorialAdvancePending = false;
+        tutorialStep = clampTutorialStep(requestedStep);
+        gameStarted = false;
+        pendingWin = null;
+        currentResult = null;
+        assistedSolveActive = false;
+        lastWinTimeMs = -1;
+        statusText = null;
+        gameTitleText = null;
+        commandButtons.clear();
+
+        loadTutorialModel(tutorialStep);
+
+        LinearLayout root = new LinearLayout(this);
+        root.setId(R.id.tutorial_root);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(COLOR_BACKGROUND);
+        root.setPadding(dp(12), systemBarHeight("status_bar_height") + dp(12),
+                dp(12), systemBarHeight("navigation_bar_height") + dp(12));
+
+        LinearLayout topBar = new LinearLayout(this);
+        topBar.setGravity(Gravity.CENTER_VERTICAL);
+        topBar.setOrientation(LinearLayout.HORIZONTAL);
+        root.addView(topBar, fullWidthParams());
+
+        Button homeButton = createButton(getString(R.string.nav_home), COLOR_PANEL);
+        homeButton.setId(R.id.tutorial_home_button);
+        homeButton.setOnClickListener(v -> showHomeScreen());
+        topBar.addView(homeButton, fixedButtonParams(88));
+
+        TextView title = createText(getString(R.string.tutorial_title), 20, Color.WHITE, Typeface.BOLD);
+        title.setGravity(Gravity.CENTER);
+        topBar.addView(title, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+        Button startButton = createButton(getString(R.string.onboarding_start_3), COLOR_PANEL);
+        startButton.setId(R.id.tutorial_start_game_button);
+        startButton.setOnClickListener(v -> beginNewGame(3));
+        topBar.addView(startButton, fixedButtonParams(104));
+
+        LinearLayout lesson = new LinearLayout(this);
+        lesson.setOrientation(LinearLayout.VERTICAL);
+        lesson.setPadding(dp(14), dp(12), dp(14), dp(12));
+        lesson.setBackground(makePanelBackground(COLOR_PANEL));
+        LinearLayout.LayoutParams lessonParams = fullWidthParams();
+        lessonParams.setMargins(0, dp(10), 0, dp(10));
+        root.addView(lesson, lessonParams);
+
+        tutorialProgressText = createText("", 14, COLOR_ACCENT, Typeface.BOLD);
+        tutorialProgressText.setId(R.id.tutorial_progress_text);
+        lesson.addView(tutorialProgressText, fullWidthParams());
+
+        tutorialInstructionText = createText("", 15, COLOR_MUTED_TEXT, Typeface.NORMAL);
+        tutorialInstructionText.setId(R.id.tutorial_instruction_text);
+        tutorialInstructionText.setLineSpacing(0, 1.12f);
+        LinearLayout.LayoutParams instructionParams = fullWidthParams();
+        instructionParams.setMargins(0, dp(6), 0, 0);
+        lesson.addView(tutorialInstructionText, instructionParams);
+
+        tutorialStatusText = createText("", 15, Color.WHITE, Typeface.BOLD);
+        tutorialStatusText.setId(R.id.tutorial_status_text);
+        tutorialStatusText.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams statusParams = fullWidthParams();
+        statusParams.setMargins(0, 0, 0, dp(8));
+        root.addView(tutorialStatusText, statusParams);
+
+        ensureBoardView();
+        boardView.setId(R.id.tutorial_board);
+        applyTutorialHighlights();
+        ViewParentRemover.removeFromParent(boardView);
+        LinearLayout.LayoutParams boardParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f);
+        root.addView(boardView, boardParams);
+
+        LinearLayout actions = new LinearLayout(this);
+        actions.setGravity(Gravity.CENTER);
+        actions.setPadding(0, dp(10), 0, 0);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        root.addView(actions, fullWidthParams());
+
+        Button restartButton = createButton(getString(R.string.tutorial_restart_lesson), COLOR_PANEL_LIGHT);
+        restartButton.setOnClickListener(v -> {
+            if (canAcceptTutorialCommand()) {
+                showTutorialScreen(tutorialStep == TUTORIAL_COMPLETE ? TUTORIAL_FIRST_MOVE : tutorialStep);
+            }
+        });
+        restartButton.setId(R.id.tutorial_restart_button);
+        actions.addView(restartButton, new LinearLayout.LayoutParams(0, dp(48), 1f));
+
+        setContentView(root);
+        updateTutorialStatus();
+    }
+
     private void returnFromInfoScreen() {
         if (infoReturnScreen == Screen.GAME && gameStarted) {
             showGameScreen();
@@ -603,8 +739,12 @@ public class MainActivity extends Activity implements GameObserver {
 
     private void showGameScreen() {
         currentScreen = Screen.GAME;
+        tutorialAdvancePending = false;
         statusText = null;
         gameTitleText = null;
+        tutorialProgressText = null;
+        tutorialInstructionText = null;
+        tutorialStatusText = null;
         commandButtons.clear();
 
         LinearLayout root = new LinearLayout(this);
@@ -655,6 +795,7 @@ public class MainActivity extends Activity implements GameObserver {
         root.addView(statusText, statusParams);
 
         ensureBoardView();
+        boardView.clearHighlights();
         ViewParentRemover.removeFromParent(boardView);
         LinearLayout.LayoutParams boardParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f);
@@ -695,11 +836,11 @@ public class MainActivity extends Activity implements GameObserver {
         if (boardView == null) {
             boardView = new KlotskiView(this, model);
             boardView.setId(R.id.game_board);
-            boardView.setBusyStateListener(this::updateControlsEnabled);
+            boardView.setBusyStateListener(this::updateBoardDependentControls);
         } else {
             boardView.setModel(model);
             boardView.setId(R.id.game_board);
-            boardView.setBusyStateListener(this::updateControlsEnabled);
+            boardView.setBusyStateListener(this::updateBoardDependentControls);
         }
         applySettingsToBoard();
     }
@@ -963,6 +1104,124 @@ public class MainActivity extends Activity implements GameObserver {
                 .show();
     }
 
+    private void startGuidedTutorial() {
+        markOnboardingSeen();
+        showTutorialScreen(TUTORIAL_FIRST_MOVE);
+    }
+
+    private void loadTutorialModel(int step) {
+        attachModel(new GameModel(3));
+        int[][] grid;
+        int moves;
+        if (step == TUTORIAL_LINE_SLIDE) {
+            grid = TUTORIAL_LINE_SLIDE_GRID;
+            moves = 0;
+        } else if (step == TUTORIAL_COMPLETE) {
+            grid = TUTORIAL_LINE_COMPLETE_GRID;
+            moves = 1;
+        } else {
+            grid = TUTORIAL_FIRST_MOVE_GRID;
+            moves = 0;
+        }
+        model.loadState(copyGrid(grid), moves);
+        if (boardView != null) {
+            boardView.setInputLocked(false);
+        }
+    }
+
+    private void applyTutorialHighlights() {
+        if (boardView == null) {
+            return;
+        }
+        if (tutorialStep == TUTORIAL_COMPLETE) {
+            boardView.clearHighlights();
+            return;
+        }
+        int[] target = tutorialTargetCell();
+        boardView.setHighlightedCells(createAlignedHintGrid(), target[0], target[1]);
+    }
+
+    private boolean[][] createAlignedHintGrid() {
+        int size = model.getSize();
+        boolean[][] hints = new boolean[size][size];
+        int emptyRow = model.getEmptyRow();
+        int emptyCol = model.getEmptyCol();
+        for (int row = 0; row < size; row++) {
+            for (int col = 0; col < size; col++) {
+                hints[row][col] = model.getTile(row, col) != 0 && (row == emptyRow || col == emptyCol);
+            }
+        }
+        return hints;
+    }
+
+    private int[] tutorialTargetCell() {
+        return tutorialStep == TUTORIAL_LINE_SLIDE
+                ? new int[] {1, 2}
+                : new int[] {2, 2};
+    }
+
+    private void updateTutorialStatus() {
+        if (currentScreen != Screen.TUTORIAL || tutorialProgressText == null
+                || tutorialInstructionText == null || tutorialStatusText == null || model == null) {
+            return;
+        }
+
+        if (tutorialStep == TUTORIAL_COMPLETE) {
+            tutorialProgressText.setText(R.string.tutorial_complete_progress);
+            tutorialInstructionText.setText(R.string.tutorial_complete_instruction);
+            tutorialStatusText.setText(getString(R.string.tutorial_complete_status,
+                    formatMoves(model.getMoveCount())));
+            return;
+        }
+
+        tutorialProgressText.setText(getString(R.string.tutorial_progress,
+                tutorialStep + 1, TUTORIAL_PAGE_COUNT));
+        tutorialInstructionText.setText(tutorialStep == TUTORIAL_LINE_SLIDE
+                ? R.string.tutorial_line_instruction
+                : R.string.tutorial_first_instruction);
+        tutorialStatusText.setText(getString(R.string.tutorial_status,
+                formatMoves(model.getMoveCount())));
+    }
+
+    private void scheduleTutorialStep(int nextStep) {
+        if (tutorialAdvancePending) {
+            return;
+        }
+        tutorialAdvancePending = true;
+        handler.postDelayed(() -> {
+            if (currentScreen == Screen.TUTORIAL && tutorialAdvancePending) {
+                showTutorialScreen(nextStep);
+            }
+        }, 220);
+    }
+
+    private void handleTutorialWin() {
+        if (tutorialStep == TUTORIAL_FIRST_MOVE) {
+            scheduleTutorialStep(TUTORIAL_LINE_SLIDE);
+        }
+    }
+
+    private void handleTutorialLineMove(int steps) {
+        updateTutorialStatus();
+        if (tutorialStep == TUTORIAL_LINE_SLIDE && steps > 1) {
+            scheduleTutorialStep(TUTORIAL_COMPLETE);
+        }
+    }
+
+    private boolean canAcceptTutorialCommand() {
+        return currentScreen == Screen.TUTORIAL && boardView != null && !boardView.isBusy();
+    }
+
+    private int clampTutorialStep(int step) {
+        if (step < TUTORIAL_FIRST_MOVE) {
+            return TUTORIAL_FIRST_MOVE;
+        }
+        if (step > TUTORIAL_COMPLETE) {
+            return TUTORIAL_COMPLETE;
+        }
+        return step;
+    }
+
     private void confirmResetSave() {
         new AlertDialog.Builder(this)
                 .setTitle(R.string.dialog_reset_save_title)
@@ -1117,6 +1376,13 @@ public class MainActivity extends Activity implements GameObserver {
         for (Button button : commandButtons) {
             button.setEnabled(enabled);
             button.setAlpha(enabled ? 1f : 0.45f);
+        }
+    }
+
+    private void updateBoardDependentControls() {
+        updateControlsEnabled();
+        if (currentScreen == Screen.TUTORIAL) {
+            updateTutorialStatus();
         }
     }
 
@@ -1530,7 +1796,11 @@ public class MainActivity extends Activity implements GameObserver {
      */
     @Override
     public void onGridChanged() {
-        updateStatus();
+        if (currentScreen == Screen.TUTORIAL) {
+            updateTutorialStatus();
+        } else {
+            updateStatus();
+        }
     }
 
     /**
@@ -1540,7 +1810,26 @@ public class MainActivity extends Activity implements GameObserver {
      */
     @Override
     public void onMove(Direction dir) {
-        updateStatus();
+        if (currentScreen == Screen.TUTORIAL) {
+            updateTutorialStatus();
+        } else {
+            updateStatus();
+        }
+    }
+
+    /**
+     * Updates the HUD after a whole-line slide and advances tutorial practice when needed.
+     *
+     * @param dir direction the empty tile moved
+     * @param steps number of cells the empty tile moved
+     */
+    @Override
+    public void onLineMove(Direction dir, int steps) {
+        if (currentScreen == Screen.TUTORIAL) {
+            handleTutorialLineMove(steps);
+        } else {
+            updateStatus();
+        }
     }
 
     /**
@@ -1551,6 +1840,10 @@ public class MainActivity extends Activity implements GameObserver {
      */
     @Override
     public void onGameWon(int moves, long timeMs) {
+        if (currentScreen == Screen.TUTORIAL) {
+            handleTutorialWin();
+            return;
+        }
         lastWinTimeMs = timeMs;
         pendingWin = new PendingWin(model.getSize(), moves, timeMs, assistedSolveActive);
         handler.postDelayed(this::showWinWhenReady, 180);

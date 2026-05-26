@@ -26,8 +26,8 @@ Current handoff status:
 - `DEVELOPMENT.md` is now the primary continuity artifact; older planning notes
   were consolidated here.
 - The Android app has completed the MVP pass for Home, Mode Select, onboarding,
-  visual How to Play, Settings, Results, local records, save/load, and connected
-  instrumentation coverage.
+  interactive Practice Tutorial, visual How to Play, Settings, Results, local
+  records, save/load, and connected instrumentation coverage.
 - The latest local verification pass was warning-clean for the previously noisy
   Gradle DSL deprecation, Java native-access warning, and Android Java
   deprecation note.
@@ -48,14 +48,12 @@ cd android
 build-debug.bat :app:connectedDebugAndroidTest --warning-mode all --console plain
 ```
 
-Recommended next product task:
+Recommended next product task after the interactive tutorial MVP:
 
-1. Build a deeper interactive Android tutorial or guided first puzzle.
-2. Keep the first pass narrow: teach one first move, show or highlight movable
-   aligned tiles, and demonstrate whole-line sliding interactively.
-3. Preserve `GameModel` as the only puzzle-rule source; Android should only add
-   UI state, hints, and presentation.
-4. Add or extend instrumentation tests before committing the tutorial work.
+1. Add lightweight hint systems that preserve player agency and do not become
+   solver playback.
+2. Add sound/theme settings after those systems exist.
+3. Add daily puzzle, progression loops, and achievement systems.
 
 ## Current Project State
 
@@ -85,6 +83,8 @@ Android currently supports:
 
 - Home screen launch instead of opening directly into the board.
 - First-run onboarding before normal play, with Skip and Start 3x3 actions.
+- Interactive Practice Tutorial entry from Home and onboarding, using a guided
+  first move plus a whole-line slide lesson.
 - Continue when a valid save exists.
 - Mode Select for 3x3, 4x4, and 5x5 games.
 - Visual How to Play and Records screens before or during gameplay.
@@ -93,6 +93,8 @@ Android currently supports:
 - Tap and swipe movement.
 - Whole-line slide behavior through `GameModel.slideLineTo(row, col)`.
 - Synchronized whole-line animation.
+- Highlighted tutorial hints for movable same-row / same-column tiles, with
+  emphasized targets for the first move and whole-line slide practice.
 - One move and one undo snapshot per user gesture.
 - Compact in-game controls with Undo, Restart, Menu, and Assist.
 - Manual Save/Load plus autosave through the in-game menu.
@@ -128,6 +130,9 @@ Android parity checklist:
 - [x] Fresh launch shows Home instead of the board.
 - [x] Continue is shown only when a valid save exists.
 - [x] New Game opens Mode Select before starting a board.
+- [x] Practice Tutorial is reachable from Home and onboarding.
+- [x] Practice Tutorial teaches one first move and one whole-line slide without
+  duplicating move rules outside `GameModel`.
 - [x] How to Play is reachable before gameplay.
 - [x] Default game is 4x4.
 - [x] 3x3, 4x4, and 5x5 are available.
@@ -271,8 +276,8 @@ Target experience:
 Current implementation approach:
 
 - Keep one Android `Activity` for now with internal screen state for `HOME`,
-  `ONBOARDING`, `MODE_SELECT`, `HOW_TO_PLAY`, `RECORDS`, `SETTINGS`, `RESULTS`,
-  and `GAME`.
+  `ONBOARDING`, `TUTORIAL`, `MODE_SELECT`, `HOW_TO_PLAY`, `RECORDS`,
+  `SETTINGS`, `RESULTS`, and `GAME`.
 - Build separate private view-construction methods in `MainActivity` or small package-private screen classes before introducing a larger architecture.
 - Keep `GameModel` unchanged for navigation work; the model should remain platform-independent.
 - Keep `KlotskiView` focused on board rendering and gestures only.
@@ -286,6 +291,7 @@ UX acceptance criteria completed in the 2026-05-25 Android navigation pass:
 - New Game leads to mode selection.
 - How to Play is reachable before starting a game.
 - First-run onboarding is available and can be reopened from Home.
+- Practice Tutorial is available from Home and from the final onboarding page.
 - Settings and Results are in-activity screens, not separate activities.
 - In-game controls remain usable on a 1080 x 2400 emulator without overlap.
 - Existing save/load, undo, restart, best records, and solver-assisted record protection still work.
@@ -300,12 +306,13 @@ planning layer above implementation tickets.
 
 - First-run experience is improved because the app now starts with lightweight
   onboarding before normal play. It teaches the objective, tap/swipe movement,
-  whole-line slides, undo/restart, and record rules. How to Play now adds small
-  visual board examples, but there is still no interactive guided first puzzle.
-- Home is understandable and appropriately simple. Continue, New Game, How to
-  Play, Beginner Guide, Settings, and Records are clear. Records still needs
-  richer explanation for how records are earned and why assisted wins are
-  excluded.
+  whole-line slides, undo/restart, and record rules. Practice Tutorial adds a
+  narrow guided first puzzle that highlights movable aligned tiles, teaches one
+  first move, and demonstrates a whole-line slide.
+- Home is understandable and appropriately simple. Continue, New Game, Beginner
+  Guide, Practice Tutorial, How to Play, Settings, and Records are clear.
+  Records still needs richer explanation for how records are earned and why
+  assisted wins are excluded.
 - Mode Select communicates size and rough difficulty, but it does not yet show
   expected session length, scramble difficulty, or recommended first choice for
   new players.
@@ -334,8 +341,9 @@ planning layer above implementation tickets.
 
 ### Product Readiness Gaps
 
-- First-run guided path is MVP-level: onboarding exists, but there is no guided
-  first puzzle, first-move coaching, or interactive whole-line slide practice.
+- First-run guided path is MVP-level: the new Practice Tutorial covers a first
+  move and whole-line slide, but it is still not a full multi-step coached
+  first game.
 - Settings are MVP-level: haptic feedback, reduced motion, reset save, and reset
   records exist, but sound and theme controls still wait on those systems.
 - Results are MVP-level: the post-game screen shows record status and next
@@ -360,14 +368,15 @@ planning layer above implementation tickets.
 The next product milestone should continue improving first-time player
 comprehension before adding broader systems. Recommended order:
 
-1. Deeper interactive tutorial improvements.
+1. Lightweight hint systems that preserve agency.
 2. Sound/theme settings after those systems exist.
 3. Daily puzzle, progression loops, and achievement systems.
 
 Rationale:
 
-- The First-Run Onboarding, Visual How to Play, Settings, Results, and local CI
-  MVPs now cover the basic teaching, preference, completion, and quality paths.
+- The First-Run Onboarding, Practice Tutorial, Visual How to Play, Settings,
+  Results, and local CI MVPs now cover the basic teaching, preference,
+  completion, and quality paths.
 - Remaining items are broader product systems rather than prerequisite app
   structure.
 
@@ -451,7 +460,37 @@ Recommended scope:
 - [x] Add instrumentation or screenshot smoke coverage after stable IDs exist for
   the visual examples.
 
-### 4. Add Settings
+### 4. Add Android Interactive Tutorial MVP
+
+Priority: High
+
+Status: Completed on 2026-05-26.
+
+- [x] Add a Home entry for Practice Tutorial.
+- [x] Add a Practice Tutorial action on the final onboarding page while keeping
+  the direct Start 3x3 path available.
+- [x] Use a fixed 3x3 guided model state for the first move and a second fixed
+  state for whole-line slide practice.
+- [x] Highlight movable same-row / same-column tiles as presentation only.
+- [x] Emphasize one target tile per lesson: 6 for the first move, 5 for the
+  whole-line slide.
+- [x] Keep board gestures routed through `KlotskiView` and
+  `GameModel.slideLineTo(row, col)` instead of copying move execution rules into
+  Android UI code.
+- [x] Add instrumentation coverage for Home -> Practice Tutorial, first move,
+  whole-line slide completion, and Start 3x3 handoff.
+
+MVP flow:
+
+1. Home or onboarding opens Practice Tutorial.
+2. Lesson 1 shows a near-solved 3x3 board, highlights aligned movable tiles, and
+   asks the player to tap tile 6.
+3. After the move, Lesson 2 resets to a whole-line teaching board and asks the
+   player to tap tile 5.
+4. The whole row slides through `GameModel.slideLineTo(row, col)`, the status
+   confirms it counted as one move, and the player can start a normal 3x3 game.
+
+### 5. Add Settings
 
 Priority: High
 
@@ -471,7 +510,7 @@ Recommended MVP scope:
 - [x] Add reset save and reset records actions behind confirmation dialogs.
 - Defer sound and theme controls until those systems exist.
 
-### 5. Add Results Screen
+### 6. Add Results Screen
 
 Priority: High
 
@@ -491,7 +530,7 @@ Recommended MVP scope:
 - [x] Add instrumentation coverage for normal win result navigation and
   solver-assisted no-record behavior after the screen exists.
 
-### 6. Add CI For Build Quality
+### 7. Add CI For Build Quality
 
 Priority: Medium
 
@@ -594,6 +633,18 @@ Priority: Low to Medium
   tools before presenting screenshots or store copy.
 
 ## Development Log
+
+### 2026-05-26
+
+- Implemented the Android Interactive Tutorial MVP as a Practice Tutorial screen
+  reachable from Home and the final onboarding page.
+- Added render-only board highlights in `KlotskiView` for movable aligned tiles
+  and emphasized tutorial targets, while keeping move execution in
+  `GameModel.slideLineTo(row, col)`.
+- Added instrumentation coverage for the guided first move, whole-line slide
+  lesson, completion status, and Start 3x3 handoff.
+- Updated README and Android README to describe the Practice Tutorial flow and
+  manual smoke-test expectations.
 
 ### 2026-05-25
 

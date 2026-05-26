@@ -3,6 +3,7 @@
     <item name="home_continue_button" type="id" />
     <item name="home_new_game_button" type="id" />
     <item name="home_onboarding_button" type="id" />
+    <item name="home_tutorial_button" type="id" />
     <item name="home_how_to_play_button" type="id" />
     <item name="home_settings_button" type="id" />
     <item name="home_records_button" type="id" />
@@ -11,7 +12,16 @@
     <item name="onboarding_next_button" type="id" />
     <item name="onboarding_back_button" type="id" />
     <item name="onboarding_skip_button" type="id" />
+    <item name="onboarding_tutorial_button" type="id" />
     <item name="onboarding_start_3_button" type="id" />
+    <item name="tutorial_root" type="id" />
+    <item name="tutorial_home_button" type="id" />
+    <item name="tutorial_start_game_button" type="id" />
+    <item name="tutorial_progress_text" type="id" />
+    <item name="tutorial_instruction_text" type="id" />
+    <item name="tutorial_status_text" type="id" />
+    <item name="tutorial_board" type="id" />
+    <item name="tutorial_restart_button" type="id" />
     <item name="mode_root" type="id" />
     <item name="mode_3_button" type="id" />
     <item name="mode_4_button" type="id" />

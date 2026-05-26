@@ -33,6 +33,9 @@ public class KlotskiView extends View implements GameObserver {
     private final Paint boardPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint tilePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint tileHighlightPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint hintFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint hintStrokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint targetStrokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Deque<Direction> moveQueue = new ArrayDeque<>();
     private final RectF rect = new RectF();
@@ -60,6 +63,9 @@ public class KlotskiView extends View implements GameObserver {
     private boolean trackingTouch;
     private boolean reducedMotionEnabled;
     private Runnable busyStateListener;
+    private boolean[][] highlightedCells;
+    private int targetRow = -1;
+    private int targetCol = -1;
 
     /**
      * Creates an unbound board view for programmatic construction.
@@ -102,6 +108,14 @@ public class KlotskiView extends View implements GameObserver {
         boardPaint.setColor(Color.rgb(31, 41, 55));
         tilePaint.setColor(Color.rgb(46, 125, 50));
         tileHighlightPaint.setColor(Color.argb(70, 255, 255, 255));
+        hintFillPaint.setColor(Color.argb(70, 245, 158, 11));
+        hintFillPaint.setStyle(Paint.Style.FILL);
+        hintStrokePaint.setColor(Color.argb(230, 245, 158, 11));
+        hintStrokePaint.setStyle(Paint.Style.STROKE);
+        hintStrokePaint.setStrokeWidth(dp(3));
+        targetStrokePaint.setColor(Color.WHITE);
+        targetStrokePaint.setStyle(Paint.Style.STROKE);
+        targetStrokePaint.setStrokeWidth(dp(4));
         textPaint.setColor(Color.WHITE);
         textPaint.setTextAlign(Paint.Align.CENTER);
         textPaint.setFakeBoldText(true);
@@ -128,6 +142,42 @@ public class KlotskiView extends View implements GameObserver {
         this.model.addObserver(this);
         invalidate();
         notifyBusyStateChanged();
+    }
+
+    /**
+     * Updates render-only hint cells used by guided lessons.
+     * <p>
+     * These highlights do not affect touch validation or puzzle rules; gestures
+     * are still accepted or rejected by the shared model path.
+     * </p>
+     *
+     * @param highlightedCells true values mark cells to outline
+     * @param targetRow row for the emphasized target cell, or {@code -1}
+     * @param targetCol column for the emphasized target cell, or {@code -1}
+     */
+    public void setHighlightedCells(boolean[][] highlightedCells, int targetRow, int targetCol) {
+        if (highlightedCells == null) {
+            clearHighlights();
+            return;
+        }
+        this.highlightedCells = new boolean[highlightedCells.length][];
+        for (int i = 0; i < highlightedCells.length; i++) {
+            this.highlightedCells[i] = new boolean[highlightedCells[i].length];
+            System.arraycopy(highlightedCells[i], 0, this.highlightedCells[i], 0, highlightedCells[i].length);
+        }
+        this.targetRow = targetRow;
+        this.targetCol = targetCol;
+        invalidate();
+    }
+
+    /**
+     * Clears render-only lesson hints from the board.
+     */
+    public void clearHighlights() {
+        highlightedCells = null;
+        targetRow = -1;
+        targetCol = -1;
+        invalidate();
     }
 
     /**
@@ -216,12 +266,19 @@ public class KlotskiView extends View implements GameObserver {
 
         for (int r = 0; r < size; r++) {
             for (int c = 0; c < size; c++) {
+                boolean highlighted = isHighlightedCell(r, c);
+                if (highlighted) {
+                    drawCellHint(canvas, r, c, false);
+                }
                 if (shouldSkipCell(r, c)) {
                     continue;
                 }
                 int value = model.getTile(r, c);
                 if (value != 0) {
                     drawTile(canvas, r, c, value, textOffset);
+                }
+                if (highlighted) {
+                    drawCellHint(canvas, r, c, true);
                 }
             }
         }
@@ -266,6 +323,28 @@ public class KlotskiView extends View implements GameObserver {
         RectF shine = new RectF(x, y, x + tileSize, y + tileSize * 0.45f);
         canvas.drawRoundRect(shine, dp(10), dp(10), tileHighlightPaint);
         canvas.drawText(String.valueOf(value), x + tileSize / 2f, y + tileSize / 2f + textOffset, textPaint);
+    }
+
+    private void drawCellHint(Canvas canvas, int row, int col, boolean strokeOnly) {
+        float x = boardLeft + gap + col * (tileSize + gap);
+        float y = boardTop + gap + row * (tileSize + gap);
+        float inset = strokeOnly ? dp(2) : 0f;
+        rect.set(x - inset, y - inset, x + tileSize + inset, y + tileSize + inset);
+        if (!strokeOnly) {
+            canvas.drawRoundRect(rect, dp(12), dp(12), hintFillPaint);
+            return;
+        }
+        canvas.drawRoundRect(rect, dp(12), dp(12),
+                row == targetRow && col == targetCol ? targetStrokePaint : hintStrokePaint);
+    }
+
+    private boolean isHighlightedCell(int row, int col) {
+        return highlightedCells != null
+                && row >= 0
+                && row < highlightedCells.length
+                && col >= 0
+                && col < highlightedCells[row].length
+                && highlightedCells[row][col];
     }
 
     /**

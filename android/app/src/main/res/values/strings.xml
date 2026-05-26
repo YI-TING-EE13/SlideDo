@@ -6,6 +6,7 @@
     <string name="home_play">Play</string>
     <string name="home_new_game">New Game</string>
     <string name="home_beginner_guide">Beginner Guide</string>
+    <string name="home_tutorial">Practice Tutorial</string>
     <string name="home_how_to_play">How to Play</string>
     <string name="home_settings">Settings</string>
     <string name="home_records">Records</string>
@@ -25,7 +26,17 @@
     <string name="onboarding_next">Next</string>
     <string name="onboarding_back">Back</string>
     <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_start_tutorial">Practice Tutorial</string>
     <string name="onboarding_start_3">Start 3x3</string>
+    <string name="tutorial_title">Practice Tutorial</string>
+    <string name="tutorial_progress">Lesson %1$d of %2$d</string>
+    <string name="tutorial_complete_progress">Practice complete</string>
+    <string name="tutorial_first_instruction">Highlighted tiles share a row or column with the empty cell. Tap the emphasized 6 to make your first move.</string>
+    <string name="tutorial_line_instruction">Now tap the emphasized 5. It is farther away, so the model slides the whole row in one move.</string>
+    <string name="tutorial_complete_instruction">The row moved together and still counted as one move. Start a 3x3 puzzle when you are ready.</string>
+    <string name="tutorial_status">%1$s</string>
+    <string name="tutorial_complete_status">Line slide done: %1$s</string>
+    <string name="tutorial_restart_lesson">Restart Lesson</string>
     <string name="mode_title">Choose a Size</string>
     <string name="mode_subtitle">Start with a quick 3x3, the classic 4x4, or a longer 5x5 challenge.</string>
     <string name="mode_card_title">%1$dx%2$d Puzzle</string>

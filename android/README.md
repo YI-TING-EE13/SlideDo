@@ -12,6 +12,8 @@ an emulator or connected Android device.
 - Native Android `Activity` and custom game board `View`
 - Home screen on launch instead of opening directly into the board
 - First-run onboarding with Skip and Start 3x3 actions
+- Interactive Practice Tutorial for the first move, movable aligned-tile
+  highlights, and whole-line slide practice
 - Mode Select for 3x3, 4x4, and 5x5 games
 - Visual How to Play, Beginner Guide, Quick Reminder, and Records screens
 - Tap a tile in the same row/column as the blank space to slide one or more tiles
@@ -74,9 +76,11 @@ build-debug.bat :app:connectedDebugAndroidTest
 - Launch `com.klotski.android/.MainActivity`.
 - If the app is not visible in the launcher, run `adb install -r app/build/outputs/apk/debug/app-debug.apk` and `adb shell am start -n com.klotski.android/.MainActivity`.
 - Clear app data when checking first-run behavior, then confirm onboarding appears before normal play.
-- Use Skip and Start 3x3 in onboarding; returning launches should go to Home.
+- Use Skip, Practice Tutorial, and Start 3x3 in onboarding; returning launches should go to Home.
 - Confirm the app opens on Home, not directly on the board.
-- Open Beginner Guide and How to Play from Home.
+- Open Beginner Guide, Practice Tutorial, and How to Play from Home.
+- In Practice Tutorial, tap the emphasized 6 for the first move, then tap the
+  emphasized 5 to demonstrate a whole-line slide counted as one move.
 - Open New Game, then start 3x3, 4x4, and 5x5 from Mode Select.
 - Return Home and confirm Continue appears after a game has been saved.
 - Tap adjacent and non-adjacent aligned tiles; a whole-line slide should count as one move.

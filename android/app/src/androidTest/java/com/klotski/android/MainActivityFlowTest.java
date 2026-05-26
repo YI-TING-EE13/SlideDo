@@ -96,6 +96,7 @@ public class MainActivityFlowTest {
         waitForText("SlideDo");
         assertNotNull(findById("home_new_game_button"));
         assertNotNull(findById("home_onboarding_button"));
+        assertNotNull(findById("home_tutorial_button"));
         assertNotNull(findById("home_how_to_play_button"));
         assertNotNull(findById("home_settings_button"));
         assertNotNull(findById("home_records_button"));
@@ -116,6 +117,24 @@ public class MainActivityFlowTest {
 
         waitForId("game_root");
         waitForText("3x3 Puzzle");
+        assertTrue(isOnboardingSeen());
+    }
+
+    @Test
+    public void onboardingPracticeTutorialStartsGuidedLesson() throws Exception {
+        launchApp();
+
+        clickId(R.id.onboarding_next_button);
+        waitForText("Page 2 of 4");
+        clickId(R.id.onboarding_next_button);
+        waitForText("Page 3 of 4");
+        clickId(R.id.onboarding_next_button);
+        waitForText("Page 4 of 4");
+        assertNotNull(findById("onboarding_tutorial_button"));
+
+        clickId(R.id.onboarding_tutorial_button);
+        waitForId("tutorial_root");
+        waitForText("Lesson 1 of 2");
         assertTrue(isOnboardingSeen());
     }
 
@@ -141,10 +160,35 @@ public class MainActivityFlowTest {
         waitForText("SlideDo");
         assertNotNull(findById("home_new_game_button"));
         assertNotNull(findById("home_onboarding_button"));
+        assertNotNull(findById("home_tutorial_button"));
         assertNotNull(findById("home_how_to_play_button"));
         assertNotNull(findById("home_settings_button"));
         assertNotNull(findById("home_records_button"));
         assertNull(findById("home_continue_button"));
+    }
+
+    @Test
+    public void practiceTutorialGuidesFirstMoveAndWholeLineSlide() throws Exception {
+        markOnboardingSeen();
+        launchApp();
+
+        clickId(R.id.home_tutorial_button);
+        waitForId("tutorial_root");
+        waitForText("Lesson 1 of 2");
+        waitForText("Highlighted tiles share a row or column with the empty cell. Tap the emphasized 6 to make your first move.");
+        assertNotNull(findById("tutorial_board"));
+
+        tapCell(R.id.tutorial_board, 3, 2, 2);
+        waitForText("Lesson 2 of 2");
+        waitForText("Now tap the emphasized 5. It is farther away, so the model slides the whole row in one move.");
+
+        tapCell(R.id.tutorial_board, 3, 1, 2);
+        waitForText("Practice complete");
+        waitForText("Line slide done: 1 move");
+
+        clickId(R.id.tutorial_start_game_button);
+        waitForId("game_root");
+        waitForText("3x3 Puzzle");
     }
 
     @Test
@@ -544,9 +588,13 @@ public class MainActivityFlowTest {
     }
 
     private void tapCell(int size, int row, int col) throws InterruptedException {
+        tapCell(R.id.game_board, size, row, col);
+    }
+
+    private void tapCell(int boardResourceId, int size, int row, int col) throws InterruptedException {
         instrumentation.runOnMainSync(() -> {
-            View board = activity.findViewById(R.id.game_board);
-            assertNotNull("Missing view id: game_board", board);
+            View board = activity.findViewById(boardResourceId);
+            assertNotNull("Missing board view id: " + boardResourceId, board);
             float density = targetContext.getResources().getDisplayMetrics().density;
             float gap = 10f * density;
             float boardSize = Math.min(board.getWidth(), board.getHeight());
