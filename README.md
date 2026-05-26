@@ -28,7 +28,7 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
   - Whole-line tap behavior maps naturally to touch screens.
   - One user gesture counts as one move.
   - Undo restores the entire previous user action.
-  - Android includes compact in-game controls, menu-based save/load, autosave, haptic and reduced-motion settings, local best records, a results screen, and solver playback through Assist.
+  - Android includes compact in-game controls, menu-based save/load, autosave, haptic and reduced-motion settings, local best records, a results screen, a lightweight movable-tile hint in Assist, and solver playback.
 - **Quality-of-Life Gameplay**:
   - Undo.
   - Restart current puzzle without reshuffling.
@@ -43,7 +43,7 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
 - **Native Android Project**:
   - Gradle wrapper included.
   - Custom Android view.
-  - Home, onboarding, interactive Practice Tutorial, Mode Select, visual How to Play, Settings, Records, Results, touch controls, synchronized whole-line animation, haptics, autosave, manual save/load, best records, solver controls, and instrumentation tests.
+  - Home, onboarding, interactive Practice Tutorial, Mode Select, visual How to Play, Settings, Records, Results, touch controls, synchronized whole-line animation, haptics, autosave, manual save/load, best records, Assist hints, solver controls, and instrumentation tests.
 
 ---
 
@@ -150,8 +150,10 @@ play until the player skips it, starts 3x3, or opens Practice Tutorial. Practice
 Tutorial uses a small guided 3x3 puzzle to teach the first move, highlight
 movable aligned tiles, and demonstrate a whole-line slide. During gameplay, Undo
 and Restart stay visible while Save/Load, Quick Reminder, Settings, and BFS, A*,
-and IDA* solver actions live in Menu and Assist. Solver-assisted wins show
-Results but do not overwrite player best records.
+and IDA* solver actions live in Menu and Assist. Assist starts with Show Movable
+Tiles, a hint that highlights legal same-row or same-column choices without
+moving the board. Solver-assisted wins show Results but do not overwrite player
+best records.
 
 If the emulator does not show SlideDo in the launcher, reinstall and start it
 directly:
@@ -259,7 +261,7 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
 - Undo after a whole-line slide.
 - Android debug build with Gradle.
 - Android lint with no reported issues during the latest local run.
-- Android instrumentation tests for onboarding, Home launch, Practice Tutorial, mode selection, Continue, How to Play, Settings, Results, whole-line movement, undo, save/load persistence, rotation, and solver-assisted record protection.
+- Android instrumentation tests for onboarding, Home launch, Practice Tutorial, mode selection, Continue, How to Play, Settings, Results, Assist hints, whole-line movement, undo, save/load persistence, rotation, and solver-assisted record protection.
 - Android emulator smoke testing for install/launch, Home visibility, whole-line movement, undo, restart, save/load, solver warning dialog, rotation, and background resume.
 
 ### Useful Commands
@@ -341,12 +343,12 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
 
 ## Roadmap
 
-- Extend Practice Tutorial into a fuller coached first game or lightweight hint system.
+- Extend Practice Tutorial into a fuller coached first game.
 - Add sound effects with a mute toggle.
 - Add theme selection.
 - Add daily puzzle mode.
 - Add difficulty presets based on scramble depth.
-- Add a lightweight hint system.
+- Add sound and theme settings after those systems exist.
 - Add release-readiness checks for signed APK/AAB generation.
 - Add release signing configuration for Play Store distribution.
 - Consider moving desktop launch/package tasks fully into Gradle.

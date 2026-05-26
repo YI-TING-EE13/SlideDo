@@ -20,6 +20,8 @@ an emulator or connected Android device.
 - Swipe a movable tile toward the blank space
 - Whole-line slides animate all affected tiles together and count as one move
 - Compact in-game controls with Undo, Restart, Menu, and Assist actions
+- Lightweight Assist hint that highlights movable aligned tiles without moving
+  the board
 - Manual Save and Load controls in the in-game menu
 - Auto-save through `SharedPreferences`
 - Rotation restore for the active game screen
@@ -90,6 +92,8 @@ build-debug.bat :app:connectedDebugAndroidTest
 - Open Menu, check Quick Reminder, and open Settings.
 - Toggle haptics and reduced motion, then return to gameplay.
 - Use Settings reset actions only after confirming the dialogs.
+- Open Assist, choose Show Movable Tiles, and confirm the status explains the
+  highlighted legal moves while the move count stays unchanged.
 - Open Assist, choose an expensive solver such as BFS on 4x4, and confirm the warning dialog appears.
 - Finish a game and confirm Results shows moves, time, record status, and Play Again/New Size/Home actions.
 - Confirm solver-assisted completion reaches Results without updating player best records.

@@ -120,6 +120,7 @@ public class MainActivity extends Activity implements GameObserver {
     private boolean assistedSolveActive;
     private boolean gameStarted;
     private boolean tutorialAdvancePending;
+    private boolean hintActive;
     private long lastWinTimeMs = -1;
 
     /**
@@ -375,6 +376,7 @@ public class MainActivity extends Activity implements GameObserver {
         currentScreen = Screen.HOME;
         infoReturnScreen = Screen.HOME;
         tutorialAdvancePending = false;
+        hintActive = false;
         statusText = null;
         gameTitleText = null;
         tutorialProgressText = null;
@@ -638,6 +640,7 @@ public class MainActivity extends Activity implements GameObserver {
         currentScreen = Screen.TUTORIAL;
         infoReturnScreen = Screen.HOME;
         tutorialAdvancePending = false;
+        hintActive = false;
         tutorialStep = clampTutorialStep(requestedStep);
         gameStarted = false;
         pendingWin = null;
@@ -740,6 +743,7 @@ public class MainActivity extends Activity implements GameObserver {
     private void showGameScreen() {
         currentScreen = Screen.GAME;
         tutorialAdvancePending = false;
+        hintActive = false;
         statusText = null;
         gameTitleText = null;
         tutorialProgressText = null;
@@ -809,6 +813,7 @@ public class MainActivity extends Activity implements GameObserver {
 
         Button undoButton = addGameButton(actions, R.string.button_undo, v -> {
             if (canAcceptCommand()) {
+                clearGameHint();
                 model.undo();
                 performBoardHaptic(HapticFeedbackConstants.VIRTUAL_KEY);
                 updateStatus();
@@ -1250,6 +1255,7 @@ public class MainActivity extends Activity implements GameObserver {
 
     private void showAssistMenu() {
         String[] items = new String[] {
+                getString(R.string.button_hint_movable),
                 getString(R.string.button_solver_bfs),
                 getString(R.string.button_solver_astar),
                 getString(R.string.button_solver_idastar)
@@ -1259,10 +1265,12 @@ public class MainActivity extends Activity implements GameObserver {
                 .setTitle(R.string.assist_title)
                 .setItems(items, (dialog, which) -> {
                     if (which == 0) {
-                        runSolver(new BfsSolver());
+                        showMovableTilesHint();
                     } else if (which == 1) {
-                        runSolver(new AStarSolver());
+                        runSolver(new BfsSolver());
                     } else if (which == 2) {
+                        runSolver(new AStarSolver());
+                    } else if (which == 3) {
                         runSolver(new IdaStarSolver());
                     }
                 })
@@ -1321,6 +1329,7 @@ public class MainActivity extends Activity implements GameObserver {
         pendingWin = null;
         currentResult = null;
         assistedSolveActive = false;
+        hintActive = false;
         lastWinTimeMs = -1;
         getSharedPreferences(PREFS, MODE_PRIVATE).edit().putInt(KEY_LAST_SIZE, size).apply();
         performBoardHaptic(HapticFeedbackConstants.VIRTUAL_KEY);
@@ -1335,6 +1344,7 @@ public class MainActivity extends Activity implements GameObserver {
         pendingWin = null;
         currentResult = null;
         assistedSolveActive = false;
+        clearGameHint();
         lastWinTimeMs = -1;
         performBoardHaptic(HapticFeedbackConstants.VIRTUAL_KEY);
         updateStatus();
@@ -1367,8 +1377,29 @@ public class MainActivity extends Activity implements GameObserver {
         }
 
         long elapsed = Math.max(0, System.currentTimeMillis() - model.getStartTime()) / 1000;
-        statusText.setText(getString(R.string.status_format, formatMoves(model.getMoveCount()), elapsed, bestText));
+        String status = getString(R.string.status_format, formatMoves(model.getMoveCount()), elapsed, bestText);
+        if (hintActive) {
+            status += "\n" + getString(R.string.status_hint_movable);
+        }
+        statusText.setText(status);
         updateControlsEnabled();
+    }
+
+    private void showMovableTilesHint() {
+        if (!canAcceptCommand() || model.isSolved()) {
+            return;
+        }
+        hintActive = true;
+        boardView.setHighlightedCells(createAlignedHintGrid(), -1, -1);
+        performBoardHaptic(HapticFeedbackConstants.VIRTUAL_KEY);
+        updateStatus();
+    }
+
+    private void clearGameHint() {
+        hintActive = false;
+        if (currentScreen == Screen.GAME && boardView != null) {
+            boardView.clearHighlights();
+        }
     }
 
     private void updateControlsEnabled() {
@@ -1435,6 +1466,7 @@ public class MainActivity extends Activity implements GameObserver {
         lastWinTimeMs = model.isSolved() ? data.elapsedTime : -1;
         assistedSolveActive = false;
         currentResult = null;
+        hintActive = false;
         gameStarted = true;
         return true;
     }
@@ -1799,6 +1831,7 @@ public class MainActivity extends Activity implements GameObserver {
         if (currentScreen == Screen.TUTORIAL) {
             updateTutorialStatus();
         } else {
+            clearGameHint();
             updateStatus();
         }
     }
@@ -1813,6 +1846,7 @@ public class MainActivity extends Activity implements GameObserver {
         if (currentScreen == Screen.TUTORIAL) {
             updateTutorialStatus();
         } else {
+            clearGameHint();
             updateStatus();
         }
     }
@@ -1828,6 +1862,7 @@ public class MainActivity extends Activity implements GameObserver {
         if (currentScreen == Screen.TUTORIAL) {
             handleTutorialLineMove(steps);
         } else {
+            clearGameHint();
             updateStatus();
         }
     }

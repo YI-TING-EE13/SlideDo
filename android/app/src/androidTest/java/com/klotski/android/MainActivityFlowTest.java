@@ -14,6 +14,7 @@ import android.content.SharedPreferences;
 import android.os.SystemClock;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.CompoundButton;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -254,8 +255,8 @@ public class MainActivityFlowTest {
         assertNotNull(findById("settings_haptic_switch"));
         assertNotNull(findById("settings_reduced_motion_switch"));
 
-        clickUiId("settings_haptic_switch");
-        clickUiId("settings_reduced_motion_switch");
+        toggleSwitch(R.id.settings_haptic_switch);
+        toggleSwitch(R.id.settings_reduced_motion_switch);
 
         SharedPreferences prefs = targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         assertFalse(prefs.getBoolean("haptic_enabled", true));
@@ -336,6 +337,26 @@ public class MainActivityFlowTest {
         waitForText("Tap or swipe any tile aligned with the empty cell. Farther aligned tiles slide the whole line as one move. Undo backs up one gesture.");
         device.pressBack();
         waitForId("game_root");
+    }
+
+    @Test
+    public void assistShowsMovableTileHintWithoutMoving() throws Exception {
+        writeSavedGame(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 0);
+        launchApp();
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+
+        clickId(R.id.game_assist_button);
+        waitForText("Show Movable Tiles").click();
+        device.waitForIdle();
+        instrumentation.waitForIdleSync();
+
+        waitForStatusContaining("Hint: highlighted tiles can slide into the empty cell.");
+        waitForStatusContaining("0 moves");
+
+        tapCell(3, 1, 2);
+        waitForStatusContaining("1 move");
+        waitForStatusNotContaining("Hint: highlighted tiles can slide into the empty cell.");
     }
 
     @Test
@@ -549,12 +570,6 @@ public class MainActivityFlowTest {
         return object;
     }
 
-    private void clickUiId(String resourceName) {
-        UiObject2 object = waitForId(resourceName);
-        object.click();
-        device.waitForIdle();
-    }
-
     private UiObject2 scrollToText(String text) throws Exception {
         UiObject2 object = device.findObject(By.text(text));
         if (object == null) {
@@ -573,6 +588,17 @@ public class MainActivityFlowTest {
         instrumentation.waitForIdleSync();
     }
 
+    private void toggleSwitch(int resourceId) {
+        instrumentation.runOnMainSync(() -> {
+            View view = activity.findViewById(resourceId);
+            assertNotNull("Missing switch id: " + resourceId, view);
+            assertTrue("View is not a switch: " + resourceId, view instanceof CompoundButton);
+            CompoundButton switchView = (CompoundButton) view;
+            switchView.setChecked(!switchView.isChecked());
+        });
+        instrumentation.waitForIdleSync();
+    }
+
     private void waitForStatusContaining(String text) throws InterruptedException {
         long deadline = System.currentTimeMillis() + TIMEOUT_MS;
         while (System.currentTimeMillis() < deadline) {
@@ -584,6 +610,20 @@ public class MainActivityFlowTest {
         }
         UiObject2 status = findById("game_status_text");
         fail("Expected status to contain \"" + text + "\" but was: "
+                + (status == null ? "<missing>" : status.getText()));
+    }
+
+    private void waitForStatusNotContaining(String text) throws InterruptedException {
+        long deadline = System.currentTimeMillis() + TIMEOUT_MS;
+        UiObject2 status = null;
+        while (System.currentTimeMillis() < deadline) {
+            status = findById("game_status_text");
+            if (status != null && status.getText() != null && !status.getText().contains(text)) {
+                return;
+            }
+            Thread.sleep(100);
+        }
+        fail("Expected status not to contain \"" + text + "\" but was: "
                 + (status == null ? "<missing>" : status.getText()));
     }
 

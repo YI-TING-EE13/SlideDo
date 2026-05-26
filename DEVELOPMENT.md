@@ -48,12 +48,12 @@ cd android
 build-debug.bat :app:connectedDebugAndroidTest --warning-mode all --console plain
 ```
 
-Recommended next product task after the interactive tutorial MVP:
+Recommended next product task after the lightweight hint MVP:
 
-1. Add lightweight hint systems that preserve player agency and do not become
-   solver playback.
-2. Add sound/theme settings after those systems exist.
-3. Add daily puzzle, progression loops, and achievement systems.
+1. Add sound/theme settings after those systems exist.
+2. Add daily puzzle, progression loops, and achievement systems.
+3. Continue the accessibility pass for board descriptions, controls, and
+   reduced-motion behavior.
 
 ## Current Project State
 
@@ -97,6 +97,7 @@ Android currently supports:
   emphasized targets for the first move and whole-line slide practice.
 - One move and one undo snapshot per user gesture.
 - Compact in-game controls with Undo, Restart, Menu, and Assist.
+- Assist now starts with a lightweight movable-tile hint before solver actions.
 - Manual Save/Load plus autosave through the in-game menu.
 - Best records by puzzle size.
 - BFS, A*, and IDA* solver controls behind Assist with expensive-operation warnings.
@@ -133,6 +134,8 @@ Android parity checklist:
 - [x] Practice Tutorial is reachable from Home and onboarding.
 - [x] Practice Tutorial teaches one first move and one whole-line slide without
   duplicating move rules outside `GameModel`.
+- [x] Assist exposes a lightweight movable-tile hint that highlights legal same-row
+  / same-column choices without moving the board.
 - [x] How to Play is reachable before gameplay.
 - [x] Default game is 4x4.
 - [x] 3x3, 4x4, and 5x5 are available.
@@ -350,8 +353,9 @@ planning layer above implementation tickets.
   actions, but there is no celebration animation, sharing, or progression hook.
 - Missing complete feedback system: no sound, celebratory animation, progression
   feedback, or differentiated assisted-completion treatment beyond Results text.
-- Missing hint system: Assist is solver-oriented and can feel like a developer
-  tool. Casual players need lightweight hints that preserve agency.
+- Hint system is MVP-level: Assist can now highlight movable tiles without
+  moving the board, but it does not yet suggest strategic progress toward a
+  solve.
 - Missing progression loops: no daily puzzle, streak, recent games, difficulty
   progression, achievements, or session goals.
 - Missing accessibility pass: text buttons are usable, but the app needs content
@@ -368,15 +372,15 @@ planning layer above implementation tickets.
 The next product milestone should continue improving first-time player
 comprehension before adding broader systems. Recommended order:
 
-1. Lightweight hint systems that preserve agency.
-2. Sound/theme settings after those systems exist.
-3. Daily puzzle, progression loops, and achievement systems.
+1. Sound/theme settings after those systems exist.
+2. Daily puzzle, progression loops, and achievement systems.
+3. Accessibility review and screen-reader wording.
 
 Rationale:
 
-- The First-Run Onboarding, Practice Tutorial, Visual How to Play, Settings,
-  Results, and local CI MVPs now cover the basic teaching, preference,
-  completion, and quality paths.
+- The First-Run Onboarding, Practice Tutorial, lightweight Assist hint, Visual
+  How to Play, Settings, Results, and local CI MVPs now cover the basic
+  teaching, preference, completion, and quality paths.
 - Remaining items are broader product systems rather than prerequisite app
   structure.
 
@@ -490,7 +494,31 @@ MVP flow:
 4. The whole row slides through `GameModel.slideLineTo(row, col)`, the status
    confirms it counted as one move, and the player can start a normal 3x3 game.
 
-### 5. Add Settings
+### 5. Add Lightweight Assist Hints
+
+Priority: High
+
+Status: Completed on 2026-05-26.
+
+- [x] Add Show Movable Tiles as the first Assist action before solver options.
+- [x] Highlight the current same-row / same-column movable tiles without changing
+  the model state.
+- [x] Keep the hint presentation-only: no move count change, no automatic move,
+  no solver path, and no record impact.
+- [x] Clear the hint after the next player move, whole-line slide, undo, restart,
+  load, or screen rebuild.
+- [x] Add instrumentation coverage for opening Assist, showing the hint, verifying
+  the move count stays unchanged, and clearing the hint after a move.
+
+MVP behavior:
+
+1. In Game, Assist opens with Show Movable Tiles before BFS, A*, and IDA*.
+2. The hint highlights every non-empty tile aligned with the empty cell.
+3. The status line explains that highlighted tiles can slide into the empty cell.
+4. The player still decides which highlighted tile to tap or swipe; the shared
+   `GameModel` remains the only rule source for executing the move.
+
+### 6. Add Settings
 
 Priority: High
 
@@ -510,7 +538,7 @@ Recommended MVP scope:
 - [x] Add reset save and reset records actions behind confirmation dialogs.
 - Defer sound and theme controls until those systems exist.
 
-### 6. Add Results Screen
+### 7. Add Results Screen
 
 Priority: High
 
@@ -530,7 +558,7 @@ Recommended MVP scope:
 - [x] Add instrumentation coverage for normal win result navigation and
   solver-assisted no-record behavior after the screen exists.
 
-### 7. Add CI For Build Quality
+### 8. Add CI For Build Quality
 
 Priority: Medium
 
@@ -645,6 +673,10 @@ Priority: Low to Medium
   lesson, completion status, and Start 3x3 handoff.
 - Updated README and Android README to describe the Practice Tutorial flow and
   manual smoke-test expectations.
+- Added a lightweight Assist hint that highlights movable aligned tiles without
+  moving the board, changing move count, invoking solvers, or affecting records.
+- Added instrumentation coverage for the Assist hint flow and updated docs after
+  the hint MVP.
 
 ### 2026-05-25
 
