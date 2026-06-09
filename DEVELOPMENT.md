@@ -18,8 +18,8 @@ Use this section as the first stop in a fresh Codex conversation.
 
 Current handoff status:
 
-- Latest verified implementation baseline before this architecture/CI pass:
-  `db390e4 Add Android accessibility MVP`.
+- Latest verified implementation baseline before this code-review/planning pass:
+  `6867971 Extract Android game store and expand verification`.
 - This handoff guide is committed on top of that baseline; use `git log` to
   confirm the current `HEAD` in a future session.
 - Working tree was clean after the handoff commit.
@@ -28,7 +28,8 @@ Current handoff status:
 - The Android app has completed the MVP pass for Home, Mode Select, onboarding,
   interactive Practice Tutorial, visual How to Play, Settings, Results, local
   records, save/load, lightweight Assist hints, board/control accessibility
-  descriptions, and connected instrumentation coverage.
+  descriptions, `AndroidGameStore` persistence separation, and connected
+  instrumentation coverage.
 - The latest local verification pass was warning-clean for the previously noisy
   Gradle DSL deprecation, Java native-access warning, and Android Java
   deprecation note.
@@ -48,13 +49,16 @@ verify.bat
 verify-connected.bat
 ```
 
-Recommended next product task after the Android accessibility MVP:
+Recommended next product task after the code-review/planning pass:
 
-1. Add daily puzzle, progression loops, and achievement systems.
-2. Add stronger completion feedback, such as celebration and record emphasis.
-3. Add sound/theme settings after those systems exist.
-4. Continue the broader accessibility pass with touch-target, color-contrast,
-   TalkBack, and reduced-motion validation.
+1. Start a desktop/mobile parity pass so the desktop edition has player-facing
+   content and flow aligned with the Android app.
+2. Split larger Android screen construction into package-private builders only
+   where it directly supports the parity work.
+3. Add daily puzzle, progression loops, and achievement systems after both
+   front ends have comparable product surfaces.
+4. Add stronger completion feedback, sound/theme systems, and broader
+   accessibility validation after the parity pass.
 
 ## Current Project State
 
@@ -373,23 +377,51 @@ planning layer above implementation tickets.
 
 ### Recommended Next Implementation Order
 
-The next product milestone can move from first-time comprehension into
-repeat-play motivation and polish. Recommended order:
+The next product milestone should first align the desktop and Android player
+experience before adding repeat-play systems. Recommended order:
 
-1. Daily puzzle, progression loops, and achievement systems.
-2. Stronger completion feedback, such as celebration and record emphasis.
-3. Sound/theme settings after those systems exist.
-4. Broader accessibility review with TalkBack, touch-target, color-contrast, and
-   reduced-motion validation.
+1. Desktop/mobile parity pass.
+2. Targeted architecture split that supports parity work.
+3. Daily puzzle, progression loops, and achievement systems.
+4. Stronger completion feedback, sound/theme systems, and broader accessibility
+   validation.
 
 Rationale:
 
-- The First-Run Onboarding, Practice Tutorial, lightweight Assist hint, Visual
-  How to Play, Settings, Results, board/control accessibility descriptions, and
-  local CI MVPs now cover the basic teaching, preference, completion, and
-  quality paths.
-- Remaining items are broader product systems rather than prerequisite app
-  structure.
+- Android now has the richer product surface. Desktop still has strong gameplay
+  coverage but lacks Android's Home, onboarding/tutorial, How to Play, Assist
+  hint presentation, Settings, and Results surfaces.
+- Aligning desktop first keeps both front ends honest around the shared
+  `GameModel` contract before adding daily/progression systems that would need
+  to exist in both experiences.
+
+### Next Phase: Desktop/Mobile Parity Pass
+
+Priority: High
+
+Recommended MVP scope:
+
+- Add a desktop entry/home surface or equivalent start panel that exposes New
+  Game, Continue/Load, How to Play, Records, and Settings/Preferences in the
+  same conceptual order as Android.
+- Add desktop How to Play / Practice Tutorial content that matches Android's
+  first move, movable aligned tiles, and whole-line slide teaching.
+- Add a desktop Assist hint entry that highlights movable same-row /
+  same-column tiles without moving the model, counting a move, or invoking a
+  solver.
+- Add a desktop Results surface or post-win panel with wording consistent with
+  Android, including solver-assisted record protection.
+- Keep all puzzle behavior routed through `GameModel`; desktop parity work
+  should be UI/presentation plus tests.
+
+Acceptance criteria:
+
+- Desktop and Android expose comparable player-facing learning and completion
+  flows, even if the layout differs by platform.
+- Existing desktop mouse, keyboard, save/load, records, solver playback, undo,
+  restart, and whole-line slide behavior still work.
+- Shared core tests remain unchanged unless a real rule gap is found.
+- `verify.bat` passes, and desktop compile/Javadocs remain warning-clean.
 
 ### Completed 2026-05-25 MVP Items
 
@@ -674,6 +706,21 @@ Priority: Low to Medium
   tools before presenting screenshots or store copy.
 
 ## Development Log
+
+### 2026-06-10
+
+- Completed a post-architecture code review of `AndroidGameStore`,
+  `MainActivity` persistence call sites, `verify-connected.bat`, and the current
+  desktop/mobile parity roadmap. No blocking defects were found.
+- Added small clarifying comments for Android save compatibility and record
+  ordering so future changes do not accidentally break restart-grid fallback or
+  best-record comparison semantics.
+- The latest Android Studio emulator connected test flow on `emulator-5554`
+  passed 26/26 instrumentation tests, then the debug app was reinstalled and
+  left running on the emulator for manual testing.
+- Replanned the next implementation phase around desktop/mobile parity before
+  daily puzzle, progression, achievement, sound/theme, or broader release
+  readiness work.
 
 ### 2026-06-09
 

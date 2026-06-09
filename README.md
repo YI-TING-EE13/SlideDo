@@ -346,8 +346,9 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
 
 ## Roadmap
 
-- Extend Practice Tutorial into a fuller coached first game.
-- Add daily puzzle, progression loops, and achievements.
+- Align the desktop edition with Android's player-facing content: Home/start flow, How to Play, Practice Tutorial, Assist hints, Settings, and Results.
+- Split larger Android screen construction only where it supports the desktop/mobile parity work.
+- Add daily puzzle, progression loops, and achievements after both front ends have comparable product surfaces.
 - Add stronger completion feedback for solves and records.
 - Add difficulty presets based on scramble depth.
 - Add sound and theme settings after those systems exist.

@@ -97,6 +97,7 @@ final class AndroidGameStore {
         }
         int[][] initialGrid = parseGrid(prefs.getString(KEY_INITIAL_GRID, ""), size);
         if (initialGrid == null) {
+            // Older Android saves did not always persist the restart grid.
             initialGrid = copyGrid(grid);
         }
 
@@ -155,6 +156,7 @@ final class AndroidGameStore {
     }
 
     static boolean isBetterRecord(Best best, int moves, long timeMs) {
+        // Record ranking matches the shared desktop behavior: moves first, then time.
         return best == null || moves < best.moves || (moves == best.moves && timeMs < best.timeMs);
     }
 
