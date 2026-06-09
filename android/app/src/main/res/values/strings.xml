@@ -87,6 +87,12 @@
     <string name="game_title_format">%1$dx%2$d Puzzle</string>
     <string name="game_menu">Menu</string>
     <string name="game_assist">Assist</string>
+    <string name="accessibility_game_home">Save the current puzzle and return Home</string>
+    <string name="accessibility_game_menu">Open game menu for save, load, settings, records, and Home</string>
+    <string name="accessibility_game_undo">Undo the previous move</string>
+    <string name="accessibility_game_restart">Restart this puzzle from its starting board</string>
+    <string name="accessibility_game_assist">Open assist actions, including movable-tile hints and solvers</string>
+    <string name="accessibility_settings_switch">%1$s. %2$s</string>
     <string name="menu_title">Game Menu</string>
     <string name="menu_resume">Resume</string>
     <string name="menu_new_size">New Size</string>
@@ -136,8 +142,17 @@
     <string name="board_empty_cell_description">Empty cell</string>
     <string name="board_tile_description">Tile %1$d</string>
     <string name="board_highlighted_tile_description">Highlighted tile %1$d</string>
+    <string name="board_accessibility_no_game">SlideDo board with no active puzzle.</string>
+    <string name="board_accessibility_description">%1$dx%2$d board. Empty cell at row %3$d, column %4$d. %5$s. %6$s</string>
+    <string name="board_accessibility_rows_prefix">Rows: </string>
+    <string name="board_accessibility_row_prefix">row %1$d: </string>
+    <string name="board_accessibility_busy">Board is moving.</string>
     <plurals name="moves_count">
         <item quantity="one">%d move</item>
         <item quantity="other">%d moves</item>
+    </plurals>
+    <plurals name="board_accessibility_highlight_count">
+        <item quantity="one">%d highlighted tile can slide into the empty cell.</item>
+        <item quantity="other">%d highlighted tiles can slide into the empty cell.</item>
     </plurals>
 </resources>

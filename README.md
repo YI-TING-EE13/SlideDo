@@ -29,6 +29,7 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
   - One user gesture counts as one move.
   - Undo restores the entire previous user action.
   - Android includes compact in-game controls, menu-based save/load, autosave, haptic and reduced-motion settings, local best records, a results screen, a lightweight movable-tile hint in Assist, and solver playback.
+  - Android exposes board state, empty-cell position, highlighted movable tiles, and primary controls through accessibility descriptions.
 - **Quality-of-Life Gameplay**:
   - Undo.
   - Restart current puzzle without reshuffling.
@@ -43,7 +44,7 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
 - **Native Android Project**:
   - Gradle wrapper included.
   - Custom Android view.
-  - Home, onboarding, interactive Practice Tutorial, Mode Select, visual How to Play, Settings, Records, Results, touch controls, synchronized whole-line animation, haptics, autosave, manual save/load, best records, Assist hints, solver controls, and instrumentation tests.
+  - Home, onboarding, interactive Practice Tutorial, Mode Select, visual How to Play, Settings, Records, Results, touch controls, synchronized whole-line animation, haptics, autosave, manual save/load, best records, Assist hints, accessibility descriptions, solver controls, and instrumentation tests.
 
 ---
 
@@ -344,11 +345,11 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
 ## Roadmap
 
 - Extend Practice Tutorial into a fuller coached first game.
-- Add sound effects with a mute toggle.
-- Add theme selection.
-- Add daily puzzle mode.
+- Add daily puzzle, progression loops, and achievements.
+- Add stronger completion feedback for solves and records.
 - Add difficulty presets based on scramble depth.
 - Add sound and theme settings after those systems exist.
+- Continue broader accessibility review with TalkBack, touch-target, color-contrast, and reduced-motion validation.
 - Add release-readiness checks for signed APK/AAB generation.
 - Add release signing configuration for Play Store distribution.
 - Consider moving desktop launch/package tasks fully into Gradle.

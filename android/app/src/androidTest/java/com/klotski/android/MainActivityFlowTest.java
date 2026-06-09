@@ -210,6 +210,13 @@ public class MainActivityFlowTest {
         assertNotNull(findById("game_undo_button"));
         assertNotNull(findById("game_restart_button"));
         assertNotNull(findById("game_assist_button"));
+        waitForContentDescriptionContaining("game_board", "4x4 board");
+        waitForContentDescriptionContaining("game_board", "Empty cell at row");
+        waitForContentDescriptionContaining("game_board", "Rows:");
+        waitForContentDescriptionContaining("game_menu_button", "Open game menu");
+        waitForContentDescriptionContaining("game_undo_button", "Undo the previous move");
+        waitForContentDescriptionContaining("game_restart_button", "Restart this puzzle");
+        waitForContentDescriptionContaining("game_assist_button", "Open assist actions");
     }
 
     @Test
@@ -254,6 +261,10 @@ public class MainActivityFlowTest {
         waitForText("Reduced motion");
         assertNotNull(findById("settings_haptic_switch"));
         assertNotNull(findById("settings_reduced_motion_switch"));
+        waitForContentDescriptionContaining("settings_haptic_switch",
+                "Haptic feedback. Use short vibration feedback");
+        waitForContentDescriptionContaining("settings_reduced_motion_switch",
+                "Reduced motion. Complete board moves without transition animation");
 
         toggleSwitch(R.id.settings_haptic_switch);
         toggleSwitch(R.id.settings_reduced_motion_switch);
@@ -353,6 +364,8 @@ public class MainActivityFlowTest {
 
         waitForStatusContaining("Hint: highlighted tiles can slide into the empty cell.");
         waitForStatusContaining("0 moves");
+        waitForContentDescriptionContaining("game_board",
+                "4 highlighted tiles can slide into the empty cell.");
 
         tapCell(3, 1, 2);
         waitForStatusContaining("1 move");
@@ -568,6 +581,22 @@ public class MainActivityFlowTest {
         UiObject2 object = device.wait(Until.findObject(By.textContains(text)), TIMEOUT_MS);
         assertNotNull("Missing text containing: " + text, object);
         return object;
+    }
+
+    private void waitForContentDescriptionContaining(String resourceName, String text) throws InterruptedException {
+        long deadline = System.currentTimeMillis() + TIMEOUT_MS;
+        while (System.currentTimeMillis() < deadline) {
+            UiObject2 object = findById(resourceName);
+            CharSequence description = object == null ? null : object.getContentDescription();
+            if (description != null && description.toString().contains(text)) {
+                return;
+            }
+            Thread.sleep(100);
+        }
+        UiObject2 object = findById(resourceName);
+        String description = object == null ? "<missing>" : String.valueOf(object.getContentDescription());
+        fail("Expected content description for " + resourceName
+                + " to contain \"" + text + "\" but was: " + description);
     }
 
     private UiObject2 scrollToText(String text) throws Exception {

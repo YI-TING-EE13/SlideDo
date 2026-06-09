@@ -22,6 +22,8 @@ an emulator or connected Android device.
 - Compact in-game controls with Undo, Restart, Menu, and Assist actions
 - Lightweight Assist hint that highlights movable aligned tiles without moving
   the board
+- Board, highlighted movable tiles, primary game controls, and settings switches
+  expose accessibility descriptions for screen readers
 - Manual Save and Load controls in the in-game menu
 - Auto-save through `SharedPreferences`
 - Rotation restore for the active game screen
@@ -94,6 +96,10 @@ build-debug.bat :app:connectedDebugAndroidTest
 - Use Settings reset actions only after confirming the dialogs.
 - Open Assist, choose Show Movable Tiles, and confirm the status explains the
   highlighted legal moves while the move count stays unchanged.
+- With a screen reader or inspection tool, confirm the board describes its size,
+  empty-cell position, row-by-row tile state, and highlighted movable-tile count.
+- Confirm Undo, Restart, Assist, Menu, and Settings switches expose descriptive
+  accessibility labels.
 - Open Assist, choose an expensive solver such as BFS on 4x4, and confirm the warning dialog appears.
 - Finish a game and confirm Results shows moves, time, record status, and Play Again/New Size/Home actions.
 - Confirm solver-assisted completion reaches Results without updating player best records.

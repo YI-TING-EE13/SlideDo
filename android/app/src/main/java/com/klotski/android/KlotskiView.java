@@ -102,6 +102,7 @@ public class KlotskiView extends View implements GameObserver {
 
     private void init() {
         setFocusable(true);
+        setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_YES);
         setHapticFeedbackEnabled(true);
 
         gap = dp(10);
@@ -119,6 +120,7 @@ public class KlotskiView extends View implements GameObserver {
         textPaint.setColor(Color.WHITE);
         textPaint.setTextAlign(Paint.Align.CENTER);
         textPaint.setFakeBoldText(true);
+        refreshAccessibilityDescription();
     }
 
     /**
@@ -140,6 +142,7 @@ public class KlotskiView extends View implements GameObserver {
         trackingTouch = false;
         this.model = model;
         this.model.addObserver(this);
+        refreshAccessibilityDescription();
         invalidate();
         notifyBusyStateChanged();
     }
@@ -167,6 +170,7 @@ public class KlotskiView extends View implements GameObserver {
         }
         this.targetRow = targetRow;
         this.targetCol = targetCol;
+        refreshAccessibilityDescription();
         invalidate();
     }
 
@@ -177,6 +181,7 @@ public class KlotskiView extends View implements GameObserver {
         highlightedCells = null;
         targetRow = -1;
         targetCol = -1;
+        refreshAccessibilityDescription();
         invalidate();
     }
 
@@ -196,6 +201,7 @@ public class KlotskiView extends View implements GameObserver {
      */
     public void setInputLocked(boolean inputLocked) {
         this.inputLocked = inputLocked;
+        refreshAccessibilityDescription();
         notifyBusyStateChanged();
     }
 
@@ -227,6 +233,7 @@ public class KlotskiView extends View implements GameObserver {
             return;
         }
         moveQueue.addAll(dirs);
+        refreshAccessibilityDescription();
         notifyBusyStateChanged();
         playQueuedMove();
     }
@@ -502,6 +509,7 @@ public class KlotskiView extends View implements GameObserver {
      */
     @Override
     public void onGridChanged() {
+        refreshAccessibilityDescription();
         if (!isAnimating) {
             invalidate();
         }
@@ -529,6 +537,7 @@ public class KlotskiView extends View implements GameObserver {
         animToCol = oldEmptyC;
         animationProgress = 0f;
         isAnimating = true;
+        refreshAccessibilityDescription();
         notifyBusyStateChanged();
         if (reducedMotionEnabled) {
             finishSingleMoveAnimation();
@@ -556,6 +565,7 @@ public class KlotskiView extends View implements GameObserver {
         movingValue = 0;
         skipRow = -1;
         skipCol = -1;
+        refreshAccessibilityDescription();
         invalidate();
         playQueuedMove();
         notifyBusyStateChanged();
@@ -605,6 +615,7 @@ public class KlotskiView extends View implements GameObserver {
 
         animationProgress = 0f;
         isAnimating = true;
+        refreshAccessibilityDescription();
         notifyBusyStateChanged();
         if (reducedMotionEnabled) {
             finishLineMoveAnimation();
@@ -629,6 +640,7 @@ public class KlotskiView extends View implements GameObserver {
     private void finishLineMoveAnimation() {
         isAnimating = false;
         animatedTiles.clear();
+        refreshAccessibilityDescription();
         invalidate();
         playQueuedMove();
         notifyBusyStateChanged();
@@ -643,7 +655,78 @@ public class KlotskiView extends View implements GameObserver {
     @Override
     public void onGameWon(int moves, long timeMs) {
         moveQueue.clear();
+        refreshAccessibilityDescription();
         notifyBusyStateChanged();
+    }
+
+    private void refreshAccessibilityDescription() {
+        if (model == null) {
+            setContentDescription(getResources().getString(R.string.board_accessibility_no_game));
+            return;
+        }
+
+        int size = model.getSize();
+        int moves = model.getMoveCount();
+        String moveText = getResources().getQuantityString(R.plurals.moves_count, moves, moves);
+        String description = getResources().getString(
+                R.string.board_accessibility_description,
+                size,
+                size,
+                model.getEmptyRow() + 1,
+                model.getEmptyCol() + 1,
+                moveText,
+                buildRowsDescription());
+
+        int highlightCount = countHighlightedCells();
+        if (highlightCount > 0) {
+            description += " " + getResources().getQuantityString(
+                    R.plurals.board_accessibility_highlight_count,
+                    highlightCount,
+                    highlightCount);
+        }
+        if (isBusy()) {
+            description += " " + getResources().getString(R.string.board_accessibility_busy);
+        }
+        setContentDescription(description);
+    }
+
+    private String buildRowsDescription() {
+        int size = model.getSize();
+        StringBuilder rows = new StringBuilder(getResources().getString(R.string.board_accessibility_rows_prefix));
+        for (int row = 0; row < size; row++) {
+            if (row > 0) {
+                rows.append("; ");
+            }
+            rows.append(getResources().getString(R.string.board_accessibility_row_prefix, row + 1));
+            for (int col = 0; col < size; col++) {
+                if (col > 0) {
+                    rows.append(", ");
+                }
+                int value = model.getTile(row, col);
+                if (value == 0) {
+                    rows.append(getResources().getString(R.string.board_empty_cell_short));
+                } else {
+                    rows.append(value);
+                }
+            }
+        }
+        rows.append(".");
+        return rows.toString();
+    }
+
+    private int countHighlightedCells() {
+        if (highlightedCells == null) {
+            return 0;
+        }
+        int count = 0;
+        for (boolean[] row : highlightedCells) {
+            for (boolean cell : row) {
+                if (cell) {
+                    count++;
+                }
+            }
+        }
+        return count;
     }
 
     private boolean isValidCell(int row, int col) {

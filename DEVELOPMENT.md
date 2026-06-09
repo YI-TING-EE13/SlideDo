@@ -18,8 +18,8 @@ Use this section as the first stop in a fresh Codex conversation.
 
 Current handoff status:
 
-- Latest verified implementation baseline before this handoff:
-  `dc58eab Suppress local build warnings`.
+- Latest verified implementation baseline before this accessibility pass:
+  `15af6ac Add Android assist hint MVP`.
 - This handoff guide is committed on top of that baseline; use `git log` to
   confirm the current `HEAD` in a future session.
 - Working tree was clean after the handoff commit.
@@ -27,7 +27,8 @@ Current handoff status:
   were consolidated here.
 - The Android app has completed the MVP pass for Home, Mode Select, onboarding,
   interactive Practice Tutorial, visual How to Play, Settings, Results, local
-  records, save/load, and connected instrumentation coverage.
+  records, save/load, lightweight Assist hints, board/control accessibility
+  descriptions, and connected instrumentation coverage.
 - The latest local verification pass was warning-clean for the previously noisy
   Gradle DSL deprecation, Java native-access warning, and Android Java
   deprecation note.
@@ -48,12 +49,13 @@ cd android
 build-debug.bat :app:connectedDebugAndroidTest --warning-mode all --console plain
 ```
 
-Recommended next product task after the lightweight hint MVP:
+Recommended next product task after the Android accessibility MVP:
 
-1. Add sound/theme settings after those systems exist.
-2. Add daily puzzle, progression loops, and achievement systems.
-3. Continue the accessibility pass for board descriptions, controls, and
-   reduced-motion behavior.
+1. Add daily puzzle, progression loops, and achievement systems.
+2. Add stronger completion feedback, such as celebration and record emphasis.
+3. Add sound/theme settings after those systems exist.
+4. Continue the broader accessibility pass with touch-target, color-contrast,
+   TalkBack, and reduced-motion validation.
 
 ## Current Project State
 
@@ -98,6 +100,8 @@ Android currently supports:
 - One move and one undo snapshot per user gesture.
 - Compact in-game controls with Undo, Restart, Menu, and Assist.
 - Assist now starts with a lightweight movable-tile hint before solver actions.
+- Board-level screen-reader summaries for game/tutorial board state, highlighted
+  movable tiles, and primary game/settings controls.
 - Manual Save/Load plus autosave through the in-game menu.
 - Best records by puzzle size.
 - BFS, A*, and IDA* solver controls behind Assist with expensive-operation warnings.
@@ -334,9 +338,8 @@ planning layer above implementation tickets.
   Save/Load, last selected mode, and per-size records. It is not yet a polished
   product save system because it lacks explicit resume metadata, multiple
   puzzle slots, save freshness display, and cloud/back-up strategy.
-- The app does not yet have audio, themes, hints, accessibility labels, crash
-  reporting, analytics, Play Store metadata, privacy disclosures, or release
-  signing planning.
+- The app does not yet have audio, themes, crash reporting, analytics, Play
+  Store metadata, privacy disclosures, or release signing planning.
 - As of this pass, SlideDo is no longer just a raw feature demo, but it is not
   yet a complete mobile game product. The core gameplay works; the missing work
   is mostly onboarding, polish, product systems, release readiness, and
@@ -358,9 +361,10 @@ planning layer above implementation tickets.
   solve.
 - Missing progression loops: no daily puzzle, streak, recent games, difficulty
   progression, achievements, or session goals.
-- Missing accessibility pass: text buttons are usable, but the app needs content
-  descriptions, larger touch-target review, color-contrast review, screen-reader
-  wording, and broader reduced-motion validation.
+- Accessibility is MVP-level: board summaries, settings switch descriptions, and
+  primary game-control descriptions exist, but the app still needs a manual
+  TalkBack pass, larger touch-target review, color-contrast review, and broader
+  reduced-motion validation.
 - Missing Play Store readiness systems: release signing, app icon polish,
   adaptive icons, screenshots, privacy policy, data safety notes, crash
   reporting, and versioning discipline.
@@ -369,18 +373,21 @@ planning layer above implementation tickets.
 
 ### Recommended Next Implementation Order
 
-The next product milestone should continue improving first-time player
-comprehension before adding broader systems. Recommended order:
+The next product milestone can move from first-time comprehension into
+repeat-play motivation and polish. Recommended order:
 
-1. Sound/theme settings after those systems exist.
-2. Daily puzzle, progression loops, and achievement systems.
-3. Accessibility review and screen-reader wording.
+1. Daily puzzle, progression loops, and achievement systems.
+2. Stronger completion feedback, such as celebration and record emphasis.
+3. Sound/theme settings after those systems exist.
+4. Broader accessibility review with TalkBack, touch-target, color-contrast, and
+   reduced-motion validation.
 
 Rationale:
 
 - The First-Run Onboarding, Practice Tutorial, lightweight Assist hint, Visual
-  How to Play, Settings, Results, and local CI MVPs now cover the basic
-  teaching, preference, completion, and quality paths.
+  How to Play, Settings, Results, board/control accessibility descriptions, and
+  local CI MVPs now cover the basic teaching, preference, completion, and
+  quality paths.
 - Remaining items are broader product systems rather than prerequisite app
   structure.
 
@@ -598,8 +605,8 @@ Recommended scope:
 - Add clear empty-cell affordance and movable-tile hints for first-time players.
 - Review typography and spacing on smaller emulator profiles, not only
   1080 x 2400.
-- Add accessibility labels for custom board content, especially tile positions
-  and the empty cell.
+- Continue accessibility review for custom board content with TalkBack, larger
+  touch targets, contrast checks, and reduced-motion behavior.
 - Add orientation and background/resume validation whenever screen state expands.
 
 ### Technical Improvement Directions
@@ -661,6 +668,18 @@ Priority: Low to Medium
   tools before presenting screenshots or store copy.
 
 ## Development Log
+
+### 2026-06-09
+
+- Added the Android accessibility MVP for custom board content: `KlotskiView`
+  now exposes board size, empty-cell position, row-by-row tile state, active
+  highlighted movable tiles, and busy state through its content description.
+- Added content descriptions for primary in-game controls and settings switches,
+  plus a polite live region for gameplay status changes.
+- Extended Android instrumentation coverage for board/control accessibility
+  descriptions, settings switch descriptions, and Assist hint description
+  updates.
+- Updated README and Android README status notes after the accessibility pass.
 
 ### 2026-05-26
 

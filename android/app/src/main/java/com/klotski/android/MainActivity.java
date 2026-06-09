@@ -765,6 +765,7 @@ public class MainActivity extends Activity implements GameObserver {
 
         Button homeButton = createButton(getString(R.string.nav_home), COLOR_PANEL);
         homeButton.setId(R.id.game_home_button);
+        homeButton.setContentDescription(getString(R.string.accessibility_game_home));
         homeButton.setOnClickListener(v -> {
             if (canAcceptCommand()) {
                 saveGame();
@@ -782,6 +783,7 @@ public class MainActivity extends Activity implements GameObserver {
 
         Button menuButton = createButton(getString(R.string.game_menu), COLOR_PANEL);
         menuButton.setId(R.id.game_menu_button);
+        menuButton.setContentDescription(getString(R.string.accessibility_game_menu));
         menuButton.setOnClickListener(v -> {
             if (canAcceptCommand()) {
                 showPauseMenu();
@@ -794,6 +796,7 @@ public class MainActivity extends Activity implements GameObserver {
         statusText.setId(R.id.game_status_text);
         statusText.setGravity(Gravity.CENTER);
         statusText.setSingleLine(false);
+        statusText.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         LinearLayout.LayoutParams statusParams = fullWidthParams();
         statusParams.setMargins(0, dp(8), 0, dp(8));
         root.addView(statusText, statusParams);
@@ -820,18 +823,21 @@ public class MainActivity extends Activity implements GameObserver {
             }
         });
         undoButton.setId(R.id.game_undo_button);
+        undoButton.setContentDescription(getString(R.string.accessibility_game_undo));
         Button restartButton = addGameButton(actions, R.string.button_restart, v -> {
             if (canAcceptCommand()) {
                 restartCurrentGame();
             }
         });
         restartButton.setId(R.id.game_restart_button);
+        restartButton.setContentDescription(getString(R.string.accessibility_game_restart));
         Button assistButton = addGameButton(actions, R.string.game_assist, v -> {
             if (canAcceptCommand()) {
                 showAssistMenu();
             }
         });
         assistButton.setId(R.id.game_assist_button);
+        assistButton.setContentDescription(getString(R.string.accessibility_game_assist));
 
         setContentView(root);
         updateStatus();
@@ -928,7 +934,8 @@ public class MainActivity extends Activity implements GameObserver {
         Switch toggle = new Switch(this);
         toggle.setId(switchId);
         toggle.setChecked(checked);
-        toggle.setContentDescription(getString(titleResId));
+        toggle.setContentDescription(getString(R.string.accessibility_settings_switch,
+                getString(titleResId), getString(bodyResId)));
         toggle.setOnCheckedChangeListener((buttonView, isChecked) -> listener.onChanged(isChecked));
         LinearLayout.LayoutParams switchParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
