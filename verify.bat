@@ -31,9 +31,9 @@ echo [3/5] Public core/desktop Javadocs
 "%JAVADOC_CMD%" -quiet -public -Xdoclint:all -encoding UTF-8 -charset UTF-8 -sourcepath "%ROOT%\src" -d "%TEMP_ROOT%\javadocs" com.klotski.core com.klotski.ui
 if errorlevel 1 exit /b 1
 
-echo [4/5] Android assemble and lint
+echo [4/5] Android assemble, test APK, and lint
 pushd "%ROOT%\android"
-call build-debug.bat :app:assembleDebug :app:lintDebug
+call build-debug.bat :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
 set "ANDROID_RESULT=%ERRORLEVEL%"
 popd
 if not "%ANDROID_RESULT%"=="0" exit /b %ANDROID_RESULT%

@@ -18,8 +18,8 @@ Use this section as the first stop in a fresh Codex conversation.
 
 Current handoff status:
 
-- Latest verified implementation baseline before this accessibility pass:
-  `15af6ac Add Android assist hint MVP`.
+- Latest verified implementation baseline before this architecture/CI pass:
+  `db390e4 Add Android accessibility MVP`.
 - This handoff guide is committed on top of that baseline; use `git log` to
   confirm the current `HEAD` in a future session.
 - Working tree was clean after the handoff commit.
@@ -45,8 +45,7 @@ Android or documentation-sensitive change, use:
 
 ```bat
 verify.bat
-cd android
-build-debug.bat :app:connectedDebugAndroidTest --warning-mode all --console plain
+verify-connected.bat
 ```
 
 Recommended next product task after the Android accessibility MVP:
@@ -107,6 +106,8 @@ Android currently supports:
 - BFS, A*, and IDA* solver controls behind Assist with expensive-operation warnings.
 - Solver-assisted completion protection so player records are not overwritten.
 - Settings for haptic feedback, reduced motion, reset saved game, and reset records.
+- Android app-state persistence through `AndroidGameStore` for saves, records,
+  settings, onboarding state, and the last selected puzzle size.
 - Results screen with player-record status and solver-assisted completion wording.
 - Haptic feedback.
 - Warning-clean local Gradle verification under `--warning-mode all` for the
@@ -188,21 +189,19 @@ Android build and lint:
 
 ```bat
 cd android
-build-debug.bat :app:assembleDebug :app:lintDebug
+build-debug.bat :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
 ```
 
 Android instrumentation tests:
 
 ```bat
-cd android
-build-debug.bat :app:connectedDebugAndroidTest
+verify-connected.bat
 ```
 
 Warning-clean Android instrumentation check:
 
 ```bat
-cd android
-build-debug.bat :app:connectedDebugAndroidTest --warning-mode all --console plain
+verify-connected.bat
 ```
 
 Android install and launch:
@@ -288,8 +287,9 @@ Current implementation approach:
 - Build separate private view-construction methods in `MainActivity` or small package-private screen classes before introducing a larger architecture.
 - Keep `GameModel` unchanged for navigation work; the model should remain platform-independent.
 - Keep `KlotskiView` focused on board rendering and gestures only.
-- Store lightweight preferences for first-run state, settings, and last selected mode.
-- Continue to use `SharedPreferences` for local mobile saves until there is a concrete need for a database.
+- Store lightweight preferences and saves through `AndroidGameStore`, which
+  remains backed by `SharedPreferences` until there is a concrete need for a
+  database.
 
 UX acceptance criteria completed in the 2026-05-25 Android navigation pass:
 
@@ -574,6 +574,7 @@ Status: Completed on 2026-05-25.
 - [x] Run root JUnit tests.
 - [x] Compile desktop Java.
 - [x] Run Android assemble/lint.
+- [x] Compile Android instrumentation test APKs in the local verification path.
 - [x] Run public Javadoc doclint checks where practical.
 
 Recommended scope:
@@ -582,8 +583,12 @@ Recommended scope:
   configured yet.
 - [x] CI should run shared core tests, desktop compile, Android assemble/lint, and
   API doclint.
-- Connected Android instrumentation tests can remain manual at first unless a
-  stable emulator runner is available in CI.
+- [x] `verify.bat` now also assembles the Android instrumentation test APK so
+  test source compilation is checked without requiring an emulator.
+- [x] `verify-connected.bat` runs connected instrumentation tests when a device
+  or emulator is available.
+- Connected Android instrumentation tests still require a running emulator or
+  device outside the one-command no-device verification path.
 - Add release-readiness checks later: signed release build, versioning, and Play
   App Bundle generation.
 
@@ -620,8 +625,9 @@ Recommended scope:
   instrumentation tests do not rely on text or screen coordinates.
 - Add a small Android state model for screen state, selected mode, first-run
   status, settings, and pending results.
-- Move Android persistence helpers out of `MainActivity` as save, settings,
-  records, results, and onboarding state continue to grow.
+- Continue the architecture split started by `AndroidGameStore`; persistence for
+  saves, settings, records, onboarding, and last size is now outside
+  `MainActivity`, while screen builders/navigation state still need separation.
 - Add explicit save metadata: saved size, moves, elapsed time, updated-at
   timestamp, and solved/active status for better Continue UI.
 - Add release build checks before Google Play planning: signed release APK/AAB,
@@ -680,6 +686,15 @@ Priority: Low to Medium
   descriptions, settings switch descriptions, and Assist hint description
   updates.
 - Updated README and Android README status notes after the accessibility pass.
+- Split Android app-state persistence out of `MainActivity` into
+  `AndroidGameStore`, covering saves, records, settings, onboarding state, and
+  the last selected puzzle size while keeping gameplay rules in `GameModel`.
+- Added focused instrumentation coverage for `AndroidGameStore` save round-trip,
+  invalid save handling, record comparison, settings, onboarding, and last-size
+  behavior.
+- Expanded local CI verification so `verify.bat` also assembles the Android
+  instrumentation test APK, and added `verify-connected.bat` as the emulator /
+  device runtime test entry point.
 
 ### 2026-05-26
 

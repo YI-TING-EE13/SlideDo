@@ -262,7 +262,7 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
 - Undo after a whole-line slide.
 - Android debug build with Gradle.
 - Android lint with no reported issues during the latest local run.
-- Android instrumentation tests for onboarding, Home launch, Practice Tutorial, mode selection, Continue, How to Play, Settings, Results, Assist hints, whole-line movement, undo, save/load persistence, rotation, and solver-assisted record protection.
+- Android instrumentation tests for onboarding, Home launch, Practice Tutorial, mode selection, Continue, How to Play, Settings, Results, Assist hints, whole-line movement, undo, save/load persistence, app-state store behavior, rotation, and solver-assisted record protection.
 - Android emulator smoke testing for install/launch, Home visibility, whole-line movement, undo, restart, save/load, solver warning dialog, rotation, and background resume.
 
 ### Useful Commands
@@ -272,6 +272,9 @@ One-command local verification:
 ```bat
 verify.bat
 ```
+
+This compiles Android instrumentation test APKs as part of the no-device local
+verification path.
 
 Desktop compile:
 
@@ -292,14 +295,13 @@ Android build and lint:
 
 ```bat
 cd android
-build-debug.bat :app:assembleDebug :app:lintDebug
+build-debug.bat :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
 ```
 
 Android instrumentation tests on a connected emulator or device:
 
 ```bat
-cd android
-build-debug.bat :app:connectedDebugAndroidTest
+verify-connected.bat
 ```
 
 ### Current Limitations

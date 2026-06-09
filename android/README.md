@@ -26,6 +26,8 @@ an emulator or connected Android device.
   expose accessibility descriptions for screen readers
 - Manual Save and Load controls in the in-game menu
 - Auto-save through `SharedPreferences`
+- App-state persistence is isolated in `AndroidGameStore` for saves, settings,
+  records, onboarding, and last selected size
 - Rotation restore for the active game screen
 - Settings for haptic feedback, reduced motion, reset saved game, and reset records
 - Per-size best record tracking
@@ -54,12 +56,13 @@ verify.bat
 ```
 
 The verification script runs shared core tests, desktop compilation, Android
-assemble/lint, and public Javadoc/doclint checks.
+assemble/lint, Android instrumentation test APK assembly, and public
+Javadoc/doclint checks.
 
 For Android build and lint only:
 
 ```bat
-build-debug.bat :app:assembleDebug :app:lintDebug
+build-debug.bat :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
 ```
 
 To run the shared desktop/core JUnit tests from the repository root:
@@ -71,7 +74,7 @@ android\gradlew.bat -p . test
 To run Android instrumentation smoke tests on a connected emulator or device:
 
 ```bat
-build-debug.bat :app:connectedDebugAndroidTest
+..\verify-connected.bat
 ```
 
 ## Emulator Smoke Test Checklist

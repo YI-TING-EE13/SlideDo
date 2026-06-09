@@ -3,7 +3,6 @@ package com.klotski.android;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.annotation.SuppressLint;
-import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -47,17 +46,6 @@ import java.util.List;
  * </p>
  */
 public class MainActivity extends Activity implements GameObserver {
-    private static final String PREFS = "slidedo";
-    private static final String KEY_SIZE = "size";
-    private static final String KEY_GRID = "grid";
-    private static final String KEY_INITIAL_GRID = "initial_grid";
-    private static final String KEY_MOVES = "moves";
-    private static final String KEY_ELAPSED = "elapsed";
-    private static final String KEY_LAST_SIZE = "last_size";
-    private static final String KEY_BEST_PREFIX = "best_";
-    private static final String KEY_ONBOARDING_SEEN = "onboarding_seen";
-    private static final String KEY_HAPTIC_ENABLED = "haptic_enabled";
-    private static final String KEY_REDUCED_MOTION = "reduced_motion";
     private static final String STATE_SCREEN = "screen";
     private static final String STATE_INFO_RETURN_SCREEN = "info_return_screen";
     private static final String STATE_GAME_STARTED = "game_started";
@@ -102,6 +90,7 @@ public class MainActivity extends Activity implements GameObserver {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final List<Button> commandButtons = new ArrayList<>();
 
+    private AndroidGameStore store;
     private GameModel model;
     private KlotskiView boardView;
     private TextView statusText;
@@ -162,10 +151,8 @@ public class MainActivity extends Activity implements GameObserver {
         super.onCreate(savedInstanceState);
         applyLegacySystemBarColors();
 
-        int lastSize = getSharedPreferences(PREFS, MODE_PRIVATE).getInt(KEY_LAST_SIZE, 4);
-        if (lastSize < 3 || lastSize > 5) {
-            lastSize = 4;
-        }
+        store = new AndroidGameStore(this);
+        int lastSize = store.getLastSize(4);
         attachModel(new GameModel(lastSize));
         registerBackHandler();
         if (savedInstanceState == null || !restoreAppScreen(savedInstanceState)) {
@@ -360,9 +347,9 @@ public class MainActivity extends Activity implements GameObserver {
         }
         int previousMoves = savedInstanceState.getInt(STATE_RESULT_PREVIOUS_BEST_MOVES, -1);
         long previousTime = savedInstanceState.getLong(STATE_RESULT_PREVIOUS_BEST_TIME, -1);
-        Best previousBest = previousMoves < 0 || previousTime < 0
+        AndroidGameStore.Best previousBest = previousMoves < 0 || previousTime < 0
                 ? null
-                : new Best(previousMoves, previousTime);
+                : new AndroidGameStore.Best(previousMoves, previousTime);
         return new GameResult(
                 savedInstanceState.getInt(STATE_RESULT_SIZE, 4),
                 savedInstanceState.getInt(STATE_RESULT_MOVES, 0),
@@ -553,12 +540,12 @@ public class MainActivity extends Activity implements GameObserver {
         addScreenHeader(screen.content, getString(R.string.settings_title), getString(R.string.settings_subtitle));
         addSettingsSwitch(screen.content, R.id.settings_haptic_switch, R.string.settings_haptic_title,
                 R.string.settings_haptic_body, isHapticEnabled(), checked -> {
-                    setPreference(KEY_HAPTIC_ENABLED, checked);
+                    store.setHapticEnabled(checked);
                     applySettingsToBoard();
                 });
         addSettingsSwitch(screen.content, R.id.settings_reduced_motion_switch, R.string.settings_reduced_motion_title,
                 R.string.settings_reduced_motion_body, isReducedMotionEnabled(), checked -> {
-                    setPreference(KEY_REDUCED_MOTION, checked);
+                    store.setReducedMotionEnabled(checked);
                     applySettingsToBoard();
                 });
         Button resetSaveButton = addWideButton(screen.content, R.string.settings_reset_save, COLOR_PANEL,
@@ -1141,6 +1128,15 @@ public class MainActivity extends Activity implements GameObserver {
         }
     }
 
+    private int[][] copyGrid(int[][] grid) {
+        int[][] copy = new int[grid.length][];
+        for (int i = 0; i < grid.length; i++) {
+            copy[i] = new int[grid[i].length];
+            System.arraycopy(grid[i], 0, copy[i], 0, grid[i].length);
+        }
+        return copy;
+    }
+
     private void applyTutorialHighlights() {
         if (boardView == null) {
             return;
@@ -1295,13 +1291,11 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private boolean shouldShowOnboarding() {
-        return !getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_ONBOARDING_SEEN, false);
+        return !store.isOnboardingSeen();
     }
 
     private void markOnboardingSeen() {
-        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
-                .putBoolean(KEY_ONBOARDING_SEEN, true)
-                .apply();
+        store.markOnboardingSeen();
     }
 
     private int clampOnboardingPage(int page) {
@@ -1338,7 +1332,7 @@ public class MainActivity extends Activity implements GameObserver {
         assistedSolveActive = false;
         hintActive = false;
         lastWinTimeMs = -1;
-        getSharedPreferences(PREFS, MODE_PRIVATE).edit().putInt(KEY_LAST_SIZE, size).apply();
+        store.setLastSize(size);
         performBoardHaptic(HapticFeedbackConstants.VIRTUAL_KEY);
         showGameScreen();
     }
@@ -1370,7 +1364,7 @@ public class MainActivity extends Activity implements GameObserver {
             gameTitleText.setText(getString(R.string.game_title_format, model.getSize(), model.getSize()));
         }
 
-        Best best = getBest(model.getSize());
+        AndroidGameStore.Best best = getBest(model.getSize());
         String bestText = best == null
                 ? getString(R.string.best_empty)
                 : getString(R.string.best_format, formatMoves(best.moves), best.timeMs / 1000);
@@ -1429,46 +1423,19 @@ public class MainActivity extends Activity implements GameObserver {
             return;
         }
 
-        SharedPreferences.Editor editor = getSharedPreferences(PREFS, MODE_PRIVATE).edit();
-        editor.putInt(KEY_SIZE, model.getSize());
-        editor.putString(KEY_GRID, flatten(model.getGridCopy()));
-        editor.putString(KEY_INITIAL_GRID, flatten(model.getInitialGridCopy()));
-        editor.putInt(KEY_MOVES, model.getMoveCount());
-        editor.putInt(KEY_LAST_SIZE, model.getSize());
         long elapsed = model.isSolved() && lastWinTimeMs >= 0
                 ? lastWinTimeMs
                 : Math.max(0, System.currentTimeMillis() - model.getStartTime());
-        editor.putLong(KEY_ELAPSED, elapsed);
-        editor.apply();
+        store.saveGame(model, elapsed);
     }
 
     private boolean loadGame() {
-        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
-        if (!prefs.contains(KEY_GRID)) {
+        SaveManager.SaveData data = store.loadSavedGame();
+        if (data == null) {
             return false;
         }
 
-        int size = prefs.getInt(KEY_SIZE, 4);
-        if (size < 3 || size > 5) {
-            return false;
-        }
-        int[][] grid = parseGrid(prefs.getString(KEY_GRID, ""), size);
-        if (grid == null) {
-            return false;
-        }
-        int[][] initialGrid = parseGrid(prefs.getString(KEY_INITIAL_GRID, ""), size);
-        if (initialGrid == null) {
-            initialGrid = copyGrid(grid);
-        }
-
-        SaveManager.SaveData data = new SaveManager.SaveData();
-        data.size = size;
-        data.grid = grid;
-        data.initialGrid = initialGrid;
-        data.moveCount = prefs.getInt(KEY_MOVES, 0);
-        data.elapsedTime = prefs.getLong(KEY_ELAPSED, 0);
-
-        attachModel(new GameModel(size));
+        attachModel(new GameModel(data.size));
         model.loadState(data);
         lastWinTimeMs = model.isSolved() ? data.elapsedTime : -1;
         assistedSolveActive = false;
@@ -1479,99 +1446,23 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private boolean hasSavedGame() {
-        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
-        if (!prefs.contains(KEY_GRID)) {
-            return false;
-        }
-
-        int size = prefs.getInt(KEY_SIZE, 4);
-        return size >= 3 && size <= 5 && parseGrid(prefs.getString(KEY_GRID, ""), size) != null;
+        return store.hasSavedGame();
     }
 
     private void clearSavedGame() {
-        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
-                .remove(KEY_SIZE)
-                .remove(KEY_GRID)
-                .remove(KEY_INITIAL_GRID)
-                .remove(KEY_MOVES)
-                .remove(KEY_ELAPSED)
-                .commit();
+        store.clearSavedGame();
     }
 
-    private String flatten(int[][] grid) {
-        StringBuilder sb = new StringBuilder();
-        for (int r = 0; r < grid.length; r++) {
-            for (int c = 0; c < grid[r].length; c++) {
-                if (sb.length() > 0) {
-                    sb.append(',');
-                }
-                sb.append(grid[r][c]);
-            }
-        }
-        return sb.toString();
-    }
-
-    private int[][] parseGrid(String text, int size) {
-        if (text == null || text.isEmpty()) {
-            return null;
-        }
-        int[][] grid = new int[size][size];
-        String[] values = text.split(",");
-        if (values.length != size * size) {
-            return null;
-        }
-        try {
-            for (int i = 0; i < values.length; i++) {
-                grid[i / size][i % size] = Integer.parseInt(values[i]);
-            }
-        } catch (NumberFormatException e) {
-            return null;
-        }
-
-        return grid;
-    }
-
-    private int[][] copyGrid(int[][] grid) {
-        int[][] copy = new int[grid.length][grid.length];
-        for (int i = 0; i < grid.length; i++) {
-            System.arraycopy(grid[i], 0, copy[i], 0, grid.length);
-        }
-        return copy;
-    }
-
-    private Best getBest(int size) {
-        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
-        int moves = prefs.getInt(KEY_BEST_PREFIX + size + "_moves", -1);
-        long timeMs = prefs.getLong(KEY_BEST_PREFIX + size + "_time", -1);
-        if (moves < 0 || timeMs < 0) {
-            return null;
-        }
-        return new Best(moves, timeMs);
+    private AndroidGameStore.Best getBest(int size) {
+        return store.getBest(size);
     }
 
     private void recordBest(int size, int moves, long timeMs) {
-        Best best = getBest(size);
-        if (!isBetterRecord(best, moves, timeMs)) {
-            return;
-        }
-
-        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
-                .putInt(KEY_BEST_PREFIX + size + "_moves", moves)
-                .putLong(KEY_BEST_PREFIX + size + "_time", timeMs)
-                .apply();
-    }
-
-    private boolean isBetterRecord(Best best, int moves, long timeMs) {
-        return best == null || moves < best.moves || (moves == best.moves && timeMs < best.timeMs);
+        store.recordBestIfBetter(size, moves, timeMs);
     }
 
     private void clearRecords() {
-        SharedPreferences.Editor editor = getSharedPreferences(PREFS, MODE_PRIVATE).edit();
-        for (int size = 3; size <= 5; size++) {
-            editor.remove(KEY_BEST_PREFIX + size + "_moves");
-            editor.remove(KEY_BEST_PREFIX + size + "_time");
-        }
-        editor.commit();
+        store.clearRecords();
     }
 
     private void runSolver(Solver solver) {
@@ -1754,7 +1645,7 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private String formatBestForCard(int size) {
-        Best best = getBest(size);
+        AndroidGameStore.Best best = getBest(size);
         return best == null
                 ? getString(R.string.records_empty)
                 : getString(R.string.best_format, formatMoves(best.moves), best.timeMs / 1000);
@@ -1775,7 +1666,7 @@ public class MainActivity extends Activity implements GameObserver {
                             getString(R.string.best_format, formatMoves(result.previousBest.moves),
                                     result.previousBest.timeMs / 1000));
         }
-        Best best = getBest(result.size);
+        AndroidGameStore.Best best = getBest(result.size);
         String bestText = best == null
                 ? getString(R.string.records_empty)
                 : getString(R.string.best_format, formatMoves(best.moves), best.timeMs / 1000);
@@ -1789,17 +1680,11 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private boolean isHapticEnabled() {
-        return getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_HAPTIC_ENABLED, true);
+        return store.isHapticEnabled();
     }
 
     private boolean isReducedMotionEnabled() {
-        return getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_REDUCED_MOTION, false);
-    }
-
-    private void setPreference(String key, boolean value) {
-        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
-                .putBoolean(key, value)
-                .apply();
+        return store.isReducedMotionEnabled();
     }
 
     private void applySettingsToBoard() {
@@ -1902,8 +1787,8 @@ public class MainActivity extends Activity implements GameObserver {
 
         PendingWin win = pendingWin;
         pendingWin = null;
-        Best previousBest = getBest(win.size);
-        boolean newBest = !win.assisted && isBetterRecord(previousBest, win.moves, win.timeMs);
+        AndroidGameStore.Best previousBest = getBest(win.size);
+        boolean newBest = !win.assisted && AndroidGameStore.isBetterRecord(previousBest, win.moves, win.timeMs);
         if (newBest) {
             recordBest(win.size, win.moves, win.timeMs);
         }
@@ -1939,16 +1824,6 @@ public class MainActivity extends Activity implements GameObserver {
         }
     }
 
-    private static class Best {
-        final int moves;
-        final long timeMs;
-
-        Best(int moves, long timeMs) {
-            this.moves = moves;
-            this.timeMs = timeMs;
-        }
-    }
-
     private static class PendingWin {
         final int size;
         final int moves;
@@ -1969,9 +1844,10 @@ public class MainActivity extends Activity implements GameObserver {
         final long timeMs;
         final boolean assisted;
         final boolean newBest;
-        final Best previousBest;
+        final AndroidGameStore.Best previousBest;
 
-        GameResult(int size, int moves, long timeMs, boolean assisted, boolean newBest, Best previousBest) {
+        GameResult(int size, int moves, long timeMs, boolean assisted, boolean newBest,
+                AndroidGameStore.Best previousBest) {
             this.size = size;
             this.moves = moves;
             this.timeMs = timeMs;

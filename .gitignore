@@ -11,6 +11,12 @@ android/app/build/
 
 # Local machine configuration
 android/local.properties
+local.properties
+
+# Android Gradle wrapper lives under android/; ignore accidental root wrapper output
+/gradle/
+/gradlew
+/gradlew.bat
 
 # Game runtime data
 klotski_save.json
