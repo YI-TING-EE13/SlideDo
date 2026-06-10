@@ -57,6 +57,9 @@ public class BoardPanel extends JPanel implements GameObserver {
     /** Render state for every board cell. */
     private Tile[][] tiles;
 
+    /** Presentation-only highlight mask for assist hints. */
+    private boolean[][] highlightedCells;
+
     /** Queued empty-tile moves used for keyboard and solver playback. */
     private final Deque<Direction> moveQueue = new ArrayDeque<>();
 
@@ -223,9 +226,41 @@ public class BoardPanel extends JPanel implements GameObserver {
         moveQueue.clear();
         isAnimating = false;
         pendingWinMoves = null;
+        highlightedCells = null;
         this.model = model;
         this.model.addObserver(this);
         initTiles();
+        repaint();
+    }
+
+    /**
+     * Sets the presentation-only cells highlighted by desktop assist hints.
+     * <p>
+     * The caller decides which cells to mark, but this method never changes the
+     * model or attempts to validate moves.
+     * </p>
+     *
+     * @param cells square highlight mask matching the current board size
+     */
+    public void setHighlightedCells(boolean[][] cells) {
+        int size = model.getSize();
+        highlightedCells = new boolean[size][size];
+        for (int r = 0; r < size; r++) {
+            if (cells == null || r >= cells.length || cells[r] == null) {
+                continue;
+            }
+            for (int c = 0; c < size && c < cells[r].length; c++) {
+                highlightedCells[r][c] = cells[r][c];
+            }
+        }
+        repaint();
+    }
+
+    /**
+     * Clears any presentation-only assist highlights.
+     */
+    public void clearHighlights() {
+        highlightedCells = null;
         repaint();
     }
 
@@ -294,11 +329,19 @@ public class BoardPanel extends JPanel implements GameObserver {
         if (row == model.getEmptyRow()) {
             Direction dir = col < model.getEmptyCol() ? Direction.LEFT : Direction.RIGHT;
             log("slide row steps=" + Math.abs(col - model.getEmptyCol()) + " dir=" + dir);
-            log("slide result moved=" + model.slideLineTo(row, col));
+            boolean moved = model.slideLineTo(row, col);
+            if (moved) {
+                clearHighlights();
+            }
+            log("slide result moved=" + moved);
         } else if (col == model.getEmptyCol()) {
             Direction dir = row < model.getEmptyRow() ? Direction.UP : Direction.DOWN;
             log("slide column steps=" + Math.abs(row - model.getEmptyRow()) + " dir=" + dir);
-            log("slide result moved=" + model.slideLineTo(row, col));
+            boolean moved = model.slideLineTo(row, col);
+            if (moved) {
+                clearHighlights();
+            }
+            log("slide result moved=" + moved);
         } else {
             log("slide ignored: tile is not aligned with empty");
         }
@@ -314,6 +357,7 @@ public class BoardPanel extends JPanel implements GameObserver {
             log("enqueueMove ignored: model solved");
             return;
         }
+        clearHighlights();
         moveQueue.add(dir);
         log("queued single move dir=" + dir + " queueSize=" + moveQueue.size());
         playQueuedMove();
@@ -329,6 +373,7 @@ public class BoardPanel extends JPanel implements GameObserver {
             log("enqueueMoves ignored: model solved");
             return;
         }
+        clearHighlights();
         moveQueue.addAll(dirs);
         log("queued solution moves count=" + dirs.size() + " queueSize=" + moveQueue.size());
         playQueuedMove();
@@ -550,9 +595,28 @@ public class BoardPanel extends JPanel implements GameObserver {
 
         for (int r = 0; r < size; r++) {
             for (int c = 0; c < size; c++) {
+                drawHighlight(g2, r, c, startX, startY, tileSize);
                 tiles[r][c].draw(g2, startX, startY, tileSize);
             }
         }
+    }
+
+    private void drawHighlight(Graphics2D g2, int row, int col, int startX, int startY, int tileSize) {
+        if (highlightedCells == null
+                || row >= highlightedCells.length
+                || highlightedCells[row] == null
+                || col >= highlightedCells[row].length
+                || !highlightedCells[row][col]) {
+            return;
+        }
+
+        int x = startX + TILE_GAP + col * (tileSize + TILE_GAP);
+        int y = startY + TILE_GAP + row * (tileSize + TILE_GAP);
+        g2.setColor(new Color(255, 193, 7, 70));
+        g2.fillRoundRect(x, y, tileSize, tileSize, 12, 12);
+        g2.setStroke(new BasicStroke(3f));
+        g2.setColor(new Color(255, 193, 7));
+        g2.drawRoundRect(x + 2, y + 2, tileSize - 4, tileSize - 4, 12, 12);
     }
 
     private void drawTile(Graphics2D g2, int x, int y, int size, int val) {

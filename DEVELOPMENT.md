@@ -404,15 +404,28 @@ Recommended MVP scope:
 - Add a desktop entry/home surface or equivalent start panel that exposes New
   Game, Continue/Load, How to Play, Records, and Settings/Preferences in the
   same conceptual order as Android.
-- Add desktop How to Play / Practice Tutorial content that matches Android's
+- [x] Add desktop How to Play / Practice Tutorial content that matches Android's
   first move, movable aligned tiles, and whole-line slide teaching.
-- Add a desktop Assist hint entry that highlights movable same-row /
+- [x] Add a desktop Assist hint entry that highlights movable same-row /
   same-column tiles without moving the model, counting a move, or invoking a
   solver.
 - Add a desktop Results surface or post-win panel with wording consistent with
   Android, including solver-assisted record protection.
 - Keep all puzzle behavior routed through `GameModel`; desktop parity work
   should be UI/presentation plus tests.
+
+2026-06-10 first parity slice:
+
+- Desktop now has `Assist > Show Movable Tiles`, which highlights every
+  non-empty tile aligned with the empty cell. The highlight is presentation-only
+  and clears on move, undo, restart, load, new game, or solver playback.
+- Desktop now has `Help > How to Play` and `Help > Practice Tutorial` dialogs
+  using Android-aligned language for first moves, movable aligned tiles,
+  whole-line slides, and solver-assisted record protection.
+- Added focused JUnit coverage for the desktop help copy so the parity terms do
+  not disappear during later UI refactors.
+- Remaining parity work: desktop Home/start surface, Settings/Preferences,
+  Records surface, and Android-style Results/post-win wording.
 
 Acceptance criteria:
 
@@ -709,6 +722,12 @@ Priority: Low to Medium
 
 ### 2026-06-10
 
+- Started the Desktop/Mobile Parity Pass by adding desktop Assist movable-tile
+  highlights plus How to Play and Practice Tutorial menu dialogs. The highlight
+  path is view-only and still executes moves exclusively through
+  `GameModel.slideLineTo(row, col)`.
+- Added focused desktop help-content tests and updated roadmap state for the
+  remaining parity surfaces.
 - Completed a post-architecture code review of `AndroidGameStore`,
   `MainActivity` persistence call sites, `verify-connected.bat`, and the current
   desktop/mobile parity roadmap. No blocking defects were found.

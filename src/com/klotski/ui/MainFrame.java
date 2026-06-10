@@ -34,6 +34,9 @@ public class MainFrame extends JFrame implements GameObserver {
     /** Tracks whether the current completion was produced by solver playback. */
     private boolean assistedSolveActive;
 
+    /** Tracks whether desktop assist highlights are currently visible. */
+    private boolean movableHintActive;
+
     /**
      * Creates and shows the desktop application window.
      */
@@ -122,6 +125,16 @@ public class MainFrame extends JFrame implements GameObserver {
 
         menuBar.add(gameMenu);
 
+        // Assist Menu
+        JMenu assistMenu = new JMenu("Assist");
+
+        JMenuItem showMovableItem = new JMenuItem("Show Movable Tiles");
+        showMovableItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, KeyEvent.CTRL_DOWN_MASK));
+        showMovableItem.addActionListener(e -> showMovableTiles());
+        assistMenu.add(showMovableItem);
+
+        menuBar.add(assistMenu);
+
         // Solver Menu
         JMenu solverMenu = new JMenu("Solver");
 
@@ -139,10 +152,25 @@ public class MainFrame extends JFrame implements GameObserver {
 
         menuBar.add(solverMenu);
 
+        // Help Menu
+        JMenu helpMenu = new JMenu("Help");
+
+        JMenuItem howToPlayItem = new JMenuItem("How to Play");
+        howToPlayItem.addActionListener(e -> showHelpDialog("How to Play", DesktopHelpContent.howToPlay()));
+        helpMenu.add(howToPlayItem);
+
+        JMenuItem practiceTutorialItem = new JMenuItem("Practice Tutorial");
+        practiceTutorialItem.addActionListener(
+                e -> showHelpDialog("Practice Tutorial", DesktopHelpContent.practiceTutorial()));
+        helpMenu.add(practiceTutorialItem);
+
+        menuBar.add(helpMenu);
+
         setJMenuBar(menuBar);
     }
 
     private void startNewGame(int size) {
+        clearMovableHint();
         model.removeObserver(this);
         model = new GameModel(size);
         model.addObserver(this);
@@ -161,6 +189,7 @@ public class MainFrame extends JFrame implements GameObserver {
         if (boardPanel.isBusy()) {
             return;
         }
+        clearMovableHint();
         model.restartCurrentGame();
         startTime = model.getStartTime();
         assistedSolveActive = false;
@@ -172,6 +201,7 @@ public class MainFrame extends JFrame implements GameObserver {
         if (boardPanel.isBusy()) {
             return;
         }
+        clearMovableHint();
         model.undo();
         updateStatus();
     }
@@ -179,6 +209,7 @@ public class MainFrame extends JFrame implements GameObserver {
     private void loadGame() {
         SaveManager.SaveData data = SaveManager.loadGame();
         if (data != null) {
+            clearMovableHint();
             if (model.getSize() != data.size) {
                 model.removeObserver(this);
                 model = new GameModel(data.size);
@@ -200,6 +231,7 @@ public class MainFrame extends JFrame implements GameObserver {
         if (boardPanel.isBusy()) {
             return;
         }
+        clearMovableHint();
         if (model.getSize() >= 4 && solver instanceof BfsSolver) {
             int choice = JOptionPane.showConfirmDialog(this, "BFS on 4x4 or larger may crash or freeze. Continue?", "Warning",
                     JOptionPane.YES_NO_OPTION);
@@ -249,23 +281,66 @@ public class MainFrame extends JFrame implements GameObserver {
         }.execute();
     }
 
+    private void showMovableTiles() {
+        if (boardPanel.isBusy() || !model.isGameRunning() || model.isSolved()) {
+            return;
+        }
+
+        int size = model.getSize();
+        boolean[][] highlights = new boolean[size][size];
+        int emptyRow = model.getEmptyRow();
+        int emptyCol = model.getEmptyCol();
+        boolean hasMovableTile = false;
+
+        for (int r = 0; r < size; r++) {
+            for (int c = 0; c < size; c++) {
+                boolean aligned = (r == emptyRow || c == emptyCol) && !(r == emptyRow && c == emptyCol);
+                if (aligned && model.getTile(r, c) != 0) {
+                    highlights[r][c] = true;
+                    hasMovableTile = true;
+                }
+            }
+        }
+
+        if (hasMovableTile) {
+            movableHintActive = true;
+            boardPanel.setHighlightedCells(highlights);
+            updateStatus();
+        }
+    }
+
+    private void clearMovableHint() {
+        movableHintActive = false;
+        if (boardPanel != null) {
+            boardPanel.clearHighlights();
+        }
+    }
+
+    private void showHelpDialog(String title, String message) {
+        JOptionPane.showMessageDialog(this, message, title, JOptionPane.INFORMATION_MESSAGE);
+    }
+
     private void updateStatus() {
         if (model.isGameRunning()) {
             long elapsed = (System.currentTimeMillis() - startTime) / 1000;
             SaveManager.BestRecord best = SaveManager.getBestRecord(model.getSize());
             String bestText = best == null ? "Best: --" : "Best: " + best.format();
-            statusLabel.setText(String.format("Moves: %d | Time: %ds | %s", model.getMoveCount(), elapsed, bestText));
+            String hintText = movableHintActive ? " | Hint: highlighted tiles can slide into the empty cell" : "";
+            statusLabel.setText(String.format("Moves: %d | Time: %ds | %s%s",
+                    model.getMoveCount(), elapsed, bestText, hintText));
         }
     }
 
     @Override
     public void onGridChanged() {
         boardPanel.repaint();
+        clearMovableHint();
         updateStatus();
     }
 
     @Override
     public void onMove(Direction dir) {
+        clearMovableHint();
         updateStatus();
     }
 
