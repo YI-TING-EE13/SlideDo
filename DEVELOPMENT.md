@@ -401,7 +401,7 @@ Priority: High
 
 Recommended MVP scope:
 
-- Add a desktop entry/home surface or equivalent start panel that exposes New
+- [x] Add a desktop entry/home surface or equivalent start panel that exposes New
   Game, Continue/Load, How to Play, Records, and Settings/Preferences in the
   same conceptual order as Android.
 - [x] Add desktop How to Play / Practice Tutorial content that matches Android's
@@ -424,8 +424,18 @@ Recommended MVP scope:
   whole-line slides, and solver-assisted record protection.
 - Added focused JUnit coverage for the desktop help copy so the parity terms do
   not disappear during later UI refactors.
-- Remaining parity work: desktop Home/start surface, Settings/Preferences,
-  Records surface, and Android-style Results/post-win wording.
+
+2026-06-11 second parity slice:
+
+- Desktop now opens on a Home/start surface instead of directly entering the
+  board.
+- Home and the Game menu expose 3x3, 4x4, 5x5, Continue/Load, How to Play,
+  Practice Tutorial, Records, and Preferences.
+- Records summarizes local 3x3, 4x4, and 5x5 best records while preserving the
+  solver-assisted record rule.
+- Preferences adds reduced motion for desktop tile animation as presentation
+  state only.
+- Remaining parity work: Android-style Results/post-win wording.
 
 Acceptance criteria:
 
@@ -719,6 +729,18 @@ Priority: Low to Medium
   tools before presenting screenshots or store copy.
 
 ## Development Log
+
+### 2026-06-11
+
+- Added the desktop Home/start surface for the Swing edition. Desktop now opens
+  on Home instead of directly entering the board, with entries for 3x3, 4x4,
+  5x5, Continue/Load, How to Play, Practice Tutorial, Records, and Preferences.
+- Added a desktop Records dialog for 3x3, 4x4, and 5x5 best records, including
+  copy that preserves solver-assisted record protection.
+- Added a desktop Preferences dialog with a reduced-motion option that snaps
+  tile movement without changing puzzle rules, move counts, save data, or
+  records.
+- Added focused tests for desktop home Records and Preferences copy.
 
 ### 2026-06-10
 

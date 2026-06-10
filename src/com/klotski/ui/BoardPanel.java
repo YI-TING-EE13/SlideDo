@@ -60,6 +60,9 @@ public class BoardPanel extends JPanel implements GameObserver {
     /** Presentation-only highlight mask for assist hints. */
     private boolean[][] highlightedCells;
 
+    /** Presentation preference that snaps tiles instead of animating them. */
+    private boolean reducedMotion;
+
     /** Queued empty-tile moves used for keyboard and solver playback. */
     private final Deque<Direction> moveQueue = new ArrayDeque<>();
 
@@ -262,6 +265,15 @@ public class BoardPanel extends JPanel implements GameObserver {
     public void clearHighlights() {
         highlightedCells = null;
         repaint();
+    }
+
+    /**
+     * Enables or disables tile animation for players who prefer reduced motion.
+     *
+     * @param reducedMotion {@code true} to snap tiles directly to the target cell
+     */
+    public void setReducedMotion(boolean reducedMotion) {
+        this.reducedMotion = reducedMotion;
     }
 
     private void handleMouseClick(int x, int y) {
@@ -656,6 +668,13 @@ public class BoardPanel extends JPanel implements GameObserver {
         public void animate(int r, int c, Runnable onFinish) {
             this.targetR = r;
             this.targetC = c;
+            if (reducedMotion) {
+                currentR = targetR;
+                currentC = targetC;
+                repaint();
+                onFinish.run();
+                return;
+            }
             if (timer != null && timer.isRunning()) {
                 timer.stop();
             }

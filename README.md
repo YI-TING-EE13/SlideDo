@@ -7,7 +7,7 @@
 
 **SlideDo** is a polished number Klotski / sliding puzzle game written in Java. It includes a desktop Swing edition and a native Android edition that share the same core puzzle model, move rules, save format, and solver interfaces.
 
-The design goal is simple: make sliding numbered tiles feel fast, clear, and satisfying. The desktop version supports mouse, keyboard, undo, restart, save/load, best records, solver playback, How to Play, Practice Tutorial copy, and movable-tile assist hints. The Android edition now opens as a touch-first mobile app with onboarding, an interactive practice tutorial, mode selection, settings, results, records, and compact in-game controls.
+The design goal is simple: make sliding numbered tiles feel fast, clear, and satisfying. The desktop version now opens on Home and supports mouse, keyboard, undo, restart, save/load, local records, a Records dialog, Preferences, solver playback, How to Play, Practice Tutorial copy, and movable-tile assist hints. The Android edition now opens as a touch-first mobile app with onboarding, an interactive practice tutorial, mode selection, settings, results, records, and compact in-game controls.
 
 ---
 
@@ -15,12 +15,14 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
 
 - **Shared Java Game Core**: `GameModel`, `Direction`, save data, records, and solvers are independent from Swing and Android.
 - **Fluid Desktop Controls**:
+  - Desktop opens on Home with 3x3, 4x4, 5x5, Continue/Load, How to Play, Practice Tutorial, Records, and Preferences.
   - Click a tile in the same row or column as the empty space.
   - Non-adjacent clicks slide the whole row or column in one synchronized animation.
   - Arrow keys move the empty space one step.
   - Movable tiles show a hand cursor on hover.
   - Assist > Show Movable Tiles highlights legal same-row or same-column choices without moving the board.
   - Help includes How to Play and Practice Tutorial dialogs aligned with the Android learning flow.
+  - Preferences includes a reduced-motion option that snaps tile movement without changing puzzle rules or records.
 - **Mobile-Ready Interaction Model**:
   - Android opens on Home with Continue, New Game, Beginner Guide, Practice Tutorial, How to Play, Settings, and Records.
   - First-run onboarding introduces the goal, tap/swipe input, whole-line slides, undo/restart, and record rules.
@@ -262,7 +264,7 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
 - Mouse click movement.
 - Non-adjacent row/column sliding with synchronized animation.
 - Undo after a whole-line slide.
-- Desktop Help and Assist parity text covered by focused JUnit tests.
+- Desktop Home, Records, Preferences, Help, and Assist parity text covered by focused JUnit tests.
 - Android debug build with Gradle.
 - Android lint with no reported issues during the latest local run.
 - Android instrumentation tests for onboarding, Home launch, Practice Tutorial, mode selection, Continue, How to Play, Settings, Results, Assist hints, whole-line movement, undo, save/load persistence, app-state store behavior, rotation, and solver-assisted record protection.
@@ -349,7 +351,7 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
 
 ## Roadmap
 
-- Continue aligning the desktop edition with Android's player-facing content: Home/start flow, Settings/Preferences, Records, and Results remain after the completed How to Play, Practice Tutorial, and Assist hint slice.
+- Continue aligning the desktop edition with Android's player-facing content: Results/post-win wording remains after the completed Home/start, Records, Preferences, How to Play, Practice Tutorial, and Assist hint slices.
 - Split larger Android screen construction only where it supports the desktop/mobile parity work.
 - Add daily puzzle, progression loops, and achievements after both front ends have comparable product surfaces.
 - Add stronger completion feedback for solves and records.
