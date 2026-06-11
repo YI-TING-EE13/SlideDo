@@ -52,6 +52,9 @@ public class MainFrame extends JFrame implements GameObserver {
     /** Desktop presentation preference for snapping tile movement. */
     private boolean reducedMotionEnabled;
 
+    /** Prepared Results message shown after the board finishes its win animation. */
+    private String pendingResultMessage;
+
     /**
      * Creates and shows the desktop application window.
      */
@@ -67,6 +70,7 @@ public class MainFrame extends JFrame implements GameObserver {
 
         // Initialize View
         boardPanel = new BoardPanel(model);
+        boardPanel.setWinDialogHandler((parent, moves, timeMs) -> showResultsDialog(moves, timeMs));
 
         contentLayout = new CardLayout();
         contentPanel = new JPanel(contentLayout);
@@ -276,6 +280,7 @@ public class MainFrame extends JFrame implements GameObserver {
 
         startTime = System.currentTimeMillis();
         assistedSolveActive = false;
+        pendingResultMessage = null;
         showGame();
     }
 
@@ -319,6 +324,7 @@ public class MainFrame extends JFrame implements GameObserver {
             model.loadState(data);
             startTime = model.getStartTime();
             assistedSolveActive = false;
+            pendingResultMessage = null;
             showGame();
             JOptionPane.showMessageDialog(this, "Game loaded!");
         } else {
@@ -430,6 +436,25 @@ public class MainFrame extends JFrame implements GameObserver {
         JOptionPane.showMessageDialog(this, message, "Records", JOptionPane.INFORMATION_MESSAGE);
     }
 
+    private void showResultsDialog(int moves, long timeMs) {
+        String message = pendingResultMessage == null
+                ? DesktopResultContent.resultsMessage(model.getSize(), moves, timeMs,
+                        false, false, null, SaveManager.getBestRecord(model.getSize()))
+                : pendingResultMessage;
+        pendingResultMessage = null;
+
+        Object[] options = {"Play Again", "New Size", "Home"};
+        int choice = JOptionPane.showOptionDialog(this, message, "Results",
+                JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE,
+                null, options, options[0]);
+
+        if (choice == 0) {
+            startNewGame(model.getSize());
+        } else if (choice == 1 || choice == 2) {
+            showHome();
+        }
+    }
+
     private void showPreferencesDialog() {
         JCheckBox reducedMotionBox = new JCheckBox("Reduce motion", reducedMotionEnabled);
         JPanel panel = new JPanel(new BorderLayout(0, 10));
@@ -489,14 +514,19 @@ public class MainFrame extends JFrame implements GameObserver {
     @Override
     public void onGameWon(int moves, long timeMs) {
         gameTimer.stop();
-        SaveManager.BestRecord best = assistedSolveActive
-                ? SaveManager.getBestRecord(model.getSize())
-                : SaveManager.recordBest(model.getSize(), moves, timeMs);
+        int size = model.getSize();
+        boolean assisted = assistedSolveActive;
+        SaveManager.BestRecord previousBest = SaveManager.getBestRecord(size);
+        SaveManager.BestRecord candidate = new SaveManager.BestRecord(moves, timeMs);
+        boolean newBest = !assisted && (previousBest == null || candidate.isBetterThan(previousBest));
+        SaveManager.BestRecord best = assisted ? previousBest : SaveManager.recordBest(size, moves, timeMs);
         assistedSolveActive = false;
+        pendingResultMessage = DesktopResultContent.resultsMessage(
+                size, moves, timeMs, assisted, newBest, previousBest, best);
         String bestText = best == null ? "--" : best.format();
         statusLabel.setText(String.format("Solved! Moves: %d | Time: %ds | Best: %s",
                 moves, timeMs / 1000, bestText));
-        // BoardPanel handles the popup
+        // BoardPanel invokes the Results dialog after the final animation ends.
     }
 
     /**

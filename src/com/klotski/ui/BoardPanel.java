@@ -30,6 +30,22 @@ public class BoardPanel extends JPanel implements GameObserver {
 
     private static final boolean DEBUG_LOGGING = false;
 
+    /**
+     * Callback used by the desktop frame to provide platform-specific Results
+     * wording after the final tile animation completes.
+     */
+    @FunctionalInterface
+    public interface WinDialogHandler {
+        /**
+         * Shows a completion dialog.
+         *
+         * @param parent component used as the dialog parent
+         * @param moves final move count
+         * @param timeMs elapsed play time in milliseconds
+         */
+        void showWinDialog(Component parent, int moves, long timeMs);
+    }
+
     /** Active game model rendered by this board. */
     private GameModel model;
 
@@ -62,6 +78,9 @@ public class BoardPanel extends JPanel implements GameObserver {
 
     /** Presentation preference that snaps tiles instead of animating them. */
     private boolean reducedMotion;
+
+    /** Optional desktop-specific result dialog callback. */
+    private WinDialogHandler winDialogHandler;
 
     /** Queued empty-tile moves used for keyboard and solver playback. */
     private final Deque<Direction> moveQueue = new ArrayDeque<>();
@@ -274,6 +293,16 @@ public class BoardPanel extends JPanel implements GameObserver {
      */
     public void setReducedMotion(boolean reducedMotion) {
         this.reducedMotion = reducedMotion;
+    }
+
+    /**
+     * Sets a desktop-specific result dialog callback.
+     *
+     * @param winDialogHandler callback to show completion UI, or {@code null}
+     *        to use the panel's default dialog
+     */
+    public void setWinDialogHandler(WinDialogHandler winDialogHandler) {
+        this.winDialogHandler = winDialogHandler;
     }
 
     private void handleMouseClick(int x, int y) {
@@ -580,6 +609,10 @@ public class BoardPanel extends JPanel implements GameObserver {
     }
 
     private void showWinDialog(int moves, long timeMs) {
+        if (winDialogHandler != null) {
+            winDialogHandler.showWinDialog(this, moves, timeMs);
+            return;
+        }
         JOptionPane.showMessageDialog(this,
                 "Congratulations! You won in " + moves + " moves.\nTime: " + (timeMs / 1000) + "s",
                 "Winner!", JOptionPane.INFORMATION_MESSAGE);

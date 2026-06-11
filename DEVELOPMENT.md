@@ -409,7 +409,7 @@ Recommended MVP scope:
 - [x] Add a desktop Assist hint entry that highlights movable same-row /
   same-column tiles without moving the model, counting a move, or invoking a
   solver.
-- Add a desktop Results surface or post-win panel with wording consistent with
+- [x] Add a desktop Results surface or post-win panel with wording consistent with
   Android, including solver-assisted record protection.
 - Keep all puzzle behavior routed through `GameModel`; desktop parity work
   should be UI/presentation plus tests.
@@ -435,7 +435,18 @@ Recommended MVP scope:
   solver-assisted record rule.
 - Preferences adds reduced motion for desktop tile animation as presentation
   state only.
-- Remaining parity work: Android-style Results/post-win wording.
+
+2026-06-11 third parity slice:
+
+- Desktop now replaces the generic win dialog with an Android-style Results
+  dialog after the final board animation completes.
+- Results show the solved/assisted subtitle, puzzle size, moves/time, first
+  record, new best, unchanged best, or solver-assisted no-record wording.
+- Results offer Play Again, New Size, and Home actions for desktop parity with
+  Android's completion flow.
+- Desktop/Mobile Parity Pass MVP scope is now complete. Next implementation
+  should move to the targeted architecture split that supports future shared
+  progression work.
 
 Acceptance criteria:
 
@@ -732,6 +743,11 @@ Priority: Low to Medium
 
 ### 2026-06-11
 
+- Replaced the desktop generic solved dialog with an Android-style Results
+  dialog that preserves animation timing, player best-record updates, and
+  solver-assisted no-record behavior.
+- Added desktop Results copy tests for first record, new best, unchanged best,
+  and assisted completion cases.
 - Added the desktop Home/start surface for the Swing edition. Desktop now opens
   on Home instead of directly entering the board, with entries for 3x3, 4x4,
   5x5, Continue/Load, How to Play, Practice Tutorial, Records, and Preferences.

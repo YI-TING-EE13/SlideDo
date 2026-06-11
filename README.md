@@ -7,7 +7,7 @@
 
 **SlideDo** is a polished number Klotski / sliding puzzle game written in Java. It includes a desktop Swing edition and a native Android edition that share the same core puzzle model, move rules, save format, and solver interfaces.
 
-The design goal is simple: make sliding numbered tiles feel fast, clear, and satisfying. The desktop version now opens on Home and supports mouse, keyboard, undo, restart, save/load, local records, a Records dialog, Preferences, solver playback, How to Play, Practice Tutorial copy, and movable-tile assist hints. The Android edition now opens as a touch-first mobile app with onboarding, an interactive practice tutorial, mode selection, settings, results, records, and compact in-game controls.
+The design goal is simple: make sliding numbered tiles feel fast, clear, and satisfying. The desktop version now opens on Home and supports mouse, keyboard, undo, restart, save/load, local records, a Records dialog, Preferences, Android-style Results, solver playback, How to Play, Practice Tutorial copy, and movable-tile assist hints. The Android edition now opens as a touch-first mobile app with onboarding, an interactive practice tutorial, mode selection, settings, results, records, and compact in-game controls.
 
 ---
 
@@ -23,6 +23,7 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
   - Assist > Show Movable Tiles highlights legal same-row or same-column choices without moving the board.
   - Help includes How to Play and Practice Tutorial dialogs aligned with the Android learning flow.
   - Preferences includes a reduced-motion option that snaps tile movement without changing puzzle rules or records.
+  - Results show first-record, new-best, unchanged-best, and solver-assisted no-record wording.
 - **Mobile-Ready Interaction Model**:
   - Android opens on Home with Continue, New Game, Beginner Guide, Practice Tutorial, How to Play, Settings, and Records.
   - First-run onboarding introduces the goal, tap/swipe input, whole-line slides, undo/restart, and record rules.
@@ -264,7 +265,7 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
 - Mouse click movement.
 - Non-adjacent row/column sliding with synchronized animation.
 - Undo after a whole-line slide.
-- Desktop Home, Records, Preferences, Help, and Assist parity text covered by focused JUnit tests.
+- Desktop Home, Records, Preferences, Results, Help, and Assist parity text covered by focused JUnit tests.
 - Android debug build with Gradle.
 - Android lint with no reported issues during the latest local run.
 - Android instrumentation tests for onboarding, Home launch, Practice Tutorial, mode selection, Continue, How to Play, Settings, Results, Assist hints, whole-line movement, undo, save/load persistence, app-state store behavior, rotation, and solver-assisted record protection.
@@ -351,8 +352,8 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
 
 ## Roadmap
 
-- Continue aligning the desktop edition with Android's player-facing content: Results/post-win wording remains after the completed Home/start, Records, Preferences, How to Play, Practice Tutorial, and Assist hint slices.
-- Split larger Android screen construction only where it supports the desktop/mobile parity work.
+- Desktop/mobile player-facing parity MVP is complete for Home/start, Records, Preferences, Results, How to Play, Practice Tutorial, and Assist hints.
+- Split larger UI/controller code where it supports future shared progression work.
 - Add daily puzzle, progression loops, and achievements after both front ends have comparable product surfaces.
 - Add stronger completion feedback for solves and records.
 - Add difficulty presets based on scramble depth.
