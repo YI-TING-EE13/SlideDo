@@ -5,13 +5,22 @@ bin/
 # Android / Gradle build output
 .gradle/
 build/
+dist/
+screenshots/
 android/.gradle/
 android/build/
 android/app/build/
 
 # Local machine configuration
 android/local.properties
+android/release.properties
 local.properties
+
+# Local signing material
+*.jks
+*.keystore
+*.p12
+*.pem
 
 # Android Gradle wrapper lives under android/; ignore accidental root wrapper output
 /gradle/

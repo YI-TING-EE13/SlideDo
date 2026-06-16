@@ -1,0 +1,10 @@
+# Copy this file to android/release.properties for local signed release builds.
+# Never commit android/release.properties or the keystore file.
+#
+# The same values can also be supplied through SLIDEDO_RELEASE_* environment
+# variables or Gradle -Pslidedo.release.* properties.
+
+slidedo.release.keystore=C:\\path\\to\\slidedo-upload.jks
+slidedo.release.keyAlias=slidedo-upload
+slidedo.release.storePassword=change-me
+slidedo.release.keyPassword=change-me

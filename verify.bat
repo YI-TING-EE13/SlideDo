@@ -32,6 +32,8 @@ echo [3/5] Public core/desktop Javadocs
 if errorlevel 1 exit /b 1
 
 echo [4/5] Android assemble, test APK, and lint
+call :clean_dir "%ROOT%\android\app\build\intermediates\incremental\packageDebug\tmp"
+call :clean_dir "%ROOT%\android\app\build\intermediates\incremental\packageRelease\tmp"
 pushd "%ROOT%\android"
 call build-debug.bat :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
 set "ANDROID_RESULT=%ERRORLEVEL%"
@@ -43,3 +45,11 @@ echo [5/5] Android API Javadocs
 if errorlevel 1 exit /b 1
 
 echo Verification completed successfully.
+exit /b 0
+
+:clean_dir
+if exist "%~1" (
+    attrib -R "%~1" /S /D >nul 2>nul
+    rmdir /S /Q "%~1" >nul 2>nul
+)
+exit /b 0

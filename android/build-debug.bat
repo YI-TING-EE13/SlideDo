@@ -11,4 +11,5 @@ if "%~1"=="" (
 ) else (
     call "%~dp0gradlew.bat" %*
 )
-endlocal
+set "RESULT=%ERRORLEVEL%"
+endlocal & exit /b %RESULT%

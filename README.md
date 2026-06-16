@@ -92,6 +92,24 @@ javac -encoding UTF-8 -d bin @sources.txt
 java -cp bin com.klotski.ui.MainFrame
 ```
 
+### Desktop Package
+
+Build a distributable desktop ZIP package from the shared release version:
+
+```bat
+package-desktop.bat
+```
+
+The package is generated under:
+
+```text
+dist/desktop/SlideDo-<version>.zip
+```
+
+When a JDK with `jpackage` is available, the script also creates a Windows
+app-image under `dist/desktop/app-image/SlideDo`. The ZIP includes
+`SlideDo.jar`, `SlideDo.bat`, a package README, and the matching release notes.
+
 ### Desktop Controls
 
 | Action | Control |
@@ -152,6 +170,30 @@ The APK is generated at:
 ```text
 android/app/build/outputs/apk/debug/app-debug.apk
 ```
+
+### Build Signed Release APK/AAB
+
+The shared app version is stored in [version.properties](version.properties).
+Every release must also have matching notes under `release-notes/<version>.md`.
+
+```bat
+android\build-release.bat
+```
+
+The release script builds:
+
+```text
+android/app/build/outputs/apk/release/app-release.apk
+android/app/build/outputs/bundle/release/app-release.aab
+```
+
+For Play Store builds, copy
+`android/release.properties.example` to `android/release.properties` and point
+it at the real upload keystore. The same signing values can be supplied through
+`SLIDEDO_RELEASE_*` environment variables or Gradle `-Pslidedo.release.*`
+properties. If no signing configuration exists, the script creates a temporary
+test upload key only to verify the pipeline; do not use that key for store
+distribution.
 
 ### Install on a Device or Emulator
 
@@ -279,6 +321,9 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
 - Desktop Home, Records, Preferences, Results, Help, and Assist parity text covered by focused JUnit tests.
 - Save metadata round-trip coverage for updated time, size, moves, elapsed time, and active/solved state.
 - Android debug build with Gradle.
+- Signed Android release APK/AAB generation through `android\build-release.bat`.
+- Desktop ZIP package and optional `jpackage` app-image generation through `package-desktop.bat`.
+- Release notes/version matching through `version.properties` and `release-notes/<version>.md`.
 - Android lint with no reported issues during the latest local run.
 - Android instrumentation tests for onboarding, Home launch, Practice Tutorial, mode selection, Continue, How to Play, Settings, Results, Assist hints, whole-line movement, undo, save/load persistence, app-state store behavior, rotation, and solver-assisted record protection.
 - Android emulator smoke testing for install/launch, Home visibility, whole-line movement, undo, restart, save/load, solver warning dialog, rotation, and background resume.
@@ -322,12 +367,25 @@ Android instrumentation tests on a connected emulator or device:
 verify-connected.bat
 ```
 
+Release artifact verification:
+
+```bat
+verify-release.bat
+```
+
+Repeatable Android screenshot smoke capture:
+
+```bat
+android\screenshot-smoke.bat
+```
+
 ### Current Limitations
 
 - Desktop UI tests are still manual/smoke-level.
 - Connected Android instrumentation tests still require a running emulator or device.
+- Screenshot smoke is currently a repeatable capture workflow, not a pixel-diff gate.
 - Solver performance is intentionally limited by timeouts.
-- The root Gradle build currently focuses on shared core tests; desktop packaging still uses `run.bat`.
+- The desktop package is a ZIP plus optional app-image, not a signed installer.
 
 ---
 
@@ -367,14 +425,14 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
 
 - Desktop/mobile player-facing parity MVP is complete for Home/start, Records, Preferences, Results, How to Play, Practice Tutorial, and Assist hints.
 - Save files now include release-readiness metadata and desktop saves now live in the user-data directory.
+- Signed Android release APK/AAB and desktop ZIP/app-image packaging scripts are available.
 - Split larger UI/controller code where it supports future shared progression work.
 - Add daily puzzle, progression loops, and achievements after both front ends have comparable product surfaces.
 - Add stronger completion feedback for solves and records.
 - Add difficulty presets based on scramble depth.
 - Add sound and theme settings after those systems exist.
 - Continue broader accessibility review with TalkBack, touch-target, color-contrast, and reduced-motion validation.
-- Add release-readiness checks for signed APK/AAB generation.
-- Add release signing configuration for Play Store distribution.
+- Replace temporary release signing with a real Play upload key before store distribution.
 - Consider moving desktop launch/package tasks fully into Gradle.
 
 ---

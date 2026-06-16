@@ -30,6 +30,9 @@ an emulator or connected Android device.
   records, onboarding, and last selected size
 - Saved-game metadata includes updated time, puzzle size, move count, elapsed
   time, and active/solved state for future Continue and release diagnostics
+- Release versioning is shared through the repository-root `version.properties`
+  file
+- Signed release APK/AAB builds are available through `build-release.bat`
 - Rotation restore for the active game screen
 - Settings for haptic feedback, reduced motion, reset saved game, and reset records
 - Per-size best record tracking
@@ -67,6 +70,24 @@ For Android build and lint only:
 build-debug.bat :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
 ```
 
+For signed release APK/AAB generation:
+
+```bat
+build-release.bat
+```
+
+Release outputs are written to:
+
+```text
+app/build/outputs/apk/release/app-release.apk
+app/build/outputs/bundle/release/app-release.aab
+```
+
+For real Play Store builds, copy `release.properties.example` to
+`release.properties` and configure the upload keystore. The script creates a
+temporary test key only when no signing configuration is present so local release
+verification can still run.
+
 To run the shared desktop/core JUnit tests from the repository root:
 
 ```bat
@@ -78,6 +99,16 @@ To run Android instrumentation smoke tests on a connected emulator or device:
 ```bat
 ..\verify-connected.bat
 ```
+
+To capture a repeatable manual screenshot smoke set:
+
+```bat
+screenshot-smoke.bat
+```
+
+The script launches the app and stores PNG files under
+`../screenshots/android/<version>` as you navigate through Home, Mode Select,
+Game, How to Play, Settings, Records, and Results/current screen.
 
 ## Emulator Smoke Test Checklist
 

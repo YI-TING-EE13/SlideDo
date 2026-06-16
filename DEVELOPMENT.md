@@ -371,9 +371,9 @@ planning layer above implementation tickets.
   primary game-control descriptions exist, but the app still needs a manual
   TalkBack pass, larger touch-target review, color-contrast review, and broader
   reduced-motion validation.
-- Missing Play Store readiness systems: release signing, app icon polish,
-  adaptive icons, screenshots, privacy policy, data safety notes, crash
-  reporting, and versioning discipline.
+- Missing Play Store readiness systems: real upload-key handoff, app icon
+  polish, adaptive icons, store screenshots, privacy policy, data safety notes,
+  crash reporting, and broad versioning discipline after the first beta cycle.
 
 ## Roadmap And Planning
 
@@ -699,12 +699,17 @@ Recommended scope:
 - [x] Add explicit save metadata: saved size, moves, elapsed time, updated-at
   timestamp, and solved/active status. Next step: surface this metadata in the
   Continue UI.
-- Add release build checks before Google Play planning: signed release APK/AAB,
-  minification decision, versionCode/versionName policy, and reproducible build
-  commands.
+- [x] Add release build checks before Google Play planning: signed release
+  APK/AAB generation, release signing injection, versionCode/versionName policy,
+  release notes checks, and reproducible release commands.
+- Decide whether release builds should stay unminified for beta or enable
+  minification/resource shrinking after a focused release-size and stack-trace
+  review.
 - Add lint and instrumentation checks to CI before expanding visual complexity.
-- Add screenshot-based smoke tests for Home, Mode Select, Game, How to Play,
-  Settings, Results, and Records.
+- [x] Add a repeatable screenshot smoke workflow for Home, Mode Select, Game,
+  How to Play, Settings, Results/current, and Records.
+- Replace the manual screenshot capture workflow with automated screenshot
+  tests or pixel-diff review once navigation builders are split and stable.
 
 ### Mid- And Long-Term Planning
 
@@ -733,8 +738,10 @@ Priority: Low to Medium
   gameplay data local unless there is a clear product reason to sync it.
 - Add crash reporting and basic performance telemetry only after privacy wording
   and user consent expectations are settled.
-- Add release signing, Play App Bundle generation, versioning, and release notes
-  workflow.
+- [x] Add release signing injection, Play App Bundle generation, versioning, and
+  release notes workflow.
+- Replace temporary local release verification signing with the real Play upload
+  key before store submission.
 - Run pre-launch checks on multiple device sizes, API levels, rotations, and
   background/resume flows.
 - Add accessibility review before store submission, including screen reader
@@ -759,6 +766,17 @@ Priority: Low to Medium
 - Hardened `verify-connected.bat` so it clears stale connected-test output
   directories before running and can recover from Windows report-generation
   access issues when instrumentation itself reports success.
+- Added shared release version metadata in `version.properties`, Android
+  release signing configuration, `android/build-release.bat`, and
+  `verify-release.bat` so signed release APK/AAB artifacts can be generated
+  repeatably. The local fallback signing key is for pipeline verification only.
+- Added desktop release packaging through `package-desktop.bat`, producing a
+  ZIP package and, when `jpackage` is available, a Windows app-image.
+- Added version-matched release notes under `release-notes/` and included the
+  notes in desktop packages.
+- Added `android/screenshot-smoke.bat` as a repeatable manual capture workflow
+  for Home, Mode Select, Game, How to Play, Settings, Records, and
+  Results/current screen.
 
 ### 2026-06-11
 

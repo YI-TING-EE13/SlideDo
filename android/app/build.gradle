@@ -2,6 +2,46 @@ plugins {
     id "com.android.application"
 }
 
+def versionProps = new java.util.Properties()
+def versionFile = new File(rootProject.projectDir.parentFile, "version.properties")
+if (!versionFile.exists()) {
+    throw new GradleException("Missing version.properties at repository root.")
+}
+versionFile.withInputStream { stream ->
+    versionProps.load(stream)
+}
+
+def releaseProps = new java.util.Properties()
+def releasePropsFile = new File(rootProject.projectDir, "release.properties")
+if (releasePropsFile.exists()) {
+    releasePropsFile.withInputStream { stream ->
+        releaseProps.load(stream)
+    }
+}
+
+def configValue = { String gradleName, String envName ->
+    if (project.hasProperty(gradleName)) {
+        return project.property(gradleName).toString().trim()
+    }
+    def fileValue = releaseProps.getProperty(gradleName)
+    if (fileValue != null && !fileValue.trim().isEmpty()) {
+        return fileValue.trim()
+    }
+    def envValue = System.getenv(envName)
+    if (envValue != null && !envValue.trim().isEmpty()) {
+        return envValue.trim()
+    }
+    return null
+}
+
+def appVersionCode = Integer.parseInt(versionProps.getProperty("VERSION_CODE", "1").trim())
+def appVersionName = versionProps.getProperty("VERSION_NAME", "0.1.0").trim()
+def releaseKeystore = configValue("slidedo.release.keystore", "SLIDEDO_RELEASE_KEYSTORE")
+def releaseKeyAlias = configValue("slidedo.release.keyAlias", "SLIDEDO_RELEASE_KEY_ALIAS")
+def releaseStorePassword = configValue("slidedo.release.storePassword", "SLIDEDO_RELEASE_STORE_PASSWORD")
+def releaseKeyPassword = configValue("slidedo.release.keyPassword", "SLIDEDO_RELEASE_KEY_PASSWORD")
+def hasReleaseSigning = [releaseKeystore, releaseKeyAlias, releaseStorePassword, releaseKeyPassword].every { it != null }
+
 android {
     namespace = "com.klotski.android"
     compileSdk = 36
@@ -10,9 +50,20 @@ android {
         applicationId = "com.klotski.android"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        release {
+            if (hasReleaseSigning) {
+                storeFile = file(releaseKeystore)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
     }
 
     sourceSets {
@@ -22,6 +73,15 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
+    }
+
+    buildTypes {
+        release {
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.release
+            }
+            minifyEnabled = false
+        }
     }
 }
 
@@ -33,4 +93,25 @@ dependencies {
 
 tasks.withType(JavaCompile).configureEach {
     options.compilerArgs += ["-Xlint:deprecation"]
+}
+
+tasks.register("validateReleaseSigning") {
+    doLast {
+        if (!hasReleaseSigning) {
+            throw new GradleException("Release signing is not configured. Set android/release.properties, SLIDEDO_RELEASE_* environment variables, or pass -Pslidedo.release.* properties.")
+        }
+        if (!file(releaseKeystore).exists()) {
+            throw new GradleException("Release keystore does not exist: ${releaseKeystore}")
+        }
+    }
+}
+
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    dependsOn("validateReleaseSigning")
+}
+
+tasks.register("printReleaseVersion") {
+    doLast {
+        println("SlideDo ${appVersionName} (${appVersionCode})")
+    }
 }
