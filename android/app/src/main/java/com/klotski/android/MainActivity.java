@@ -301,6 +301,17 @@ public class MainActivity extends Activity implements GameObserver {
             Button continueButton = ui.addWideButton(screen.content, R.string.home_continue, COLOR_PRIMARY,
                     v -> continueSavedGame());
             continueButton.setId(R.id.home_continue_button);
+            AndroidGameStore.SaveMetadata metadata = getSaveMetadata();
+            if (metadata != null) {
+                TextView continueSummary = ui.createText(formatContinueSummary(metadata),
+                        14, COLOR_MUTED_TEXT, Typeface.NORMAL);
+                continueSummary.setId(R.id.home_continue_summary_text);
+                continueSummary.setGravity(Gravity.CENTER);
+                continueSummary.setLineSpacing(0, 1.12f);
+                LinearLayout.LayoutParams continueSummaryParams = ui.fullWidthParams();
+                continueSummaryParams.setMargins(0, 0, 0, ui.dp(14));
+                screen.content.addView(continueSummary, continueSummaryParams);
+            }
         }
         Button newGameButton = ui.addWideButton(screen.content, hasSave ? R.string.home_new_game : R.string.home_play,
                 hasSave ? COLOR_PANEL_LIGHT : COLOR_PRIMARY, v -> {
@@ -1280,6 +1291,10 @@ public class MainActivity extends Activity implements GameObserver {
         return store.hasSavedGame();
     }
 
+    private AndroidGameStore.SaveMetadata getSaveMetadata() {
+        return store.getSaveMetadata();
+    }
+
     private void clearSavedGame() {
         store.clearSavedGame();
     }
@@ -1508,5 +1523,43 @@ public class MainActivity extends Activity implements GameObserver {
 
     private String formatMoves(int moves) {
         return getResources().getQuantityString(R.plurals.moves_count, moves, moves);
+    }
+
+    private String formatContinueSummary(AndroidGameStore.SaveMetadata metadata) {
+        String state = metadata.solved
+                ? getString(R.string.home_continue_solved)
+                : (metadata.active
+                        ? getString(R.string.home_continue_active)
+                        : getString(R.string.home_continue_saved));
+        return getString(R.string.home_continue_summary,
+                state,
+                metadata.size,
+                metadata.size,
+                formatMoves(metadata.moves),
+                Math.max(0, metadata.elapsedMs) / 1000,
+                formatSavedAge(metadata.updatedAt));
+    }
+
+    private String formatSavedAge(long updatedAt) {
+        if (updatedAt <= 0) {
+            return getString(R.string.home_continue_updated_unknown);
+        }
+
+        long ageSeconds = Math.max(0, (System.currentTimeMillis() - updatedAt) / 1000);
+        if (ageSeconds < 60) {
+            return getString(R.string.home_continue_updated_now);
+        }
+
+        long ageMinutes = ageSeconds / 60;
+        if (ageMinutes < 60) {
+            return getString(R.string.home_continue_updated_minutes, ageMinutes);
+        }
+
+        long ageHours = ageMinutes / 60;
+        if (ageHours < 24) {
+            return getString(R.string.home_continue_updated_hours, ageHours);
+        }
+
+        return getString(R.string.home_continue_updated_days, ageHours / 24);
     }
 }

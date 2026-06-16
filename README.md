@@ -325,7 +325,7 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
 - Desktop ZIP package and optional `jpackage` app-image generation through `package-desktop.bat`.
 - Release notes/version matching through `version.properties` and `release-notes/<version>.md`.
 - Android lint with no reported issues during the latest local run.
-- Android instrumentation tests for onboarding, Home launch, Practice Tutorial, mode selection, Continue, How to Play, Settings, Results, Assist hints, whole-line movement, undo, save/load persistence, app-state store behavior, Activity state/navigation helpers, rotation, and solver-assisted record protection.
+- Android instrumentation tests for onboarding, Home launch, Practice Tutorial, mode selection, Continue metadata, How to Play, Settings, Results, Assist hints, whole-line movement, undo, save/load persistence, app-state store behavior, Activity state/navigation helpers, rotation, and solver-assisted record protection.
 - Android emulator smoke testing for install/launch, Home visibility, whole-line movement, undo, restart, save/load, solver warning dialog, rotation, and background resume.
 
 ### Useful Commands

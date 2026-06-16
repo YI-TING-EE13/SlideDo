@@ -224,10 +224,27 @@ public class MainActivityFlowTest {
         writeSavedGame(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 0);
         launchApp();
 
+        UiObject2 summary = waitForId("home_continue_summary_text");
+        assertTrue(summary.getText().contains("Active save: 3x3"));
+        assertTrue(summary.getText().contains("0 moves"));
+        assertTrue(summary.getText().contains("0s"));
+        assertTrue(summary.getText().contains("saved earlier"));
         clickId(R.id.home_continue_button);
         waitForId("game_root");
         waitForText("3x3 Puzzle");
         waitForStatusContaining("0 moves");
+    }
+
+    @Test
+    public void homeShowsContinueMetadataForCurrentSaveFormat() throws Exception {
+        writeSavedGameWithMetadata(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 7, 123_000, true, false);
+        launchApp();
+
+        UiObject2 summary = waitForId("home_continue_summary_text");
+        assertTrue(summary.getText().contains("Active save: 3x3"));
+        assertTrue(summary.getText().contains("7 moves"));
+        assertTrue(summary.getText().contains("123s"));
+        assertTrue(summary.getText().contains("saved just now"));
     }
 
     @Test
@@ -292,6 +309,7 @@ public class MainActivityFlowTest {
         clickId(R.id.settings_back_button);
         waitForId("home_root");
         assertNull(findById("home_continue_button"));
+        assertNull(findById("home_continue_summary_text"));
     }
 
     @Test
@@ -534,6 +552,23 @@ public class MainActivityFlowTest {
         editor.putString("initial_grid", initialGrid);
         editor.putInt("moves", moves);
         editor.putLong("elapsed", 0);
+        editor.putInt("last_size", 3);
+        editor.putBoolean("onboarding_seen", true);
+        assertTrue(editor.commit());
+    }
+
+    private void writeSavedGameWithMetadata(String grid, String initialGrid, int moves, long elapsedMs,
+            boolean active, boolean solved) {
+        SharedPreferences.Editor editor = targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit();
+        editor.clear();
+        editor.putInt("size", 3);
+        editor.putString("grid", grid);
+        editor.putString("initial_grid", initialGrid);
+        editor.putInt("moves", moves);
+        editor.putLong("elapsed", elapsedMs);
+        editor.putLong("updated_at", System.currentTimeMillis());
+        editor.putBoolean("active", active);
+        editor.putBoolean("solved", solved);
         editor.putInt("last_size", 3);
         editor.putBoolean("onboarding_seen", true);
         assertTrue(editor.commit());

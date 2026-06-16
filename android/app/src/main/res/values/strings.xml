@@ -3,6 +3,15 @@
     <string name="home_tagline">A quick number puzzle for taps, swipes, and clean solves.</string>
     <string name="home_summary">Arrange the tiles in order and leave the empty cell at the end.</string>
     <string name="home_continue">Continue</string>
+    <string name="home_continue_summary">%1$s: %2$dx%3$d, %4$s, %5$ds, %6$s</string>
+    <string name="home_continue_active">Active save</string>
+    <string name="home_continue_solved">Solved save</string>
+    <string name="home_continue_saved">Saved game</string>
+    <string name="home_continue_updated_unknown">saved earlier</string>
+    <string name="home_continue_updated_now">saved just now</string>
+    <string name="home_continue_updated_minutes">%1$d min ago</string>
+    <string name="home_continue_updated_hours">%1$d hr ago</string>
+    <string name="home_continue_updated_days">%1$d d ago</string>
     <string name="home_play">Play</string>
     <string name="home_new_game">New Game</string>
     <string name="home_beginner_guide">Beginner Guide</string>

@@ -702,8 +702,10 @@ Recommended scope:
   content are now outside `MainActivity`, while game/tutorial screen builders
   still need deeper separation.
 - [x] Add explicit save metadata: saved size, moves, elapsed time, updated-at
-  timestamp, and solved/active status. Next step: surface this metadata in the
-  Continue UI.
+  timestamp, and solved/active status.
+- [x] Surface Android save metadata in the Home Continue UI so players can see
+  the saved board size, move count, elapsed time, active/solved state, and save
+  freshness before resuming.
 - [x] Add release build checks before Google Play planning: signed release
   APK/AAB generation, release signing injection, versionCode/versionName policy,
   release notes checks, and reproducible release commands.
@@ -770,6 +772,12 @@ Priority: Low to Medium
   rule source.
 - Added instrumentation regression coverage for Activity state round-trips and
   back-navigation decisions.
+- Surfaced saved-game metadata on Android Home under Continue, including active
+  / solved state, puzzle size, moves, elapsed seconds, and save age. Added
+  instrumentation coverage for current metadata and legacy save fallback text.
+- Hardened `android/build-debug.bat` against Windows file-lock false failures by
+  clearing common generated resource/package output directories before Gradle
+  builds.
 
 ### 2026-06-16
 
