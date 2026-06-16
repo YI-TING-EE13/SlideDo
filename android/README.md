@@ -28,6 +28,9 @@ an emulator or connected Android device.
 - Auto-save through `SharedPreferences`
 - App-state persistence is isolated in `AndroidGameStore` for saves, settings,
   records, onboarding, and last selected size
+- Activity state restoration, back-navigation decisions, shared UI primitives,
+  and learning-content builders are split out of `MainActivity` for maintainable
+  Android iteration
 - Saved-game metadata includes updated time, puzzle size, move count, elapsed
   time, and active/solved state for future Continue and release diagnostics
 - Release versioning is shared through the repository-root `version.properties`
@@ -39,7 +42,8 @@ an emulator or connected Android device.
 - Results screen with Play Again, New Size, Home, and solver-assisted wording
 - BFS, A*, and IDA* solver controls in Assist with warnings for expensive board sizes
 - Solver-assisted completions do not overwrite player best records
-- Android instrumentation coverage for the main navigation and gameplay flows
+- Android instrumentation coverage for the main navigation, Activity
+  state/navigation helpers, and gameplay flows
 
 ## Build Notes
 

@@ -686,16 +686,21 @@ Recommended scope:
 
 - Keep `GameModel` platform-independent and continue to route all puzzle-rule
   changes through shared core tests.
-- The current one-Activity screen-state architecture is acceptable for the MVP,
-  but `MainActivity` should be split into package-private screen builders or a
-  small navigation controller before adding larger product systems.
+- [x] Split the first Android architecture layer out of `MainActivity`:
+  Activity state serialization, back-navigation decisions, shared UI primitives,
+  result/pending-win models, and learning-content builders now live in
+  package-private helpers.
+- Continue the next Android architecture split by moving game and tutorial
+  screen builders into package-private builders before adding larger product
+  systems.
 - Add stable identifiers or test hooks for important Android controls so
   instrumentation tests do not rely on text or screen coordinates.
-- Add a small Android state model for screen state, selected mode, first-run
-  status, settings, and pending results.
-- Continue the architecture split started by `AndroidGameStore`; persistence for
-  saves, settings, records, onboarding, and last size is now outside
-  `MainActivity`, while screen builders/navigation state still need separation.
+- [x] Add a small Android Activity state model for screen, info return target,
+  first-run/tutorial page state, game-started state, and pending results.
+- Continue the architecture split started by `AndroidGameStore`; persistence,
+  Activity state, navigation decisions, shared UI primitives, and learning
+  content are now outside `MainActivity`, while game/tutorial screen builders
+  still need deeper separation.
 - [x] Add explicit save metadata: saved size, moves, elapsed time, updated-at
   timestamp, and solved/active status. Next step: surface this metadata in the
   Continue UI.
@@ -750,6 +755,21 @@ Priority: Low to Medium
   tools before presenting screenshots or store copy.
 
 ## Development Log
+
+### 2026-06-17
+
+- Continued Android-first architecture work by extracting screen state
+  serialization to `AndroidActivityState`, back-navigation decisions to
+  `AndroidNavigation`, shared view primitives to `AndroidUi`, and onboarding /
+  How to Play learning cards to `AndroidLearningContent`.
+- Moved `Screen`, `ScreenLayout`, `PendingWin`, `GameResult`,
+  `SettingChangeListener`, and `ViewParentRemover` out of `MainActivity` as
+  package-private Android helpers.
+- Reduced `MainActivity` from 1863 lines to roughly 1512 lines while preserving
+  existing resource IDs, navigation flows, and `GameModel` as the only puzzle
+  rule source.
+- Added instrumentation regression coverage for Activity state round-trips and
+  back-navigation decisions.
 
 ### 2026-06-16
 

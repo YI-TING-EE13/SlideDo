@@ -1,11 +1,17 @@
 package com.klotski.android;
 
+import static com.klotski.android.AndroidUi.COLOR_ACCENT;
+import static com.klotski.android.AndroidUi.COLOR_BACKGROUND;
+import static com.klotski.android.AndroidUi.COLOR_MUTED_TEXT;
+import static com.klotski.android.AndroidUi.COLOR_PANEL;
+import static com.klotski.android.AndroidUi.COLOR_PANEL_LIGHT;
+import static com.klotski.android.AndroidUi.COLOR_PRIMARY;
+
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.annotation.SuppressLint;
 import android.graphics.Color;
 import android.graphics.Typeface;
-import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -13,11 +19,8 @@ import android.os.Looper;
 import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.GridLayout;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -46,19 +49,6 @@ import java.util.List;
  * </p>
  */
 public class MainActivity extends Activity implements GameObserver {
-    private static final String STATE_SCREEN = "screen";
-    private static final String STATE_INFO_RETURN_SCREEN = "info_return_screen";
-    private static final String STATE_GAME_STARTED = "game_started";
-    private static final String STATE_ONBOARDING_PAGE = "onboarding_page";
-    private static final String STATE_TUTORIAL_STEP = "tutorial_step";
-    private static final String STATE_RESULT_AVAILABLE = "result_available";
-    private static final String STATE_RESULT_SIZE = "result_size";
-    private static final String STATE_RESULT_MOVES = "result_moves";
-    private static final String STATE_RESULT_TIME = "result_time";
-    private static final String STATE_RESULT_ASSISTED = "result_assisted";
-    private static final String STATE_RESULT_NEW_BEST = "result_new_best";
-    private static final String STATE_RESULT_PREVIOUS_BEST_MOVES = "result_previous_best_moves";
-    private static final String STATE_RESULT_PREVIOUS_BEST_TIME = "result_previous_best_time";
     private static final int ONBOARDING_PAGE_COUNT = 4;
     private static final int TUTORIAL_FIRST_MOVE = 0;
     private static final int TUTORIAL_LINE_SLIDE = 1;
@@ -80,16 +70,11 @@ public class MainActivity extends Activity implements GameObserver {
             {7, 8, 6}
     };
 
-    private static final int COLOR_BACKGROUND = Color.rgb(17, 24, 39);
-    private static final int COLOR_PANEL = Color.rgb(31, 41, 55);
-    private static final int COLOR_PANEL_LIGHT = Color.rgb(55, 65, 81);
-    private static final int COLOR_PRIMARY = Color.rgb(46, 125, 50);
-    private static final int COLOR_ACCENT = Color.rgb(245, 158, 11);
-    private static final int COLOR_MUTED_TEXT = Color.rgb(209, 213, 219);
-
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final List<Button> commandButtons = new ArrayList<>();
 
+    private AndroidUi ui;
+    private AndroidLearningContent learningContent;
     private AndroidGameStore store;
     private GameModel model;
     private KlotskiView boardView;
@@ -118,18 +103,6 @@ public class MainActivity extends Activity implements GameObserver {
     public MainActivity() {
     }
 
-    private enum Screen {
-        HOME,
-        ONBOARDING,
-        TUTORIAL,
-        MODE_SELECT,
-        HOW_TO_PLAY,
-        RECORDS,
-        SETTINGS,
-        RESULTS,
-        GAME
-    }
-
     private final Runnable ticker = new Runnable() {
         @Override
         public void run() {
@@ -149,6 +122,8 @@ public class MainActivity extends Activity implements GameObserver {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        ui = new AndroidUi(this, commandButtons);
+        learningContent = new AndroidLearningContent(this, ui);
         applyLegacySystemBarColors();
 
         store = new AndroidGameStore(this);
@@ -173,12 +148,8 @@ public class MainActivity extends Activity implements GameObserver {
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         saveGame();
-        outState.putString(STATE_SCREEN, currentScreen.name());
-        outState.putString(STATE_INFO_RETURN_SCREEN, infoReturnScreen.name());
-        outState.putBoolean(STATE_GAME_STARTED, gameStarted);
-        outState.putInt(STATE_ONBOARDING_PAGE, onboardingPage);
-        outState.putInt(STATE_TUTORIAL_STEP, tutorialStep);
-        saveResultState(outState);
+        AndroidActivityState.save(outState, currentScreen, infoReturnScreen, gameStarted,
+                onboardingPage, tutorialStep, currentResult);
         super.onSaveInstanceState(outState);
     }
 
@@ -209,21 +180,13 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private void handleBackNavigation() {
-        if (currentScreen == Screen.GAME || currentScreen == Screen.RESULTS) {
+        if (AndroidNavigation.shouldSaveBeforeBack(currentScreen)) {
             saveGame();
-            showHomeScreen();
-        } else if (currentScreen == Screen.ONBOARDING) {
-            showHomeScreen();
-        } else if (currentScreen == Screen.TUTORIAL) {
-            showHomeScreen();
-        } else if (currentScreen == Screen.HOME) {
-            finish();
-        } else if ((currentScreen == Screen.HOW_TO_PLAY || currentScreen == Screen.RECORDS
-                || currentScreen == Screen.SETTINGS)
-                && infoReturnScreen == Screen.GAME && gameStarted) {
-            showGameScreen();
-        } else {
-            showHomeScreen();
+        }
+        switch (AndroidNavigation.backTarget(currentScreen, infoReturnScreen, gameStarted)) {
+            case GAME -> showGameScreen();
+            case FINISH -> finish();
+            case HOME -> showHomeScreen();
         }
     }
 
@@ -263,12 +226,12 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private boolean restoreAppScreen(Bundle savedInstanceState) {
-        Screen savedScreen = readScreen(savedInstanceState, STATE_SCREEN, Screen.HOME);
-        Screen savedReturnScreen = readScreen(savedInstanceState, STATE_INFO_RETURN_SCREEN, Screen.HOME);
-        boolean savedGameStarted = savedInstanceState.getBoolean(STATE_GAME_STARTED, false);
-        int savedOnboardingPage = savedInstanceState.getInt(STATE_ONBOARDING_PAGE, 0);
-        int savedTutorialStep = savedInstanceState.getInt(STATE_TUTORIAL_STEP, TUTORIAL_FIRST_MOVE);
-        currentResult = restoreResultState(savedInstanceState);
+        AndroidActivityState.Snapshot savedState =
+                AndroidActivityState.restore(savedInstanceState, TUTORIAL_FIRST_MOVE);
+        Screen savedScreen = savedState.screen;
+        Screen savedReturnScreen = savedState.infoReturnScreen;
+        boolean savedGameStarted = savedState.gameStarted;
+        currentResult = savedState.result;
 
         if (savedScreen == Screen.GAME) {
             if (savedGameStarted && loadGame()) {
@@ -295,8 +258,8 @@ public class MainActivity extends Activity implements GameObserver {
         }
 
         switch (savedScreen) {
-            case ONBOARDING -> showOnboardingScreen(savedOnboardingPage);
-            case TUTORIAL -> showTutorialScreen(savedTutorialStep);
+            case ONBOARDING -> showOnboardingScreen(savedState.onboardingPage);
+            case TUTORIAL -> showTutorialScreen(savedState.tutorialStep);
             case MODE_SELECT -> showModeSelectScreen();
             case HOW_TO_PLAY -> showHowToScreen(savedReturnScreen);
             case RECORDS -> showRecordsScreen(savedReturnScreen);
@@ -307,56 +270,6 @@ public class MainActivity extends Activity implements GameObserver {
             }
         }
         return true;
-    }
-
-    private Screen readScreen(Bundle bundle, String key, Screen fallback) {
-        String value = bundle.getString(key);
-        if (value == null) {
-            return fallback;
-        }
-        try {
-            return Screen.valueOf(value);
-        } catch (IllegalArgumentException e) {
-            return fallback;
-        }
-    }
-
-    private void saveResultState(Bundle outState) {
-        if (currentResult == null) {
-            outState.putBoolean(STATE_RESULT_AVAILABLE, false);
-            return;
-        }
-        outState.putBoolean(STATE_RESULT_AVAILABLE, true);
-        outState.putInt(STATE_RESULT_SIZE, currentResult.size);
-        outState.putInt(STATE_RESULT_MOVES, currentResult.moves);
-        outState.putLong(STATE_RESULT_TIME, currentResult.timeMs);
-        outState.putBoolean(STATE_RESULT_ASSISTED, currentResult.assisted);
-        outState.putBoolean(STATE_RESULT_NEW_BEST, currentResult.newBest);
-        if (currentResult.previousBest == null) {
-            outState.putInt(STATE_RESULT_PREVIOUS_BEST_MOVES, -1);
-            outState.putLong(STATE_RESULT_PREVIOUS_BEST_TIME, -1);
-        } else {
-            outState.putInt(STATE_RESULT_PREVIOUS_BEST_MOVES, currentResult.previousBest.moves);
-            outState.putLong(STATE_RESULT_PREVIOUS_BEST_TIME, currentResult.previousBest.timeMs);
-        }
-    }
-
-    private GameResult restoreResultState(Bundle savedInstanceState) {
-        if (!savedInstanceState.getBoolean(STATE_RESULT_AVAILABLE, false)) {
-            return null;
-        }
-        int previousMoves = savedInstanceState.getInt(STATE_RESULT_PREVIOUS_BEST_MOVES, -1);
-        long previousTime = savedInstanceState.getLong(STATE_RESULT_PREVIOUS_BEST_TIME, -1);
-        AndroidGameStore.Best previousBest = previousMoves < 0 || previousTime < 0
-                ? null
-                : new AndroidGameStore.Best(previousMoves, previousTime);
-        return new GameResult(
-                savedInstanceState.getInt(STATE_RESULT_SIZE, 4),
-                savedInstanceState.getInt(STATE_RESULT_MOVES, 0),
-                savedInstanceState.getLong(STATE_RESULT_TIME, 0),
-                savedInstanceState.getBoolean(STATE_RESULT_ASSISTED, false),
-                savedInstanceState.getBoolean(STATE_RESULT_NEW_BEST, false),
-                previousBest);
     }
 
     private void showHomeScreen() {
@@ -371,25 +284,25 @@ public class MainActivity extends Activity implements GameObserver {
         tutorialStatusText = null;
         commandButtons.clear();
 
-        ScreenLayout screen = createScreenLayout();
+        ScreenLayout screen = ui.createScreenLayout();
         screen.root.setId(R.id.home_root);
         screen.content.setGravity(Gravity.CENTER_HORIZONTAL);
-        addScreenHeader(screen.content, getString(R.string.app_name), getString(R.string.home_tagline));
+        ui.addScreenHeader(screen.content, getString(R.string.app_name), getString(R.string.home_tagline));
 
-        TextView summary = createText(getString(R.string.home_summary), 16, COLOR_MUTED_TEXT, Typeface.NORMAL);
+        TextView summary = ui.createText(getString(R.string.home_summary), 16, COLOR_MUTED_TEXT, Typeface.NORMAL);
         summary.setGravity(Gravity.CENTER);
         summary.setLineSpacing(0, 1.12f);
-        LinearLayout.LayoutParams summaryParams = fullWidthParams();
-        summaryParams.setMargins(0, dp(8), 0, dp(24));
+        LinearLayout.LayoutParams summaryParams = ui.fullWidthParams();
+        summaryParams.setMargins(0, ui.dp(8), 0, ui.dp(24));
         screen.content.addView(summary, summaryParams);
 
         boolean hasSave = hasSavedGame();
         if (hasSave) {
-            Button continueButton = addWideButton(screen.content, R.string.home_continue, COLOR_PRIMARY,
+            Button continueButton = ui.addWideButton(screen.content, R.string.home_continue, COLOR_PRIMARY,
                     v -> continueSavedGame());
             continueButton.setId(R.id.home_continue_button);
         }
-        Button newGameButton = addWideButton(screen.content, hasSave ? R.string.home_new_game : R.string.home_play,
+        Button newGameButton = ui.addWideButton(screen.content, hasSave ? R.string.home_new_game : R.string.home_play,
                 hasSave ? COLOR_PANEL_LIGHT : COLOR_PRIMARY, v -> {
                     if (shouldShowOnboarding()) {
                         showOnboardingScreen(0);
@@ -398,19 +311,19 @@ public class MainActivity extends Activity implements GameObserver {
                     }
                 });
         newGameButton.setId(R.id.home_new_game_button);
-        Button onboardingButton = addWideButton(screen.content, R.string.home_beginner_guide, COLOR_PANEL,
+        Button onboardingButton = ui.addWideButton(screen.content, R.string.home_beginner_guide, COLOR_PANEL,
                 v -> showOnboardingScreen(0));
         onboardingButton.setId(R.id.home_onboarding_button);
-        Button tutorialButton = addWideButton(screen.content, R.string.home_tutorial, COLOR_PRIMARY,
+        Button tutorialButton = ui.addWideButton(screen.content, R.string.home_tutorial, COLOR_PRIMARY,
                 v -> startGuidedTutorial());
         tutorialButton.setId(R.id.home_tutorial_button);
-        Button howToButton = addWideButton(screen.content, R.string.home_how_to_play, COLOR_PANEL,
+        Button howToButton = ui.addWideButton(screen.content, R.string.home_how_to_play, COLOR_PANEL,
                 v -> showHowToScreen(Screen.HOME));
         howToButton.setId(R.id.home_how_to_play_button);
-        Button settingsButton = addWideButton(screen.content, R.string.home_settings, COLOR_PANEL,
+        Button settingsButton = ui.addWideButton(screen.content, R.string.home_settings, COLOR_PANEL,
                 v -> showSettingsScreen(Screen.HOME));
         settingsButton.setId(R.id.home_settings_button);
-        Button recordsButton = addWideButton(screen.content, R.string.home_records, COLOR_PANEL,
+        Button recordsButton = ui.addWideButton(screen.content, R.string.home_records, COLOR_PANEL,
                 v -> showRecordsScreen(Screen.HOME));
         recordsButton.setId(R.id.home_records_button);
 
@@ -425,41 +338,41 @@ public class MainActivity extends Activity implements GameObserver {
         commandButtons.clear();
         onboardingPage = clampOnboardingPage(requestedPage);
 
-        ScreenLayout screen = createScreenLayout();
+        ScreenLayout screen = ui.createScreenLayout();
         screen.root.setId(R.id.onboarding_root);
-        addScreenHeader(screen.content, getString(R.string.onboarding_title),
+        ui.addScreenHeader(screen.content, getString(R.string.onboarding_title),
                 getString(R.string.onboarding_subtitle));
 
-        TextView progress = createText(getString(R.string.onboarding_progress,
+        TextView progress = ui.createText(getString(R.string.onboarding_progress,
                 onboardingPage + 1, ONBOARDING_PAGE_COUNT), 14, COLOR_ACCENT, Typeface.BOLD);
         progress.setId(R.id.onboarding_progress_text);
         progress.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams progressParams = fullWidthParams();
-        progressParams.setMargins(0, 0, 0, dp(12));
+        LinearLayout.LayoutParams progressParams = ui.fullWidthParams();
+        progressParams.setMargins(0, 0, 0, ui.dp(12));
         screen.content.addView(progress, progressParams);
 
         addOnboardingPage(screen.content);
 
         if (onboardingPage < ONBOARDING_PAGE_COUNT - 1) {
-            Button nextButton = addWideButton(screen.content, R.string.onboarding_next, COLOR_PRIMARY,
+            Button nextButton = ui.addWideButton(screen.content, R.string.onboarding_next, COLOR_PRIMARY,
                     v -> showOnboardingScreen(onboardingPage + 1));
             nextButton.setId(R.id.onboarding_next_button);
         } else {
-            Button tutorialButton = addWideButton(screen.content, R.string.onboarding_start_tutorial, COLOR_PRIMARY,
+            Button tutorialButton = ui.addWideButton(screen.content, R.string.onboarding_start_tutorial, COLOR_PRIMARY,
                     v -> startGuidedTutorial());
             tutorialButton.setId(R.id.onboarding_tutorial_button);
-            Button startButton = addWideButton(screen.content, R.string.onboarding_start_3, COLOR_PANEL,
+            Button startButton = ui.addWideButton(screen.content, R.string.onboarding_start_3, COLOR_PANEL,
                     v -> startFirstPuzzle());
             startButton.setId(R.id.onboarding_start_3_button);
         }
 
         if (onboardingPage > 0) {
-            Button backButton = addWideButton(screen.content, R.string.onboarding_back, COLOR_PANEL,
+            Button backButton = ui.addWideButton(screen.content, R.string.onboarding_back, COLOR_PANEL,
                     v -> showOnboardingScreen(onboardingPage - 1));
             backButton.setId(R.id.onboarding_back_button);
         }
 
-        Button skipButton = addWideButton(screen.content, R.string.onboarding_skip, COLOR_PANEL,
+        Button skipButton = ui.addWideButton(screen.content, R.string.onboarding_skip, COLOR_PANEL,
                 v -> skipOnboarding());
         skipButton.setId(R.id.onboarding_skip_button);
 
@@ -472,13 +385,13 @@ public class MainActivity extends Activity implements GameObserver {
         gameTitleText = null;
         commandButtons.clear();
 
-        ScreenLayout screen = createScreenLayout();
+        ScreenLayout screen = ui.createScreenLayout();
         screen.root.setId(R.id.mode_root);
-        addScreenHeader(screen.content, getString(R.string.mode_title), getString(R.string.mode_subtitle));
+        ui.addScreenHeader(screen.content, getString(R.string.mode_title), getString(R.string.mode_subtitle));
         addModeRow(screen.content, 3, R.string.mode_easy, R.string.mode_easy_detail);
         addModeRow(screen.content, 4, R.string.mode_classic, R.string.mode_classic_detail);
         addModeRow(screen.content, 5, R.string.mode_expert, R.string.mode_expert_detail);
-        Button homeButton = addWideButton(screen.content, R.string.nav_home, COLOR_PANEL, v -> showHomeScreen());
+        Button homeButton = ui.addWideButton(screen.content, R.string.nav_home, COLOR_PANEL, v -> showHomeScreen());
         homeButton.setId(R.id.mode_home_button);
 
         setContentView(screen.root);
@@ -491,19 +404,22 @@ public class MainActivity extends Activity implements GameObserver {
         gameTitleText = null;
         commandButtons.clear();
 
-        ScreenLayout screen = createScreenLayout();
+        ScreenLayout screen = ui.createScreenLayout();
         screen.root.setId(R.id.how_root);
-        addScreenHeader(screen.content, getString(R.string.how_title), getString(R.string.how_subtitle));
-        addLearningExample(screen.content, R.id.how_goal_example, R.string.how_goal_title, R.string.how_goal_body,
+        ui.addScreenHeader(screen.content, getString(R.string.how_title), getString(R.string.how_subtitle));
+        learningContent.addLearningExample(screen.content, R.id.how_goal_example,
+                R.string.how_goal_title, R.string.how_goal_body,
                 new int[][] {{1, 2, 3}, {4, 5, 6}, {7, 8, 0}}, new int[] {});
-        addLearningExample(screen.content, R.id.how_tap_example, R.string.how_tap_title, R.string.how_tap_body,
+        learningContent.addLearningExample(screen.content, R.id.how_tap_example,
+                R.string.how_tap_title, R.string.how_tap_body,
                 new int[][] {{1, 2, 3}, {4, 5, 0}, {7, 8, 6}}, new int[] {5});
-        addLearningExample(screen.content, R.id.how_line_example, R.string.how_line_title, R.string.how_line_body,
+        learningContent.addLearningExample(screen.content, R.id.how_line_example,
+                R.string.how_line_title, R.string.how_line_body,
                 new int[][] {{1, 2, 3}, {0, 4, 5}, {7, 8, 6}}, new int[] {4, 5});
-        addInstruction(screen.content, R.string.how_swipe_title, R.string.how_swipe_body);
-        addInstruction(screen.content, R.string.how_tools_title, R.string.how_tools_body);
-        addInstruction(screen.content, R.string.how_records_title, R.string.how_records_body);
-        Button backButton = addWideButton(screen.content, R.string.nav_back, COLOR_PRIMARY, v -> returnFromInfoScreen());
+        learningContent.addInstruction(screen.content, R.string.how_swipe_title, R.string.how_swipe_body);
+        learningContent.addInstruction(screen.content, R.string.how_tools_title, R.string.how_tools_body);
+        learningContent.addInstruction(screen.content, R.string.how_records_title, R.string.how_records_body);
+        Button backButton = ui.addWideButton(screen.content, R.string.nav_back, COLOR_PRIMARY, v -> returnFromInfoScreen());
         backButton.setId(R.id.how_back_button);
 
         setContentView(screen.root);
@@ -516,13 +432,13 @@ public class MainActivity extends Activity implements GameObserver {
         gameTitleText = null;
         commandButtons.clear();
 
-        ScreenLayout screen = createScreenLayout();
+        ScreenLayout screen = ui.createScreenLayout();
         screen.root.setId(R.id.records_root);
-        addScreenHeader(screen.content, getString(R.string.records_title), getString(R.string.records_subtitle));
+        ui.addScreenHeader(screen.content, getString(R.string.records_title), getString(R.string.records_subtitle));
         addRecordRow(screen.content, 3, R.string.mode_easy);
         addRecordRow(screen.content, 4, R.string.mode_classic);
         addRecordRow(screen.content, 5, R.string.mode_expert);
-        Button backButton = addWideButton(screen.content, R.string.nav_back, COLOR_PRIMARY, v -> returnFromInfoScreen());
+        Button backButton = ui.addWideButton(screen.content, R.string.nav_back, COLOR_PRIMARY, v -> returnFromInfoScreen());
         backButton.setId(R.id.records_back_button);
 
         setContentView(screen.root);
@@ -535,9 +451,9 @@ public class MainActivity extends Activity implements GameObserver {
         gameTitleText = null;
         commandButtons.clear();
 
-        ScreenLayout screen = createScreenLayout();
+        ScreenLayout screen = ui.createScreenLayout();
         screen.root.setId(R.id.settings_root);
-        addScreenHeader(screen.content, getString(R.string.settings_title), getString(R.string.settings_subtitle));
+        ui.addScreenHeader(screen.content, getString(R.string.settings_title), getString(R.string.settings_subtitle));
         addSettingsSwitch(screen.content, R.id.settings_haptic_switch, R.string.settings_haptic_title,
                 R.string.settings_haptic_body, isHapticEnabled(), checked -> {
                     store.setHapticEnabled(checked);
@@ -548,13 +464,13 @@ public class MainActivity extends Activity implements GameObserver {
                     store.setReducedMotionEnabled(checked);
                     applySettingsToBoard();
                 });
-        Button resetSaveButton = addWideButton(screen.content, R.string.settings_reset_save, COLOR_PANEL,
+        Button resetSaveButton = ui.addWideButton(screen.content, R.string.settings_reset_save, COLOR_PANEL,
                 v -> confirmResetSave());
         resetSaveButton.setId(R.id.settings_reset_save_button);
-        Button resetRecordsButton = addWideButton(screen.content, R.string.settings_reset_records, COLOR_PANEL,
+        Button resetRecordsButton = ui.addWideButton(screen.content, R.string.settings_reset_records, COLOR_PANEL,
                 v -> confirmResetRecords());
         resetRecordsButton.setId(R.id.settings_reset_records_button);
-        Button backButton = addWideButton(screen.content, R.string.nav_back, COLOR_PRIMARY, v -> returnFromInfoScreen());
+        Button backButton = ui.addWideButton(screen.content, R.string.nav_back, COLOR_PRIMARY, v -> returnFromInfoScreen());
         backButton.setId(R.id.settings_back_button);
 
         setContentView(screen.root);
@@ -572,48 +488,48 @@ public class MainActivity extends Activity implements GameObserver {
         gameTitleText = null;
         commandButtons.clear();
 
-        ScreenLayout screen = createScreenLayout();
+        ScreenLayout screen = ui.createScreenLayout();
         screen.root.setId(R.id.results_root);
         screen.content.setGravity(Gravity.CENTER_HORIZONTAL);
-        addScreenHeader(screen.content, getString(R.string.results_title),
+        ui.addScreenHeader(screen.content, getString(R.string.results_title),
                 getString(currentResult.assisted
                         ? R.string.results_assisted_subtitle
                         : R.string.results_player_subtitle));
 
-        TextView size = createText(getString(R.string.results_size_format,
+        TextView size = ui.createText(getString(R.string.results_size_format,
                 currentResult.size, currentResult.size), 18, Color.WHITE, Typeface.BOLD);
         size.setId(R.id.results_size_text);
         size.setGravity(Gravity.CENTER);
-        screen.content.addView(size, fullWidthParams());
+        screen.content.addView(size, ui.fullWidthParams());
 
-        TextView stats = createText(getString(R.string.results_stats_format,
+        TextView stats = ui.createText(getString(R.string.results_stats_format,
                 formatMoves(currentResult.moves), currentResult.timeMs / 1000),
                 24, Color.WHITE, Typeface.BOLD);
         stats.setId(R.id.results_stats_text);
         stats.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams statsParams = fullWidthParams();
-        statsParams.setMargins(0, dp(10), 0, dp(10));
+        LinearLayout.LayoutParams statsParams = ui.fullWidthParams();
+        statsParams.setMargins(0, ui.dp(10), 0, ui.dp(10));
         screen.content.addView(stats, statsParams);
 
-        TextView record = createText(resultRecordText(currentResult), 16,
+        TextView record = ui.createText(resultRecordText(currentResult), 16,
                 currentResult.newBest ? COLOR_ACCENT : COLOR_MUTED_TEXT, Typeface.BOLD);
         record.setId(R.id.results_record_text);
         record.setGravity(Gravity.CENTER);
         record.setLineSpacing(0, 1.12f);
-        LinearLayout.LayoutParams recordParams = fullWidthParams();
-        recordParams.setMargins(0, 0, 0, dp(22));
+        LinearLayout.LayoutParams recordParams = ui.fullWidthParams();
+        recordParams.setMargins(0, 0, 0, ui.dp(22));
         screen.content.addView(record, recordParams);
 
-        Button playAgainButton = addWideButton(screen.content, R.string.results_play_again, COLOR_PRIMARY,
+        Button playAgainButton = ui.addWideButton(screen.content, R.string.results_play_again, COLOR_PRIMARY,
                 v -> beginNewGame(currentResult.size));
         playAgainButton.setId(R.id.results_play_again_button);
-        Button newSizeButton = addWideButton(screen.content, R.string.results_new_size, COLOR_PANEL,
+        Button newSizeButton = ui.addWideButton(screen.content, R.string.results_new_size, COLOR_PANEL,
                 v -> {
                     saveGame();
                     showModeSelectScreen();
                 });
         newSizeButton.setId(R.id.results_new_size_button);
-        Button homeButton = addWideButton(screen.content, R.string.nav_home, COLOR_PANEL,
+        Button homeButton = ui.addWideButton(screen.content, R.string.nav_home, COLOR_PANEL,
                 v -> {
                     saveGame();
                     showHomeScreen();
@@ -644,52 +560,52 @@ public class MainActivity extends Activity implements GameObserver {
         root.setId(R.id.tutorial_root);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(COLOR_BACKGROUND);
-        root.setPadding(dp(12), systemBarHeight("status_bar_height") + dp(12),
-                dp(12), systemBarHeight("navigation_bar_height") + dp(12));
+        root.setPadding(ui.dp(12), ui.systemBarHeight("status_bar_height") + ui.dp(12),
+                ui.dp(12), ui.systemBarHeight("navigation_bar_height") + ui.dp(12));
 
         LinearLayout topBar = new LinearLayout(this);
         topBar.setGravity(Gravity.CENTER_VERTICAL);
         topBar.setOrientation(LinearLayout.HORIZONTAL);
-        root.addView(topBar, fullWidthParams());
+        root.addView(topBar, ui.fullWidthParams());
 
-        Button homeButton = createButton(getString(R.string.nav_home), COLOR_PANEL);
+        Button homeButton = ui.createButton(getString(R.string.nav_home), COLOR_PANEL);
         homeButton.setId(R.id.tutorial_home_button);
         homeButton.setOnClickListener(v -> showHomeScreen());
-        topBar.addView(homeButton, fixedButtonParams(88));
+        topBar.addView(homeButton, ui.fixedButtonParams(88));
 
-        TextView title = createText(getString(R.string.tutorial_title), 20, Color.WHITE, Typeface.BOLD);
+        TextView title = ui.createText(getString(R.string.tutorial_title), 20, Color.WHITE, Typeface.BOLD);
         title.setGravity(Gravity.CENTER);
         topBar.addView(title, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 
-        Button startButton = createButton(getString(R.string.onboarding_start_3), COLOR_PANEL);
+        Button startButton = ui.createButton(getString(R.string.onboarding_start_3), COLOR_PANEL);
         startButton.setId(R.id.tutorial_start_game_button);
         startButton.setOnClickListener(v -> beginNewGame(3));
-        topBar.addView(startButton, fixedButtonParams(104));
+        topBar.addView(startButton, ui.fixedButtonParams(104));
 
         LinearLayout lesson = new LinearLayout(this);
         lesson.setOrientation(LinearLayout.VERTICAL);
-        lesson.setPadding(dp(14), dp(12), dp(14), dp(12));
-        lesson.setBackground(makePanelBackground(COLOR_PANEL));
-        LinearLayout.LayoutParams lessonParams = fullWidthParams();
-        lessonParams.setMargins(0, dp(10), 0, dp(10));
+        lesson.setPadding(ui.dp(14), ui.dp(12), ui.dp(14), ui.dp(12));
+        lesson.setBackground(ui.makePanelBackground(COLOR_PANEL));
+        LinearLayout.LayoutParams lessonParams = ui.fullWidthParams();
+        lessonParams.setMargins(0, ui.dp(10), 0, ui.dp(10));
         root.addView(lesson, lessonParams);
 
-        tutorialProgressText = createText("", 14, COLOR_ACCENT, Typeface.BOLD);
+        tutorialProgressText = ui.createText("", 14, COLOR_ACCENT, Typeface.BOLD);
         tutorialProgressText.setId(R.id.tutorial_progress_text);
-        lesson.addView(tutorialProgressText, fullWidthParams());
+        lesson.addView(tutorialProgressText, ui.fullWidthParams());
 
-        tutorialInstructionText = createText("", 15, COLOR_MUTED_TEXT, Typeface.NORMAL);
+        tutorialInstructionText = ui.createText("", 15, COLOR_MUTED_TEXT, Typeface.NORMAL);
         tutorialInstructionText.setId(R.id.tutorial_instruction_text);
         tutorialInstructionText.setLineSpacing(0, 1.12f);
-        LinearLayout.LayoutParams instructionParams = fullWidthParams();
-        instructionParams.setMargins(0, dp(6), 0, 0);
+        LinearLayout.LayoutParams instructionParams = ui.fullWidthParams();
+        instructionParams.setMargins(0, ui.dp(6), 0, 0);
         lesson.addView(tutorialInstructionText, instructionParams);
 
-        tutorialStatusText = createText("", 15, Color.WHITE, Typeface.BOLD);
+        tutorialStatusText = ui.createText("", 15, Color.WHITE, Typeface.BOLD);
         tutorialStatusText.setId(R.id.tutorial_status_text);
         tutorialStatusText.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams statusParams = fullWidthParams();
-        statusParams.setMargins(0, 0, 0, dp(8));
+        LinearLayout.LayoutParams statusParams = ui.fullWidthParams();
+        statusParams.setMargins(0, 0, 0, ui.dp(8));
         root.addView(tutorialStatusText, statusParams);
 
         ensureBoardView();
@@ -702,18 +618,18 @@ public class MainActivity extends Activity implements GameObserver {
 
         LinearLayout actions = new LinearLayout(this);
         actions.setGravity(Gravity.CENTER);
-        actions.setPadding(0, dp(10), 0, 0);
+        actions.setPadding(0, ui.dp(10), 0, 0);
         actions.setOrientation(LinearLayout.HORIZONTAL);
-        root.addView(actions, fullWidthParams());
+        root.addView(actions, ui.fullWidthParams());
 
-        Button restartButton = createButton(getString(R.string.tutorial_restart_lesson), COLOR_PANEL_LIGHT);
+        Button restartButton = ui.createButton(getString(R.string.tutorial_restart_lesson), COLOR_PANEL_LIGHT);
         restartButton.setOnClickListener(v -> {
             if (canAcceptTutorialCommand()) {
                 showTutorialScreen(tutorialStep == TUTORIAL_COMPLETE ? TUTORIAL_FIRST_MOVE : tutorialStep);
             }
         });
         restartButton.setId(R.id.tutorial_restart_button);
-        actions.addView(restartButton, new LinearLayout.LayoutParams(0, dp(48), 1f));
+        actions.addView(restartButton, new LinearLayout.LayoutParams(0, ui.dp(48), 1f));
 
         setContentView(root);
         updateTutorialStatus();
@@ -742,15 +658,15 @@ public class MainActivity extends Activity implements GameObserver {
         root.setId(R.id.game_root);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(COLOR_BACKGROUND);
-        root.setPadding(dp(12), systemBarHeight("status_bar_height") + dp(12),
-                dp(12), systemBarHeight("navigation_bar_height") + dp(12));
+        root.setPadding(ui.dp(12), ui.systemBarHeight("status_bar_height") + ui.dp(12),
+                ui.dp(12), ui.systemBarHeight("navigation_bar_height") + ui.dp(12));
 
         LinearLayout topBar = new LinearLayout(this);
         topBar.setGravity(Gravity.CENTER_VERTICAL);
         topBar.setOrientation(LinearLayout.HORIZONTAL);
-        root.addView(topBar, fullWidthParams());
+        root.addView(topBar, ui.fullWidthParams());
 
-        Button homeButton = createButton(getString(R.string.nav_home), COLOR_PANEL);
+        Button homeButton = ui.createButton(getString(R.string.nav_home), COLOR_PANEL);
         homeButton.setId(R.id.game_home_button);
         homeButton.setContentDescription(getString(R.string.accessibility_game_home));
         homeButton.setOnClickListener(v -> {
@@ -760,15 +676,15 @@ public class MainActivity extends Activity implements GameObserver {
             }
         });
         commandButtons.add(homeButton);
-        topBar.addView(homeButton, fixedButtonParams(88));
+        topBar.addView(homeButton, ui.fixedButtonParams(88));
 
-        gameTitleText = createText("", 20, Color.WHITE, Typeface.BOLD);
+        gameTitleText = ui.createText("", 20, Color.WHITE, Typeface.BOLD);
         gameTitleText.setId(R.id.game_title_text);
         gameTitleText.setGravity(Gravity.CENTER);
         topBar.addView(gameTitleText, new LinearLayout.LayoutParams(0,
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 
-        Button menuButton = createButton(getString(R.string.game_menu), COLOR_PANEL);
+        Button menuButton = ui.createButton(getString(R.string.game_menu), COLOR_PANEL);
         menuButton.setId(R.id.game_menu_button);
         menuButton.setContentDescription(getString(R.string.accessibility_game_menu));
         menuButton.setOnClickListener(v -> {
@@ -777,15 +693,15 @@ public class MainActivity extends Activity implements GameObserver {
             }
         });
         commandButtons.add(menuButton);
-        topBar.addView(menuButton, fixedButtonParams(88));
+        topBar.addView(menuButton, ui.fixedButtonParams(88));
 
-        statusText = createText("", 15, Color.WHITE, Typeface.NORMAL);
+        statusText = ui.createText("", 15, Color.WHITE, Typeface.NORMAL);
         statusText.setId(R.id.game_status_text);
         statusText.setGravity(Gravity.CENTER);
         statusText.setSingleLine(false);
         statusText.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
-        LinearLayout.LayoutParams statusParams = fullWidthParams();
-        statusParams.setMargins(0, dp(8), 0, dp(8));
+        LinearLayout.LayoutParams statusParams = ui.fullWidthParams();
+        statusParams.setMargins(0, ui.dp(8), 0, ui.dp(8));
         root.addView(statusText, statusParams);
 
         ensureBoardView();
@@ -797,11 +713,11 @@ public class MainActivity extends Activity implements GameObserver {
 
         LinearLayout actions = new LinearLayout(this);
         actions.setGravity(Gravity.CENTER);
-        actions.setPadding(0, dp(10), 0, 0);
+        actions.setPadding(0, ui.dp(10), 0, 0);
         actions.setOrientation(LinearLayout.HORIZONTAL);
-        root.addView(actions, fullWidthParams());
+        root.addView(actions, ui.fullWidthParams());
 
-        Button undoButton = addGameButton(actions, R.string.button_undo, v -> {
+        Button undoButton = ui.addGameButton(actions, R.string.button_undo, v -> {
             if (canAcceptCommand()) {
                 clearGameHint();
                 model.undo();
@@ -811,14 +727,14 @@ public class MainActivity extends Activity implements GameObserver {
         });
         undoButton.setId(R.id.game_undo_button);
         undoButton.setContentDescription(getString(R.string.accessibility_game_undo));
-        Button restartButton = addGameButton(actions, R.string.button_restart, v -> {
+        Button restartButton = ui.addGameButton(actions, R.string.button_restart, v -> {
             if (canAcceptCommand()) {
                 restartCurrentGame();
             }
         });
         restartButton.setId(R.id.game_restart_button);
         restartButton.setContentDescription(getString(R.string.accessibility_game_restart));
-        Button assistButton = addGameButton(actions, R.string.game_assist, v -> {
+        Button assistButton = ui.addGameButton(actions, R.string.game_assist, v -> {
             if (canAcceptCommand()) {
                 showAssistMenu();
             }
@@ -854,48 +770,48 @@ public class MainActivity extends Activity implements GameObserver {
         }
         row.setContentDescription(getString(R.string.mode_card_title, size, size));
         row.setOrientation(LinearLayout.VERTICAL);
-        row.setPadding(dp(16), dp(14), dp(16), dp(14));
-        row.setBackground(makePanelBackground(COLOR_PANEL));
+        row.setPadding(ui.dp(16), ui.dp(14), ui.dp(16), ui.dp(14));
+        row.setBackground(ui.makePanelBackground(COLOR_PANEL));
         row.setClickable(true);
         row.setOnClickListener(v -> beginNewGame(size));
 
-        TextView title = createText(getString(R.string.mode_card_title, size, size), 22, Color.WHITE, Typeface.BOLD);
-        TextView difficulty = createText(getString(difficultyResId), 15, COLOR_ACCENT, Typeface.BOLD);
-        TextView detail = createText(getString(detailResId), 15, COLOR_MUTED_TEXT, Typeface.NORMAL);
-        TextView best = createText(getString(R.string.mode_best_label, formatBestForCard(size)),
+        TextView title = ui.createText(getString(R.string.mode_card_title, size, size), 22, Color.WHITE, Typeface.BOLD);
+        TextView difficulty = ui.createText(getString(difficultyResId), 15, COLOR_ACCENT, Typeface.BOLD);
+        TextView detail = ui.createText(getString(detailResId), 15, COLOR_MUTED_TEXT, Typeface.NORMAL);
+        TextView best = ui.createText(getString(R.string.mode_best_label, formatBestForCard(size)),
                 14, COLOR_MUTED_TEXT, Typeface.NORMAL);
 
-        row.addView(title, fullWidthParams());
-        row.addView(difficulty, fullWidthParams());
-        LinearLayout.LayoutParams detailParams = fullWidthParams();
-        detailParams.setMargins(0, dp(8), 0, 0);
+        row.addView(title, ui.fullWidthParams());
+        row.addView(difficulty, ui.fullWidthParams());
+        LinearLayout.LayoutParams detailParams = ui.fullWidthParams();
+        detailParams.setMargins(0, ui.dp(8), 0, 0);
         row.addView(detail, detailParams);
-        LinearLayout.LayoutParams bestParams = fullWidthParams();
-        bestParams.setMargins(0, dp(8), 0, 0);
+        LinearLayout.LayoutParams bestParams = ui.fullWidthParams();
+        bestParams.setMargins(0, ui.dp(8), 0, 0);
         row.addView(best, bestParams);
 
-        LinearLayout.LayoutParams rowParams = fullWidthParams();
-        rowParams.setMargins(0, 0, 0, dp(12));
+        LinearLayout.LayoutParams rowParams = ui.fullWidthParams();
+        rowParams.setMargins(0, 0, 0, ui.dp(12));
         parent.addView(row, rowParams);
     }
 
     private void addRecordRow(LinearLayout parent, int size, int difficultyResId) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.VERTICAL);
-        row.setPadding(dp(16), dp(14), dp(16), dp(14));
-        row.setBackground(makePanelBackground(COLOR_PANEL));
+        row.setPadding(ui.dp(16), ui.dp(14), ui.dp(16), ui.dp(14));
+        row.setBackground(ui.makePanelBackground(COLOR_PANEL));
 
-        TextView title = createText(getString(R.string.records_row_title, size, size, getString(difficultyResId)),
+        TextView title = ui.createText(getString(R.string.records_row_title, size, size, getString(difficultyResId)),
                 20, Color.WHITE, Typeface.BOLD);
-        TextView best = createText(formatBestForCard(size), 15, COLOR_MUTED_TEXT, Typeface.NORMAL);
+        TextView best = ui.createText(formatBestForCard(size), 15, COLOR_MUTED_TEXT, Typeface.NORMAL);
 
-        row.addView(title, fullWidthParams());
-        LinearLayout.LayoutParams bestParams = fullWidthParams();
-        bestParams.setMargins(0, dp(6), 0, 0);
+        row.addView(title, ui.fullWidthParams());
+        LinearLayout.LayoutParams bestParams = ui.fullWidthParams();
+        bestParams.setMargins(0, ui.dp(6), 0, 0);
         row.addView(best, bestParams);
 
-        LinearLayout.LayoutParams rowParams = fullWidthParams();
-        rowParams.setMargins(0, 0, 0, dp(12));
+        LinearLayout.LayoutParams rowParams = ui.fullWidthParams();
+        rowParams.setMargins(0, 0, 0, ui.dp(12));
         parent.addView(row, rowParams);
     }
 
@@ -904,17 +820,17 @@ public class MainActivity extends Activity implements GameObserver {
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setPadding(dp(16), dp(14), dp(16), dp(14));
-        row.setBackground(makePanelBackground(COLOR_PANEL));
+        row.setPadding(ui.dp(16), ui.dp(14), ui.dp(16), ui.dp(14));
+        row.setBackground(ui.makePanelBackground(COLOR_PANEL));
 
         LinearLayout copy = new LinearLayout(this);
         copy.setOrientation(LinearLayout.VERTICAL);
-        TextView title = createText(getString(titleResId), 18, Color.WHITE, Typeface.BOLD);
-        TextView body = createText(getString(bodyResId), 14, COLOR_MUTED_TEXT, Typeface.NORMAL);
+        TextView title = ui.createText(getString(titleResId), 18, Color.WHITE, Typeface.BOLD);
+        TextView body = ui.createText(getString(bodyResId), 14, COLOR_MUTED_TEXT, Typeface.NORMAL);
         body.setLineSpacing(0, 1.12f);
-        copy.addView(title, fullWidthParams());
-        LinearLayout.LayoutParams bodyParams = fullWidthParams();
-        bodyParams.setMargins(0, dp(5), 0, 0);
+        copy.addView(title, ui.fullWidthParams());
+        LinearLayout.LayoutParams bodyParams = ui.fullWidthParams();
+        bodyParams.setMargins(0, ui.dp(5), 0, 0);
         copy.addView(body, bodyParams);
         row.addView(copy, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 
@@ -926,11 +842,11 @@ public class MainActivity extends Activity implements GameObserver {
         toggle.setOnCheckedChangeListener((buttonView, isChecked) -> listener.onChanged(isChecked));
         LinearLayout.LayoutParams switchParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        switchParams.setMargins(dp(16), 0, 0, 0);
+        switchParams.setMargins(ui.dp(16), 0, 0, 0);
         row.addView(toggle, switchParams);
 
-        LinearLayout.LayoutParams rowParams = fullWidthParams();
-        rowParams.setMargins(0, 0, 0, dp(12));
+        LinearLayout.LayoutParams rowParams = ui.fullWidthParams();
+        rowParams.setMargins(0, 0, 0, ui.dp(12));
         parent.addView(row, rowParams);
     }
 
@@ -955,92 +871,7 @@ public class MainActivity extends Activity implements GameObserver {
                 bodyResId = R.string.onboarding_tools_body;
             }
         }
-        addInstruction(parent, titleResId, bodyResId);
-    }
-
-    private void addInstruction(LinearLayout parent, int titleResId, int bodyResId) {
-        LinearLayout panel = new LinearLayout(this);
-        panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(dp(16), dp(14), dp(16), dp(14));
-        panel.setBackground(makePanelBackground(COLOR_PANEL));
-
-        TextView title = createText(getString(titleResId), 18, Color.WHITE, Typeface.BOLD);
-        TextView body = createText(getString(bodyResId), 15, COLOR_MUTED_TEXT, Typeface.NORMAL);
-        body.setLineSpacing(0, 1.12f);
-
-        panel.addView(title, fullWidthParams());
-        LinearLayout.LayoutParams bodyParams = fullWidthParams();
-        bodyParams.setMargins(0, dp(6), 0, 0);
-        panel.addView(body, bodyParams);
-
-        LinearLayout.LayoutParams panelParams = fullWidthParams();
-        panelParams.setMargins(0, 0, 0, dp(12));
-        parent.addView(panel, panelParams);
-    }
-
-    private void addLearningExample(LinearLayout parent, int viewId, int titleResId, int bodyResId,
-            int[][] grid, int[] highlightedValues) {
-        LinearLayout panel = new LinearLayout(this);
-        panel.setId(viewId);
-        panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(dp(16), dp(14), dp(16), dp(14));
-        panel.setBackground(makePanelBackground(COLOR_PANEL));
-
-        TextView title = createText(getString(titleResId), 18, Color.WHITE, Typeface.BOLD);
-        TextView body = createText(getString(bodyResId), 15, COLOR_MUTED_TEXT, Typeface.NORMAL);
-        body.setLineSpacing(0, 1.12f);
-
-        panel.addView(title, fullWidthParams());
-        LinearLayout.LayoutParams bodyParams = fullWidthParams();
-        bodyParams.setMargins(0, dp(6), 0, dp(12));
-        panel.addView(body, bodyParams);
-        panel.addView(createLearningBoard(grid, highlightedValues), centeredWrapParams());
-
-        LinearLayout.LayoutParams panelParams = fullWidthParams();
-        panelParams.setMargins(0, 0, 0, dp(12));
-        parent.addView(panel, panelParams);
-    }
-
-    private GridLayout createLearningBoard(int[][] grid, int[] highlightedValues) {
-        GridLayout board = new GridLayout(this);
-        board.setColumnCount(3);
-        board.setRowCount(3);
-        board.setUseDefaultMargins(false);
-
-        for (int row = 0; row < grid.length; row++) {
-            for (int col = 0; col < grid[row].length; col++) {
-                int value = grid[row][col];
-                boolean highlighted = containsValue(highlightedValues, value);
-                TextView cell = createLearningCell(value, highlighted);
-                GridLayout.LayoutParams cellParams = new GridLayout.LayoutParams(
-                        GridLayout.spec(row), GridLayout.spec(col));
-                cellParams.width = dp(48);
-                cellParams.height = dp(48);
-                cellParams.setMargins(dp(3), dp(3), dp(3), dp(3));
-                board.addView(cell, cellParams);
-            }
-        }
-
-        return board;
-    }
-
-    private TextView createLearningCell(int value, boolean highlighted) {
-        TextView cell = createText(value == 0 ? getString(R.string.board_empty_cell_short) : String.valueOf(value),
-                value == 0 ? 10 : 18,
-                highlighted ? Color.BLACK : (value == 0 ? COLOR_ACCENT : Color.WHITE),
-                Typeface.BOLD);
-        cell.setGravity(Gravity.CENTER);
-        if (value == 0) {
-            cell.setBackground(makeCellBackground(COLOR_BACKGROUND, COLOR_ACCENT));
-            cell.setContentDescription(getString(R.string.board_empty_cell_description));
-        } else if (highlighted) {
-            cell.setBackground(makeCellBackground(COLOR_ACCENT, Color.WHITE));
-            cell.setContentDescription(getString(R.string.board_highlighted_tile_description, value));
-        } else {
-            cell.setBackground(makeCellBackground(COLOR_PANEL_LIGHT, Color.argb(80, 255, 255, 255)));
-            cell.setContentDescription(getString(R.string.board_tile_description, value));
-        }
-        return cell;
+        learningContent.addInstruction(parent, titleResId, bodyResId);
     }
 
     private void showPauseMenu() {
@@ -1541,109 +1372,6 @@ public class MainActivity extends Activity implements GameObserver {
                 .show();
     }
 
-    private ScreenLayout createScreenLayout() {
-        ScrollView root = new ScrollView(this);
-        root.setFillViewport(true);
-        root.setBackgroundColor(COLOR_BACKGROUND);
-
-        LinearLayout content = new LinearLayout(this);
-        content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(dp(18), systemBarHeight("status_bar_height") + dp(26),
-                dp(18), systemBarHeight("navigation_bar_height") + dp(18));
-        root.addView(content, new ScrollView.LayoutParams(
-                ScrollView.LayoutParams.MATCH_PARENT,
-                ScrollView.LayoutParams.WRAP_CONTENT));
-        return new ScreenLayout(root, content);
-    }
-
-    private void addScreenHeader(LinearLayout parent, String title, String subtitle) {
-        TextView titleText = createText(title, 34, Color.WHITE, Typeface.BOLD);
-        titleText.setGravity(Gravity.CENTER);
-        parent.addView(titleText, fullWidthParams());
-
-        TextView subtitleText = createText(subtitle, 16, COLOR_MUTED_TEXT, Typeface.NORMAL);
-        subtitleText.setGravity(Gravity.CENTER);
-        subtitleText.setLineSpacing(0, 1.12f);
-        LinearLayout.LayoutParams subtitleParams = fullWidthParams();
-        subtitleParams.setMargins(0, dp(8), 0, dp(24));
-        parent.addView(subtitleText, subtitleParams);
-    }
-
-    private Button addWideButton(LinearLayout parent, int textResId, int color, View.OnClickListener listener) {
-        Button button = createButton(getString(textResId), color);
-        button.setOnClickListener(listener);
-        LinearLayout.LayoutParams params = fullWidthParams();
-        params.setMargins(0, 0, 0, dp(10));
-        parent.addView(button, params);
-        return button;
-    }
-
-    private Button addGameButton(LinearLayout parent, int textResId, View.OnClickListener listener) {
-        Button button = createButton(getString(textResId), COLOR_PANEL_LIGHT);
-        button.setOnClickListener(listener);
-        commandButtons.add(button);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(48), 1f);
-        params.setMargins(dp(4), 0, dp(4), 0);
-        parent.addView(button, params);
-        return button;
-    }
-
-    private Button createButton(String text, int color) {
-        Button button = new Button(this);
-        button.setText(text);
-        button.setTextColor(Color.WHITE);
-        button.setAllCaps(false);
-        button.setTextSize(14);
-        button.setMinHeight(dp(48));
-        button.setBackground(makePanelBackground(color));
-        return button;
-    }
-
-    private TextView createText(CharSequence text, int sp, int color, int style) {
-        TextView textView = new TextView(this);
-        textView.setText(text);
-        textView.setTextSize(sp);
-        textView.setTextColor(color);
-        textView.setTypeface(Typeface.DEFAULT, style);
-        return textView;
-    }
-
-    private LinearLayout.LayoutParams fullWidthParams() {
-        return new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT);
-    }
-
-    private LinearLayout.LayoutParams fixedButtonParams(int widthDp) {
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dp(widthDp), dp(44));
-        params.setMargins(dp(4), 0, dp(4), 0);
-        return params;
-    }
-
-    private LinearLayout.LayoutParams centeredWrapParams() {
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT);
-        params.gravity = Gravity.CENTER_HORIZONTAL;
-        return params;
-    }
-
-    private GradientDrawable makePanelBackground(int color) {
-        GradientDrawable drawable = new GradientDrawable();
-        drawable.setColor(color);
-        drawable.setCornerRadius(dp(8));
-        drawable.setStroke(dp(1), Color.argb(80, 255, 255, 255));
-        return drawable;
-    }
-
-    private GradientDrawable makeCellBackground(int color, int strokeColor) {
-        GradientDrawable drawable = new GradientDrawable();
-        drawable.setColor(color);
-        drawable.setCornerRadius(dp(6));
-        drawable.setStroke(dp(1), strokeColor);
-        return drawable;
-    }
-
     private String formatBestForCard(int size) {
         AndroidGameStore.Best best = getBest(size);
         return best == null
@@ -1692,27 +1420,6 @@ public class MainActivity extends Activity implements GameObserver {
             boardView.setHapticFeedbackEnabled(isHapticEnabled());
             boardView.setReducedMotionEnabled(isReducedMotionEnabled());
         }
-    }
-
-    private boolean containsValue(int[] values, int target) {
-        for (int value : values) {
-            if (value == target) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private int dp(int value) {
-        return Math.round(value * getResources().getDisplayMetrics().density);
-    }
-
-    private int systemBarHeight(String resourceName) {
-        int resourceId = getResources().getIdentifier(resourceName, "dimen", "android");
-        if (resourceId == 0) {
-            return 0;
-        }
-        return getResources().getDimensionPixelSize(resourceId);
     }
 
     /**
@@ -1801,63 +1508,5 @@ public class MainActivity extends Activity implements GameObserver {
 
     private String formatMoves(int moves) {
         return getResources().getQuantityString(R.plurals.moves_count, moves, moves);
-    }
-
-    private static class ScreenLayout {
-        final ScrollView root;
-        final LinearLayout content;
-
-        ScreenLayout(ScrollView root, LinearLayout content) {
-            this.root = root;
-            this.content = content;
-        }
-    }
-
-    private static class ViewParentRemover {
-        private ViewParentRemover() {
-        }
-
-        static void removeFromParent(View view) {
-            if (view != null && view.getParent() instanceof ViewGroup) {
-                ((ViewGroup) view.getParent()).removeView(view);
-            }
-        }
-    }
-
-    private static class PendingWin {
-        final int size;
-        final int moves;
-        final long timeMs;
-        final boolean assisted;
-
-        PendingWin(int size, int moves, long timeMs, boolean assisted) {
-            this.size = size;
-            this.moves = moves;
-            this.timeMs = timeMs;
-            this.assisted = assisted;
-        }
-    }
-
-    private static class GameResult {
-        final int size;
-        final int moves;
-        final long timeMs;
-        final boolean assisted;
-        final boolean newBest;
-        final AndroidGameStore.Best previousBest;
-
-        GameResult(int size, int moves, long timeMs, boolean assisted, boolean newBest,
-                AndroidGameStore.Best previousBest) {
-            this.size = size;
-            this.moves = moves;
-            this.timeMs = timeMs;
-            this.assisted = assisted;
-            this.newBest = newBest;
-            this.previousBest = previousBest;
-        }
-    }
-
-    private interface SettingChangeListener {
-        void onChanged(boolean checked);
     }
 }
