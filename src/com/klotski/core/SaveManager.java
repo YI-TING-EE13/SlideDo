@@ -21,6 +21,9 @@ import java.util.regex.Pattern;
  * </p>
  */
 public class SaveManager {
+    /** Optional JVM property used by tests and portable desktop packages. */
+    public static final String DATA_DIR_PROPERTY = "slidedo.data.dir";
+
     private static final String SAVE_FILE = "klotski_save.json";
     private static final String LEGACY_SAVE_FILE = "klotski_save.dat";
     private static final String RECORDS_FILE = "klotski_records.json";
@@ -35,7 +38,7 @@ public class SaveManager {
      * @return {@code true} when the save file was written successfully
      */
     public static boolean saveGame(GameModel model) {
-        return saveGame(model, new File(SAVE_FILE));
+        return saveGame(model, new File(getDataDirectory(), SAVE_FILE));
     }
 
     /**
@@ -53,6 +56,9 @@ public class SaveManager {
         data.moveCount = model.getMoveCount();
         data.startTime = model.getStartTime();
         data.elapsedTime = model.getElapsedTime();
+        data.updatedAt = System.currentTimeMillis();
+        data.active = model.isGameRunning();
+        data.solved = model.isSolved();
 
         try {
             writeText(saveFile, toJson(data));
@@ -69,6 +75,10 @@ public class SaveManager {
      * @return parsed save data, or {@code null} when no valid save exists
      */
     public static SaveData loadGame() {
+        SaveData data = loadGame(new File(getDataDirectory(), SAVE_FILE), new File(getDataDirectory(), LEGACY_SAVE_FILE));
+        if (data != null) {
+            return data;
+        }
         return loadGame(new File(SAVE_FILE), new File(LEGACY_SAVE_FILE));
     }
 
@@ -82,7 +92,7 @@ public class SaveManager {
     static SaveData loadGame(File saveFile, File legacySaveFile) {
         if (saveFile.exists()) {
             try {
-                return fromJson(readText(saveFile));
+                return normalizeSaveData(fromJson(readText(saveFile)));
             } catch (IOException | IllegalArgumentException e) {
                 e.printStackTrace();
                 return null;
@@ -108,6 +118,7 @@ public class SaveManager {
     }
 
     private static void writeText(File file, String text) throws IOException {
+        ensureParentDirectory(file);
         try (FileOutputStream fos = new FileOutputStream(file)) {
             fos.write(text.getBytes(StandardCharsets.UTF_8));
         }
@@ -122,7 +133,11 @@ public class SaveManager {
      * @return the best record after comparing the submitted result
      */
     public static BestRecord recordBest(int size, int moves, long timeMs) {
-        return recordBest(new File(RECORDS_FILE), size, moves, timeMs);
+        File recordsFile = new File(getDataDirectory(), RECORDS_FILE);
+        if (!recordsFile.exists() && new File(RECORDS_FILE).exists()) {
+            return recordBest(recordsFile, new File(RECORDS_FILE), size, moves, timeMs);
+        }
+        return recordBest(recordsFile, size, moves, timeMs);
     }
 
     /**
@@ -135,7 +150,11 @@ public class SaveManager {
      * @return the best record after comparing the submitted result
      */
     static BestRecord recordBest(File recordsFile, int size, int moves, long timeMs) {
-        Map<Integer, BestRecord> records = loadRecords(recordsFile);
+        return recordBest(recordsFile, recordsFile, size, moves, timeMs);
+    }
+
+    private static BestRecord recordBest(File recordsFile, File sourceRecordsFile, int size, int moves, long timeMs) {
+        Map<Integer, BestRecord> records = loadRecords(sourceRecordsFile);
         BestRecord current = records.get(size);
         BestRecord candidate = new BestRecord(moves, timeMs);
 
@@ -155,7 +174,8 @@ public class SaveManager {
      * @return the best record, or {@code null} if none has been saved
      */
     public static BestRecord getBestRecord(int size) {
-        return getBestRecord(new File(RECORDS_FILE), size);
+        BestRecord record = getBestRecord(new File(getDataDirectory(), RECORDS_FILE), size);
+        return record != null ? record : getBestRecord(new File(RECORDS_FILE), size);
     }
 
     /**
@@ -179,7 +199,7 @@ public class SaveManager {
             if (data.initialGrid == null) {
                 data.initialGrid = data.grid;
             }
-            return data;
+            return normalizeSaveData(data);
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
             return null;
@@ -193,6 +213,9 @@ public class SaveManager {
         sb.append("  \"size\": ").append(data.size).append(",\n");
         sb.append("  \"moveCount\": ").append(data.moveCount).append(",\n");
         sb.append("  \"elapsedTime\": ").append(data.elapsedTime).append(",\n");
+        sb.append("  \"updatedAt\": ").append(data.updatedAt).append(",\n");
+        sb.append("  \"active\": ").append(data.active).append(",\n");
+        sb.append("  \"solved\": ").append(data.solved).append(",\n");
         sb.append("  \"grid\": ").append(gridToJson(data.grid)).append(",\n");
         sb.append("  \"initialGrid\": ").append(gridToJson(data.initialGrid)).append("\n");
         sb.append("}\n");
@@ -204,8 +227,30 @@ public class SaveManager {
         data.size = intField(json, "size");
         data.moveCount = intField(json, "moveCount");
         data.elapsedTime = longField(json, "elapsedTime");
+        data.updatedAt = optionalLongField(json, "updatedAt", 0);
+        data.active = optionalBooleanField(json, "active", false);
+        data.solved = optionalBooleanField(json, "solved", false);
         data.grid = gridField(json, "grid", data.size);
         data.initialGrid = gridField(json, "initialGrid", data.size);
+        return data;
+    }
+
+    private static SaveData normalizeSaveData(SaveData data) {
+        if (data == null || data.grid == null) {
+            return data;
+        }
+        if (data.size <= 0) {
+            data.size = data.grid.length;
+        }
+        if (data.initialGrid == null) {
+            data.initialGrid = data.grid;
+        }
+        boolean solvedGrid = isSolvedGrid(data.grid);
+        data.solved = data.solved || solvedGrid;
+        data.active = !data.solved && (data.active || data.updatedAt == 0);
+        if (data.updatedAt < 0) {
+            data.updatedAt = 0;
+        }
         return data;
     }
 
@@ -239,6 +284,16 @@ public class SaveManager {
             throw new IllegalArgumentException("Missing JSON field: " + key);
         }
         return Long.parseLong(matcher.group(1));
+    }
+
+    private static long optionalLongField(String json, String key, long fallback) {
+        Matcher matcher = Pattern.compile("\"" + key + "\"\\s*:\\s*(\\d+)").matcher(json);
+        return matcher.find() ? Long.parseLong(matcher.group(1)) : fallback;
+    }
+
+    private static boolean optionalBooleanField(String json, String key, boolean fallback) {
+        Matcher matcher = Pattern.compile("\"" + key + "\"\\s*:\\s*(true|false)").matcher(json);
+        return matcher.find() ? Boolean.parseBoolean(matcher.group(1)) : fallback;
     }
 
     private static int[][] gridField(String json, String key, int size) {
@@ -316,10 +371,54 @@ public class SaveManager {
         sb.append("\n}\n");
 
         try {
+            ensureParentDirectory(file);
             writeText(file, sb.toString());
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private static void ensureParentDirectory(File file) throws IOException {
+        File parent = file.getParentFile();
+        if (parent != null && !parent.exists() && !parent.mkdirs()) {
+            throw new IOException("Could not create directory: " + parent);
+        }
+    }
+
+    /**
+     * Returns the desktop user-data directory used for default saves and records.
+     *
+     * @return directory for desktop user data
+     */
+    public static File getDataDirectory() {
+        String override = System.getProperty(DATA_DIR_PROPERTY);
+        if (override != null && !override.isBlank()) {
+            return new File(override);
+        }
+
+        String appData = System.getenv("APPDATA");
+        if (appData != null && !appData.isBlank()) {
+            return new File(appData, "SlideDo");
+        }
+
+        return new File(System.getProperty("user.home"), ".slidedo");
+    }
+
+    private static boolean isSolvedGrid(int[][] grid) {
+        int size = grid.length;
+        int value = 1;
+        for (int r = 0; r < size; r++) {
+            for (int c = 0; c < size; c++) {
+                if (r == size - 1 && c == size - 1) {
+                    if (grid[r][c] != 0) {
+                        return false;
+                    }
+                } else if (grid[r][c] != value++) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /**
@@ -351,6 +450,15 @@ public class SaveManager {
 
         /** Elapsed play time in milliseconds. */
         public long elapsedTime;
+
+        /** Last save/update timestamp in milliseconds since epoch. */
+        public long updatedAt;
+
+        /** Whether the persisted puzzle is still active. */
+        public boolean active;
+
+        /** Whether the persisted puzzle is solved. */
+        public boolean solved;
     }
 
     /**

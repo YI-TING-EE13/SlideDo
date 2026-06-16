@@ -35,8 +35,36 @@ class SaveManagerTest {
         assertEquals(3, data.size);
         assertEquals(1, data.moveCount);
         assertTrue(data.elapsedTime >= 0);
+        assertTrue(data.updatedAt > 0);
+        assertTrue(data.active);
+        assertTrue(!data.solved);
         assertArrayEquals(model.getGridCopy(), data.grid);
         assertArrayEquals(initial, data.initialGrid);
+    }
+
+    @Test
+    void defaultSavePathUsesConfiguredUserDataDirectory() {
+        String oldValue = System.getProperty(SaveManager.DATA_DIR_PROPERTY);
+        System.setProperty(SaveManager.DATA_DIR_PROPERTY, tempDir.getAbsolutePath());
+        try {
+            GameModel model = new GameModel(3);
+            model.scramble(5);
+
+            assertTrue(SaveManager.saveGame(model));
+
+            File saveFile = new File(tempDir, "klotski_save.json");
+            assertTrue(saveFile.exists());
+            SaveManager.SaveData loaded = SaveManager.loadGame();
+            assertNotNull(loaded);
+            assertEquals(3, loaded.size);
+            assertTrue(loaded.active);
+        } finally {
+            if (oldValue == null) {
+                System.clearProperty(SaveManager.DATA_DIR_PROPERTY);
+            } else {
+                System.setProperty(SaveManager.DATA_DIR_PROPERTY, oldValue);
+            }
+        }
     }
 
     @Test

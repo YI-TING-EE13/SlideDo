@@ -473,8 +473,8 @@ public class GameModel {
         this.moveCount = data.moveCount;
         this.startTime = System.currentTimeMillis() - data.elapsedTime;
         findEmptyTile();
-        this.isSolved = isSolvedGrid();
-        this.isGameRunning = !isSolved;
+        this.isSolved = data.solved || isSolvedGrid();
+        this.isGameRunning = !isSolved && (data.active || data.updatedAt == 0);
         if (data.initialGrid != null) {
             this.initialGrid = copyGrid(data.initialGrid);
         } else {

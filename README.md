@@ -107,14 +107,25 @@ java -cp bin com.klotski.ui.MainFrame
 
 ### Desktop Save Files
 
-The desktop edition writes local files in the project root:
+The desktop edition writes local save and record files to the user-data
+directory instead of the project root:
+
+```text
+Windows: %APPDATA%\SlideDo
+Other platforms: <user.home>/.slidedo
+```
+
+The default filenames are:
 
 ```text
 klotski_save.json
 klotski_records.json
 ```
 
-If an older `klotski_save.dat` exists, the loader can still read it.
+For portable test or beta builds, set the JVM property
+`slidedo.data.dir=<path>` to override the directory. If older
+`klotski_save.json`, `klotski_save.dat`, or `klotski_records.json` files exist
+in the project root, the loader still reads them as a migration fallback.
 
 ---
 
@@ -266,6 +277,7 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
 - Non-adjacent row/column sliding with synchronized animation.
 - Undo after a whole-line slide.
 - Desktop Home, Records, Preferences, Results, Help, and Assist parity text covered by focused JUnit tests.
+- Save metadata round-trip coverage for updated time, size, moves, elapsed time, and active/solved state.
 - Android debug build with Gradle.
 - Android lint with no reported issues during the latest local run.
 - Android instrumentation tests for onboarding, Home launch, Practice Tutorial, mode selection, Continue, How to Play, Settings, Results, Assist hints, whole-line movement, undo, save/load persistence, app-state store behavior, rotation, and solver-assisted record protection.
@@ -345,6 +357,7 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
 - `Solver.solve(GameModel)`
 - `SaveManager.saveGame(GameModel)`
 - `SaveManager.loadGame()`
+- `SaveManager.getDataDirectory()`
 - `KlotskiView.enqueueMoves(List<Direction>)`
 - `MainActivity.onGameWon(int, long)`
 
@@ -353,6 +366,7 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
 ## Roadmap
 
 - Desktop/mobile player-facing parity MVP is complete for Home/start, Records, Preferences, Results, How to Play, Practice Tutorial, and Assist hints.
+- Save files now include release-readiness metadata and desktop saves now live in the user-data directory.
 - Split larger UI/controller code where it supports future shared progression work.
 - Add daily puzzle, progression loops, and achievements after both front ends have comparable product surfaces.
 - Add stronger completion feedback for solves and records.

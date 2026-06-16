@@ -28,6 +28,8 @@ an emulator or connected Android device.
 - Auto-save through `SharedPreferences`
 - App-state persistence is isolated in `AndroidGameStore` for saves, settings,
   records, onboarding, and last selected size
+- Saved-game metadata includes updated time, puzzle size, move count, elapsed
+  time, and active/solved state for future Continue and release diagnostics
 - Rotation restore for the active game screen
 - Settings for haptic feedback, reduced motion, reset saved game, and reset records
 - Per-size best record tracking
@@ -94,6 +96,8 @@ To run Android instrumentation smoke tests on a connected emulator or device:
 - Undo after a whole-line slide; the entire gesture should restore in one step.
 - Restart; moves and timer should reset without reshuffling.
 - Save after a move from Menu, restart, then Load; board, move count, timer, and restart grid should be restored.
+- Confirm saved-game metadata updates with the saved size, move count, elapsed
+  time, and active/solved state.
 - Open Menu, check Quick Reminder, and open Settings.
 - Toggle haptics and reduced motion, then return to gameplay.
 - Use Settings reset actions only after confirming the dialogs.

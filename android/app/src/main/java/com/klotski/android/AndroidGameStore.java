@@ -23,6 +23,9 @@ final class AndroidGameStore {
     private static final String KEY_INITIAL_GRID = "initial_grid";
     private static final String KEY_MOVES = "moves";
     private static final String KEY_ELAPSED = "elapsed";
+    private static final String KEY_UPDATED_AT = "updated_at";
+    private static final String KEY_ACTIVE = "active";
+    private static final String KEY_SOLVED = "solved";
     private static final String KEY_LAST_SIZE = "last_size";
     private static final String KEY_BEST_PREFIX = "best_";
     private static final String KEY_ONBOARDING_SEEN = "onboarding_seen";
@@ -79,6 +82,9 @@ final class AndroidGameStore {
                 .putInt(KEY_MOVES, model.getMoveCount())
                 .putInt(KEY_LAST_SIZE, model.getSize())
                 .putLong(KEY_ELAPSED, Math.max(0, elapsedMs))
+                .putLong(KEY_UPDATED_AT, System.currentTimeMillis())
+                .putBoolean(KEY_ACTIVE, model.isGameRunning())
+                .putBoolean(KEY_SOLVED, model.isSolved())
                 .apply();
     }
 
@@ -107,7 +113,20 @@ final class AndroidGameStore {
         data.initialGrid = initialGrid;
         data.moveCount = prefs.getInt(KEY_MOVES, 0);
         data.elapsedTime = prefs.getLong(KEY_ELAPSED, 0);
+        data.updatedAt = prefs.getLong(KEY_UPDATED_AT, 0);
+        data.solved = prefs.getBoolean(KEY_SOLVED, false);
+        data.active = prefs.getBoolean(KEY_ACTIVE, false);
+        normalizeStateMetadata(data);
         return data;
+    }
+
+    SaveMetadata getSaveMetadata() {
+        SaveManager.SaveData data = loadSavedGame();
+        if (data == null) {
+            return null;
+        }
+        return new SaveMetadata(data.updatedAt, data.size, data.moveCount,
+                data.elapsedTime, data.active, data.solved);
     }
 
     boolean hasSavedGame() {
@@ -121,6 +140,9 @@ final class AndroidGameStore {
                 .remove(KEY_INITIAL_GRID)
                 .remove(KEY_MOVES)
                 .remove(KEY_ELAPSED)
+                .remove(KEY_UPDATED_AT)
+                .remove(KEY_ACTIVE)
+                .remove(KEY_SOLVED)
                 .commit();
     }
 
@@ -204,6 +226,34 @@ final class AndroidGameStore {
             System.arraycopy(grid[i], 0, copy[i], 0, grid[i].length);
         }
         return copy;
+    }
+
+    private static void normalizeStateMetadata(SaveManager.SaveData data) {
+        GameModel metadataModel = new GameModel(data.size);
+        metadataModel.loadState(data);
+        data.active = metadataModel.isGameRunning();
+        data.solved = metadataModel.isSolved();
+    }
+
+    /**
+     * Lightweight summary used by Continue and release-readiness diagnostics.
+     */
+    static final class SaveMetadata {
+        final long updatedAt;
+        final int size;
+        final int moves;
+        final long elapsedMs;
+        final boolean active;
+        final boolean solved;
+
+        SaveMetadata(long updatedAt, int size, int moves, long elapsedMs, boolean active, boolean solved) {
+            this.updatedAt = updatedAt;
+            this.size = size;
+            this.moves = moves;
+            this.elapsedMs = elapsedMs;
+            this.active = active;
+            this.solved = solved;
+        }
     }
 
     /**

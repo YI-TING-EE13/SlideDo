@@ -70,8 +70,20 @@ public class AndroidGameStoreTest {
         assertEquals(3, loaded.size);
         assertEquals(1, loaded.moveCount);
         assertEquals(5678L, loaded.elapsedTime);
+        assertTrue(loaded.updatedAt > 0);
+        assertTrue(loaded.active);
+        assertFalse(loaded.solved);
         assertTrue(Arrays.deepEquals(data.grid, loaded.grid));
         assertTrue(Arrays.deepEquals(data.initialGrid, loaded.initialGrid));
+
+        AndroidGameStore.SaveMetadata metadata = store.getSaveMetadata();
+        assertNotNull(metadata);
+        assertEquals(loaded.updatedAt, metadata.updatedAt);
+        assertEquals(3, metadata.size);
+        assertEquals(1, metadata.moves);
+        assertEquals(5678L, metadata.elapsedMs);
+        assertTrue(metadata.active);
+        assertFalse(metadata.solved);
 
         GameModel restored = new GameModel(3);
         restored.loadState(loaded);

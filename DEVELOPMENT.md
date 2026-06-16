@@ -340,8 +340,10 @@ planning layer above implementation tickets.
   Daily Puzzle, progression, and deeper Stats surfaces.
 - Current persistence is adequate for a simple casual game: one autosave, manual
   Save/Load, last selected mode, and per-size records. It is not yet a polished
-  product save system because it lacks explicit resume metadata, multiple
-  puzzle slots, save freshness display, and cloud/back-up strategy.
+  product save system because it still lacks multiple puzzle slots, save
+  freshness display in the UI, and cloud/back-up strategy. Save payloads now
+  include explicit updated-at, size, moves, elapsed, active, and solved
+  metadata for future Continue and release diagnostics.
 - The app does not yet have audio, themes, crash reporting, analytics, Play
   Store metadata, privacy disclosures, or release signing planning.
 - As of this pass, SlideDo is no longer just a raw feature demo, but it is not
@@ -694,8 +696,9 @@ Recommended scope:
 - Continue the architecture split started by `AndroidGameStore`; persistence for
   saves, settings, records, onboarding, and last size is now outside
   `MainActivity`, while screen builders/navigation state still need separation.
-- Add explicit save metadata: saved size, moves, elapsed time, updated-at
-  timestamp, and solved/active status for better Continue UI.
+- [x] Add explicit save metadata: saved size, moves, elapsed time, updated-at
+  timestamp, and solved/active status. Next step: surface this metadata in the
+  Continue UI.
 - Add release build checks before Google Play planning: signed release APK/AAB,
   minification decision, versionCode/versionName policy, and reproducible build
   commands.
@@ -740,6 +743,22 @@ Priority: Low to Medium
   tools before presenting screenshots or store copy.
 
 ## Development Log
+
+### 2026-06-16
+
+- Added explicit save metadata across desktop JSON saves and Android
+  `SharedPreferences` saves: `updatedAt`, size, moves, elapsed time, active
+  state, and solved state.
+- Preserved compatibility with older desktop root files and older Android saves
+  that do not contain the new metadata fields.
+- Moved default desktop save and records storage out of the project root into
+  the user-data directory, with `slidedo.data.dir` as an override for tests and
+  portable beta packages.
+- Added root JUnit and Android instrumentation coverage for save metadata
+  round-trips.
+- Hardened `verify-connected.bat` so it clears stale connected-test output
+  directories before running and can recover from Windows report-generation
+  access issues when instrumentation itself reports success.
 
 ### 2026-06-11
 
