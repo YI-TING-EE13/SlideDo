@@ -72,6 +72,7 @@
     <string name="how_records_body">Best records compare fewer moves first, then lower time. Solver-assisted wins are shown, but they do not overwrite player records.</string>
     <string name="records_title">Records</string>
     <string name="records_subtitle">Best local results are tracked separately for each size.</string>
+    <string name="records_explanation">Player solves only. Fewer moves rank first; ties use faster time. Assist and solver completions are shown on Results but never replace these records.</string>
     <string name="records_row_title">%1$dx%2$d %3$s</string>
     <string name="records_empty">No record yet</string>
     <string name="settings_title">Settings</string>

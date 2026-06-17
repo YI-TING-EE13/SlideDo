@@ -19,6 +19,7 @@ final class DesktopHomeContent {
                 formatRecord(4, record4),
                 formatRecord(5, record5),
                 "",
+                "Player solves only. Fewer moves rank first; ties use faster time.",
                 "Solver-assisted completions do not replace player best records.");
     }
 

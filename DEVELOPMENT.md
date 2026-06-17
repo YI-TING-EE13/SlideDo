@@ -322,8 +322,8 @@ planning layer above implementation tickets.
   first move, and demonstrates a whole-line slide.
 - Home is understandable and appropriately simple. Continue, New Game, Beginner
   Guide, Practice Tutorial, How to Play, Settings, and Records are clear.
-  Records still needs richer explanation for how records are earned and why
-  assisted wins are excluded.
+  Records now explains that only player solves count, fewer moves rank first,
+  ties use faster time, and assisted wins are excluded from best records.
 - Mode Select communicates size and rough difficulty, but it does not yet show
   expected session length, scramble difficulty, or recommended first choice for
   new players.
@@ -344,10 +344,10 @@ planning layer above implementation tickets.
   freshness display in the UI, and cloud/back-up strategy. Save payloads now
   include explicit updated-at, size, moves, elapsed, active, and solved
   metadata for future Continue and release diagnostics.
-- The app does not yet have audio, themes, crash reporting, analytics, feature
-  graphic assets, broad store screenshots, or a published privacy policy URL.
-  Release signing injection, versioning, release notes, adaptive launcher icons,
-  and Play Store readiness drafts now exist.
+- The app does not yet have audio, themes, crash reporting, analytics, reviewed
+  store screenshots, or a published privacy policy URL. Release signing
+  injection, versioning, release notes, adaptive launcher icons, feature
+  graphic source/export, and Play Store readiness drafts now exist.
 - As of this pass, SlideDo is no longer just a raw feature demo, but it is not
   yet a complete mobile game product. The core gameplay works; the missing work
   is mostly onboarding, polish, product systems, release readiness, and
@@ -373,10 +373,10 @@ planning layer above implementation tickets.
   primary game-control descriptions exist, but the app still needs a manual
   TalkBack pass, larger touch-target review, color-contrast review, and broader
   reduced-motion validation.
-- Missing Play Store readiness systems: real upload-key handoff, final feature
-  graphic, reviewed store screenshots, published privacy policy URL, manual
-  accessibility sign-off, optional crash reporting/privacy update, and broad
-  versioning discipline after the first beta cycle.
+- Missing Play Store readiness systems: real upload-key handoff, reviewed
+  feature graphic upload, reviewed store screenshots, published privacy policy
+  URL, manual accessibility sign-off, optional crash reporting/privacy update,
+  and broad versioning discipline after the first beta cycle.
 
 ## Roadmap And Planning
 
@@ -474,7 +474,7 @@ Desktop/Android feature parity matrix:
 | Assist / hints | Assist menu can highlight movable tiles and offer solver playback. | Assist menu highlights movable tiles and supports solver playback. | Solver UI differs; solver-assisted wins do not update records on both platforms. | Android assist/results instrumentation; desktop result-copy tests. |
 | Save/load metadata | `AndroidGameStore` persists size, grid, initial grid, moves, elapsed, updated-at, active, solved, records, settings, and onboarding state. | Desktop JSON save persists size, grid, initial grid, moves, elapsed, updated-at, active, and solved; records live in user-data path. | Android includes mobile-only settings/onboarding; shared gameplay metadata is aligned. | Android store instrumentation, root save metadata tests. |
 | Settings / preferences | Haptic feedback, reduced motion, reset saved game, and reset records. | Reduced motion preference plus desktop records/save flows. | Haptics are Android-only; desktop has no vibration setting by design. | Android settings instrumentation; desktop preferences copy tests/manual smoke. |
-| Records | Per-size local best records, fewer moves then lower time, solver-assisted protection. | Per-size local best records with the same comparison and solver-assisted protection. | Aligned. | Android records/results instrumentation; desktop result and records tests. |
+| Records | Per-size local best records, fewer moves then lower time, solver-assisted protection, and player-facing policy explanation. | Per-size local best records with the same comparison, solver-assisted protection, and policy explanation. | Aligned. | Android records/results instrumentation; desktop result and records tests. |
 | Results | Full Results screen with Play Again, New Size, Home, record status, and assisted wording. | Android-style Results dialog with Play Again, New Size, Home, record status, and assisted wording. | Surface type differs due to Swing dialogs vs Android screens, wording and actions align. | Android results instrumentation; desktop results copy tests. |
 | Accessibility | Board summaries, settings switch descriptions, and primary control descriptions exist. | Basic Swing labels/dialog text exist, but no full assistive-tech audit. | Both platforms still need broader manual accessibility review before public release. | Android accessibility instrumentation plus manual TalkBack/desktop review. |
 | Packaging / release | Debug build, connected tests, signed APK/AAB, Play readiness file check, screenshot smoke workflow. | Desktop ZIP and optional app-image package with user-data paths. | Android still needs real Play upload key and Play Console external assets; desktop package is not a signed installer. | `verify.bat`, `verify-connected.bat`, `verify-release.bat`, manual screenshot smoke. |
@@ -901,6 +901,11 @@ Priority: Low to Medium
   expected PNG files and writes a manifest next to the captured screenshots.
 - Added `ci.bat` and `.github/workflows/ci.yml` so the no-device local/remote
   CI gate runs verification plus release readiness checks with artifact upload.
+- Clarified Android and desktop Records copy so both surfaces explain that only
+  player solves count, fewer moves rank first, ties use faster time, and
+  assist/solver completions do not replace records.
+- Hardened Android instrumentation app launch retries after a slow AVD exposed
+  `startActivitySync` idle timeouts unrelated to app behavior.
 
 ### 2026-06-11
 

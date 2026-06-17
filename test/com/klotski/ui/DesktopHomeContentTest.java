@@ -16,6 +16,8 @@ class DesktopHomeContentTest {
         assertTrue(text.contains("3x3: 12 moves, 34s"));
         assertTrue(text.contains("4x4: --"));
         assertTrue(text.contains("5x5: 56 moves, 78s"));
+        assertTrue(text.contains("Fewer moves rank first"));
+        assertTrue(text.contains("ties use faster time"));
         assertTrue(text.contains("Solver-assisted"));
     }
 

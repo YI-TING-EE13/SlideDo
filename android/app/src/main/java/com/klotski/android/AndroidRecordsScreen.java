@@ -29,6 +29,7 @@ final class AndroidRecordsScreen {
         ui.addScreenHeader(screen.content,
                 activity.getString(R.string.records_title),
                 activity.getString(R.string.records_subtitle));
+        addExplanation(screen.content);
         addRecordRow(screen.content, 3, R.string.mode_easy, best3);
         addRecordRow(screen.content, 4, R.string.mode_classic, best4);
         addRecordRow(screen.content, 5, R.string.mode_expert, best5);
@@ -37,6 +38,16 @@ final class AndroidRecordsScreen {
                 v -> actions.onBack());
         backButton.setId(R.id.records_back_button);
         return screen;
+    }
+
+    private void addExplanation(LinearLayout parent) {
+        TextView explanation = ui.createText(activity.getString(R.string.records_explanation),
+                15, COLOR_MUTED_TEXT, Typeface.NORMAL);
+        explanation.setId(R.id.records_explanation_text);
+        explanation.setLineSpacing(0, 1.12f);
+        LinearLayout.LayoutParams params = ui.fullWidthParams();
+        params.setMargins(0, 0, 0, ui.dp(16));
+        parent.addView(explanation, params);
     }
 
     private void addRecordRow(LinearLayout parent, int size, int difficultyResId, String bestText) {

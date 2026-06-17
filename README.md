@@ -7,7 +7,7 @@
 
 **SlideDo** is a polished number Klotski / sliding puzzle game written in Java. It includes a desktop Swing edition and a native Android edition that share the same core puzzle model, move rules, save format, and solver interfaces.
 
-The design goal is simple: make sliding numbered tiles feel fast, clear, and satisfying. The desktop version now opens on Home and supports mouse, keyboard, undo, restart, save/load, local records, a Records dialog, Preferences, Android-style Results, solver playback, How to Play, Practice Tutorial copy, and movable-tile assist hints. The Android edition now opens as a touch-first mobile app with onboarding, an interactive practice tutorial, mode selection, settings, results, records, and compact in-game controls.
+The design goal is simple: make sliding numbered tiles feel fast, clear, and satisfying. The desktop version now opens on Home and supports mouse, keyboard, undo, restart, save/load, local records, a Records dialog, Preferences, Android-style Results, solver playback, How to Play, Practice Tutorial copy, and movable-tile assist hints. The Android edition now opens as a touch-first mobile app with onboarding, an interactive practice tutorial, mode selection, settings, results, records, and compact in-game controls. Both editions explain that player records prefer fewer moves, break ties by faster time, and exclude solver-assisted completions.
 
 ---
 

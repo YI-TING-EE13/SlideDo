@@ -332,6 +332,10 @@ public class MainActivityFlowTest {
         waitForId("home_root");
         clickId(R.id.home_records_button);
         waitForId("records_root");
+        assertNotNull(findById("records_explanation_text"));
+        waitForTextContaining("Player solves only.");
+        waitForTextContaining("Fewer moves rank first");
+        waitForTextContaining("never replace these records");
         waitForText("No record yet");
     }
 
@@ -412,6 +416,8 @@ public class MainActivityFlowTest {
         waitForId("home_root");
         clickId(R.id.home_records_button);
         waitForId("records_root");
+        assertNotNull(findById("records_explanation_text"));
+        waitForTextContaining("Player solves only.");
         waitForTextContaining("1 move");
     }
 
@@ -433,6 +439,7 @@ public class MainActivityFlowTest {
         waitForId("home_root");
         clickId(R.id.home_records_button);
         waitForId("records_root");
+        waitForTextContaining("never replace these records");
         waitForText("No record yet");
     }
 
@@ -504,16 +511,30 @@ public class MainActivityFlowTest {
     }
 
     private void launchApp() throws Exception {
-        Intent intent = new Intent(targetContext, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
-        activity = instrumentation.startActivitySync(intent);
-        instrumentation.waitForIdleSync();
-        assertNotNull(activity);
-        // AVD window hierarchies can lag startActivitySync under load; the
-        // foreground window is the stable launch gate for these smoke tests.
-        waitForForegroundApp();
-        device.waitForIdle();
-        Thread.sleep(750);
+        RuntimeException lastLaunchError = null;
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            Intent intent = new Intent(targetContext, MainActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
+            try {
+                activity = instrumentation.startActivitySync(intent);
+                instrumentation.waitForIdleSync();
+                assertNotNull(activity);
+                // AVD window hierarchies can lag startActivitySync under load; the
+                // foreground window is the stable launch gate for these smoke tests.
+                waitForForegroundApp();
+                device.waitForIdle();
+                Thread.sleep(750);
+                return;
+            } catch (RuntimeException error) {
+                lastLaunchError = error;
+                activity = null;
+                device.executeShellCommand("am force-stop " + PACKAGE_NAME);
+                device.pressHome();
+                device.waitForIdle();
+                Thread.sleep(1000L * attempt);
+            }
+        }
+        throw lastLaunchError;
     }
 
     private void relaunchApp() throws Exception {

@@ -34,6 +34,7 @@
     <item name="how_line_example" type="id" />
     <item name="how_back_button" type="id" />
     <item name="records_root" type="id" />
+    <item name="records_explanation_text" type="id" />
     <item name="records_back_button" type="id" />
     <item name="settings_root" type="id" />
     <item name="settings_haptic_switch" type="id" />

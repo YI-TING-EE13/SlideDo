@@ -12,6 +12,8 @@ set "JAVADOC_CMD=javadoc"
 if exist "%JAVADOC_BIN%" set "JAVADOC_CMD=%JAVADOC_BIN%"
 
 echo [1/5] Shared core tests
+call :clean_dir "%ROOT%\build\test-results\test"
+call :clean_dir "%ROOT%\build\reports\tests\test"
 call "%ROOT%\android\gradlew.bat" -p "%ROOT%" test
 if errorlevel 1 exit /b 1
 
