@@ -61,3 +61,4 @@ jobs:
             android/app/build/outputs/bundle/release/app-release.aab
             dist/desktop/SlideDo-*.zip
             dist/store-assets/android/**/feature-graphic-1024x500.png
+            dist/release-manifests/*.txt

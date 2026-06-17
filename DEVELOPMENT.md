@@ -796,6 +796,8 @@ Priority: Low to Medium
   asset notes.
 - [x] Add a repeatable Play Store feature graphic PNG export workflow and wire
   it into `verify-release.bat`.
+- [x] Add a release artifact manifest with SHA-256 hashes for Android, desktop,
+  store asset, and release-note handoff files.
 - Review the generated feature graphic upload file, then capture and review
   screenshots that show the actual game UI.
 - Publish a privacy policy URL before store submission and before adding
@@ -901,6 +903,9 @@ Priority: Low to Medium
   expected PNG files and writes a manifest next to the captured screenshots.
 - Added `ci.bat` and `.github/workflows/ci.yml` so the no-device local/remote
   CI gate runs verification plus release readiness checks with artifact upload.
+- Added release artifact manifest generation so `verify-release.bat` writes
+  `dist/release-manifests/<version>.txt` with SHA-256 hashes for the Android,
+  desktop, store asset, and release-note handoff files.
 - Clarified Android and desktop Records copy so both surfaces explain that only
   player solves count, fewer moves rank first, ties use faster time, and
   assist/solver completions do not replace records.

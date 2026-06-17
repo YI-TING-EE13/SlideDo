@@ -85,6 +85,8 @@ call :require_file "%ANDROID_ROOT%\store-assets\README.md" "store asset source n
 call :require_file "%ANDROID_ROOT%\store-assets\feature-graphic-1024x500.svg" "feature graphic source"
 call :require_file "%ANDROID_ROOT%\export-store-assets.bat" "store asset export workflow"
 call :require_file "%REPO_ROOT%\tools\StoreAssetExporter.java" "store asset exporter source"
+call :require_file "%REPO_ROOT%\generate-release-manifest.bat" "release manifest workflow"
+call :require_file "%REPO_ROOT%\tools\WriteReleaseManifest.ps1" "release manifest writer"
 call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "Feature graphic source:" "feature graphic source entry"
 call :require_text "%ANDROID_ROOT%\store-assets\README.md" "feature-graphic-1024x500.svg" "feature graphic source documentation"
 call :require_file "%ANDROID_ROOT%\screenshot-smoke.bat" "screenshot smoke workflow"
@@ -94,6 +96,7 @@ echo [6/7] Release and store artifacts
 call :require_file "%ANDROID_ROOT%\app\build\outputs\apk\release\app-release.apk" "release APK"
 call :require_file "%ANDROID_ROOT%\app\build\outputs\bundle\release\app-release.aab" "release AAB"
 if defined VERSION_NAME call :require_file "%REPO_ROOT%\dist\store-assets\android\%VERSION_NAME%\feature-graphic-1024x500.png" "exported feature graphic PNG"
+if defined VERSION_NAME call :require_file "%REPO_ROOT%\dist\release-manifests\%VERSION_NAME%.txt" "release artifact manifest"
 
 echo [7/7] Sensitive release files
 git -C "%REPO_ROOT%" rev-parse --is-inside-work-tree >nul 2>nul

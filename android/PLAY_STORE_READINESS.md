@@ -184,11 +184,14 @@ Before uploading to Play Console:
 - Run `verify.bat`.
 - Run `verify-connected.bat` on a healthy emulator or device.
 - Run `verify-release.bat`; it builds Android and desktop release artifacts,
-  exports store assets, and runs `android/check-play-store-readiness.bat`.
+  exports store assets, writes the SHA-256 release artifact manifest, and runs
+  `android/check-play-store-readiness.bat`.
 - Optionally run `check-play-store-readiness.bat` directly after release
   artifacts exist when only Play Store files changed.
 - Confirm `app-release.aab` uses the real upload key, not the local temporary
   test key.
+- Confirm `../dist/release-manifests/<version>.txt` matches the artifacts being
+  uploaded or shared for public testing.
 - Review the generated feature graphic from `../dist/store-assets/`.
 - Capture and review the screenshot smoke set.
 - Confirm `manifest.txt` exists for the screenshot smoke set and all required

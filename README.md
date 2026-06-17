@@ -388,8 +388,8 @@ verify-release.bat
 ```
 
 This builds signed Android APK/AAB artifacts, the desktop package, exports store
-listing assets to `dist/store-assets/`, and runs the Android Play Store
-readiness file check.
+listing assets to `dist/store-assets/`, writes SHA-256 release manifests under
+`dist/release-manifests/`, and runs the Android Play Store readiness file check.
 
 Repeatable Android screenshot smoke capture and PNG validation:
 
