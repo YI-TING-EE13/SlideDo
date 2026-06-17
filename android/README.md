@@ -36,6 +36,9 @@ an emulator or connected Android device.
 - Game and Practice Tutorial screen construction is split into
   `AndroidGameScreen` and `AndroidTutorialScreen`; `MainActivity` still owns
   model state, command gates, and navigation callbacks
+- Mode Select, Records, Settings, and Results construction is split into
+  package-private builders while `MainActivity` owns navigation, persistence,
+  settings application, and record-result text
 - Saved-game metadata includes updated time, puzzle size, move count, elapsed
   time, and active/solved state; Home now surfaces this metadata next to
   Continue

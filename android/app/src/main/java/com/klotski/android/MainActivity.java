@@ -2,14 +2,12 @@ package com.klotski.android;
 
 import static com.klotski.android.AndroidUi.COLOR_ACCENT;
 import static com.klotski.android.AndroidUi.COLOR_BACKGROUND;
-import static com.klotski.android.AndroidUi.COLOR_MUTED_TEXT;
 import static com.klotski.android.AndroidUi.COLOR_PANEL;
 import static com.klotski.android.AndroidUi.COLOR_PRIMARY;
 
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.annotation.SuppressLint;
-import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Build;
 import android.os.Bundle;
@@ -19,7 +17,6 @@ import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
 import android.widget.Button;
 import android.widget.LinearLayout;
-import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.window.OnBackInvokedCallback;
@@ -74,6 +71,10 @@ public class MainActivity extends Activity implements GameObserver {
     private AndroidUi ui;
     private AndroidLearningContent learningContent;
     private AndroidHomeScreen homeScreen;
+    private AndroidModeSelectScreen modeSelectScreen;
+    private AndroidRecordsScreen recordsScreen;
+    private AndroidSettingsScreen settingsScreen;
+    private AndroidResultsScreen resultsScreen;
     private AndroidTutorialScreen tutorialScreen;
     private AndroidGameScreen gameScreen;
     private AndroidGameStore store;
@@ -126,6 +127,10 @@ public class MainActivity extends Activity implements GameObserver {
         ui = new AndroidUi(this, commandButtons);
         learningContent = new AndroidLearningContent(this, ui);
         homeScreen = new AndroidHomeScreen(this, ui);
+        modeSelectScreen = new AndroidModeSelectScreen(this, ui);
+        recordsScreen = new AndroidRecordsScreen(this, ui);
+        settingsScreen = new AndroidSettingsScreen(this, ui);
+        resultsScreen = new AndroidResultsScreen(this, ui);
         tutorialScreen = new AndroidTutorialScreen(this, ui);
         gameScreen = new AndroidGameScreen(this, ui, commandButtons);
         applyLegacySystemBarColors();
@@ -387,14 +392,18 @@ public class MainActivity extends Activity implements GameObserver {
         gameTitleText = null;
         commandButtons.clear();
 
-        ScreenLayout screen = ui.createScreenLayout();
-        screen.root.setId(R.id.mode_root);
-        ui.addScreenHeader(screen.content, getString(R.string.mode_title), getString(R.string.mode_subtitle));
-        addModeRow(screen.content, 3, R.string.mode_easy, R.string.mode_easy_detail);
-        addModeRow(screen.content, 4, R.string.mode_classic, R.string.mode_classic_detail);
-        addModeRow(screen.content, 5, R.string.mode_expert, R.string.mode_expert_detail);
-        Button homeButton = ui.addWideButton(screen.content, R.string.nav_home, COLOR_PANEL, v -> showHomeScreen());
-        homeButton.setId(R.id.mode_home_button);
+        ScreenLayout screen = modeSelectScreen.build(formatBestForCard(3),
+                formatBestForCard(4), formatBestForCard(5), new AndroidModeSelectScreen.ModeActions() {
+                    @Override
+                    public void onModeSelected(int size) {
+                        beginNewGame(size);
+                    }
+
+                    @Override
+                    public void onHome() {
+                        showHomeScreen();
+                    }
+                });
 
         setContentView(screen.root);
     }
@@ -434,14 +443,13 @@ public class MainActivity extends Activity implements GameObserver {
         gameTitleText = null;
         commandButtons.clear();
 
-        ScreenLayout screen = ui.createScreenLayout();
-        screen.root.setId(R.id.records_root);
-        ui.addScreenHeader(screen.content, getString(R.string.records_title), getString(R.string.records_subtitle));
-        addRecordRow(screen.content, 3, R.string.mode_easy);
-        addRecordRow(screen.content, 4, R.string.mode_classic);
-        addRecordRow(screen.content, 5, R.string.mode_expert);
-        Button backButton = ui.addWideButton(screen.content, R.string.nav_back, COLOR_PRIMARY, v -> returnFromInfoScreen());
-        backButton.setId(R.id.records_back_button);
+        ScreenLayout screen = recordsScreen.build(formatBestForCard(3),
+                formatBestForCard(4), formatBestForCard(5), new AndroidRecordsScreen.RecordsActions() {
+                    @Override
+                    public void onBack() {
+                        returnFromInfoScreen();
+                    }
+                });
 
         setContentView(screen.root);
     }
@@ -453,27 +461,35 @@ public class MainActivity extends Activity implements GameObserver {
         gameTitleText = null;
         commandButtons.clear();
 
-        ScreenLayout screen = ui.createScreenLayout();
-        screen.root.setId(R.id.settings_root);
-        ui.addScreenHeader(screen.content, getString(R.string.settings_title), getString(R.string.settings_subtitle));
-        addSettingsSwitch(screen.content, R.id.settings_haptic_switch, R.string.settings_haptic_title,
-                R.string.settings_haptic_body, isHapticEnabled(), checked -> {
-                    store.setHapticEnabled(checked);
-                    applySettingsToBoard();
+        ScreenLayout screen = settingsScreen.build(isHapticEnabled(), isReducedMotionEnabled(),
+                new AndroidSettingsScreen.SettingsActions() {
+                    @Override
+                    public void onHapticChanged(boolean checked) {
+                        store.setHapticEnabled(checked);
+                        applySettingsToBoard();
+                    }
+
+                    @Override
+                    public void onReducedMotionChanged(boolean checked) {
+                        store.setReducedMotionEnabled(checked);
+                        applySettingsToBoard();
+                    }
+
+                    @Override
+                    public void onResetSave() {
+                        confirmResetSave();
+                    }
+
+                    @Override
+                    public void onResetRecords() {
+                        confirmResetRecords();
+                    }
+
+                    @Override
+                    public void onBack() {
+                        returnFromInfoScreen();
+                    }
                 });
-        addSettingsSwitch(screen.content, R.id.settings_reduced_motion_switch, R.string.settings_reduced_motion_title,
-                R.string.settings_reduced_motion_body, isReducedMotionEnabled(), checked -> {
-                    store.setReducedMotionEnabled(checked);
-                    applySettingsToBoard();
-                });
-        Button resetSaveButton = ui.addWideButton(screen.content, R.string.settings_reset_save, COLOR_PANEL,
-                v -> confirmResetSave());
-        resetSaveButton.setId(R.id.settings_reset_save_button);
-        Button resetRecordsButton = ui.addWideButton(screen.content, R.string.settings_reset_records, COLOR_PANEL,
-                v -> confirmResetRecords());
-        resetRecordsButton.setId(R.id.settings_reset_records_button);
-        Button backButton = ui.addWideButton(screen.content, R.string.nav_back, COLOR_PRIMARY, v -> returnFromInfoScreen());
-        backButton.setId(R.id.settings_back_button);
 
         setContentView(screen.root);
     }
@@ -490,53 +506,25 @@ public class MainActivity extends Activity implements GameObserver {
         gameTitleText = null;
         commandButtons.clear();
 
-        ScreenLayout screen = ui.createScreenLayout();
-        screen.root.setId(R.id.results_root);
-        screen.content.setGravity(Gravity.CENTER_HORIZONTAL);
-        ui.addScreenHeader(screen.content, getString(R.string.results_title),
-                getString(currentResult.assisted
-                        ? R.string.results_assisted_subtitle
-                        : R.string.results_player_subtitle));
+        ScreenLayout screen = resultsScreen.build(currentResult, formatMoves(currentResult.moves),
+                resultRecordText(currentResult), new AndroidResultsScreen.ResultsActions() {
+                    @Override
+                    public void onPlayAgain() {
+                        beginNewGame(currentResult.size);
+                    }
 
-        TextView size = ui.createText(getString(R.string.results_size_format,
-                currentResult.size, currentResult.size), 18, Color.WHITE, Typeface.BOLD);
-        size.setId(R.id.results_size_text);
-        size.setGravity(Gravity.CENTER);
-        screen.content.addView(size, ui.fullWidthParams());
+                    @Override
+                    public void onNewSize() {
+                        saveGame();
+                        showModeSelectScreen();
+                    }
 
-        TextView stats = ui.createText(getString(R.string.results_stats_format,
-                formatMoves(currentResult.moves), currentResult.timeMs / 1000),
-                24, Color.WHITE, Typeface.BOLD);
-        stats.setId(R.id.results_stats_text);
-        stats.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams statsParams = ui.fullWidthParams();
-        statsParams.setMargins(0, ui.dp(10), 0, ui.dp(10));
-        screen.content.addView(stats, statsParams);
-
-        TextView record = ui.createText(resultRecordText(currentResult), 16,
-                currentResult.newBest ? COLOR_ACCENT : COLOR_MUTED_TEXT, Typeface.BOLD);
-        record.setId(R.id.results_record_text);
-        record.setGravity(Gravity.CENTER);
-        record.setLineSpacing(0, 1.12f);
-        LinearLayout.LayoutParams recordParams = ui.fullWidthParams();
-        recordParams.setMargins(0, 0, 0, ui.dp(22));
-        screen.content.addView(record, recordParams);
-
-        Button playAgainButton = ui.addWideButton(screen.content, R.string.results_play_again, COLOR_PRIMARY,
-                v -> beginNewGame(currentResult.size));
-        playAgainButton.setId(R.id.results_play_again_button);
-        Button newSizeButton = ui.addWideButton(screen.content, R.string.results_new_size, COLOR_PANEL,
-                v -> {
-                    saveGame();
-                    showModeSelectScreen();
+                    @Override
+                    public void onHome() {
+                        saveGame();
+                        showHomeScreen();
+                    }
                 });
-        newSizeButton.setId(R.id.results_new_size_button);
-        Button homeButton = ui.addWideButton(screen.content, R.string.nav_home, COLOR_PANEL,
-                v -> {
-                    saveGame();
-                    showHomeScreen();
-                });
-        homeButton.setId(R.id.results_home_button);
 
         setContentView(screen.root);
     }
@@ -671,97 +659,6 @@ public class MainActivity extends Activity implements GameObserver {
             boardView.setBusyStateListener(this::updateBoardDependentControls);
         }
         applySettingsToBoard();
-    }
-
-    private void addModeRow(LinearLayout parent, int size, int difficultyResId, int detailResId) {
-        LinearLayout row = new LinearLayout(this);
-        if (size == 3) {
-            row.setId(R.id.mode_3_button);
-        } else if (size == 4) {
-            row.setId(R.id.mode_4_button);
-        } else if (size == 5) {
-            row.setId(R.id.mode_5_button);
-        }
-        row.setContentDescription(getString(R.string.mode_card_title, size, size));
-        row.setOrientation(LinearLayout.VERTICAL);
-        row.setPadding(ui.dp(16), ui.dp(14), ui.dp(16), ui.dp(14));
-        row.setBackground(ui.makePanelBackground(COLOR_PANEL));
-        row.setClickable(true);
-        row.setOnClickListener(v -> beginNewGame(size));
-
-        TextView title = ui.createText(getString(R.string.mode_card_title, size, size), 22, Color.WHITE, Typeface.BOLD);
-        TextView difficulty = ui.createText(getString(difficultyResId), 15, COLOR_ACCENT, Typeface.BOLD);
-        TextView detail = ui.createText(getString(detailResId), 15, COLOR_MUTED_TEXT, Typeface.NORMAL);
-        TextView best = ui.createText(getString(R.string.mode_best_label, formatBestForCard(size)),
-                14, COLOR_MUTED_TEXT, Typeface.NORMAL);
-
-        row.addView(title, ui.fullWidthParams());
-        row.addView(difficulty, ui.fullWidthParams());
-        LinearLayout.LayoutParams detailParams = ui.fullWidthParams();
-        detailParams.setMargins(0, ui.dp(8), 0, 0);
-        row.addView(detail, detailParams);
-        LinearLayout.LayoutParams bestParams = ui.fullWidthParams();
-        bestParams.setMargins(0, ui.dp(8), 0, 0);
-        row.addView(best, bestParams);
-
-        LinearLayout.LayoutParams rowParams = ui.fullWidthParams();
-        rowParams.setMargins(0, 0, 0, ui.dp(12));
-        parent.addView(row, rowParams);
-    }
-
-    private void addRecordRow(LinearLayout parent, int size, int difficultyResId) {
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.VERTICAL);
-        row.setPadding(ui.dp(16), ui.dp(14), ui.dp(16), ui.dp(14));
-        row.setBackground(ui.makePanelBackground(COLOR_PANEL));
-
-        TextView title = ui.createText(getString(R.string.records_row_title, size, size, getString(difficultyResId)),
-                20, Color.WHITE, Typeface.BOLD);
-        TextView best = ui.createText(formatBestForCard(size), 15, COLOR_MUTED_TEXT, Typeface.NORMAL);
-
-        row.addView(title, ui.fullWidthParams());
-        LinearLayout.LayoutParams bestParams = ui.fullWidthParams();
-        bestParams.setMargins(0, ui.dp(6), 0, 0);
-        row.addView(best, bestParams);
-
-        LinearLayout.LayoutParams rowParams = ui.fullWidthParams();
-        rowParams.setMargins(0, 0, 0, ui.dp(12));
-        parent.addView(row, rowParams);
-    }
-
-    private void addSettingsSwitch(LinearLayout parent, int switchId, int titleResId, int bodyResId,
-            boolean checked, SettingChangeListener listener) {
-        LinearLayout row = new LinearLayout(this);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setPadding(ui.dp(16), ui.dp(14), ui.dp(16), ui.dp(14));
-        row.setBackground(ui.makePanelBackground(COLOR_PANEL));
-
-        LinearLayout copy = new LinearLayout(this);
-        copy.setOrientation(LinearLayout.VERTICAL);
-        TextView title = ui.createText(getString(titleResId), 18, Color.WHITE, Typeface.BOLD);
-        TextView body = ui.createText(getString(bodyResId), 14, COLOR_MUTED_TEXT, Typeface.NORMAL);
-        body.setLineSpacing(0, 1.12f);
-        copy.addView(title, ui.fullWidthParams());
-        LinearLayout.LayoutParams bodyParams = ui.fullWidthParams();
-        bodyParams.setMargins(0, ui.dp(5), 0, 0);
-        copy.addView(body, bodyParams);
-        row.addView(copy, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-
-        Switch toggle = new Switch(this);
-        toggle.setId(switchId);
-        toggle.setChecked(checked);
-        toggle.setContentDescription(getString(R.string.accessibility_settings_switch,
-                getString(titleResId), getString(bodyResId)));
-        toggle.setOnCheckedChangeListener((buttonView, isChecked) -> listener.onChanged(isChecked));
-        LinearLayout.LayoutParams switchParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        switchParams.setMargins(ui.dp(16), 0, 0, 0);
-        row.addView(toggle, switchParams);
-
-        LinearLayout.LayoutParams rowParams = ui.fullWidthParams();
-        rowParams.setMargins(0, 0, 0, ui.dp(12));
-        parent.addView(row, rowParams);
     }
 
     private void addOnboardingPage(LinearLayout parent) {
