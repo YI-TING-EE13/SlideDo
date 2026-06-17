@@ -33,6 +33,9 @@ an emulator or connected Android device.
   Android iteration
 - Home screen construction, including Continue metadata presentation, is split
   into `AndroidHomeScreen`
+- Game and Practice Tutorial screen construction is split into
+  `AndroidGameScreen` and `AndroidTutorialScreen`; `MainActivity` still owns
+  model state, command gates, and navigation callbacks
 - Saved-game metadata includes updated time, puzzle size, move count, elapsed
   time, and active/solved state; Home now surfaces this metadata next to
   Continue

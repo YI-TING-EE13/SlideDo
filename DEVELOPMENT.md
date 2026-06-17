@@ -692,9 +692,12 @@ Recommended scope:
   package-private helpers.
 - [x] Split Android Home screen construction into `AndroidHomeScreen`, including
   Continue metadata presentation and Home navigation callbacks.
-- Continue the next Android architecture split by moving game and tutorial
-  screen builders into package-private builders before adding larger product
-  systems.
+- [x] Split Android Game and Practice Tutorial screen construction into
+  `AndroidGameScreen` and `AndroidTutorialScreen`, keeping model updates,
+  highlights, and command acceptance in `MainActivity`.
+- Continue the next Android architecture split by moving Mode Select, Settings,
+  Records, and Results screen builders into package-private builders before
+  adding larger product systems.
 - [x] Harden connected instrumentation helpers for slow emulator launches and
   How to Play scrolling so the suite is less dependent on transient AVD timing.
 - Add stable identifiers or test hooks for important Android controls so
@@ -702,9 +705,9 @@ Recommended scope:
 - [x] Add a small Android Activity state model for screen, info return target,
   first-run/tutorial page state, game-started state, and pending results.
 - Continue the architecture split started by `AndroidGameStore`; persistence,
-  Activity state, navigation decisions, shared UI primitives, and learning
-  content are now outside `MainActivity`, while game/tutorial screen builders
-  still need deeper separation.
+  Activity state, navigation decisions, shared UI primitives, learning content,
+  and Home/Game/Tutorial screen builders are now outside `MainActivity`, while
+  Mode Select, Settings, Records, and Results still need deeper separation.
 - [x] Add explicit save metadata: saved size, moves, elapsed time, updated-at
   timestamp, and solved/active status.
 - [x] Surface Android save metadata in the Home Continue UI so players can see
@@ -771,7 +774,7 @@ Priority: Low to Medium
 - Moved `Screen`, `ScreenLayout`, `PendingWin`, `GameResult`,
   `SettingChangeListener`, and `ViewParentRemover` out of `MainActivity` as
   package-private Android helpers.
-- Reduced `MainActivity` from 1863 lines to roughly 1509 lines while preserving
+- Reduced `MainActivity` from 1863 lines to roughly 1423 lines while preserving
   existing resource IDs, navigation flows, and `GameModel` as the only puzzle
   rule source.
 - Added instrumentation regression coverage for Activity state round-trips and
@@ -782,6 +785,10 @@ Priority: Low to Medium
 - Continued screen-builder extraction by moving Android Home construction and
   Continue metadata formatting into `AndroidHomeScreen`, leaving `MainActivity`
   to coordinate state reset and navigation callbacks.
+- Moved Android Game and Practice Tutorial view construction into
+  `AndroidGameScreen` and `AndroidTutorialScreen`. `MainActivity` now keeps the
+  lifecycle, `GameModel` updates, tutorial highlights, and command gates, while
+  the new builders own view hierarchy, stable IDs, and presentation callbacks.
 - Hardened `MainActivityFlowTest` launch and scrolling helpers after slow AVD
   runs exposed false failures. The connected suite now waits on the foreground
   app window and uses a swipe fallback when UiAutomator does not expose a

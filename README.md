@@ -388,8 +388,9 @@ android\screenshot-smoke.bat
 - Connected Android instrumentation tests still require a running emulator or device.
 - Screenshot smoke is currently a repeatable capture workflow, not a pixel-diff gate.
 - `MainActivity` has been reduced by extracting state/navigation/UI helpers and
-  the Home builder, but the game and tutorial screen builders still need a
-  deeper split before larger product systems are added.
+  the Home, Game, and Practice Tutorial builders, but Mode Select, Settings,
+  Records, and Results still need a deeper split before larger product systems
+  are added.
 - Solver performance is intentionally limited by timeouts.
 - The desktop package is a ZIP plus optional app-image, not a signed installer.
 
