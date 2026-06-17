@@ -79,8 +79,9 @@ Suggested tags/categories:
   `verify-release.bat` exports the upload PNG to
   `../dist/store-assets/android/<version>/feature-graphic-1024x500.png`.
   Review the generated 1024x500 image before Play Console upload.
-- Phone screenshots: capture with `screenshot-smoke.bat`, then select the final
-  Play Console images from `../screenshots/android/<version>/`.
+- Phone screenshots: capture with `screenshot-smoke.bat`, then review
+  `../screenshots/android/<version>/manifest.txt` and select the final Play
+  Console images from that screenshot directory.
 - Tablet screenshots: optional until tablet layout work starts.
 - Promo video: not planned for first beta.
 
@@ -190,6 +191,8 @@ Before uploading to Play Console:
   test key.
 - Review the generated feature graphic from `../dist/store-assets/`.
 - Capture and review the screenshot smoke set.
+- Confirm `manifest.txt` exists for the screenshot smoke set and all required
+  screenshots are readable.
 - Update release notes under `../release-notes/`.
 - Confirm the privacy policy URL is live.
 - Confirm Data Safety answers still match the app behavior.

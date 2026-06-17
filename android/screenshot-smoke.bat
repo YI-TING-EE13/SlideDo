@@ -66,6 +66,9 @@ echo If a Results screen is available, open it now; otherwise leave the current 
 pause >nul
 call :capture "07-results-or-current"
 
+call "%ANDROID_ROOT%\check-screenshot-set.bat" "%OUT_DIR%"
+if errorlevel 1 exit /b 1
+
 echo Screenshot smoke captures written to:
 echo   %OUT_DIR%
 exit /b 0

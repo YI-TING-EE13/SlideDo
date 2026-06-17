@@ -380,7 +380,7 @@ This builds signed Android APK/AAB artifacts, the desktop package, exports store
 listing assets to `dist/store-assets/`, and runs the Android Play Store
 readiness file check.
 
-Repeatable Android screenshot smoke capture:
+Repeatable Android screenshot smoke capture and PNG validation:
 
 ```bat
 android\screenshot-smoke.bat
@@ -390,7 +390,8 @@ android\screenshot-smoke.bat
 
 - Desktop UI tests are still manual/smoke-level.
 - Connected Android instrumentation tests still require a running emulator or device.
-- Screenshot smoke is currently a repeatable capture workflow, not a pixel-diff gate.
+- Screenshot smoke validates captured PNG readability and dimensions, but is
+  not a pixel-diff gate.
 - `MainActivity` has been reduced by extracting state/navigation/UI helpers and
   the major Android screen builders. Onboarding and How to Play remain
   in-activity learning flows unless they grow enough to justify another split.

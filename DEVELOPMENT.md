@@ -755,6 +755,8 @@ Recommended scope:
 - Add lint and instrumentation checks to CI before expanding visual complexity.
 - [x] Add a repeatable screenshot smoke workflow for Home, Mode Select, Game,
   How to Play, Settings, Results/current, and Records.
+- [x] Add screenshot set verification so the manual capture workflow validates
+  readable PNG outputs and writes a manifest for the captured set.
 - Replace the manual screenshot capture workflow with automated screenshot
   tests or pixel-diff review once navigation builders are split and stable.
 
@@ -891,6 +893,8 @@ Priority: Low to Medium
 - Added `android/screenshot-smoke.bat` as a repeatable manual capture workflow
   for Home, Mode Select, Game, How to Play, Settings, Records, and
   Results/current screen.
+- Added `android/check-screenshot-set.bat`; screenshot smoke now validates the
+  expected PNG files and writes a manifest next to the captured screenshots.
 
 ### 2026-06-11
 

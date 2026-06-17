@@ -149,7 +149,15 @@ screenshot-smoke.bat
 
 The script launches the app and stores PNG files under
 `../screenshots/android/<version>` as you navigate through Home, Mode Select,
-Game, How to Play, Settings, Records, and Results/current screen.
+Game, How to Play, Settings, Records, and Results/current screen. It then runs
+`check-screenshot-set.bat` to verify that every expected PNG is readable and at
+least 320x320, and writes `manifest.txt` beside the screenshots.
+
+To verify an existing screenshot set without recapturing:
+
+```bat
+check-screenshot-set.bat ..\screenshots\android\0.2.0-beta.1
+```
 
 ## Emulator Smoke Test Checklist
 

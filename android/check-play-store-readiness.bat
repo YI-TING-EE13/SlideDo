@@ -88,6 +88,7 @@ call :require_file "%REPO_ROOT%\tools\StoreAssetExporter.java" "store asset expo
 call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "Feature graphic source:" "feature graphic source entry"
 call :require_text "%ANDROID_ROOT%\store-assets\README.md" "feature-graphic-1024x500.svg" "feature graphic source documentation"
 call :require_file "%ANDROID_ROOT%\screenshot-smoke.bat" "screenshot smoke workflow"
+call :require_file "%ANDROID_ROOT%\check-screenshot-set.bat" "screenshot set verification workflow"
 
 echo [6/7] Release and store artifacts
 call :require_file "%ANDROID_ROOT%\app\build\outputs\apk\release\app-release.apk" "release APK"
