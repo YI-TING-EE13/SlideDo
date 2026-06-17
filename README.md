@@ -326,6 +326,9 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
 - Release notes/version matching through `version.properties` and `release-notes/<version>.md`.
 - Android lint with no reported issues during the latest local run.
 - Android instrumentation tests for onboarding, Home launch, Practice Tutorial, mode selection, Continue metadata, How to Play, Settings, Results, Assist hints, whole-line movement, undo, save/load persistence, app-state store behavior, Activity state/navigation helpers, rotation, and solver-assisted record protection.
+- Connected Android instrumentation helpers now wait for the foreground app
+  window and fall back to direct swipe scrolling for long help content, reducing
+  false failures on slow emulator runs.
 - Android emulator smoke testing for install/launch, Home visibility, whole-line movement, undo, restart, save/load, solver warning dialog, rotation, and background resume.
 
 ### Useful Commands
@@ -384,9 +387,9 @@ android\screenshot-smoke.bat
 - Desktop UI tests are still manual/smoke-level.
 - Connected Android instrumentation tests still require a running emulator or device.
 - Screenshot smoke is currently a repeatable capture workflow, not a pixel-diff gate.
-- `MainActivity` has been reduced by extracting state/navigation/UI helpers, but
-  the game and tutorial screen builders still need a deeper split before larger
-  product systems are added.
+- `MainActivity` has been reduced by extracting state/navigation/UI helpers and
+  the Home builder, but the game and tutorial screen builders still need a
+  deeper split before larger product systems are added.
 - Solver performance is intentionally limited by timeouts.
 - The desktop package is a ZIP plus optional app-image, not a signed installer.
 

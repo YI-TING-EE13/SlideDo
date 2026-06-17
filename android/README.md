@@ -31,6 +31,8 @@ an emulator or connected Android device.
 - Activity state restoration, back-navigation decisions, shared UI primitives,
   and learning-content builders are split out of `MainActivity` for maintainable
   Android iteration
+- Home screen construction, including Continue metadata presentation, is split
+  into `AndroidHomeScreen`
 - Saved-game metadata includes updated time, puzzle size, move count, elapsed
   time, and active/solved state; Home now surfaces this metadata next to
   Continue
@@ -45,6 +47,8 @@ an emulator or connected Android device.
 - Solver-assisted completions do not overwrite player best records
 - Android instrumentation coverage for the main navigation, Continue metadata,
   Activity state/navigation helpers, and gameplay flows
+- Connected test helpers wait for the foreground app window and include a swipe
+  fallback for long help screens to reduce slow-emulator false failures
 
 ## Build Notes
 
@@ -104,6 +108,10 @@ To run Android instrumentation smoke tests on a connected emulator or device:
 ```bat
 ..\verify-connected.bat
 ```
+
+The connected suite is expected to run against a healthy foreground emulator or
+device. If an AVD system service crashes, restart the emulator and rerun the
+suite before treating the failure as an app regression.
 
 To capture a repeatable manual screenshot smoke set:
 

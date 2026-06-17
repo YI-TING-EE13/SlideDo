@@ -21,6 +21,7 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.uiautomator.By;
 import androidx.test.uiautomator.UiDevice;
 import androidx.test.uiautomator.UiObject2;
+import androidx.test.uiautomator.UiObjectNotFoundException;
 import androidx.test.uiautomator.UiScrollable;
 import androidx.test.uiautomator.UiSelector;
 import androidx.test.uiautomator.Until;
@@ -40,7 +41,7 @@ import java.lang.reflect.Method;
 public class MainActivityFlowTest {
     private static final String PACKAGE_NAME = "com.klotski.android";
     private static final String PREFS = "slidedo";
-    private static final long TIMEOUT_MS = 5000;
+    private static final long TIMEOUT_MS = 15000;
     private static final String LINE_SLIDE_GRID = "1,2,3,0,4,5,7,8,6";
     private static final String ONE_MOVE_WIN_GRID = "1,2,3,4,5,0,7,8,6";
 
@@ -508,8 +509,8 @@ public class MainActivityFlowTest {
         activity = instrumentation.startActivitySync(intent);
         instrumentation.waitForIdleSync();
         assertNotNull(activity);
-        assertTrue("App package did not appear",
-                device.wait(Until.hasObject(By.pkg(PACKAGE_NAME).depth(0)), TIMEOUT_MS));
+        // AVD window hierarchies can lag startActivitySync under load; the
+        // foreground window is the stable launch gate for these smoke tests.
         waitForForegroundApp();
         device.waitForIdle();
         Thread.sleep(750);
@@ -637,10 +638,24 @@ public class MainActivityFlowTest {
     private UiObject2 scrollToText(String text) throws Exception {
         UiObject2 object = device.findObject(By.text(text));
         if (object == null) {
-            new UiScrollable(new UiSelector().scrollable(true)).scrollTextIntoView(text);
+            try {
+                new UiScrollable(new UiSelector().scrollable(true)).scrollTextIntoView(text);
+            } catch (UiObjectNotFoundException exception) {
+                swipeUpUntilText(text);
+            }
             device.waitForIdle();
         }
         return waitForText(text);
+    }
+
+    private void swipeUpUntilText(String text) throws InterruptedException {
+        int width = device.getDisplayWidth();
+        int height = device.getDisplayHeight();
+        for (int attempt = 0; attempt < 6 && device.findObject(By.text(text)) == null; attempt++) {
+            device.swipe(width / 2, height * 3 / 4, width / 2, height / 4, 24);
+            device.waitForIdle();
+            Thread.sleep(200);
+        }
     }
 
     private void clickId(int resourceId) {

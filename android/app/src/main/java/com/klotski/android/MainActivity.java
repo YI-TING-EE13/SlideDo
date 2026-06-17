@@ -75,6 +75,7 @@ public class MainActivity extends Activity implements GameObserver {
 
     private AndroidUi ui;
     private AndroidLearningContent learningContent;
+    private AndroidHomeScreen homeScreen;
     private AndroidGameStore store;
     private GameModel model;
     private KlotskiView boardView;
@@ -124,6 +125,7 @@ public class MainActivity extends Activity implements GameObserver {
         super.onCreate(savedInstanceState);
         ui = new AndroidUi(this, commandButtons);
         learningContent = new AndroidLearningContent(this, ui);
+        homeScreen = new AndroidHomeScreen(this, ui);
         applyLegacySystemBarColors();
 
         store = new AndroidGameStore(this);
@@ -284,59 +286,46 @@ public class MainActivity extends Activity implements GameObserver {
         tutorialStatusText = null;
         commandButtons.clear();
 
-        ScreenLayout screen = ui.createScreenLayout();
-        screen.root.setId(R.id.home_root);
-        screen.content.setGravity(Gravity.CENTER_HORIZONTAL);
-        ui.addScreenHeader(screen.content, getString(R.string.app_name), getString(R.string.home_tagline));
-
-        TextView summary = ui.createText(getString(R.string.home_summary), 16, COLOR_MUTED_TEXT, Typeface.NORMAL);
-        summary.setGravity(Gravity.CENTER);
-        summary.setLineSpacing(0, 1.12f);
-        LinearLayout.LayoutParams summaryParams = ui.fullWidthParams();
-        summaryParams.setMargins(0, ui.dp(8), 0, ui.dp(24));
-        screen.content.addView(summary, summaryParams);
-
-        boolean hasSave = hasSavedGame();
-        if (hasSave) {
-            Button continueButton = ui.addWideButton(screen.content, R.string.home_continue, COLOR_PRIMARY,
-                    v -> continueSavedGame());
-            continueButton.setId(R.id.home_continue_button);
-            AndroidGameStore.SaveMetadata metadata = getSaveMetadata();
-            if (metadata != null) {
-                TextView continueSummary = ui.createText(formatContinueSummary(metadata),
-                        14, COLOR_MUTED_TEXT, Typeface.NORMAL);
-                continueSummary.setId(R.id.home_continue_summary_text);
-                continueSummary.setGravity(Gravity.CENTER);
-                continueSummary.setLineSpacing(0, 1.12f);
-                LinearLayout.LayoutParams continueSummaryParams = ui.fullWidthParams();
-                continueSummaryParams.setMargins(0, 0, 0, ui.dp(14));
-                screen.content.addView(continueSummary, continueSummaryParams);
+        ScreenLayout screen = homeScreen.build(store.getSaveMetadata(), new AndroidHomeScreen.HomeActions() {
+            @Override
+            public void onContinue() {
+                continueSavedGame();
             }
-        }
-        Button newGameButton = ui.addWideButton(screen.content, hasSave ? R.string.home_new_game : R.string.home_play,
-                hasSave ? COLOR_PANEL_LIGHT : COLOR_PRIMARY, v -> {
-                    if (shouldShowOnboarding()) {
-                        showOnboardingScreen(0);
-                    } else {
-                        showModeSelectScreen();
-                    }
-                });
-        newGameButton.setId(R.id.home_new_game_button);
-        Button onboardingButton = ui.addWideButton(screen.content, R.string.home_beginner_guide, COLOR_PANEL,
-                v -> showOnboardingScreen(0));
-        onboardingButton.setId(R.id.home_onboarding_button);
-        Button tutorialButton = ui.addWideButton(screen.content, R.string.home_tutorial, COLOR_PRIMARY,
-                v -> startGuidedTutorial());
-        tutorialButton.setId(R.id.home_tutorial_button);
-        Button howToButton = ui.addWideButton(screen.content, R.string.home_how_to_play, COLOR_PANEL,
-                v -> showHowToScreen(Screen.HOME));
-        howToButton.setId(R.id.home_how_to_play_button);
-        Button settingsButton = ui.addWideButton(screen.content, R.string.home_settings, COLOR_PANEL,
-                v -> showSettingsScreen(Screen.HOME));
-        settingsButton.setId(R.id.home_settings_button);
-        Button recordsButton = ui.addWideButton(screen.content, R.string.home_records, COLOR_PANEL,
-                v -> showRecordsScreen(Screen.HOME));
-        recordsButton.setId(R.id.home_records_button);
+
+            @Override
+            public void onPlay() {
+                if (shouldShowOnboarding()) {
+                    showOnboardingScreen(0);
+                } else {
+                    showModeSelectScreen();
+                }
+            }
+
+            @Override
+            public void onBeginnerGuide() {
+                showOnboardingScreen(0);
+            }
+
+            @Override
+            public void onPracticeTutorial() {
+                startGuidedTutorial();
+            }
+
+            @Override
+            public void onHowToPlay() {
+                showHowToScreen(Screen.HOME);
+            }
+
+            @Override
+            public void onSettings() {
+                showSettingsScreen(Screen.HOME);
+            }
+
+            @Override
+            public void onRecords() {
+                showRecordsScreen(Screen.HOME);
+            }
+        });
 
         setContentView(screen.root);
     }
@@ -1287,14 +1276,6 @@ public class MainActivity extends Activity implements GameObserver {
         return true;
     }
 
-    private boolean hasSavedGame() {
-        return store.hasSavedGame();
-    }
-
-    private AndroidGameStore.SaveMetadata getSaveMetadata() {
-        return store.getSaveMetadata();
-    }
-
     private void clearSavedGame() {
         store.clearSavedGame();
     }
@@ -1525,41 +1506,4 @@ public class MainActivity extends Activity implements GameObserver {
         return getResources().getQuantityString(R.plurals.moves_count, moves, moves);
     }
 
-    private String formatContinueSummary(AndroidGameStore.SaveMetadata metadata) {
-        String state = metadata.solved
-                ? getString(R.string.home_continue_solved)
-                : (metadata.active
-                        ? getString(R.string.home_continue_active)
-                        : getString(R.string.home_continue_saved));
-        return getString(R.string.home_continue_summary,
-                state,
-                metadata.size,
-                metadata.size,
-                formatMoves(metadata.moves),
-                Math.max(0, metadata.elapsedMs) / 1000,
-                formatSavedAge(metadata.updatedAt));
-    }
-
-    private String formatSavedAge(long updatedAt) {
-        if (updatedAt <= 0) {
-            return getString(R.string.home_continue_updated_unknown);
-        }
-
-        long ageSeconds = Math.max(0, (System.currentTimeMillis() - updatedAt) / 1000);
-        if (ageSeconds < 60) {
-            return getString(R.string.home_continue_updated_now);
-        }
-
-        long ageMinutes = ageSeconds / 60;
-        if (ageMinutes < 60) {
-            return getString(R.string.home_continue_updated_minutes, ageMinutes);
-        }
-
-        long ageHours = ageMinutes / 60;
-        if (ageHours < 24) {
-            return getString(R.string.home_continue_updated_hours, ageHours);
-        }
-
-        return getString(R.string.home_continue_updated_days, ageHours / 24);
-    }
 }

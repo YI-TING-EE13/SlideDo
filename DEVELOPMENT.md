@@ -690,9 +690,13 @@ Recommended scope:
   Activity state serialization, back-navigation decisions, shared UI primitives,
   result/pending-win models, and learning-content builders now live in
   package-private helpers.
+- [x] Split Android Home screen construction into `AndroidHomeScreen`, including
+  Continue metadata presentation and Home navigation callbacks.
 - Continue the next Android architecture split by moving game and tutorial
   screen builders into package-private builders before adding larger product
   systems.
+- [x] Harden connected instrumentation helpers for slow emulator launches and
+  How to Play scrolling so the suite is less dependent on transient AVD timing.
 - Add stable identifiers or test hooks for important Android controls so
   instrumentation tests do not rely on text or screen coordinates.
 - [x] Add a small Android Activity state model for screen, info return target,
@@ -767,7 +771,7 @@ Priority: Low to Medium
 - Moved `Screen`, `ScreenLayout`, `PendingWin`, `GameResult`,
   `SettingChangeListener`, and `ViewParentRemover` out of `MainActivity` as
   package-private Android helpers.
-- Reduced `MainActivity` from 1863 lines to roughly 1512 lines while preserving
+- Reduced `MainActivity` from 1863 lines to roughly 1509 lines while preserving
   existing resource IDs, navigation flows, and `GameModel` as the only puzzle
   rule source.
 - Added instrumentation regression coverage for Activity state round-trips and
@@ -775,6 +779,13 @@ Priority: Low to Medium
 - Surfaced saved-game metadata on Android Home under Continue, including active
   / solved state, puzzle size, moves, elapsed seconds, and save age. Added
   instrumentation coverage for current metadata and legacy save fallback text.
+- Continued screen-builder extraction by moving Android Home construction and
+  Continue metadata formatting into `AndroidHomeScreen`, leaving `MainActivity`
+  to coordinate state reset and navigation callbacks.
+- Hardened `MainActivityFlowTest` launch and scrolling helpers after slow AVD
+  runs exposed false failures. The connected suite now waits on the foreground
+  app window and uses a swipe fallback when UiAutomator does not expose a
+  scrollable container.
 - Hardened `android/build-debug.bat` against Windows file-lock false failures by
   clearing common generated resource/package output directories before Gradle
   builds.
