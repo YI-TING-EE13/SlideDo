@@ -687,10 +687,14 @@ Recommended scope:
   test source compilation is checked without requiring an emulator.
 - [x] `verify-connected.bat` runs connected instrumentation tests when a device
   or emulator is available.
+- [x] Add `ci.bat` as the no-device local/CI gate that runs `verify.bat` and
+  `verify-release.bat` together.
+- [x] Add `.github/workflows/ci.yml` so GitHub Actions runs the same no-device
+  build, lint, Javadoc, release artifact, and Play readiness checks on Windows.
 - Connected Android instrumentation tests still require a running emulator or
   device outside the one-command no-device verification path.
-- Add release-readiness checks later: signed release build, versioning, and Play
-  App Bundle generation.
+- [x] Add release-readiness checks for signed release builds, versioning, Play
+  App Bundle generation, desktop packaging, and store asset/readiness files.
 
 ### UX Improvement Directions
 
@@ -895,6 +899,8 @@ Priority: Low to Medium
   Results/current screen.
 - Added `android/check-screenshot-set.bat`; screenshot smoke now validates the
   expected PNG files and writes a manifest next to the captured screenshots.
+- Added `ci.bat` and `.github/workflows/ci.yml` so the no-device local/remote
+  CI gate runs verification plus release readiness checks with artifact upload.
 
 ### 2026-06-11
 

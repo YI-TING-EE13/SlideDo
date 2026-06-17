@@ -342,6 +342,17 @@ verify.bat
 This compiles Android instrumentation test APKs as part of the no-device local
 verification path.
 
+Local CI gate:
+
+```bat
+ci.bat
+```
+
+This runs `verify.bat` and `verify-release.bat`. GitHub Actions uses the same
+gate in `.github/workflows/ci.yml`; release APK/AAB artifacts produced there are
+signed with the temporary verification key unless real signing secrets are
+provided and must not be uploaded to stores.
+
 Desktop compile:
 
 ```bat

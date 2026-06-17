@@ -79,6 +79,16 @@ The verification script runs shared core tests, desktop compilation, Android
 assemble/lint, Android instrumentation test APK assembly, and public
 Javadoc/doclint checks.
 
+To run the same no-device gate used by GitHub Actions plus release readiness:
+
+```bat
+..\ci.bat
+```
+
+This runs `verify.bat` and `verify-release.bat`. CI release artifacts are
+verification outputs and use the temporary signing key unless real Play upload
+signing is explicitly configured.
+
 For Android build and lint only:
 
 ```bat

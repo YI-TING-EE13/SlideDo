@@ -1,0 +1,63 @@
+name: SlideDo CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify build and release readiness
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    env:
+      GRADLE_OPTS: -Dorg.gradle.daemon=false
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android SDK licenses
+        shell: pwsh
+        run: |
+          $answers = 1..50 | ForEach-Object { "y" }
+          $answers | sdkmanager --licenses
+
+      - name: Install Android SDK packages
+        shell: pwsh
+        run: |
+          sdkmanager --install "platforms;android-36" "platform-tools" "build-tools;36.0.0"
+
+      - name: Run local CI gate
+        shell: cmd
+        run: ci.bat
+
+      - name: Upload verification artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: slidedo-ci-artifacts
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            android/app/build/outputs/apk/release/app-release.apk
+            android/app/build/outputs/bundle/release/app-release.aab
+            dist/desktop/SlideDo-*.zip
+            dist/store-assets/android/**/feature-graphic-1024x500.png
