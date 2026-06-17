@@ -785,8 +785,11 @@ Priority: Low to Medium
   `verify-release.bat` so repo-side store files, adaptive icons, privacy/Data
   Safety assumptions, release artifacts, screenshot workflow, and tracked-secret
   checks are verified together.
-- Prepare final feature graphic and reviewed screenshots that show the actual
-  game UI.
+- [x] Add a version-controlled Play Store feature graphic source under
+  `android/store-assets/`, with local readiness checks for the source file and
+  asset notes.
+- Export and review the final feature graphic upload file, then capture and
+  review screenshots that show the actual game UI.
 - Publish a privacy policy URL before store submission and before adding
   analytics, crash reporting, cloud save, ads, or account features.
 - Keep Data Safety answers aligned with actual collection behavior; keep
@@ -846,6 +849,9 @@ Priority: Low to Medium
   The check validates repo-side Play Store drafts, adaptive icon resources,
   Data Safety assumptions, release artifacts, screenshot workflow, and that
   release signing secrets are not tracked.
+- Added `android/store-assets/` with a version-controlled Play Store feature
+  graphic source and store asset notes, then extended the Play Store readiness
+  check to require those source assets.
 - Hardened `MainActivityFlowTest` launch and scrolling helpers after slow AVD
   runs exposed false failures. The connected suite now waits on the foreground
   app window and uses a swipe fallback when UiAutomator does not expose a

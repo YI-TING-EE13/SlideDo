@@ -435,9 +435,9 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
 - Desktop/mobile player-facing parity MVP is complete for Home/start, Records, Preferences, Results, How to Play, Practice Tutorial, and Assist hints.
 - Save files now include release-readiness metadata and desktop saves now live in the user-data directory.
 - Signed Android release APK/AAB and desktop ZIP/app-image packaging scripts are available.
-- Android Play Store readiness drafts, adaptive launcher icons, Data Safety
-  notes, privacy policy draft, screenshot guidance, and pre-launch matrix are
-  tracked in `android/PLAY_STORE_READINESS.md`.
+- Android Play Store readiness drafts, adaptive launcher icons, feature graphic
+  source, Data Safety notes, privacy policy draft, screenshot guidance, and
+  pre-launch matrix are tracked in `android/PLAY_STORE_READINESS.md`.
 - The desktop/Android feature parity matrix is maintained in
   `DEVELOPMENT.md` under the Desktop/Mobile Parity Pass section.
 - Split larger UI/controller code where it supports future shared progression work.

@@ -104,8 +104,10 @@ temporary test key only when no signing configuration is present so local releas
 verification can still run.
 
 Play Store listing copy, privacy policy draft, Data Safety draft, asset
-checklist, and pre-launch matrix are tracked in
+checklist, feature graphic source, and pre-launch matrix are tracked in
 [`PLAY_STORE_READINESS.md`](PLAY_STORE_READINESS.md).
+Store asset sources live under [`store-assets`](store-assets/); export and
+review final upload files before Play Console submission.
 
 To check the repo-side Play Store readiness files after building release
 artifacts:
