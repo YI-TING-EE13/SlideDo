@@ -3,7 +3,6 @@
   <desc id="desc">SlideDo sliding puzzle board with 3x3, 4x4, and 5x5 offline play modes.</desc>
   <rect width="1024" height="500" fill="#172033"/>
   <rect x="36" y="36" width="952" height="428" rx="36" fill="#1F2937"/>
-  <path d="M74 104h288M74 144h230M74 184h184" stroke="#38BDF8" stroke-width="12" stroke-linecap="round" opacity="0.32"/>
   <circle cx="912" cy="88" r="34" fill="#F59E0B"/>
   <circle cx="852" cy="426" r="46" fill="#34D399" opacity="0.55"/>
 

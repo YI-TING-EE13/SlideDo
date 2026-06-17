@@ -376,8 +376,9 @@ Release artifact and Play Store readiness verification:
 verify-release.bat
 ```
 
-This builds signed Android APK/AAB artifacts, the desktop package, and runs the
-Android Play Store readiness file check.
+This builds signed Android APK/AAB artifacts, the desktop package, exports store
+listing assets to `dist/store-assets/`, and runs the Android Play Store
+readiness file check.
 
 Repeatable Android screenshot smoke capture:
 
@@ -436,8 +437,9 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
 - Save files now include release-readiness metadata and desktop saves now live in the user-data directory.
 - Signed Android release APK/AAB and desktop ZIP/app-image packaging scripts are available.
 - Android Play Store readiness drafts, adaptive launcher icons, feature graphic
-  source, Data Safety notes, privacy policy draft, screenshot guidance, and
-  pre-launch matrix are tracked in `android/PLAY_STORE_READINESS.md`.
+  source/export workflow, Data Safety notes, privacy policy draft, screenshot
+  guidance, and pre-launch matrix are tracked in
+  `android/PLAY_STORE_READINESS.md`.
 - The desktop/Android feature parity matrix is maintained in
   `DEVELOPMENT.md` under the Desktop/Mobile Parity Pass section.
 - Split larger UI/controller code where it supports future shared progression work.

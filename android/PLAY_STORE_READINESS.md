@@ -76,8 +76,9 @@ Suggested tags/categories:
 - Adaptive launcher icon: present in `app/src/main/res/mipmap-anydpi-v26/`.
 - Round launcher icon: present in `app/src/main/res/mipmap-anydpi-v26/`.
 - Feature graphic source: present in `store-assets/feature-graphic-1024x500.svg`.
-  Export and review a final 1024x500 JPEG or 24-bit PNG before Play Console
-  upload.
+  `verify-release.bat` exports the upload PNG to
+  `../dist/store-assets/android/<version>/feature-graphic-1024x500.png`.
+  Review the generated 1024x500 image before Play Console upload.
 - Phone screenshots: capture with `screenshot-smoke.bat`, then select the final
   Play Console images from `../screenshots/android/<version>/`.
 - Tablet screenshots: optional until tablet layout work starts.
@@ -181,13 +182,13 @@ Before uploading to Play Console:
 
 - Run `verify.bat`.
 - Run `verify-connected.bat` on a healthy emulator or device.
-- Run `verify-release.bat`; it builds Android and desktop release artifacts and
-  runs `android/check-play-store-readiness.bat`.
+- Run `verify-release.bat`; it builds Android and desktop release artifacts,
+  exports store assets, and runs `android/check-play-store-readiness.bat`.
 - Optionally run `check-play-store-readiness.bat` directly after release
   artifacts exist when only Play Store files changed.
 - Confirm `app-release.aab` uses the real upload key, not the local temporary
   test key.
-- Export and review the feature graphic from `store-assets/`.
+- Review the generated feature graphic from `../dist/store-assets/`.
 - Capture and review the screenshot smoke set.
 - Update release notes under `../release-notes/`.
 - Confirm the privacy policy URL is live.

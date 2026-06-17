@@ -83,13 +83,16 @@ call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "Does the app collec
 echo [5/7] Store asset sources and screenshot workflow
 call :require_file "%ANDROID_ROOT%\store-assets\README.md" "store asset source notes"
 call :require_file "%ANDROID_ROOT%\store-assets\feature-graphic-1024x500.svg" "feature graphic source"
+call :require_file "%ANDROID_ROOT%\export-store-assets.bat" "store asset export workflow"
+call :require_file "%REPO_ROOT%\tools\StoreAssetExporter.java" "store asset exporter source"
 call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "Feature graphic source:" "feature graphic source entry"
 call :require_text "%ANDROID_ROOT%\store-assets\README.md" "feature-graphic-1024x500.svg" "feature graphic source documentation"
 call :require_file "%ANDROID_ROOT%\screenshot-smoke.bat" "screenshot smoke workflow"
 
-echo [6/7] Release artifacts
+echo [6/7] Release and store artifacts
 call :require_file "%ANDROID_ROOT%\app\build\outputs\apk\release\app-release.apk" "release APK"
 call :require_file "%ANDROID_ROOT%\app\build\outputs\bundle\release\app-release.aab" "release AAB"
+if defined VERSION_NAME call :require_file "%REPO_ROOT%\dist\store-assets\android\%VERSION_NAME%\feature-graphic-1024x500.png" "exported feature graphic PNG"
 
 echo [7/7] Sensitive release files
 git -C "%REPO_ROOT%" rev-parse --is-inside-work-tree >nul 2>nul
@@ -120,7 +123,7 @@ echo.
 echo Manual blockers that this local check cannot complete:
 echo   - Configure and verify the real Play upload key before store upload.
 echo   - Publish and review the privacy policy URL.
-echo   - Export and review the final Play Store feature graphic upload file.
+echo   - Review the generated Play Store feature graphic upload file.
 echo   - Capture, review, and select final Play Store screenshots.
 echo   - Run manual TalkBack, touch-target, contrast, and reduced-motion review.
 echo   - Run the pre-launch device matrix in PLAY_STORE_READINESS.md.

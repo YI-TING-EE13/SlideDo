@@ -788,8 +788,10 @@ Priority: Low to Medium
 - [x] Add a version-controlled Play Store feature graphic source under
   `android/store-assets/`, with local readiness checks for the source file and
   asset notes.
-- Export and review the final feature graphic upload file, then capture and
-  review screenshots that show the actual game UI.
+- [x] Add a repeatable Play Store feature graphic PNG export workflow and wire
+  it into `verify-release.bat`.
+- Review the generated feature graphic upload file, then capture and review
+  screenshots that show the actual game UI.
 - Publish a privacy policy URL before store submission and before adding
   analytics, crash reporting, cloud save, ads, or account features.
 - Keep Data Safety answers aligned with actual collection behavior; keep
@@ -852,6 +854,9 @@ Priority: Low to Medium
 - Added `android/store-assets/` with a version-controlled Play Store feature
   graphic source and store asset notes, then extended the Play Store readiness
   check to require those source assets.
+- Added `android/export-store-assets.bat` and `tools/StoreAssetExporter.java`
+  so `verify-release.bat` generates the Play Store feature graphic PNG under
+  `dist/store-assets/android/<version>/` before running readiness checks.
 - Hardened `MainActivityFlowTest` launch and scrolling helpers after slow AVD
   runs exposed false failures. The connected suite now waits on the foreground
   app window and uses a swipe fallback when UiAutomator does not expose a

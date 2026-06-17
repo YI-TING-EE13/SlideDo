@@ -109,6 +109,12 @@ checklist, feature graphic source, and pre-launch matrix are tracked in
 Store asset sources live under [`store-assets`](store-assets/); export and
 review final upload files before Play Console submission.
 
+To export the feature graphic upload PNG:
+
+```bat
+export-store-assets.bat
+```
+
 To check the repo-side Play Store readiness files after building release
 artifacts:
 
@@ -116,8 +122,8 @@ artifacts:
 check-play-store-readiness.bat
 ```
 
-The root `verify-release.bat` command runs this check after the Android release
-and desktop package steps.
+The root `verify-release.bat` command exports store assets and runs this check
+after the Android release and desktop package steps.
 
 To run the shared desktop/core JUnit tests from the repository root:
 
