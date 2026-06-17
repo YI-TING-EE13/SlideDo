@@ -462,6 +462,35 @@ Acceptance criteria:
 - Shared core tests remain unchanged unless a real rule gap is found.
 - `verify.bat` passes, and desktop compile/Javadocs remain warning-clean.
 
+Desktop/Android feature parity matrix:
+
+| Area | Android status | Desktop status | Platform difference / next step | Verification |
+| --- | --- | --- | --- | --- |
+| Shared puzzle rules | Uses shared `GameModel`; `move(Direction)` and `slideLineTo(row, col)` remain the only rule path. | Uses the same shared `GameModel`. | No known rule gap. Keep future puzzle behavior in shared core tests. | Root Gradle tests, connected Android whole-line/undo tests, desktop compile. |
+| Home / start | Native Home with Continue metadata, New Game, Beginner Guide, Practice Tutorial, How to Play, Settings, and Records. | Swing Home/start with New Game, Continue/Load, How to Play, Practice Tutorial, Records, and Preferences. | Android has a richer first-run beginner guide; desktop has equivalent help entry but no paged onboarding. This is acceptable for beta. | Android instrumentation Home tests; desktop home copy tests. |
+| Mode selection | Mode Select starts 3x3, 4x4, and 5x5 games and shows best record summaries. | Home/Game menu starts 3x3, 4x4, and 5x5 games and Records shows best summaries. | Presentation differs, available choices match. | Android mode-select instrumentation; desktop compile/manual smoke. |
+| Learning surfaces | First-run onboarding, visual How to Play, Quick Reminder, and interactive Practice Tutorial. | How to Play and Practice Tutorial dialogs use Android-aligned language. | Android remains more visual and interactive; desktop parity covers the same concepts. | Android onboarding/tutorial/how-to instrumentation; desktop help-content tests. |
+| Touch/mouse movement | Tap/swipe aligned tiles; whole-line slide counts as one move and one undo snapshot. | Mouse click/release movement plus keyboard controls; whole-line slide uses shared model. | Input method differs by platform, rule outcome matches. | Shared core tests, Android whole-line instrumentation, desktop smoke. |
+| Assist / hints | Assist menu can highlight movable tiles and offer solver playback. | Assist menu highlights movable tiles and supports solver playback. | Solver UI differs; solver-assisted wins do not update records on both platforms. | Android assist/results instrumentation; desktop result-copy tests. |
+| Save/load metadata | `AndroidGameStore` persists size, grid, initial grid, moves, elapsed, updated-at, active, solved, records, settings, and onboarding state. | Desktop JSON save persists size, grid, initial grid, moves, elapsed, updated-at, active, and solved; records live in user-data path. | Android includes mobile-only settings/onboarding; shared gameplay metadata is aligned. | Android store instrumentation, root save metadata tests. |
+| Settings / preferences | Haptic feedback, reduced motion, reset saved game, and reset records. | Reduced motion preference plus desktop records/save flows. | Haptics are Android-only; desktop has no vibration setting by design. | Android settings instrumentation; desktop preferences copy tests/manual smoke. |
+| Records | Per-size local best records, fewer moves then lower time, solver-assisted protection. | Per-size local best records with the same comparison and solver-assisted protection. | Aligned. | Android records/results instrumentation; desktop result and records tests. |
+| Results | Full Results screen with Play Again, New Size, Home, record status, and assisted wording. | Android-style Results dialog with Play Again, New Size, Home, record status, and assisted wording. | Surface type differs due to Swing dialogs vs Android screens, wording and actions align. | Android results instrumentation; desktop results copy tests. |
+| Accessibility | Board summaries, settings switch descriptions, and primary control descriptions exist. | Basic Swing labels/dialog text exist, but no full assistive-tech audit. | Both platforms still need broader manual accessibility review before public release. | Android accessibility instrumentation plus manual TalkBack/desktop review. |
+| Packaging / release | Debug build, connected tests, signed APK/AAB, Play readiness file check, screenshot smoke workflow. | Desktop ZIP and optional app-image package with user-data paths. | Android still needs real Play upload key and Play Console external assets; desktop package is not a signed installer. | `verify.bat`, `verify-connected.bat`, `verify-release.bat`, manual screenshot smoke. |
+
+Parity conclusion for current beta:
+
+- Android and desktop now expose comparable core gameplay, learning, records,
+  settings/preferences, assist hints, save/load, and completion flows.
+- Remaining gaps are release and platform polish, not shared puzzle behavior:
+  Android needs real Play upload signing, final store assets, privacy-policy URL,
+  manual accessibility/pre-launch passes, and optional crash reporting decision;
+  desktop needs signed installer planning only if the beta moves beyond ZIP /
+  app-image distribution.
+- Future repeat-play systems such as daily puzzle, achievements, progression,
+  and richer stats should be scoped for both front ends before implementation.
+
 ### Completed 2026-05-25 MVP Items
 
 ### 1. Add Android Instrumentation Tests
