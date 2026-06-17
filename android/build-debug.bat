@@ -12,6 +12,9 @@ call :clean_dir "%~dp0app\build\intermediates\merged_res_blame_folder\debug\merg
 call :clean_dir "%~dp0app\build\intermediates\merged_res_blame_folder\release\mergeReleaseResources"
 call :clean_dir "%~dp0app\build\intermediates\packaged_res\debug\packageDebugResources"
 call :clean_dir "%~dp0app\build\intermediates\packaged_res\release\packageReleaseResources"
+call :clean_dir "%~dp0app\build\intermediates\javac\debug\compileDebugJavaWithJavac\classes"
+call :clean_dir "%~dp0app\build\intermediates\javac\debugAndroidTest\compileDebugAndroidTestJavaWithJavac\classes"
+call :clean_dir "%~dp0app\build\intermediates\javac\release\compileReleaseJavaWithJavac\classes"
 
 if "%~1"=="" (
     call "%~dp0gradlew.bat" :app:assembleDebug

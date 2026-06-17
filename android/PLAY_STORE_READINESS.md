@@ -88,7 +88,7 @@ Suggested tags/categories:
 Recommended screenshot set:
 
 1. Home with Continue metadata.
-2. Mode Select showing 3x3, 4x4, and 5x5 choices.
+2. Mode Select showing 3x3, 4x4, and 5x5 choices with session guidance.
 3. Active 3x3 game with compact controls.
 4. Practice Tutorial highlighting a guided move.
 5. Results screen with record wording.

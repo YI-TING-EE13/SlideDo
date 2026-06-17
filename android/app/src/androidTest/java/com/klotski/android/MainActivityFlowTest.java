@@ -203,6 +203,11 @@ public class MainActivityFlowTest {
         assertNotNull(findById("mode_3_button"));
         assertNotNull(findById("mode_4_button"));
         assertNotNull(findById("mode_5_button"));
+        assertTrue(waitForId("mode_3_session_text").getText().contains("Recommended first puzzle"));
+        assertTrue(waitForId("mode_4_session_text").getText().contains("5-10 minutes"));
+        assertTrue(waitForId("mode_5_session_text").getText().contains("longer focused play"));
+        waitForContentDescriptionContaining("mode_3_button", "Recommended first puzzle");
+        waitForContentDescriptionContaining("mode_4_button", "Best: --");
 
         clickId(R.id.mode_4_button);
         waitForId("game_root");

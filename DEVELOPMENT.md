@@ -324,9 +324,10 @@ planning layer above implementation tickets.
   Guide, Practice Tutorial, How to Play, Settings, and Records are clear.
   Records now explains that only player solves count, fewer moves rank first,
   ties use faster time, and assisted wins are excluded from best records.
-- Mode Select communicates size and rough difficulty, but it does not yet show
-  expected session length, scramble difficulty, or recommended first choice for
-  new players.
+- Mode Select communicates size, rough difficulty, local best record, expected
+  session length, and the recommended first choice for new players. It still
+  does not expose scramble-depth difficulty because scramble generation remains
+  intentionally simple for the current beta.
 - How to Play now includes small static board examples for the solved goal,
   adjacent tap moves, and whole-line slides. It still needs richer visual
   examples for swipe, undo, restart, and solver-assisted completion rules.
@@ -339,11 +340,11 @@ planning layer above implementation tickets.
   context. Longer-term, the app needs a clearer navigation model before adding
   Daily Puzzle, progression, and deeper Stats surfaces.
 - Current persistence is adequate for a simple casual game: one autosave, manual
-  Save/Load, last selected mode, and per-size records. It is not yet a polished
-  product save system because it still lacks multiple puzzle slots, save
-  freshness display in the UI, and cloud/back-up strategy. Save payloads now
-  include explicit updated-at, size, moves, elapsed, active, and solved
-  metadata for future Continue and release diagnostics.
+  Save/Load, last selected mode, visible Continue metadata, and per-size
+  records. It is not yet a polished product save system because it still lacks
+  multiple puzzle slots and a cloud/back-up strategy. Save payloads include
+  explicit updated-at, size, moves, elapsed, active, and solved metadata for
+  Continue and release diagnostics.
 - The app does not yet have audio, themes, crash reporting, analytics, reviewed
   store screenshots, or a published privacy policy URL. Release signing
   injection, versioning, release notes, adaptive launcher icons, feature
@@ -702,8 +703,8 @@ Recommended scope:
   and Settings once the app has a stable visual language.
 - Strengthen Home as a game entry screen with a small playable board preview or
   animated tile motif instead of only text and buttons.
-- Make Mode Select more informative: show best record, difficulty, estimated
-  solve length, and recommended first mode.
+- [x] Make Mode Select more informative: show best record, difficulty,
+  estimated session length, and recommended first mode.
 - Make in-game controls feel compact and native: keep primary actions visible,
   move rare actions behind Menu, and avoid exposing solver terminology too early.
 - Separate Assist from Solver. Assist should first offer one-step hints or
@@ -737,7 +738,7 @@ Recommended scope:
   if those learning flows grow beyond their current small controller surface.
 - [x] Harden connected instrumentation helpers for slow emulator launches and
   How to Play scrolling so the suite is less dependent on transient AVD timing.
-- Add stable identifiers or test hooks for important Android controls so
+- [x] Add stable identifiers or test hooks for important Android controls so
   instrumentation tests do not rely on text or screen coordinates.
 - [x] Add a small Android Activity state model for screen, info return target,
   first-run/tutorial page state, game-started state, and pending results.
@@ -870,8 +871,11 @@ Priority: Low to Medium
   app window and uses a swipe fallback when UiAutomator does not expose a
   scrollable container.
 - Hardened `android/build-debug.bat` against Windows file-lock false failures by
-  clearing common generated resource/package output directories before Gradle
-  builds.
+  clearing common generated resource/package and javac class output directories
+  before Gradle builds.
+- Improved Android Mode Select release polish by adding expected session length,
+  first-puzzle guidance, richer card content descriptions, and stable text IDs
+  for instrumentation coverage.
 
 ### 2026-06-16
 

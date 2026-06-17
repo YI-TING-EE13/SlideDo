@@ -28,7 +28,8 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
   - Android opens on Home with Continue, New Game, Beginner Guide, Practice Tutorial, How to Play, Settings, and Records.
   - First-run onboarding introduces the goal, tap/swipe input, whole-line slides, undo/restart, and record rules.
   - Practice Tutorial guides one first move, highlights movable aligned tiles, and demonstrates a whole-line slide through the shared model.
-  - Mode Select starts 3x3, 4x4, or 5x5 games after the player chooses a size.
+  - Mode Select starts 3x3, 4x4, or 5x5 games and shows difficulty, expected
+    session length, recommended first mode, and local best records.
   - Visual How to Play examples and an in-game Quick Reminder explain the key movement rules.
   - Whole-line tap behavior maps naturally to touch screens.
   - One user gesture counts as one move.
@@ -325,7 +326,11 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
 - Desktop ZIP package and optional `jpackage` app-image generation through `package-desktop.bat`.
 - Release notes/version matching through `version.properties` and `release-notes/<version>.md`.
 - Android lint with no reported issues during the latest local run.
-- Android instrumentation tests for onboarding, Home launch, Practice Tutorial, mode selection, Continue metadata, How to Play, Settings, Results, Assist hints, whole-line movement, undo, save/load persistence, app-state store behavior, Activity state/navigation helpers, rotation, and solver-assisted record protection.
+- Android instrumentation tests for onboarding, Home launch, Practice Tutorial,
+  Mode Select guidance and accessibility text, Continue metadata, How to Play,
+  Settings, Results, Assist hints, whole-line movement, undo, save/load
+  persistence, app-state store behavior, Activity state/navigation helpers,
+  rotation, and solver-assisted record protection.
 - Connected Android instrumentation helpers now wait for the foreground app
   window and fall back to direct swipe scrolling for long help content, reducing
   false failures on slow emulator runs.

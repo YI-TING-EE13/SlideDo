@@ -14,7 +14,8 @@ an emulator or connected Android device.
 - First-run onboarding with Skip and Start 3x3 actions
 - Interactive Practice Tutorial for the first move, movable aligned-tile
   highlights, and whole-line slide practice
-- Mode Select for 3x3, 4x4, and 5x5 games
+- Mode Select for 3x3, 4x4, and 5x5 games with difficulty labels, expected
+  session length, first-puzzle guidance, and local best records
 - Visual How to Play, Beginner Guide, Quick Reminder, and Records screens
 - Tap a tile in the same row/column as the blank space to slide one or more tiles
 - Swipe a movable tile toward the blank space
@@ -51,8 +52,9 @@ an emulator or connected Android device.
 - Results screen with Play Again, New Size, Home, and solver-assisted wording
 - BFS, A*, and IDA* solver controls in Assist with warnings for expensive board sizes
 - Solver-assisted completions do not overwrite player best records
-- Android instrumentation coverage for the main navigation, Continue metadata,
-  Activity state/navigation helpers, and gameplay flows
+- Android instrumentation coverage for the main navigation, Mode Select
+  guidance, Continue metadata, Activity state/navigation helpers, and gameplay
+  flows
 - Connected test helpers wait for the foreground app window and include a swipe
   fallback for long help screens to reduce slow-emulator false failures
 

@@ -55,7 +55,11 @@
     <string name="mode_easy_detail">Short sessions and fast solves.</string>
     <string name="mode_classic_detail">The standard SlideDo challenge.</string>
     <string name="mode_expert_detail">More tiles, longer plans, higher risk.</string>
+    <string name="mode_easy_session">Session: usually 1-3 minutes. Recommended first puzzle.</string>
+    <string name="mode_classic_session">Session: usually 5-10 minutes.</string>
+    <string name="mode_expert_session">Session: longer focused play.</string>
     <string name="mode_best_label">Best: %1$s</string>
+    <string name="mode_card_accessibility">%1$dx%2$d Puzzle. %3$s. %4$s %5$s Best: %6$s.</string>
     <string name="how_title">How to Play</string>
     <string name="how_subtitle">Use the empty cell to pull tiles into order.</string>
     <string name="how_goal_title">Goal</string>
