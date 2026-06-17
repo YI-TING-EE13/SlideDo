@@ -344,8 +344,10 @@ planning layer above implementation tickets.
   freshness display in the UI, and cloud/back-up strategy. Save payloads now
   include explicit updated-at, size, moves, elapsed, active, and solved
   metadata for future Continue and release diagnostics.
-- The app does not yet have audio, themes, crash reporting, analytics, Play
-  Store metadata, privacy disclosures, or release signing planning.
+- The app does not yet have audio, themes, crash reporting, analytics, feature
+  graphic assets, broad store screenshots, or a published privacy policy URL.
+  Release signing injection, versioning, release notes, adaptive launcher icons,
+  and Play Store readiness drafts now exist.
 - As of this pass, SlideDo is no longer just a raw feature demo, but it is not
   yet a complete mobile game product. The core gameplay works; the missing work
   is mostly onboarding, polish, product systems, release readiness, and
@@ -371,9 +373,10 @@ planning layer above implementation tickets.
   primary game-control descriptions exist, but the app still needs a manual
   TalkBack pass, larger touch-target review, color-contrast review, and broader
   reduced-motion validation.
-- Missing Play Store readiness systems: real upload-key handoff, app icon
-  polish, adaptive icons, store screenshots, privacy policy, data safety notes,
-  crash reporting, and broad versioning discipline after the first beta cycle.
+- Missing Play Store readiness systems: real upload-key handoff, final feature
+  graphic, reviewed store screenshots, published privacy policy URL, manual
+  accessibility sign-off, optional crash reporting/privacy update, and broad
+  versioning discipline after the first beta cycle.
 
 ## Roadmap And Planning
 
@@ -745,12 +748,17 @@ Priority: Low to Medium
 
 ### Google Play Readiness Planning
 
-- Prepare adaptive launcher icon, feature graphic, screenshots, and short/long
-  store descriptions that show the actual game UI.
-- Create a privacy policy before adding analytics, crash reporting, cloud save,
-  ads, or account features.
-- Define Data Safety answers based on actual collection behavior; keep local-only
-  gameplay data local unless there is a clear product reason to sync it.
+- [x] Prepare adaptive launcher icon resources.
+- [x] Draft short/long store descriptions, privacy policy text, Data Safety
+  answers, store asset checklist, and pre-launch matrix in
+  `android/PLAY_STORE_READINESS.md`.
+- Prepare final feature graphic and reviewed screenshots that show the actual
+  game UI.
+- Publish a privacy policy URL before store submission and before adding
+  analytics, crash reporting, cloud save, ads, or account features.
+- Keep Data Safety answers aligned with actual collection behavior; keep
+  local-only gameplay data local unless there is a clear product reason to sync
+  it.
 - Add crash reporting and basic performance telemetry only after privacy wording
   and user consent expectations are settled.
 - [x] Add release signing injection, Play App Bundle generation, versioning, and
@@ -795,6 +803,11 @@ Priority: Low to Medium
   `AndroidSettingsScreen`, and `AndroidResultsScreen`. The activity still owns
   navigation decisions, persistence writes, settings application, and record
   comparison text.
+- Added Android adaptive and round launcher icon resources, switched the
+  manifest icon to the adaptive `@mipmap/ic_launcher`, and documented Play
+  Store readiness in `android/PLAY_STORE_READINESS.md` with listing copy,
+  privacy policy draft, Data Safety draft, screenshot guidance, and a
+  pre-launch test matrix.
 - Hardened `MainActivityFlowTest` launch and scrolling helpers after slow AVD
   runs exposed false failures. The connected suite now waits on the foreground
   app window and uses a swipe fallback when UiAutomator does not expose a

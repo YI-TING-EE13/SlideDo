@@ -103,6 +103,10 @@ For real Play Store builds, copy `release.properties.example` to
 temporary test key only when no signing configuration is present so local release
 verification can still run.
 
+Play Store listing copy, privacy policy draft, Data Safety draft, asset
+checklist, and pre-launch matrix are tracked in
+[`PLAY_STORE_READINESS.md`](PLAY_STORE_READINESS.md).
+
 To run the shared desktop/core JUnit tests from the repository root:
 
 ```bat

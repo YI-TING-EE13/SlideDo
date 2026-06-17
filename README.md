@@ -432,6 +432,9 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
 - Desktop/mobile player-facing parity MVP is complete for Home/start, Records, Preferences, Results, How to Play, Practice Tutorial, and Assist hints.
 - Save files now include release-readiness metadata and desktop saves now live in the user-data directory.
 - Signed Android release APK/AAB and desktop ZIP/app-image packaging scripts are available.
+- Android Play Store readiness drafts, adaptive launcher icons, Data Safety
+  notes, privacy policy draft, screenshot guidance, and pre-launch matrix are
+  tracked in `android/PLAY_STORE_READINESS.md`.
 - Split larger UI/controller code where it supports future shared progression work.
 - Add daily puzzle, progression loops, and achievements after both front ends have comparable product surfaces.
 - Add stronger completion feedback for solves and records.
@@ -439,6 +442,7 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
 - Add sound and theme settings after those systems exist.
 - Continue broader accessibility review with TalkBack, touch-target, color-contrast, and reduced-motion validation.
 - Replace temporary release signing with a real Play upload key before store distribution.
+- Publish and review the privacy policy URL before store distribution.
 - Consider moving desktop launch/package tasks fully into Gradle.
 
 ---
