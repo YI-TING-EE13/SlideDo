@@ -752,6 +752,10 @@ Priority: Low to Medium
 - [x] Draft short/long store descriptions, privacy policy text, Data Safety
   answers, store asset checklist, and pre-launch matrix in
   `android/PLAY_STORE_READINESS.md`.
+- [x] Add `android/check-play-store-readiness.bat` and wire it into
+  `verify-release.bat` so repo-side store files, adaptive icons, privacy/Data
+  Safety assumptions, release artifacts, screenshot workflow, and tracked-secret
+  checks are verified together.
 - Prepare final feature graphic and reviewed screenshots that show the actual
   game UI.
 - Publish a privacy policy URL before store submission and before adding
@@ -808,6 +812,11 @@ Priority: Low to Medium
   Store readiness in `android/PLAY_STORE_READINESS.md` with listing copy,
   privacy policy draft, Data Safety draft, screenshot guidance, and a
   pre-launch test matrix.
+- Added `android/check-play-store-readiness.bat` and wired it into
+  `verify-release.bat` after Android and desktop release artifacts are built.
+  The check validates repo-side Play Store drafts, adaptive icon resources,
+  Data Safety assumptions, release artifacts, screenshot workflow, and that
+  release signing secrets are not tracked.
 - Hardened `MainActivityFlowTest` launch and scrolling helpers after slow AVD
   runs exposed false failures. The connected suite now waits on the foreground
   app window and uses a swipe fallback when UiAutomator does not expose a

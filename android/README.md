@@ -107,6 +107,16 @@ Play Store listing copy, privacy policy draft, Data Safety draft, asset
 checklist, and pre-launch matrix are tracked in
 [`PLAY_STORE_READINESS.md`](PLAY_STORE_READINESS.md).
 
+To check the repo-side Play Store readiness files after building release
+artifacts:
+
+```bat
+check-play-store-readiness.bat
+```
+
+The root `verify-release.bat` command runs this check after the Android release
+and desktop package steps.
+
 To run the shared desktop/core JUnit tests from the repository root:
 
 ```bat

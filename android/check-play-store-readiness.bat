@@ -1,0 +1,124 @@
+@echo off
+setlocal enabledelayedexpansion
+
+set "ANDROID_ROOT=%~dp0"
+set "ANDROID_ROOT=%ANDROID_ROOT:~0,-1%"
+for %%i in ("%ANDROID_ROOT%\..") do set "REPO_ROOT=%%~fi"
+set "VERSION_FILE=%REPO_ROOT%\version.properties"
+set "MANIFEST=%ANDROID_ROOT%\app\src\main\AndroidManifest.xml"
+set "FAIL=0"
+
+echo Checking Android Play Store readiness files.
+
+if exist "%VERSION_FILE%" (
+    for /f "tokens=1,* delims==" %%a in ('findstr /B "VERSION_NAME=" "%VERSION_FILE%"') do set "VERSION_NAME=%%b"
+    for /f "tokens=1,* delims==" %%a in ('findstr /B "VERSION_CODE=" "%VERSION_FILE%"') do set "VERSION_CODE=%%b"
+)
+
+echo [1/6] Release metadata
+call :require_file "%VERSION_FILE%" "version.properties"
+if not defined VERSION_NAME (
+    echo FAIL: VERSION_NAME is missing from version.properties.
+    set "FAIL=1"
+) else (
+    echo OK: VERSION_NAME=%VERSION_NAME%
+)
+if not defined VERSION_CODE (
+    echo FAIL: VERSION_CODE is missing from version.properties.
+    set "FAIL=1"
+) else (
+    echo OK: VERSION_CODE=%VERSION_CODE%
+)
+if defined VERSION_NAME call :require_file "%REPO_ROOT%\release-notes\%VERSION_NAME%.md" "release notes for %VERSION_NAME%"
+
+echo [2/6] Store readiness drafts
+call :require_file "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "Play Store readiness draft"
+call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "## Store Listing Draft" "store listing draft section"
+call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "## Privacy Policy Draft" "privacy policy draft section"
+call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "## Data Safety Draft" "Data Safety draft section"
+call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "## Pre-launch Device Matrix" "pre-launch matrix section"
+call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "## Release Checklist" "release checklist section"
+
+echo [3/6] Launcher icons and manifest
+call :require_file "%MANIFEST%" "AndroidManifest.xml"
+call :require_text "%MANIFEST%" "@mipmap/ic_launcher" "manifest adaptive launcher icon"
+call :require_text "%MANIFEST%" "android:roundIcon" "manifest round launcher icon"
+call :require_file "%ANDROID_ROOT%\app\src\main\res\drawable\ic_launcher_foreground.xml" "adaptive icon foreground"
+call :require_file "%ANDROID_ROOT%\app\src\main\res\mipmap-anydpi-v26\ic_launcher.xml" "adaptive launcher icon"
+call :require_file "%ANDROID_ROOT%\app\src\main\res\mipmap-anydpi-v26\ic_launcher_round.xml" "round adaptive launcher icon"
+call :require_file "%ANDROID_ROOT%\app\src\main\res\values\colors.xml" "launcher icon background color"
+
+echo [4/6] Privacy and Data Safety assumptions
+findstr /C:"android.permission.INTERNET" "%MANIFEST%" >nul 2>nul
+if not errorlevel 1 (
+    echo FAIL: AndroidManifest.xml declares INTERNET, but Data Safety draft says the app has no online services.
+    set "FAIL=1"
+) else (
+    echo OK: AndroidManifest.xml does not declare INTERNET.
+)
+call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "no ads, accounts, analytics, cloud save, or online services" "local-only product claim"
+call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "Does the app collect or share user data? No." "Data Safety collection answer"
+
+echo [5/6] Release artifacts and screenshot workflow
+call :require_file "%ANDROID_ROOT%\app\build\outputs\apk\release\app-release.apk" "release APK"
+call :require_file "%ANDROID_ROOT%\app\build\outputs\bundle\release\app-release.aab" "release AAB"
+call :require_file "%ANDROID_ROOT%\screenshot-smoke.bat" "screenshot smoke workflow"
+
+echo [6/6] Sensitive release files
+git -C "%REPO_ROOT%" rev-parse --is-inside-work-tree >nul 2>nul
+if errorlevel 1 (
+    echo WARN: Git is not available; skipped tracked secret checks.
+) else (
+    git -C "%REPO_ROOT%" ls-files --error-unmatch android/release.properties >nul 2>nul
+    if not errorlevel 1 (
+        echo FAIL: android/release.properties is tracked; release signing secrets must remain local.
+        set "FAIL=1"
+    ) else (
+        echo OK: android/release.properties is not tracked.
+    )
+
+    set "TRACKED_KEYSTORE="
+    for /f "delims=" %%f in ('git -C "%REPO_ROOT%" ls-files "*.jks" "*.keystore" 2^>nul') do (
+        set "TRACKED_KEYSTORE=1"
+        echo FAIL: tracked keystore-like file: %%f
+    )
+    if defined TRACKED_KEYSTORE (
+        set "FAIL=1"
+    ) else (
+        echo OK: no tracked .jks or .keystore files.
+    )
+)
+
+echo.
+echo Manual blockers that this local check cannot complete:
+echo   - Configure and verify the real Play upload key before store upload.
+echo   - Publish and review the privacy policy URL.
+echo   - Capture, review, and select final Play Store screenshots.
+echo   - Run manual TalkBack, touch-target, contrast, and reduced-motion review.
+echo   - Run the pre-launch device matrix in PLAY_STORE_READINESS.md.
+
+if "%FAIL%"=="0" (
+    echo Play Store readiness file check passed.
+) else (
+    echo Play Store readiness file check failed.
+)
+exit /b %FAIL%
+
+:require_file
+if exist "%~1" (
+    echo OK: %~2
+) else (
+    echo FAIL: missing %~2: %~1
+    set "FAIL=1"
+)
+exit /b 0
+
+:require_text
+findstr /C:"%~2" "%~1" >nul 2>nul
+if errorlevel 1 (
+    echo FAIL: missing %~3 in %~1
+    set "FAIL=1"
+) else (
+    echo OK: %~3
+)
+exit /b 0

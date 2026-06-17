@@ -179,7 +179,10 @@ Before uploading to Play Console:
 
 - Run `verify.bat`.
 - Run `verify-connected.bat` on a healthy emulator or device.
-- Run `verify-release.bat`.
+- Run `verify-release.bat`; it builds Android and desktop release artifacts and
+  runs `android/check-play-store-readiness.bat`.
+- Optionally run `check-play-store-readiness.bat` directly after release
+  artifacts exist when only Play Store files changed.
 - Confirm `app-release.aab` uses the real upload key, not the local temporary
   test key.
 - Capture and review the screenshot smoke set.

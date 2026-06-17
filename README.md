@@ -370,11 +370,14 @@ Android instrumentation tests on a connected emulator or device:
 verify-connected.bat
 ```
 
-Release artifact verification:
+Release artifact and Play Store readiness verification:
 
 ```bat
 verify-release.bat
 ```
+
+This builds signed Android APK/AAB artifacts, the desktop package, and runs the
+Android Play Store readiness file check.
 
 Repeatable Android screenshot smoke capture:
 
