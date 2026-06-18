@@ -78,8 +78,11 @@ call :require_file "%PACKAGE_DIR%\RELEASE_NOTES.md" "desktop package release not
 
 echo [3/5] Package text
 call :require_text "%PACKAGE_DIR%\README.txt" "Run SlideDo.bat to start the desktop app." "desktop package start instruction"
+call :require_text "%PACKAGE_DIR%\README.txt" "Java 17 or newer available on PATH" "desktop Java runtime instruction"
 call :require_text "%PACKAGE_DIR%\README.txt" "Saves and records are stored under" "desktop save location instruction"
 call :require_text "%PACKAGE_DIR%\README.txt" "\SlideDo on Windows." "desktop Windows save directory"
+call :require_text "%PACKAGE_DIR%\README.txt" "What to test:" "desktop package tester checklist"
+call :require_text "%PACKAGE_DIR%\README.txt" "Known limits:" "desktop package known limits"
 call :require_text "%PACKAGE_DIR%\RELEASE_NOTES.md" "# SlideDo %VERSION_NAME%" "desktop package release notes version"
 
 echo [4/5] ZIP contents

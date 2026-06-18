@@ -109,7 +109,8 @@ dist/desktop/SlideDo-<version>.zip
 
 When a JDK with `jpackage` is available, the script also creates a Windows
 app-image under `dist/desktop/app-image/SlideDo`. The ZIP includes
-`SlideDo.jar`, `SlideDo.bat`, a package README, and the matching release notes.
+`SlideDo.jar`, `SlideDo.bat`, a tester-ready package README with runtime
+requirements, smoke-test prompts, known limits, and the matching release notes.
 
 ### Desktop Controls
 
@@ -477,6 +478,7 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
 - Continue broader accessibility review with TalkBack, touch-target, color-contrast, and reduced-motion validation.
 - Replace temporary release signing with a real Play upload key before store distribution.
 - Publish and review the privacy policy URL before store distribution.
+- Complete the desktop beta manual smoke and accessibility reviews from the extracted ZIP before opening public testing.
 - Consider moving desktop launch/package tasks fully into Gradle.
 
 ---

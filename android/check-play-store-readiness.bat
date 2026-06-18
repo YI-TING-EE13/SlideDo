@@ -103,6 +103,8 @@ call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "Feature graphic sou
 call :require_text "%ANDROID_ROOT%\store-assets\README.md" "feature-graphic-1024x500.svg" "feature graphic source documentation"
 call :require_file "%ANDROID_ROOT%\screenshot-smoke.bat" "screenshot smoke workflow"
 call :require_file "%ANDROID_ROOT%\check-screenshot-set.bat" "screenshot set verification workflow"
+call :require_text "%ANDROID_ROOT%\check-screenshot-set.bat" "Manual review status: pending" "screenshot manifest review status"
+call :require_text "%ANDROID_ROOT%\check-screenshot-set.bat" "Review checklist:" "screenshot manifest review checklist"
 call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "01-home.png" "required Home screenshot entry"
 call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "07-results-or-current.png" "required Results/current screenshot entry"
 

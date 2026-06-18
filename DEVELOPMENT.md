@@ -846,6 +846,9 @@ Priority: Low to Medium
   and that generated desktop packages/local saves are not tracked.
 - [x] Wire the desktop public beta readiness check into `verify-release.bat`
   after package generation and release manifest creation.
+- [x] Expand the generated desktop ZIP `README.txt` with runtime requirements,
+  tester smoke prompts, save-location notes, and known limits, then verify that
+  content in the desktop readiness check.
 - Choose the public beta download page and issue-reporting channel.
 - Decide whether the first desktop public beta ships as ZIP/app-image only or
   needs a signed installer before wider distribution.
@@ -886,6 +889,11 @@ Priority: Low to Medium
 - Expanded Android Play Store readiness with screenshot review, accessibility
   review, and pre-launch evidence worksheets so the remaining store work can be
   recorded consistently after manual review.
+- Expanded the generated desktop package README so public beta testers get
+  runtime requirements, smoke-test prompts, save-location notes, and known
+  limits inside the ZIP itself.
+- Expanded Android screenshot smoke manifests with screenshot purpose labels and
+  manual review checklist placeholders for Play Console handoff.
 
 ### 2026-06-17
 

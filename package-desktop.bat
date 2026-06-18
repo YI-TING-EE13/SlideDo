@@ -68,9 +68,29 @@ if errorlevel 1 exit /b 1
     echo.
     echo Run SlideDo.bat to start the desktop app.
     echo.
+    echo Requirements:
+    echo - Windows 10 or newer
+    echo - Java 17 or newer available on PATH
+    echo.
     echo Saves and records are stored under %%APPDATA%%\SlideDo on Windows.
+    echo Other platforms use ^<user.home^>/.slidedo.
     echo For portable testing, run:
     echo   java -Dslidedo.data.dir=PATH_TO_DATA -jar SlideDo.jar
+    echo.
+    echo What to test:
+    echo - Start 3x3, 4x4, and 5x5 puzzles from Home.
+    echo - Click adjacent and non-adjacent aligned tiles.
+    echo - Confirm whole-line slides count as one move.
+    echo - Undo after a whole-line slide.
+    echo - Restart, Save, relaunch, and Load.
+    echo - Open How to Play, Practice Tutorial, Records, and Preferences.
+    echo - Toggle reduced motion and confirm puzzle rules do not change.
+    echo - Solve a small puzzle and review Results wording.
+    echo.
+    echo Known limits:
+    echo - This beta ZIP is not a signed installer.
+    echo - Saves and records are local to this computer.
+    echo - Solver actions can be expensive on larger boards.
 ) > "%PACKAGE_DIR%\README.txt"
 
 copy "%ROOT%\release-notes\%VERSION_NAME%.md" "%PACKAGE_DIR%\RELEASE_NOTES.md" >nul

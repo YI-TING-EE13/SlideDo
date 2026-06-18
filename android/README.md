@@ -172,7 +172,9 @@ The script launches the app and stores PNG files under
 `../screenshots/android/<version>` as you navigate through Home, Mode Select,
 Game, How to Play, Settings, Records, and Results/current screen. It then runs
 `check-screenshot-set.bat` to verify that every expected PNG is readable and at
-least 320x320, and writes `manifest.txt` beside the screenshots.
+least 320x320, and writes `manifest.txt` beside the screenshots. The manifest
+includes screenshot purpose labels and a manual review checklist for Play
+Console handoff.
 
 To verify an existing screenshot set without recapturing:
 
