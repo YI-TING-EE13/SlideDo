@@ -461,6 +461,9 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
   source/export workflow, Data Safety notes, privacy policy draft, screenshot
   guidance, and pre-launch matrix are tracked in
   `android/PLAY_STORE_READINESS.md`.
+- First public Android beta is intentionally local-only: no analytics, crash
+  reporting, telemetry, ads SDKs, accounts, cloud save, or third-party
+  tracking.
 - The desktop/Android feature parity matrix is maintained in
   `DEVELOPMENT.md` under the Desktop/Mobile Parity Pass section.
 - Split larger UI/controller code where it supports future shared progression work.

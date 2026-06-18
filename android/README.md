@@ -122,6 +122,8 @@ verification can still run.
 Play Store listing copy, privacy policy draft, Data Safety draft, asset
 checklist, feature graphic source, and pre-launch matrix are tracked in
 [`PLAY_STORE_READINESS.md`](PLAY_STORE_READINESS.md).
+The first public Android beta is intentionally local-only: no analytics, crash
+reporting, telemetry, ads SDKs, accounts, cloud save, or third-party tracking.
 Store asset sources live under [`store-assets`](store-assets/); export and
 review final upload files before Play Console submission.
 

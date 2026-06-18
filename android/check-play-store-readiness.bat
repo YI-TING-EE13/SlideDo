@@ -57,6 +57,7 @@ call :require_file "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "Play Store readines
 call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "## Store Listing Draft" "store listing draft section"
 call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "## Privacy Policy Draft" "privacy policy draft section"
 call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "## Data Safety Draft" "Data Safety draft section"
+call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "## Telemetry And Crash Reporting Decision" "telemetry decision section"
 call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "## Pre-launch Device Matrix" "pre-launch matrix section"
 call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "## Release Checklist" "release checklist section"
 
@@ -77,7 +78,9 @@ if not errorlevel 1 (
 ) else (
     echo OK: AndroidManifest.xml does not declare INTERNET.
 )
-call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "no ads, accounts, analytics, cloud save, or online services" "local-only product claim"
+call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "Decision for `0.2.0-beta.1`: do not include analytics, crash reporting," "first beta telemetry decision"
+call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "telemetry, ads SDKs, accounts, cloud save, or third-party tracking." "first beta local-only telemetry scope"
+call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "no ads, accounts, analytics, crash reporting, telemetry, cloud" "local-only product claim"
 call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "Does the app collect or share user data? No." "Data Safety collection answer"
 
 echo [5/7] Store asset sources and screenshot workflow

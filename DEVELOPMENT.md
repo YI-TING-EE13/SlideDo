@@ -345,10 +345,12 @@ planning layer above implementation tickets.
   multiple puzzle slots and a cloud/back-up strategy. Save payloads include
   explicit updated-at, size, moves, elapsed, active, and solved metadata for
   Continue and release diagnostics.
-- The app does not yet have audio, themes, crash reporting, analytics, reviewed
-  store screenshots, or a published privacy policy URL. Release signing
-  injection, versioning, release notes, adaptive launcher icons, feature
-  graphic source/export, and Play Store readiness drafts now exist.
+- The app does not yet have audio, themes, reviewed store screenshots, or a
+  published privacy policy URL. First beta analytics, crash reporting,
+  telemetry, ads SDKs, accounts, cloud save, and third-party tracking are
+  intentionally deferred so the Android beta remains local-only. Release
+  signing injection, versioning, release notes, adaptive launcher icons,
+  feature graphic source/export, and Play Store readiness drafts now exist.
 - As of this pass, SlideDo is no longer just a raw feature demo, but it is not
   yet a complete mobile game product. The core gameplay works; the missing work
   is mostly onboarding, polish, product systems, release readiness, and
@@ -376,8 +378,9 @@ planning layer above implementation tickets.
   reduced-motion validation.
 - Missing Play Store readiness systems: real upload-key handoff, reviewed
   feature graphic upload, reviewed store screenshots, published privacy policy
-  URL, manual accessibility sign-off, optional crash reporting/privacy update,
-  and broad versioning discipline after the first beta cycle.
+  URL, manual accessibility sign-off, optional future crash
+  reporting/privacy update, and broad versioning discipline after the first
+  beta cycle.
 
 ## Roadmap And Planning
 
@@ -486,9 +489,8 @@ Parity conclusion for current beta:
   settings/preferences, assist hints, save/load, and completion flows.
 - Remaining gaps are release and platform polish, not shared puzzle behavior:
   Android needs real Play upload signing, final store assets, privacy-policy URL,
-  manual accessibility/pre-launch passes, and optional crash reporting decision;
-  desktop needs signed installer planning only if the beta moves beyond ZIP /
-  app-image distribution.
+  and manual accessibility/pre-launch passes; desktop needs signed installer
+  planning only if the beta moves beyond ZIP / app-image distribution.
 - Future repeat-play systems such as daily puzzle, achievements, progression,
   and richer stats should be scoped for both front ends before implementation.
 
@@ -799,6 +801,9 @@ Priority: Low to Medium
   it into `verify-release.bat`.
 - [x] Add a release artifact manifest with SHA-256 hashes for Android, desktop,
   store asset, and release-note handoff files.
+- [x] Decide the first beta telemetry posture: `0.2.0-beta.1` ships without
+  analytics, crash reporting, telemetry, ads SDKs, accounts, cloud save, or
+  third-party tracking, and the readiness check now verifies that decision.
 - Review the generated feature graphic upload file, then capture and review
   screenshots that show the actual game UI.
 - Publish a privacy policy URL before store submission and before adding
@@ -806,8 +811,9 @@ Priority: Low to Medium
 - Keep Data Safety answers aligned with actual collection behavior; keep
   local-only gameplay data local unless there is a clear product reason to sync
   it.
-- Add crash reporting and basic performance telemetry only after privacy wording
-  and user consent expectations are settled.
+- Add crash reporting and basic performance telemetry only after privacy
+  wording, Data Safety answers, release notes, and user consent expectations
+  are settled.
 - [x] Add release signing injection, Play App Bundle generation, versioning, and
   release notes workflow.
 - Replace temporary local release verification signing with the real Play upload
@@ -838,6 +844,15 @@ Priority: Low to Medium
   or Activity hierarchy checks where appropriate.
 - Re-ran `ci.bat`; the no-device verification and release readiness gate passed
   after the connected-test hardening work.
+- Locked the first beta Android telemetry posture as local-only: no analytics,
+  crash reporting, telemetry, ads SDKs, accounts, cloud save, or third-party
+  tracking. The Play Store readiness check now verifies the decision text and
+  local-only store claim before release handoff.
+- Hardened the Android rotation instrumentation check so it refreshes the
+  resumed `MainActivity` after configuration changes before asserting the game
+  board. A targeted rerun of `rotationKeepsCurrentGameScreen` passed, followed
+  by the full `verify-connected.bat` suite passing all 32 tests on
+  `emulator-5554`.
 
 ### 2026-06-17
 

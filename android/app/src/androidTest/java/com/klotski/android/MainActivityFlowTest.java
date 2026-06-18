@@ -19,6 +19,8 @@ import android.widget.TextView;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
+import androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry;
+import androidx.test.runner.lifecycle.Stage;
 import androidx.test.uiautomator.By;
 import androidx.test.uiautomator.UiDevice;
 import androidx.test.uiautomator.UiObject2;
@@ -32,6 +34,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.util.Collection;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
@@ -504,15 +507,13 @@ public class MainActivityFlowTest {
         writeSavedGame(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 0);
         launchApp();
         clickId(R.id.home_continue_button);
-        waitForId("game_board");
+        waitForActivityView(R.id.game_board);
 
         device.setOrientationLeft();
-        waitForId("game_board");
-        assertNotNull(findById("game_board"));
+        waitForGameBoardAfterRotation();
 
         device.setOrientationNatural();
-        waitForId("game_board");
-        assertNotNull(findById("game_board"));
+        waitForGameBoardAfterRotation();
     }
 
     private void launchApp() throws Exception {
@@ -647,6 +648,37 @@ public class MainActivityFlowTest {
             Thread.sleep(100);
         }
         assertActivityHasView(resourceId);
+    }
+
+    private void waitForGameBoardAfterRotation() throws Exception {
+        waitForForegroundApp();
+        instrumentation.waitForIdleSync();
+        waitForResumedMainActivity();
+        waitForActivityView(R.id.game_board);
+        assertActivityTextContains(R.id.game_title_text, "3x3 Puzzle");
+    }
+
+    private void waitForResumedMainActivity() throws InterruptedException {
+        long deadline = System.currentTimeMillis() + TIMEOUT_MS;
+        while (System.currentTimeMillis() < deadline) {
+            Activity[] resumedActivity = new Activity[1];
+            instrumentation.runOnMainSync(() -> {
+                Collection<Activity> resumedActivities = ActivityLifecycleMonitorRegistry.getInstance()
+                        .getActivitiesInStage(Stage.RESUMED);
+                for (Activity candidate : resumedActivities) {
+                    if (candidate instanceof MainActivity) {
+                        resumedActivity[0] = candidate;
+                        return;
+                    }
+                }
+            });
+            if (resumedActivity[0] != null) {
+                activity = resumedActivity[0];
+                return;
+            }
+            Thread.sleep(100);
+        }
+        fail("MainActivity did not resume after rotation");
     }
 
     private boolean activityHasView(int resourceId) {

@@ -27,8 +27,26 @@ publishing, and keep it aligned with the actual app behavior.
   below.
 - Run a manual accessibility pass covering TalkBack, touch targets, color
   contrast, and reduced motion.
-- Decide whether to add crash reporting or analytics. Do not add either until
-  the privacy policy and Data Safety answers are updated.
+
+## Telemetry And Crash Reporting Decision
+
+Decision for `0.2.0-beta.1`: do not include analytics, crash reporting,
+telemetry, ads SDKs, accounts, cloud save, or third-party tracking.
+
+Rationale:
+
+- Keep the first public Android beta local-only and simple to explain.
+- Keep the Data Safety answers and privacy policy draft aligned with actual app
+  behavior.
+- Avoid collecting device, diagnostic, or usage data before there is a reviewed
+  privacy policy URL and an explicit consent/product plan.
+
+Release guardrail:
+
+- Adding `android.permission.INTERNET`, analytics/crash SDK dependencies,
+  telemetry events, cloud sync, ads, accounts, or third-party tracking requires
+  updating this file, the privacy policy, Data Safety answers, store listing,
+  release notes, and the release-readiness checks before shipment.
 
 ## Store Listing Draft
 
@@ -61,7 +79,8 @@ Features:
 - Haptic and reduced-motion settings
 
 SlideDo stores gameplay state and records locally on your device. The current
-beta build has no ads, accounts, analytics, cloud save, or online services.
+beta build has no ads, accounts, analytics, crash reporting, telemetry, cloud
+save, or online services.
 ```
 
 Suggested tags/categories:
