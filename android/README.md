@@ -91,6 +91,10 @@ This runs `verify.bat` and `verify-release.bat`. CI release artifacts are
 verification outputs and use the temporary signing key unless real Play upload
 signing is explicitly configured.
 
+Latest local status: `..\ci.bat` passes, and `..\verify-connected.bat` passed
+all 32 connected instrumentation tests on `emulator-5554` after the Mode Select
+and rotation wait hardening.
+
 For Android build and lint only:
 
 ```bat

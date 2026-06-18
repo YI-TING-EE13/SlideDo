@@ -334,6 +334,10 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
 - Connected Android instrumentation helpers now wait for the foreground app
   window and fall back to direct swipe scrolling for long help content, reducing
   false failures on slow emulator runs.
+- Latest connected Android instrumentation run on `emulator-5554` passed all 32
+  tests after the Mode Select and rotation wait hardening.
+- Latest local `ci.bat` run passed the no-device verification and release
+  readiness gates.
 - Android emulator smoke testing for install/launch, Home visibility, whole-line movement, undo, restart, save/load, solver warning dialog, rotation, and background resume.
 
 ### Useful Commands

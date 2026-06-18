@@ -469,7 +469,7 @@ Desktop/Android feature parity matrix:
 | --- | --- | --- | --- | --- |
 | Shared puzzle rules | Uses shared `GameModel`; `move(Direction)` and `slideLineTo(row, col)` remain the only rule path. | Uses the same shared `GameModel`. | No known rule gap. Keep future puzzle behavior in shared core tests. | Root Gradle tests, connected Android whole-line/undo tests, desktop compile. |
 | Home / start | Native Home with Continue metadata, New Game, Beginner Guide, Practice Tutorial, How to Play, Settings, and Records. | Swing Home/start with New Game, Continue/Load, How to Play, Practice Tutorial, Records, and Preferences. | Android has a richer first-run beginner guide; desktop has equivalent help entry but no paged onboarding. This is acceptable for beta. | Android instrumentation Home tests; desktop home copy tests. |
-| Mode selection | Mode Select starts 3x3, 4x4, and 5x5 games and shows best record summaries. | Home/Game menu starts 3x3, 4x4, and 5x5 games and Records shows best summaries. | Presentation differs, available choices match. | Android mode-select instrumentation; desktop compile/manual smoke. |
+| Mode selection | Mode Select starts 3x3, 4x4, and 5x5 games with difficulty labels, expected session length, first-puzzle guidance, and best record summaries. | Home/Game menu starts 3x3, 4x4, and 5x5 games and Records shows best summaries. | Android has richer pre-game guidance; available choices and record summaries match. | Android mode-select instrumentation; desktop compile/manual smoke. |
 | Learning surfaces | First-run onboarding, visual How to Play, Quick Reminder, and interactive Practice Tutorial. | How to Play and Practice Tutorial dialogs use Android-aligned language. | Android remains more visual and interactive; desktop parity covers the same concepts. | Android onboarding/tutorial/how-to instrumentation; desktop help-content tests. |
 | Touch/mouse movement | Tap/swipe aligned tiles; whole-line slide counts as one move and one undo snapshot. | Mouse click/release movement plus keyboard controls; whole-line slide uses shared model. | Input method differs by platform, rule outcome matches. | Shared core tests, Android whole-line instrumentation, desktop smoke. |
 | Assist / hints | Assist menu can highlight movable tiles and offer solver playback. | Assist menu highlights movable tiles and supports solver playback. | Solver UI differs; solver-assisted wins do not update records on both platforms. | Android assist/results instrumentation; desktop result-copy tests. |
@@ -836,6 +836,8 @@ Priority: Low to Medium
 - Re-ran the full connected instrumentation suite on `emulator-5554`; all 32
   tests passed after replacing fragile root-container waits with visible board
   or Activity hierarchy checks where appropriate.
+- Re-ran `ci.bat`; the no-device verification and release readiness gate passed
+  after the connected-test hardening work.
 
 ### 2026-06-17
 
