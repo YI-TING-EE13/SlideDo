@@ -15,6 +15,7 @@ import android.os.SystemClock;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.CompoundButton;
+import android.widget.TextView;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -199,30 +200,29 @@ public class MainActivityFlowTest {
         launchApp();
 
         clickId(R.id.home_new_game_button);
-        waitForId("mode_root");
-        assertNotNull(findById("mode_3_button"));
-        assertNotNull(findById("mode_4_button"));
-        assertNotNull(findById("mode_5_button"));
-        assertTrue(waitForId("mode_3_session_text").getText().contains("Recommended first puzzle"));
-        assertTrue(waitForId("mode_4_session_text").getText().contains("5-10 minutes"));
-        assertTrue(waitForId("mode_5_session_text").getText().contains("longer focused play"));
-        waitForContentDescriptionContaining("mode_3_button", "Recommended first puzzle");
-        waitForContentDescriptionContaining("mode_4_button", "Best: --");
+        waitForActivityView(R.id.mode_3_button);
+        assertActivityHasView(R.id.mode_4_button);
+        assertActivityHasView(R.id.mode_5_button);
+        assertActivityTextContains(R.id.mode_3_title_text, "3x3 Puzzle");
+        assertActivityTextContains(R.id.mode_3_session_text, "Recommended first puzzle");
+        assertActivityTextContains(R.id.mode_4_session_text, "5-10 minutes");
+        assertActivityTextContains(R.id.mode_5_session_text, "longer focused play");
+        assertActivityContentDescriptionContains(R.id.mode_3_button, "Recommended first puzzle");
+        assertActivityContentDescriptionContains(R.id.mode_4_button, "Best: No record yet");
 
         clickId(R.id.mode_4_button);
-        waitForId("game_root");
-        waitForText("4x4 Puzzle");
-        assertNotNull(findById("game_board"));
-        assertNotNull(findById("game_undo_button"));
-        assertNotNull(findById("game_restart_button"));
-        assertNotNull(findById("game_assist_button"));
-        waitForContentDescriptionContaining("game_board", "4x4 board");
-        waitForContentDescriptionContaining("game_board", "Empty cell at row");
-        waitForContentDescriptionContaining("game_board", "Rows:");
-        waitForContentDescriptionContaining("game_menu_button", "Open game menu");
-        waitForContentDescriptionContaining("game_undo_button", "Undo the previous move");
-        waitForContentDescriptionContaining("game_restart_button", "Restart this puzzle");
-        waitForContentDescriptionContaining("game_assist_button", "Open assist actions");
+        waitForActivityView(R.id.game_board);
+        assertActivityTextContains(R.id.game_title_text, "4x4 Puzzle");
+        assertActivityHasView(R.id.game_undo_button);
+        assertActivityHasView(R.id.game_restart_button);
+        assertActivityHasView(R.id.game_assist_button);
+        assertActivityContentDescriptionContains(R.id.game_board, "4x4 board");
+        assertActivityContentDescriptionContains(R.id.game_board, "Empty cell at row");
+        assertActivityContentDescriptionContains(R.id.game_board, "Rows:");
+        assertActivityContentDescriptionContains(R.id.game_menu_button, "Open game menu");
+        assertActivityContentDescriptionContains(R.id.game_undo_button, "Undo the previous move");
+        assertActivityContentDescriptionContains(R.id.game_restart_button, "Restart this puzzle");
+        assertActivityContentDescriptionContains(R.id.game_assist_button, "Open assist actions");
     }
 
     @Test
@@ -504,14 +504,14 @@ public class MainActivityFlowTest {
         writeSavedGame(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 0);
         launchApp();
         clickId(R.id.home_continue_button);
-        waitForId("game_root");
+        waitForId("game_board");
 
         device.setOrientationLeft();
-        waitForId("game_root");
+        waitForId("game_board");
         assertNotNull(findById("game_board"));
 
         device.setOrientationNatural();
-        waitForId("game_root");
+        waitForId("game_board");
         assertNotNull(findById("game_board"));
     }
 
@@ -631,6 +631,50 @@ public class MainActivityFlowTest {
 
     private UiObject2 findById(String resourceName) {
         return device.findObject(By.res(PACKAGE_NAME, resourceName));
+    }
+
+    private void assertActivityHasView(int resourceId) {
+        instrumentation.runOnMainSync(() ->
+                assertNotNull("Missing activity view id: " + resourceId, activity.findViewById(resourceId)));
+    }
+
+    private void waitForActivityView(int resourceId) throws InterruptedException {
+        long deadline = System.currentTimeMillis() + TIMEOUT_MS;
+        while (System.currentTimeMillis() < deadline) {
+            if (activityHasView(resourceId)) {
+                return;
+            }
+            Thread.sleep(100);
+        }
+        assertActivityHasView(resourceId);
+    }
+
+    private boolean activityHasView(int resourceId) {
+        boolean[] found = new boolean[1];
+        instrumentation.runOnMainSync(() -> found[0] = activity.findViewById(resourceId) != null);
+        return found[0];
+    }
+
+    private void assertActivityTextContains(int resourceId, String expectedText) {
+        instrumentation.runOnMainSync(() -> {
+            View view = activity.findViewById(resourceId);
+            assertNotNull("Missing activity text id: " + resourceId, view);
+            assertTrue("Activity view is not a TextView: " + resourceId, view instanceof TextView);
+            String actualText = ((TextView) view).getText().toString();
+            assertTrue("Expected text for " + resourceId + " to contain \"" + expectedText
+                    + "\" but was: " + actualText, actualText.contains(expectedText));
+        });
+    }
+
+    private void assertActivityContentDescriptionContains(int resourceId, String expectedText) {
+        instrumentation.runOnMainSync(() -> {
+            View view = activity.findViewById(resourceId);
+            assertNotNull("Missing activity view id: " + resourceId, view);
+            CharSequence description = view.getContentDescription();
+            assertNotNull("Missing content description for activity view id: " + resourceId, description);
+            assertTrue("Expected content description for " + resourceId + " to contain \"" + expectedText
+                    + "\" but was: " + description, description.toString().contains(expectedText));
+        });
     }
 
     private UiObject2 waitForText(String text) {

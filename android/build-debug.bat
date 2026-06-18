@@ -15,6 +15,9 @@ call :clean_dir "%~dp0app\build\intermediates\packaged_res\release\packageReleas
 call :clean_dir "%~dp0app\build\intermediates\javac\debug\compileDebugJavaWithJavac\classes"
 call :clean_dir "%~dp0app\build\intermediates\javac\debugAndroidTest\compileDebugAndroidTestJavaWithJavac\classes"
 call :clean_dir "%~dp0app\build\intermediates\javac\release\compileReleaseJavaWithJavac\classes"
+call :clean_dir "%~dp0app\build\outputs\connected_android_test_additional_output"
+call :clean_dir "%~dp0app\build\outputs\androidTest-results\connected"
+call :clean_dir "%~dp0app\build\reports\androidTests\connected"
 
 if "%~1"=="" (
     call "%~dp0gradlew.bat" :app:assembleDebug

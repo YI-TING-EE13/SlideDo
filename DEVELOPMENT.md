@@ -821,6 +821,22 @@ Priority: Low to Medium
 
 ## Development Log
 
+### 2026-06-18
+
+- Hardened Android connected-test verification after the slow AVD exposed
+  generated report/output directory locks. `android/build-debug.bat` now clears
+  connected test additional output, connected test results, and connected test
+  reports before Gradle runs.
+- Updated `MainActivityFlowTest.navigateHomeToModeSelectToGame` so the Mode
+  Select guidance regression is verified through the Activity view hierarchy for
+  stable IDs, text, and content descriptions. This avoids false failures when
+  UiAutomator does not expose non-essential container nodes on a busy emulator.
+- Re-ran the targeted Mode Select connected instrumentation test on
+  `emulator-5554`; the flow now passes.
+- Re-ran the full connected instrumentation suite on `emulator-5554`; all 32
+  tests passed after replacing fragile root-container waits with visible board
+  or Activity hierarchy checks where appropriate.
+
 ### 2026-06-17
 
 - Continued Android-first architecture work by extracting screen state
