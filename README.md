@@ -398,7 +398,8 @@ verify-release.bat
 
 This builds signed Android APK/AAB artifacts, the desktop package, exports store
 listing assets to `dist/store-assets/`, writes SHA-256 release manifests under
-`dist/release-manifests/`, and runs the Android Play Store readiness file check.
+`dist/release-manifests/`, and runs the Android Play Store plus desktop public
+beta readiness file checks.
 
 Repeatable Android screenshot smoke capture and PNG validation:
 
@@ -457,9 +458,11 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
 - Desktop/mobile player-facing parity MVP is complete for Home/start, Records, Preferences, Results, How to Play, Practice Tutorial, and Assist hints.
 - Save files now include release-readiness metadata and desktop saves now live in the user-data directory.
 - Signed Android release APK/AAB and desktop ZIP/app-image packaging scripts are available.
+- Desktop public beta readiness notes and local package checks are tracked in
+  `DESKTOP_BETA_READINESS.md` and `check-desktop-beta-readiness.bat`.
 - Android Play Store readiness drafts, adaptive launcher icons, feature graphic
   source/export workflow, Data Safety notes, privacy policy draft, screenshot
-  guidance, and pre-launch matrix are tracked in
+  review worksheet, accessibility review worksheet, and pre-launch matrix are tracked in
   `android/PLAY_STORE_READINESS.md`.
 - First public Android beta is intentionally local-only: no analytics, crash
   reporting, telemetry, ads SDKs, accounts, cloud save, or third-party

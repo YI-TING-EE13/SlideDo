@@ -57,9 +57,18 @@ call :require_file "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "Play Store readines
 call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "## Store Listing Draft" "store listing draft section"
 call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "## Privacy Policy Draft" "privacy policy draft section"
 call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "## Data Safety Draft" "Data Safety draft section"
-call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "## Telemetry And Crash Reporting Decision" "telemetry decision section"
-call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "## Pre-launch Device Matrix" "pre-launch matrix section"
-call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "## Release Checklist" "release checklist section"
+findstr /C:"## Telemetry And Crash Reporting Decision" "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" >nul 2>nul
+if errorlevel 1 (echo FAIL: missing telemetry decision section in %ANDROID_ROOT%\PLAY_STORE_READINESS.md& set "FAIL=1") else echo OK: telemetry decision section
+findstr /C:"## Pre-launch Device Matrix" "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" >nul 2>nul
+if errorlevel 1 (echo FAIL: missing pre-launch matrix section in %ANDROID_ROOT%\PLAY_STORE_READINESS.md& set "FAIL=1") else echo OK: pre-launch matrix section
+findstr /C:"## Screenshot Review Worksheet" "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" >nul 2>nul
+if errorlevel 1 (echo FAIL: missing screenshot review worksheet section in %ANDROID_ROOT%\PLAY_STORE_READINESS.md& set "FAIL=1") else echo OK: screenshot review worksheet section
+findstr /C:"## Accessibility Review Worksheet" "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" >nul 2>nul
+if errorlevel 1 (echo FAIL: missing accessibility review worksheet section in %ANDROID_ROOT%\PLAY_STORE_READINESS.md& set "FAIL=1") else echo OK: accessibility review worksheet section
+findstr /C:"## Pre-launch Evidence Log" "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" >nul 2>nul
+if errorlevel 1 (echo FAIL: missing pre-launch evidence log section in %ANDROID_ROOT%\PLAY_STORE_READINESS.md& set "FAIL=1") else echo OK: pre-launch evidence log section
+findstr /C:"## Release Checklist" "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" >nul 2>nul
+if errorlevel 1 (echo FAIL: missing release checklist section in %ANDROID_ROOT%\PLAY_STORE_READINESS.md& set "FAIL=1") else echo OK: release checklist section
 
 echo [3/7] Launcher icons and manifest
 call :require_file "%MANIFEST%" "AndroidManifest.xml"
@@ -94,6 +103,8 @@ call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "Feature graphic sou
 call :require_text "%ANDROID_ROOT%\store-assets\README.md" "feature-graphic-1024x500.svg" "feature graphic source documentation"
 call :require_file "%ANDROID_ROOT%\screenshot-smoke.bat" "screenshot smoke workflow"
 call :require_file "%ANDROID_ROOT%\check-screenshot-set.bat" "screenshot set verification workflow"
+call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "01-home.png" "required Home screenshot entry"
+call :require_text "%ANDROID_ROOT%\PLAY_STORE_READINESS.md" "07-results-or-current.png" "required Results/current screenshot entry"
 
 echo [6/7] Release and store artifacts
 call :require_file "%ANDROID_ROOT%\app\build\outputs\apk\release\app-release.apk" "release APK"

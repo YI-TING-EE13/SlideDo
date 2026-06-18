@@ -53,12 +53,15 @@ Recommended next product task after the code-review/planning pass:
 
 1. Start a desktop/mobile parity pass so the desktop edition has player-facing
    content and flow aligned with the Android app.
-2. Split larger Android screen construction into package-private builders only
+2. Complete the repo-side Android store and desktop public-beta handoff gates:
+   Play Store worksheets, desktop beta checklist, package checks, and release
+   verification coverage.
+3. Split larger Android screen construction into package-private builders only
    where it directly supports the parity work.
-3. Add daily puzzle, progression loops, and achievement systems after both
+4. Add daily puzzle, progression loops, and achievement systems after both
    front ends have comparable product surfaces.
-4. Add stronger completion feedback, sound/theme systems, and broader
-   accessibility validation after the parity pass.
+5. Add stronger completion feedback, sound/theme systems, and broader
+   accessibility validation after the release-readiness pass.
 
 ## Current Project State
 
@@ -116,6 +119,8 @@ Android currently supports:
 - Haptic feedback.
 - Warning-clean local Gradle verification under `--warning-mode all` for the
   root tests and Android assemble/lint flow.
+- Release verification now checks Android Play Store readiness and desktop
+  public beta readiness after generating release artifacts.
 
 ## Behavioral Reference
 
@@ -381,6 +386,9 @@ planning layer above implementation tickets.
   URL, manual accessibility sign-off, optional future crash
   reporting/privacy update, and broad versioning discipline after the first
   beta cycle.
+- Missing desktop public-beta readiness systems: public download page, signed
+  installer decision, final desktop smoke sign-off, and final desktop
+  accessibility sign-off.
 
 ## Roadmap And Planning
 
@@ -481,7 +489,7 @@ Desktop/Android feature parity matrix:
 | Records | Per-size local best records, fewer moves then lower time, solver-assisted protection, and player-facing policy explanation. | Per-size local best records with the same comparison, solver-assisted protection, and policy explanation. | Aligned. | Android records/results instrumentation; desktop result and records tests. |
 | Results | Full Results screen with Play Again, New Size, Home, record status, and assisted wording. | Android-style Results dialog with Play Again, New Size, Home, record status, and assisted wording. | Surface type differs due to Swing dialogs vs Android screens, wording and actions align. | Android results instrumentation; desktop results copy tests. |
 | Accessibility | Board summaries, settings switch descriptions, and primary control descriptions exist. | Basic Swing labels/dialog text exist, but no full assistive-tech audit. | Both platforms still need broader manual accessibility review before public release. | Android accessibility instrumentation plus manual TalkBack/desktop review. |
-| Packaging / release | Debug build, connected tests, signed APK/AAB, Play readiness file check, screenshot smoke workflow. | Desktop ZIP and optional app-image package with user-data paths. | Android still needs real Play upload key and Play Console external assets; desktop package is not a signed installer. | `verify.bat`, `verify-connected.bat`, `verify-release.bat`, manual screenshot smoke. |
+| Packaging / release | Debug build, connected tests, signed APK/AAB, Play readiness file check, screenshot smoke workflow. | Desktop ZIP and optional app-image package with user-data paths plus a desktop beta readiness check. | Android still needs real Play upload key and Play Console external assets; desktop package is not a signed installer. | `verify.bat`, `verify-connected.bat`, `verify-release.bat`, manual screenshot smoke, desktop beta smoke checklist. |
 
 Parity conclusion for current beta:
 
@@ -804,6 +812,9 @@ Priority: Low to Medium
 - [x] Decide the first beta telemetry posture: `0.2.0-beta.1` ships without
   analytics, crash reporting, telemetry, ads SDKs, accounts, cloud save, or
   third-party tracking, and the readiness check now verifies that decision.
+- [x] Add screenshot review, accessibility review, and pre-launch evidence
+  worksheets to the Play Store readiness handoff, and verify their presence in
+  `android/check-play-store-readiness.bat`.
 - Review the generated feature graphic upload file, then capture and review
   screenshots that show the actual game UI.
 - Publish a privacy policy URL before store submission and before adding
@@ -824,6 +835,22 @@ Priority: Low to Medium
   labels for the board and settings for reduced motion/audio.
 - Decide whether solver features are player-facing, debug-only, or advanced
   tools before presenting screenshots or store copy.
+
+### Desktop Public Beta Planning
+
+- [x] Add `DESKTOP_BETA_READINESS.md` with current beta target, public beta
+  blockers, package contents, tester instructions, manual desktop smoke
+  checklist, accessibility review, and release checklist.
+- [x] Add `check-desktop-beta-readiness.bat` to verify desktop readiness docs,
+  package artifacts, ZIP contents, release notes, package README instructions,
+  and that generated desktop packages/local saves are not tracked.
+- [x] Wire the desktop public beta readiness check into `verify-release.bat`
+  after package generation and release manifest creation.
+- Choose the public beta download page and issue-reporting channel.
+- Decide whether the first desktop public beta ships as ZIP/app-image only or
+  needs a signed installer before wider distribution.
+- Run the final desktop smoke checklist from the extracted ZIP.
+- Run the final desktop accessibility review.
 
 ## Development Log
 
@@ -853,6 +880,12 @@ Priority: Low to Medium
   board. A targeted rerun of `rotationKeepsCurrentGameScreen` passed, followed
   by the full `verify-connected.bat` suite passing all 32 tests on
   `emulator-5554`.
+- Added desktop public beta readiness tracking and a release gate for the
+  desktop package handoff. `verify-release.bat` now runs both Android Play Store
+  readiness and desktop public beta readiness checks.
+- Expanded Android Play Store readiness with screenshot review, accessibility
+  review, and pre-launch evidence worksheets so the remaining store work can be
+  recorded consistently after manual review.
 
 ### 2026-06-17
 

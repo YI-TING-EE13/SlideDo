@@ -120,7 +120,8 @@ temporary test key only when no signing configuration is present so local releas
 verification can still run.
 
 Play Store listing copy, privacy policy draft, Data Safety draft, asset
-checklist, feature graphic source, and pre-launch matrix are tracked in
+checklist, feature graphic source, screenshot review worksheet, accessibility
+review worksheet, and pre-launch matrix are tracked in
 [`PLAY_STORE_READINESS.md`](PLAY_STORE_READINESS.md).
 The first public Android beta is intentionally local-only: no analytics, crash
 reporting, telemetry, ads SDKs, accounts, cloud save, or third-party tracking.
@@ -142,7 +143,8 @@ check-play-store-readiness.bat
 
 The root `verify-release.bat` command exports store assets, writes
 `../dist/release-manifests/<version>.txt`, and runs this check after the Android
-release and desktop package steps.
+release and desktop package steps. It also runs the desktop public beta
+readiness check from the repository root.
 
 To run the shared desktop/core JUnit tests from the repository root:
 
