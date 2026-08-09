@@ -268,10 +268,12 @@ open-addressed set, uses `ArrayDeque` for the frontier, and reuses the fixed
 direction array. The array-based path remains available for 5x5 compatibility.
 
 These figures measure the shared JVM solver path, which Android and desktop both
-call from background work. They do not measure Android frame timing, startup,
-battery use, or whole-app memory. No emulator or device was connected during
-this benchmark pass, so Android runtime profiling remains unverified. Do not
-turn these machine-specific figures into CI timing thresholds.
+call from background work. A later Android functional pass on the Pixel_7 AVD
+running Android 15 completed all 32 connected instrumentation tests and an
+assisted 3x3 BFS solve. That pass verifies Android integration, not equivalent
+Android runtime benchmark figures. Android frame timing, battery use, and
+whole-app memory remain unmeasured. Do not turn the JVM figures or the observed
+startup times into CI timing thresholds.
 
 ## Product Direction: Common Game App Experience
 
@@ -912,8 +914,17 @@ Priority: Low to Medium
   92.7% while retaining the 31-move optimal solution.
 - Added focused BFS regression coverage for the canonical hardest 3x3 board,
   input immutability, the packed 4x4 tile-value boundary, and 5x5 fallback.
-- Android frame timing and device-level memory remain unverified because no
-  emulator or device was connected during this pass.
+- Re-ran `verify-connected.bat` on the Pixel_7 AVD running Android 15 after the
+  BFS optimization. All 32 instrumentation tests passed with no failures or
+  skips; the retained final XML reports 118.391 seconds of test time.
+- Completed a clean-install manual emulator smoke flow covering first-run
+  onboarding, Home, all three mode choices, a non-adjacent whole-line move,
+  Undo restoration, an assisted 3x3 BFS solve through Results, the 4x4 BFS
+  warning, and background/resume state preservation. The smoke log contained
+  no app fatal exception or ANR.
+- The clean launch reported 575 ms and hot resume reported 48 ms on this AVD.
+  These are single observations, not startup performance baselines. Android
+  frame timing, battery use, and whole-app memory remain unmeasured.
 
 ### 2026-06-18
 

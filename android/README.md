@@ -91,9 +91,12 @@ This runs `verify.bat` and `verify-release.bat`. CI release artifacts are
 verification outputs and use the temporary signing key unless real Play upload
 signing is explicitly configured.
 
-Latest local status: `..\ci.bat` passes, and `..\verify-connected.bat` passed
-all 32 connected instrumentation tests on `emulator-5554` after the Mode Select
-and rotation wait hardening.
+Latest 2026-08-09 performance-validation status: `..\verify.bat` passes, and
+`..\verify-connected.bat` passed all 32 connected instrumentation tests on the
+Pixel_7 AVD running Android 15 after the BFS optimization. A clean-install
+manual smoke flow also covered onboarding, Home, mode selection, whole-line
+movement and Undo, assisted BFS playback and Results, the 4x4 BFS warning, and
+background/resume state preservation.
 
 For Android build and lint only:
 
