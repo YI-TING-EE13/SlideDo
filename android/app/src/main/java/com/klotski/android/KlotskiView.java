@@ -38,6 +38,8 @@ public class KlotskiView extends View implements GameObserver {
     private final Paint hintFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint hintStrokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint targetStrokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint emptyCellPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint emptyDotPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Deque<Direction> moveQueue = new ArrayDeque<>();
     private final RectF rect = new RectF();
@@ -119,6 +121,11 @@ public class KlotskiView extends View implements GameObserver {
         targetStrokePaint.setColor(Color.WHITE);
         targetStrokePaint.setStyle(Paint.Style.STROKE);
         targetStrokePaint.setStrokeWidth(dp(4));
+        emptyCellPaint.setColor(Color.argb(78, 255, 255, 255));
+        emptyCellPaint.setStyle(Paint.Style.STROKE);
+        emptyCellPaint.setStrokeWidth(dp(2));
+        emptyDotPaint.setColor(Color.argb(150, 251, 191, 36));
+        emptyDotPaint.setStyle(Paint.Style.FILL);
         textPaint.setColor(Color.WHITE);
         textPaint.setTextAlign(Paint.Align.CENTER);
         textPaint.setFakeBoldText(true);
@@ -285,6 +292,8 @@ public class KlotskiView extends View implements GameObserver {
                 int value = model.getTile(r, c);
                 if (value != 0) {
                     drawTile(canvas, r, c, value, textOffset);
+                } else if (!isAnimating) {
+                    drawEmptyCell(canvas, r, c);
                 }
                 if (highlighted) {
                     drawCellHint(canvas, r, c, true);
@@ -345,6 +354,16 @@ public class KlotskiView extends View implements GameObserver {
         }
         canvas.drawRoundRect(rect, dp(12), dp(12),
                 row == targetRow && col == targetCol ? targetStrokePaint : hintStrokePaint);
+    }
+
+    private void drawEmptyCell(Canvas canvas, int row, int col) {
+        float x = boardLeft + gap + col * (tileSize + gap);
+        float y = boardTop + gap + row * (tileSize + gap);
+        float inset = Math.max(dp(5), tileSize * 0.08f);
+        rect.set(x + inset, y + inset, x + tileSize - inset, y + tileSize - inset);
+        canvas.drawRoundRect(rect, dp(8), dp(8), emptyCellPaint);
+        canvas.drawCircle(x + tileSize / 2f, y + tileSize / 2f,
+                Math.max(dp(2), tileSize * 0.035f), emptyDotPaint);
     }
 
     private boolean isHighlightedCell(int row, int col) {

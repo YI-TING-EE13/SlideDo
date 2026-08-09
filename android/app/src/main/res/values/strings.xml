@@ -113,7 +113,7 @@
     <string name="accessibility_game_menu">Open game menu for save, load, settings, records, and Home</string>
     <string name="accessibility_game_undo">Undo the previous move</string>
     <string name="accessibility_game_restart">Restart this puzzle from its starting board</string>
-    <string name="accessibility_game_assist">Open assist actions, including movable-tile hints and solvers</string>
+    <string name="accessibility_game_assist">Open Assist for a movable-tile hint or advanced Solver Tools</string>
     <string name="accessibility_settings_switch">%1$s. %2$s</string>
     <string name="menu_title">Game Menu</string>
     <string name="menu_resume">Resume</string>
@@ -121,11 +121,15 @@
     <string name="menu_quick_reminder">Quick Reminder</string>
     <string name="assist_title">Assist</string>
     <string name="button_hint_movable">Show Movable Tiles</string>
+    <string name="button_solver_tools">Solver Tools</string>
+    <string name="solver_tools_title">Solver Tools</string>
+    <string name="solver_tools_message">Advanced tools can finish the puzzle. Solver-assisted results never replace player records.</string>
     <string name="quick_reminder_title">Move reminder</string>
     <string name="quick_reminder_message">Tap or swipe any tile aligned with the empty cell. Farther aligned tiles slide the whole line as one move. Undo backs up one gesture.</string>
     <string name="status_format">%1$s   Time: %2$ds   Best: %3$s</string>
     <string name="status_solved_format">Solved! Moves: %1$d   Time: %2$ds   Best: %3$s</string>
     <string name="status_hint_movable">Hint: highlighted tiles can slide into the empty cell.</string>
+    <string name="status_first_move_hint">Tap a tile aligned with the outlined empty cell.</string>
     <string name="status_solving">Solving with %1$s...</string>
     <string name="best_empty">--</string>
     <string name="best_format">%1$s, %2$ds</string>

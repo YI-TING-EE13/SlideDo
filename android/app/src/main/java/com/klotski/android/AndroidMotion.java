@@ -5,6 +5,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.AccelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
+import android.view.animation.OvershootInterpolator;
 import android.widget.ScrollView;
 
 import java.util.ArrayList;
@@ -82,6 +83,26 @@ final class AndroidMotion {
                     .withLayer()
                     .start();
         }
+    }
+
+    /**
+     * Gives the Results completion mark one restrained settle after the screen
+     * entrance. Reduced motion immediately applies the final scale.
+     */
+    void animateCompletionMark(View mark, boolean reducedMotion) {
+        mark.animate().cancel();
+        if (reducedMotion) {
+            mark.setScaleX(1f);
+            mark.setScaleY(1f);
+            return;
+        }
+        mark.animate()
+                .scaleX(1f)
+                .scaleY(1f)
+                .setDuration(420)
+                .setInterpolator(new OvershootInterpolator(1.15f))
+                .withLayer()
+                .start();
     }
 
     private List<View> collectTopLevelElements(View root) {

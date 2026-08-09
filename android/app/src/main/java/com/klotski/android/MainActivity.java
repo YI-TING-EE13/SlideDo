@@ -598,6 +598,17 @@ public class MainActivity extends Activity implements GameObserver {
                 });
 
         presentContentView(screen.root);
+        View completionMark = screen.root.findViewById(R.id.results_completion_mark);
+        boolean reducedMotion = isReducedMotionEnabled();
+        if (reducedMotion) {
+            motion.animateCompletionMark(completionMark, true);
+        } else {
+            handler.postDelayed(() -> {
+                if (currentScreen == Screen.RESULTS && completionMark.isAttachedToWindow()) {
+                    motion.animateCompletionMark(completionMark, false);
+                }
+            }, 300);
+        }
     }
 
     private void showTutorialScreen(int requestedStep) {
@@ -976,9 +987,7 @@ public class MainActivity extends Activity implements GameObserver {
     private void showAssistMenu() {
         String[] items = new String[] {
                 getString(R.string.button_hint_movable),
-                getString(R.string.button_solver_bfs),
-                getString(R.string.button_solver_astar),
-                getString(R.string.button_solver_idastar)
+                getString(R.string.button_solver_tools)
         };
 
         new AlertDialog.Builder(this)
@@ -987,14 +996,46 @@ public class MainActivity extends Activity implements GameObserver {
                     if (which == 0) {
                         showMovableTilesHint();
                     } else if (which == 1) {
-                        runSolver(new BfsSolver());
-                    } else if (which == 2) {
-                        runSolver(new AStarSolver());
-                    } else if (which == 3) {
-                        runSolver(new IdaStarSolver());
+                        showSolverTools();
                     }
                 })
                 .show();
+    }
+
+    private void showSolverTools() {
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(ui.dp(20), 0, ui.dp(20), 0);
+
+        TextView message = ui.createText(getString(R.string.solver_tools_message), 14,
+                AndroidUi.COLOR_MUTED_TEXT, Typeface.NORMAL);
+        message.setLineSpacing(0, 1.15f);
+        LinearLayout.LayoutParams messageParams = ui.fullWidthParams();
+        messageParams.setMargins(0, 0, 0, ui.dp(14));
+        content.addView(message, messageParams);
+
+        Button bfsButton = ui.addWideButton(content, R.string.button_solver_bfs, COLOR_PANEL, null);
+        Button astarButton = ui.addWideButton(content, R.string.button_solver_astar, COLOR_PANEL, null);
+        Button idastarButton = ui.addWideButton(content, R.string.button_solver_idastar, COLOR_PANEL, null);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.solver_tools_title)
+                .setView(content)
+                .setNegativeButton(R.string.nav_back, null)
+                .create();
+        bfsButton.setOnClickListener(v -> {
+            dialog.dismiss();
+            runSolver(new BfsSolver());
+        });
+        astarButton.setOnClickListener(v -> {
+            dialog.dismiss();
+            runSolver(new AStarSolver());
+        });
+        idastarButton.setOnClickListener(v -> {
+            dialog.dismiss();
+            runSolver(new IdaStarSolver());
+        });
+        dialog.show();
     }
 
     private void startFirstPuzzle() {
@@ -1098,6 +1139,8 @@ public class MainActivity extends Activity implements GameObserver {
         String status = getString(R.string.status_format, formatMoves(model.getMoveCount()), elapsed, bestText);
         if (hintActive) {
             status += "\n" + getString(R.string.status_hint_movable);
+        } else if (model.getMoveCount() == 0) {
+            status += "\n" + getString(R.string.status_first_move_hint);
         }
         statusText.setText(status);
         updateControlsEnabled();

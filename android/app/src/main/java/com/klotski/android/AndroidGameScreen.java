@@ -33,7 +33,9 @@ final class AndroidGameScreen {
         root.setId(R.id.game_root);
 
         LinearLayout topBar = addTopBar(root);
-        Button homeButton = ui.createButton(activity.getString(R.string.nav_home), COLOR_PANEL);
+        Button homeButton = ui.createButton(activity.getString(R.string.nav_home),
+                R.drawable.ic_action_home, COLOR_PANEL);
+        configureCompactNavigationButton(homeButton);
         homeButton.setId(R.id.game_home_button);
         homeButton.setContentDescription(activity.getString(R.string.accessibility_game_home));
         homeButton.setOnClickListener(v -> actions.onHome());
@@ -46,7 +48,9 @@ final class AndroidGameScreen {
         topBar.addView(titleText, new LinearLayout.LayoutParams(0,
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 
-        Button menuButton = ui.createButton(activity.getString(R.string.game_menu), COLOR_PANEL);
+        Button menuButton = ui.createButton(activity.getString(R.string.game_menu),
+                R.drawable.ic_action_menu, COLOR_PANEL);
+        configureCompactNavigationButton(menuButton);
         menuButton.setId(R.id.game_menu_button);
         menuButton.setContentDescription(activity.getString(R.string.accessibility_game_menu));
         menuButton.setOnClickListener(v -> actions.onMenu());
@@ -76,19 +80,28 @@ final class AndroidGameScreen {
         bottomActions.setOrientation(LinearLayout.HORIZONTAL);
         root.addView(bottomActions, ui.fullWidthParams());
 
-        Button undoButton = ui.addGameButton(bottomActions, R.string.button_undo, v -> actions.onUndo());
+        Button undoButton = ui.addGameButton(bottomActions, R.string.button_undo,
+                R.drawable.ic_action_undo, v -> actions.onUndo());
         undoButton.setId(R.id.game_undo_button);
         undoButton.setContentDescription(activity.getString(R.string.accessibility_game_undo));
 
-        Button restartButton = ui.addGameButton(bottomActions, R.string.button_restart, v -> actions.onRestart());
+        Button restartButton = ui.addGameButton(bottomActions, R.string.button_restart,
+                R.drawable.ic_action_restart, v -> actions.onRestart());
         restartButton.setId(R.id.game_restart_button);
         restartButton.setContentDescription(activity.getString(R.string.accessibility_game_restart));
 
-        Button assistButton = ui.addGameButton(bottomActions, R.string.game_assist, v -> actions.onAssist());
+        Button assistButton = ui.addGameButton(bottomActions, R.string.game_assist,
+                R.drawable.ic_action_assist, v -> actions.onAssist());
         assistButton.setId(R.id.game_assist_button);
         assistButton.setContentDescription(activity.getString(R.string.accessibility_game_assist));
 
         return new GameViews(root, titleText, statusText);
+    }
+
+    private void configureCompactNavigationButton(Button button) {
+        button.setSingleLine(true);
+        button.setTextSize(13);
+        button.setPadding(ui.dp(8), 0, ui.dp(8), 0);
     }
 
     private LinearLayout createRoot() {

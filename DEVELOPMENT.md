@@ -27,6 +27,9 @@ Current handoff status:
   records, save/load, lightweight Assist hints, board/control accessibility
   descriptions, `AndroidGameStore` persistence separation, and connected
   instrumentation coverage.
+- The Android UI polish pass now includes icon-plus-text player actions, an
+  outlined empty cell with first-move guidance, nested advanced Solver Tools,
+  and a short completion-mark settle animation with a Reduced motion bypass.
 - The latest local verification pass was warning-clean for the previously noisy
   Gradle DSL deprecation, Java native-access warning, and Android Java
   deprecation note.
@@ -46,19 +49,24 @@ verify.bat
 verify-connected.bat
 ```
 
-Recommended next product task after the code-review/planning pass:
+Recommended next product tasks after the completed parity and Android polish
+passes:
 
-1. Start a desktop/mobile parity pass so the desktop edition has player-facing
-   content and flow aligned with the Android app.
-2. Complete the repo-side Android store and desktop public-beta handoff gates:
-   Play Store worksheets, desktop beta checklist, package checks, and release
-   verification coverage.
-3. Split larger Android screen construction into package-private builders only
-   where it directly supports the parity work.
-4. Add daily puzzle, progression loops, and achievement systems after both
-   front ends have comparable product surfaces.
-5. Add stronger completion feedback, sound/theme systems, and broader
-   accessibility validation after the release-readiness pass.
+1. Close the remaining public-beta handoff work: review the generated Play
+   feature graphic and final screenshots, publish the privacy-policy URL, choose
+   the download/issue channels, and run the desktop package smoke checklist from
+   an extracted ZIP.
+2. Broaden Android accessibility and device coverage with TalkBack, larger font
+   settings, contrast review, landscape/background-resume checks, and a physical
+   device or tablet/foldable profile.
+3. Decide the beta release posture for minification and for presenting advanced
+   Solver Tools in store-facing material.
+4. Add daily puzzles, progression, achievements, sound, and themes only after
+   the beta handoff and accessibility gates are closed.
+
+Real Play upload signing is intentionally deferred until store submission. It
+is not required for a local push-ready commit, and no Git remote or push is part
+of the current handoff.
 
 ## Current Project State
 
@@ -102,7 +110,12 @@ Android currently supports:
   emphasized targets for the first move and whole-line slide practice.
 - One move and one undo snapshot per user gesture.
 - Compact in-game controls with Undo, Restart, Menu, and Assist.
-- Assist now starts with a lightweight movable-tile hint before solver actions.
+- Icon-plus-text Home and game actions that remain single-line on the 720x1280
+  phone profile.
+- An outlined empty cell and a first-move prompt that explain where legal tiles
+  can slide without changing puzzle rules.
+- Assist starts with a lightweight movable-tile hint; BFS, A*, and IDA* live in
+  a second-level Solver Tools surface with record-safety guidance.
 - Board-level screen-reader summaries for game/tutorial board state, highlighted
   movable tiles, and primary game/settings controls.
 - Manual Save/Load plus autosave through the in-game menu.
@@ -112,7 +125,8 @@ Android currently supports:
 - Settings for haptic feedback, reduced motion, reset saved game, and reset records.
 - Android app-state persistence through `AndroidGameStore` for saves, records,
   settings, onboarding state, and the last selected puzzle size.
-- Results screen with player-record status and solver-assisted completion wording.
+- Results screen with a completion-mark settle animation, player-record status,
+  solver-assisted completion wording, and a Reduced motion bypass.
 - Haptic feedback.
 - Warning-clean local Gradle verification under `--warning-mode all` for the
   root tests and Android assemble/lint flow.
@@ -161,6 +175,13 @@ Android parity checklist:
 - [x] Rotation keeps the current game screen and restored board state.
 - [x] Records are separated by puzzle size.
 - [x] Solver controls run off the UI thread and warn for expensive board sizes.
+- [x] Assist keeps the lightweight hint at the first level and moves complete
+  solver playback into the advanced Solver Tools level.
+- [x] The empty cell has a visible affordance and a zero-move prompt explains
+  the first legal interaction.
+- [x] Key Home and in-game actions use tested icon-plus-text controls.
+- [x] Results provide a short completion-mark settle animation and Reduced
+  motion skips it.
 
 ## Verified Commands
 
@@ -758,23 +779,27 @@ Recommended scope:
   a Reduced motion bypass shared by every Android destination.
 - [x] Group Home actions by play, learning, and personal intent instead of
   presenting every action as an equal full-width button.
-- Use icon-plus-text buttons for Home, Menu, Assist, Undo, Restart, Save, Load,
-  and Settings once the app has a stable visual language.
+- [x] Use icon-plus-text buttons for the Home surface and the persistent Home,
+  Menu, Assist, Undo, and Restart game controls.
+- Add icons to secondary Save/Load actions only if the current platform menu is
+  replaced with a custom surface; the present text list remains intentionally
+  lightweight.
 - Strengthen Home as a game entry screen with a small playable board preview or
   animated tile motif instead of only text and buttons.
 - [x] Make Mode Select more informative: show best record, difficulty,
   estimated session length, and recommended first mode.
-- Make in-game controls feel compact and native: keep primary actions visible,
+- [x] Make in-game controls feel compact and native: keep primary actions visible,
   move rare actions behind Menu, and avoid exposing solver terminology too early.
-- Separate Assist from Solver. Assist should first offer one-step hints or
+- [x] Separate Assist from Solver. Assist first offers one-step hints or
   highlight movable lines; full solver playback can remain in an advanced Tools
   area.
 - [x] Add an immediate completion mark, grouped result summary, record status,
   and clear next actions.
-- Add a short bespoke celebration after the board settles.
-- Add clear empty-cell affordance and movable-tile hints for first-time players.
-- Review typography and spacing on smaller emulator profiles, not only
-  1080 x 2400.
+- [x] Add a short completion-mark celebration after the board settles, with no
+  delay or scale animation when Reduced motion is enabled.
+- [x] Add clear empty-cell affordance and movable-tile hints for first-time players.
+- [x] Review typography and spacing on a 720x1280, 320 dpi phone profile in
+  addition to the 1080x2400 Pixel_7 profile.
 - Continue accessibility review for custom board content with TalkBack, larger
   touch targets, contrast checks, and reduced-motion behavior.
 - Add orientation and background/resume validation whenever screen state expands.
@@ -833,8 +858,6 @@ Priority: Low to Medium
 - Theme selection.
 - Daily puzzle.
 - Difficulty presets based on scramble depth.
-- Lightweight hint system separate from full solver playback.
-- Completion celebration.
 - Accessibility labels and larger touch targets.
 - Recent games or session history.
 - Achievements for first solve, low-move solve, fast solve, and daily streak.
@@ -878,9 +901,12 @@ Priority: Low to Medium
 - [x] Add release signing injection, Play App Bundle generation, versioning, and
   release notes workflow.
 - Replace temporary local release verification signing with the real Play upload
-  key before store submission.
-- Run pre-launch checks on multiple device sizes, API levels, rotations, and
-  background/resume flows.
+  key when store submission begins; this is intentionally deferred from the
+  current push-ready milestone.
+- [x] Establish an initial multi-AVD pre-launch baseline on Android 15 / 1080x2400
+  and Android 16 / 720x1280, including rotation and background/resume coverage.
+- Expand the pre-launch matrix to a physical device and a tablet or foldable
+  profile before store submission.
 - Add accessibility review before store submission, including screen reader
   labels for the board and settings for reduced motion/audio.
 - Decide whether solver features are player-facing, debug-only, or advanced
@@ -906,6 +932,35 @@ Priority: Low to Medium
 - Run the final desktop accessibility review.
 
 ## Development Log
+
+### 2026-08-10
+
+- Created a second AVD with the Android CLI: `small_phone`, Android 16 / API
+  36.1, 720x1280 at 320 dpi and 1024 MiB RAM. Kept the existing Pixel_7 Android
+  15 / 1080x2400 AVD as the larger-phone regression target.
+- Added icon-plus-text player actions across Home, persistent game controls, and
+  Results. Compact Home/Menu controls are forced to one line on the small-phone
+  profile.
+- Added an outlined empty-cell marker and a zero-move first-interaction prompt,
+  while leaving movement and save/record behavior in the existing model paths.
+- Split Assist into Show Movable Tiles and a second-level Solver Tools surface.
+  The advanced surface explains that assisted results never replace player
+  records before offering BFS, A*, and IDA*.
+- Added a short Results completion-mark settle animation and an immediate
+  Reduced motion path, with connected coverage for the completion view and
+  animation bypass.
+- Ran the complete connected suite on both AVDs: all 36 tests passed on
+  `small_phone` and all 36 passed on `Pixel_7`, with no failures or skips.
+- Reviewed CLI-captured onboarding, Home, Mode Select, Game, Assist, Solver
+  Tools, and assisted Results screens. A 23-move BFS solution reached Results
+  without creating a player record; both phone layouts remained readable and
+  unclipped after the compact-control correction.
+- Sampled five warm Home-to-Mode-to-Home cycles on `small_phone`: 345 frames,
+  13 janky frames (3.77%), 0 missed-vsync events, 0 slow UI-thread frames, and
+  no `AndroidRuntime:E` entry. This is an emulator diagnostic, not a physical
+  device performance guarantee.
+- Left real Play upload signing, remote creation, and push intentionally
+  deferred. The repository milestone is a verified local push-ready commit.
 
 ### 2026-08-09
 

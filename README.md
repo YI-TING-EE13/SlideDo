@@ -38,7 +38,8 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
   - Whole-line tap behavior maps naturally to touch screens.
   - One user gesture counts as one move.
   - Undo restores the entire previous user action.
-  - Android includes compact in-game controls, menu-based save/load, autosave, haptic and reduced-motion settings, local best records, a results screen, a lightweight movable-tile hint in Assist, and solver playback.
+  - Android includes icon-plus-text controls, an outlined empty cell with a first-move prompt, menu-based save/load, autosave, haptic and reduced-motion settings, local best records, and a short completion-mark settle on Results.
+  - Assist keeps Show Movable Tiles at the first level; BFS, A*, and IDA* are grouped under advanced Solver Tools with player-record protection explained before use.
   - Android exposes board state, empty-cell position, highlighted movable tiles, and primary controls through accessibility descriptions.
 - **Quality-of-Life Gameplay**:
   - Undo.
@@ -54,7 +55,7 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
 - **Native Android Project**:
   - Gradle wrapper included.
   - Custom Android view.
-  - Home, onboarding, interactive Practice Tutorial, Mode Select, visual How to Play, Settings, Records, Results, coordinated screen transitions, touch controls, synchronized whole-line animation, haptics, autosave, manual save/load, best records, Assist hints, accessibility descriptions, solver controls, and instrumentation tests.
+  - Home, onboarding, interactive Practice Tutorial, Mode Select, visual How to Play, Settings, Records, Results, coordinated screen transitions, icon-plus-text controls, empty-cell guidance, touch controls, synchronized whole-line animation, haptics, autosave, manual save/load, best records, Assist hints, accessibility descriptions, nested solver controls, and instrumentation tests.
 
 ---
 
@@ -214,11 +215,11 @@ starts new games through Mode Select. First-run onboarding appears before normal
 play until the player skips it, starts 3x3, or opens Practice Tutorial. Practice
 Tutorial uses a small guided 3x3 puzzle to teach the first move, highlight
 movable aligned tiles, and demonstrate a whole-line slide. During gameplay, Undo
-and Restart stay visible while Save/Load, Quick Reminder, Settings, and BFS, A*,
-and IDA* solver actions live in Menu and Assist. Assist starts with Show Movable
-Tiles, a hint that highlights legal same-row or same-column choices without
-moving the board. Solver-assisted wins show Results but do not overwrite player
-best records.
+and Restart stay visible while Save/Load, Quick Reminder, and Settings live in
+Menu. Assist starts with Show Movable Tiles, a hint that highlights legal
+same-row or same-column choices without moving the board. BFS, A*, and IDA* are
+one level deeper under Solver Tools. Solver-assisted wins show Results but do not
+overwrite player best records.
 
 If the emulator does not show SlideDo in the launcher, reinstall and start it
 directly:
@@ -343,9 +344,9 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
 - Connected Android instrumentation helpers now wait for the foreground app
   window and fall back to direct swipe scrolling for long help content, reducing
   false failures on slow emulator runs.
-- The latest 2026-08-09 connected Android instrumentation run on the Pixel_7
-  AVD with Android 15 passed all 35 tests after the Android motion and visual
-  hierarchy pass.
+- The latest 2026-08-10 connected Android instrumentation runs passed all 36
+  tests on both the Pixel_7 AVD (Android 15, 1080x2400) and the `small_phone`
+  AVD (Android 16 / API 36.1, 720x1280), with no failures or skips.
 - Latest local `ci.bat` run passed the no-device verification and release
   readiness gates.
 - Android emulator smoke testing for install/launch, Home visibility, whole-line movement, undo, restart, save/load, solver warning dialog, rotation, and background resume.
@@ -432,8 +433,9 @@ android\screenshot-smoke.bat
 
 - Desktop UI tests are still manual/smoke-level.
 - Connected Android instrumentation tests still require a running emulator or device.
-- Screen-transition frame timing has been sampled on the Pixel_7 AVD; smaller,
-  larger, and lower-refresh devices still need the pre-launch visual pass.
+- Pixel_7 and 720x1280 small-phone layouts have connected and visual acceptance
+  evidence; a physical device, tablet/foldable, and lower-refresh profile still
+  need the pre-launch visual pass.
 - Screenshot smoke validates captured PNG readability and dimensions, but is
   not a pixel-diff gate.
 - `MainActivity` has been reduced by extracting state/navigation/UI helpers and
@@ -492,13 +494,20 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
   tracking.
 - The desktop/Android feature parity matrix is maintained in
   `DEVELOPMENT.md` under the Desktop/Mobile Parity Pass section.
-- Split larger UI/controller code where it supports future shared progression work.
-- Add daily puzzle, progression loops, and achievements after both front ends have comparable product surfaces.
-- Add stronger completion feedback for solves and records.
+- Complete the remaining beta handoff reviews: final store screenshots and
+  feature graphic, privacy-policy URL, download/issue channels, and extracted
+  desktop-package smoke checks.
+- Broaden TalkBack, larger-font, contrast, physical-device, and tablet/foldable
+  acceptance before store submission.
+- Split larger UI/controller code only where it supports a concrete feature or
+  verification need.
+- Add daily puzzle, progression loops, and achievements after the beta handoff.
 - Add difficulty presets based on scramble depth.
 - Add sound and theme settings after those systems exist.
 - Continue broader accessibility review with TalkBack, touch-target, color-contrast, and reduced-motion validation.
-- Replace temporary release signing with a real Play upload key before store distribution.
+- Replace temporary release signing with a real Play upload key when store
+  submission begins; it is intentionally deferred from the current push-ready
+  milestone.
 - Publish and review the privacy policy URL before store distribution.
 - Complete the desktop beta manual smoke and accessibility reviews from the extracted ZIP before opening public testing.
 - Consider moving desktop launch/package tasks fully into Gradle.

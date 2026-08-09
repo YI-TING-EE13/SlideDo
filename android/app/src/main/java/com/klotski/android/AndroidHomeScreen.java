@@ -42,7 +42,8 @@ final class AndroidHomeScreen {
         screen.content.addView(summary, summaryParams);
 
         if (hasSave) {
-            Button continueButton = ui.addWideButton(screen.content, R.string.home_continue, COLOR_PRIMARY,
+            Button continueButton = ui.addWideButton(screen.content, R.string.home_continue,
+                    R.drawable.ic_action_continue, COLOR_PRIMARY,
                     v -> actions.onContinue());
             continueButton.setId(R.id.home_continue_button);
 
@@ -58,6 +59,7 @@ final class AndroidHomeScreen {
 
         Button newGameButton = ui.addWideButton(screen.content,
                 hasSave ? R.string.home_new_game : R.string.home_play,
+                R.drawable.ic_action_play,
                 hasSave ? COLOR_PANEL_LIGHT : COLOR_PRIMARY,
                 v -> actions.onPlay());
         newGameButton.setId(R.id.home_new_game_button);
@@ -65,25 +67,30 @@ final class AndroidHomeScreen {
         ui.addSectionLabel(screen.content, R.string.home_section_learn);
         LinearLayout learningRow = createActionRow(screen.content);
         Button onboardingButton = ui.addRowButton(learningRow,
-                R.string.home_beginner_guide, COLOR_PANEL, v -> actions.onBeginnerGuide());
+                R.string.home_beginner_guide, R.drawable.ic_action_guide,
+                COLOR_PANEL, v -> actions.onBeginnerGuide());
         onboardingButton.setId(R.id.home_onboarding_button);
 
         Button tutorialButton = ui.addRowButton(learningRow,
-                R.string.home_tutorial, COLOR_PANEL_LIGHT, v -> actions.onPracticeTutorial());
+                R.string.home_tutorial, R.drawable.ic_action_tutorial,
+                COLOR_PANEL_LIGHT, v -> actions.onPracticeTutorial());
         tutorialButton.setId(R.id.home_tutorial_button);
 
         Button howToButton = ui.addWideButton(screen.content,
-                R.string.home_how_to_play, COLOR_PANEL, v -> actions.onHowToPlay());
+                R.string.home_how_to_play, R.drawable.ic_action_help,
+                COLOR_PANEL, v -> actions.onHowToPlay());
         howToButton.setId(R.id.home_how_to_play_button);
 
         ui.addSectionLabel(screen.content, R.string.home_section_your_game);
         LinearLayout personalRow = createActionRow(screen.content);
         Button settingsButton = ui.addRowButton(personalRow,
-                R.string.home_settings, COLOR_PANEL, v -> actions.onSettings());
+                R.string.home_settings, R.drawable.ic_action_settings,
+                COLOR_PANEL, v -> actions.onSettings());
         settingsButton.setId(R.id.home_settings_button);
 
         Button recordsButton = ui.addRowButton(personalRow,
-                R.string.home_records, COLOR_PANEL, v -> actions.onRecords());
+                R.string.home_records, R.drawable.ic_action_records,
+                COLOR_PANEL, v -> actions.onRecords());
         recordsButton.setId(R.id.home_records_button);
 
         return screen;

@@ -1,5 +1,6 @@
 package com.klotski.android;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -14,6 +15,7 @@ import android.content.SharedPreferences;
 import android.os.SystemClock;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.TextView;
 
@@ -202,6 +204,7 @@ public class MainActivityFlowTest {
         markOnboardingSeen();
         launchApp();
 
+        assertActivityButtonHasStartIcon(R.id.home_new_game_button);
         clickId(R.id.home_new_game_button);
         waitForActivityView(R.id.mode_3_button);
         assertActivityHasView(R.id.mode_4_button);
@@ -226,7 +229,13 @@ public class MainActivityFlowTest {
         assertActivityContentDescriptionContains(R.id.game_menu_button, "Open game menu");
         assertActivityContentDescriptionContains(R.id.game_undo_button, "Undo the previous move");
         assertActivityContentDescriptionContains(R.id.game_restart_button, "Restart this puzzle");
-        assertActivityContentDescriptionContains(R.id.game_assist_button, "Open assist actions");
+        assertActivityContentDescriptionContains(R.id.game_assist_button, "Solver Tools");
+        assertActivityButtonHasStartIcon(R.id.game_menu_button);
+        assertActivityButtonHasStartIcon(R.id.game_undo_button);
+        assertActivityButtonHasStartIcon(R.id.game_restart_button);
+        assertActivityButtonHasStartIcon(R.id.game_assist_button);
+        assertActivityTextIsSingleLine(R.id.game_home_button);
+        assertActivityTextIsSingleLine(R.id.game_menu_button);
     }
 
     @Test
@@ -322,11 +331,11 @@ public class MainActivityFlowTest {
         waitForId("how_root");
         waitForText("Goal");
         waitForText("Tap");
-        waitForText("Whole-line slide");
-        waitForText("Empty");
-        assertNotNull(findById("how_goal_example"));
-        assertNotNull(findById("how_tap_example"));
-        assertNotNull(findById("how_line_example"));
+        scrollToText("Whole-line slide");
+        scrollToText("Empty");
+        assertActivityHasView(R.id.how_goal_example);
+        assertActivityHasView(R.id.how_tap_example);
+        assertActivityHasView(R.id.how_line_example);
         scrollToText("Swipe");
         scrollToText("Records");
         clickId(R.id.how_back_button);
@@ -446,6 +455,16 @@ public class MainActivityFlowTest {
         waitForId("game_root");
 
         clickId(R.id.game_assist_button);
+        waitForText("Show Movable Tiles");
+        waitForText("Solver Tools").click();
+        waitForText("Advanced tools can finish the puzzle. Solver-assisted results never replace player records.");
+        waitForText("BFS");
+        waitForText("A*");
+        waitForText("IDA*");
+        device.pressBack();
+        waitForId("game_root");
+
+        clickId(R.id.game_assist_button);
         waitForText("Show Movable Tiles").click();
         device.waitForIdle();
         instrumentation.waitForIdleSync();
@@ -473,6 +492,8 @@ public class MainActivityFlowTest {
         waitForText("Results");
         waitForText("Puzzle solved.");
         waitForText("First player record for this size.");
+        assertNotNull(findById("results_completion_mark"));
+        assertActivityContentDescriptionContains(R.id.results_completion_mark, "Puzzle complete");
         assertNotNull(findById("results_play_again_button"));
         assertNotNull(findById("results_new_size_button"));
         assertNotNull(findById("results_home_button"));
@@ -484,6 +505,23 @@ public class MainActivityFlowTest {
         assertNotNull(findById("records_explanation_text"));
         waitForTextContaining("Player solves only.");
         waitForTextContaining("1 move");
+    }
+
+    @Test
+    public void reducedMotionSkipsCompletionMarkAnimation() throws Exception {
+        writeSavedGame(ONE_MOVE_WIN_GRID, ONE_MOVE_WIN_GRID, 0);
+        assertTrue(targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean("reduced_motion", true)
+                .commit());
+        launchApp();
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+
+        tapCell(3, 2, 2);
+
+        waitForActivityView(R.id.results_completion_mark);
+        assertActivityViewScale(R.id.results_completion_mark, 1.0f);
     }
 
     @Test
@@ -694,6 +732,37 @@ public class MainActivityFlowTest {
     private void assertActivityHasView(int resourceId) {
         instrumentation.runOnMainSync(() ->
                 assertNotNull("Missing activity view id: " + resourceId, activity.findViewById(resourceId)));
+    }
+
+    private void assertActivityButtonHasStartIcon(int resourceId) {
+        instrumentation.runOnMainSync(() -> {
+            View view = activity.findViewById(resourceId);
+            assertNotNull("Missing activity button id: " + resourceId, view);
+            assertTrue("Activity view is not a Button: " + resourceId, view instanceof Button);
+            assertNotNull("Missing start icon for activity button id: " + resourceId,
+                    ((Button) view).getCompoundDrawablesRelative()[0]);
+        });
+    }
+
+    private void assertActivityViewScale(int resourceId, float expectedScale) {
+        instrumentation.runOnMainSync(() -> {
+            View view = activity.findViewById(resourceId);
+            assertNotNull("Missing activity view id: " + resourceId, view);
+            assertEquals("Unexpected scaleX for activity view id: " + resourceId,
+                    expectedScale, view.getScaleX(), 0.001f);
+            assertEquals("Unexpected scaleY for activity view id: " + resourceId,
+                    expectedScale, view.getScaleY(), 0.001f);
+        });
+    }
+
+    private void assertActivityTextIsSingleLine(int resourceId) {
+        instrumentation.runOnMainSync(() -> {
+            View view = activity.findViewById(resourceId);
+            assertNotNull("Missing activity text id: " + resourceId, view);
+            assertTrue("Activity view is not a TextView: " + resourceId, view instanceof TextView);
+            assertTrue("Activity text should stay on one line: " + resourceId,
+                    ((TextView) view).isSingleLine());
+        });
     }
 
     private void waitForActivityView(int resourceId) throws InterruptedException {

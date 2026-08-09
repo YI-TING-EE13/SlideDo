@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.view.Gravity;
@@ -90,7 +91,12 @@ final class AndroidUi {
     }
 
     Button addWideButton(LinearLayout parent, int textResId, int color, View.OnClickListener listener) {
-        Button button = createButton(activity.getString(textResId), color);
+        return addWideButton(parent, textResId, 0, color, listener);
+    }
+
+    Button addWideButton(LinearLayout parent, int textResId, int iconResId, int color,
+            View.OnClickListener listener) {
+        Button button = createButton(activity.getString(textResId), iconResId, color);
         button.setOnClickListener(listener);
         LinearLayout.LayoutParams params = fullWidthParams();
         params.setMargins(0, 0, 0, dp(10));
@@ -99,7 +105,12 @@ final class AndroidUi {
     }
 
     Button addGameButton(LinearLayout parent, int textResId, View.OnClickListener listener) {
-        Button button = createButton(activity.getString(textResId), COLOR_PANEL_LIGHT);
+        return addGameButton(parent, textResId, 0, listener);
+    }
+
+    Button addGameButton(LinearLayout parent, int textResId, int iconResId,
+            View.OnClickListener listener) {
+        Button button = createButton(activity.getString(textResId), iconResId, COLOR_PANEL_LIGHT);
         button.setOnClickListener(listener);
         commandButtons.add(button);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(48), 1f);
@@ -109,7 +120,12 @@ final class AndroidUi {
     }
 
     Button addRowButton(LinearLayout parent, int textResId, int color, View.OnClickListener listener) {
-        Button button = createButton(activity.getString(textResId), color);
+        return addRowButton(parent, textResId, 0, color, listener);
+    }
+
+    Button addRowButton(LinearLayout parent, int textResId, int iconResId, int color,
+            View.OnClickListener listener) {
+        Button button = createButton(activity.getString(textResId), iconResId, color);
         button.setOnClickListener(listener);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(52), 1f);
         params.setMargins(dp(4), 0, dp(4), 0);
@@ -118,6 +134,10 @@ final class AndroidUi {
     }
 
     Button createButton(String text, int color) {
+        return createButton(text, 0, color);
+    }
+
+    Button createButton(String text, int iconResId, int color) {
         Button button = new Button(activity);
         button.setText(text);
         button.setTextColor(Color.WHITE);
@@ -130,6 +150,12 @@ final class AndroidUi {
         button.setLetterSpacing(0.01f);
         button.setStateListAnimator(null);
         button.setBackground(makeInteractiveBackground(color));
+        if (iconResId != 0) {
+            Drawable icon = activity.getDrawable(iconResId).mutate();
+            icon.setTint(Color.WHITE);
+            button.setCompoundDrawablesRelativeWithIntrinsicBounds(icon, null, null, null);
+            button.setCompoundDrawablePadding(dp(7));
+        }
         return button;
     }
 

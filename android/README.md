@@ -26,8 +26,11 @@ an emulator or connected Android device.
 - Swipe a movable tile toward the blank space
 - Whole-line slides animate all affected tiles together and count as one move
 - Compact in-game controls with Undo, Restart, Menu, and Assist actions
+- Icon-plus-text Home, game, and Results actions, with compact game navigation
+  kept on one line at 720x1280
+- Outlined empty-cell affordance and a first-move prompt before the player moves
 - Lightweight Assist hint that highlights movable aligned tiles without moving
-  the board
+  the board; BFS, A*, and IDA* are grouped one level deeper under Solver Tools
 - Board, highlighted movable tiles, primary game controls, and settings switches
   expose accessibility descriptions for screen readers
 - Manual Save and Load controls in the in-game menu
@@ -57,8 +60,10 @@ an emulator or connected Android device.
 - Settings for haptic feedback, reduced board/screen motion, reset saved game,
   and reset records
 - Per-size best record tracking
-- Results screen with Play Again, New Size, Home, and solver-assisted wording
-- BFS, A*, and IDA* solver controls in Assist with warnings for expensive board sizes
+- Results screen with a completion-mark settle, Play Again, New Size, Home, and
+  solver-assisted wording; Reduced motion skips the settle animation
+- BFS, A*, and IDA* solver controls in advanced Solver Tools with warnings for
+  expensive board sizes
 - Solver-assisted completions do not overwrite player best records
 - Android instrumentation coverage for the main navigation, Mode Select
   guidance, Continue metadata, Activity state/navigation helpers, and gameplay
@@ -71,7 +76,20 @@ an emulator or connected Android device.
 This repository includes a Gradle wrapper. Android Studio can open and sync the
 project using the installed Android SDK at:
 
-`C:\Users\LAB-606\AppData\Local\Android\Sdk`
+`%LOCALAPPDATA%\Android\Sdk`
+
+If the Google Android CLI is installed, a second small-phone AVD can be created
+and started without Android Studio:
+
+```bat
+android-cli.exe emulator create small_phone
+android-cli.exe emulator start --cold small_phone
+android-cli.exe emulator list --long
+```
+
+The accepted local `small_phone` profile uses Android 16 / API 36.1 at 720x1280
+and 320 dpi. Use an explicit device serial for ADB or Gradle when more than one
+emulator is connected.
 
 For command-line builds, run:
 
@@ -99,12 +117,13 @@ This runs `verify.bat` and `verify-release.bat`. CI release artifacts are
 verification outputs and use the temporary signing key unless real Play upload
 signing is explicitly configured.
 
-Latest 2026-08-09 validation status: `..\verify-connected.bat` passed all 35
-connected instrumentation tests on the Pixel_7 AVD running Android 15. The
-suite covers the normal animated transition path and the Reduced motion bypass.
-A manual emulator pass inspected Home, Mode Select, Game, Settings, and Results;
-an assisted 3x3 BFS solve completed through Results without writing a player
-record or producing an Android runtime error.
+Latest 2026-08-10 validation status: all 36 connected instrumentation tests
+passed on both the Pixel_7 AVD running Android 15 at 1080x2400 and the
+`small_phone` AVD running Android 16 / API 36.1 at 720x1280. The suite covers the
+normal animated transition path and the Reduced motion bypass. CLI-captured
+manual review covered onboarding, Home, Mode Select, Game, Assist, Solver Tools,
+and Results. A 23-move assisted 3x3 BFS solve completed through Results without
+writing a player record or producing an Android runtime error.
 
 For Android build and lint only:
 
@@ -220,12 +239,18 @@ check-screenshot-set.bat ..\screenshots\android\0.2.0-beta.1
 - Use Settings reset actions only after confirming the dialogs.
 - Open Assist, choose Show Movable Tiles, and confirm the status explains the
   highlighted legal moves while the move count stays unchanged.
+- Confirm the empty cell has a visible outline/dot and the zero-move status
+  explains the first aligned-tile interaction.
 - With a screen reader or inspection tool, confirm the board describes its size,
   empty-cell position, row-by-row tile state, and highlighted movable-tile count.
 - Confirm Undo, Restart, Assist, Menu, and Settings switches expose descriptive
   accessibility labels.
-- Open Assist, choose an expensive solver such as BFS on 4x4, and confirm the warning dialog appears.
-- Finish a game and confirm Results shows moves, time, record status, and Play Again/New Size/Home actions.
+- Open Assist, confirm solver names are not shown at the first level, then open
+  Solver Tools and confirm the record-safety explanation appears before BFS,
+  A*, and IDA*.
+- Choose an expensive solver such as BFS on 4x4 and confirm the warning dialog appears.
+- Finish a game and confirm Results shows the completion mark, moves, time,
+  record status, and Play Again/New Size/Home actions.
 - Confirm solver-assisted completion reaches Results without updating player best records.
 - Background and return to the app; autosave should preserve the current board.
 - Rotate and return to portrait; the current game state should remain intact.
