@@ -3,10 +3,14 @@ package com.klotski.android;
 import static com.klotski.android.AndroidUi.COLOR_ACCENT;
 import static com.klotski.android.AndroidUi.COLOR_MUTED_TEXT;
 import static com.klotski.android.AndroidUi.COLOR_PANEL;
+import static com.klotski.android.AndroidUi.COLOR_PANEL_HIGHLIGHT;
+import static com.klotski.android.AndroidUi.COLOR_POSITIVE_TEXT;
 
 import android.app.Activity;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.view.Gravity;
+import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -50,31 +54,59 @@ final class AndroidModeSelectScreen {
         String difficultyText = activity.getString(difficultyResId);
         String detailText = activity.getString(detailResId);
         String sessionText = activity.getString(sessionResId);
+        String accessibilitySessionText = size == 3
+                ? sessionText + " " + activity.getString(R.string.mode_recommended_accessibility)
+                : sessionText;
         row.setContentDescription(activity.getString(R.string.mode_card_accessibility,
-                size, size, difficultyText, detailText, sessionText, bestText));
+                size, size, difficultyText, detailText, accessibilitySessionText, bestText));
         row.setOrientation(LinearLayout.VERTICAL);
-        row.setPadding(ui.dp(16), ui.dp(14), ui.dp(16), ui.dp(14));
-        row.setBackground(ui.makePanelBackground(COLOR_PANEL));
+        row.setPadding(ui.dp(18), ui.dp(16), ui.dp(18), ui.dp(16));
+        row.setBackground(ui.makeInteractiveBackground(size == 3 ? COLOR_PANEL_HIGHLIGHT : COLOR_PANEL));
         row.setClickable(true);
+        row.setFocusable(true);
         row.setOnClickListener(v -> actions.onModeSelected(size));
 
+        LinearLayout titleRow = new LinearLayout(activity);
+        titleRow.setGravity(Gravity.CENTER_VERTICAL);
+        titleRow.setOrientation(LinearLayout.HORIZONTAL);
         TextView title = ui.createText(activity.getString(R.string.mode_card_title, size, size),
                 22, Color.WHITE, Typeface.BOLD);
         title.setId(ids.titleId);
+        titleRow.addView(title, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        TextView chevron = ui.createText("›", 28, COLOR_MUTED_TEXT, Typeface.NORMAL);
+        chevron.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        titleRow.addView(chevron, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        LinearLayout metadataRow = new LinearLayout(activity);
+        metadataRow.setGravity(Gravity.CENTER_VERTICAL);
+        metadataRow.setOrientation(LinearLayout.HORIZONTAL);
         TextView difficulty = ui.createText(difficultyText, 15, COLOR_ACCENT, Typeface.BOLD);
         difficulty.setId(ids.difficultyId);
+        metadataRow.addView(difficulty, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        if (size == 3) {
+            TextView recommended = ui.createText(activity.getString(R.string.mode_recommended),
+                    13, COLOR_POSITIVE_TEXT, Typeface.BOLD);
+            recommended.setId(R.id.mode_3_recommended_text);
+            metadataRow.addView(recommended, new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        }
         TextView detail = ui.createText(detailText, 15, COLOR_MUTED_TEXT, Typeface.NORMAL);
         detail.setId(ids.detailId);
-        TextView session = ui.createText(sessionText, 14, COLOR_ACCENT, Typeface.BOLD);
+        TextView session = ui.createText(sessionText, 14, COLOR_MUTED_TEXT, Typeface.NORMAL);
         session.setId(ids.sessionId);
         TextView best = ui.createText(activity.getString(R.string.mode_best_label, bestText),
-                14, COLOR_MUTED_TEXT, Typeface.NORMAL);
+                14, COLOR_POSITIVE_TEXT, Typeface.BOLD);
         best.setId(ids.bestId);
 
-        row.addView(title, ui.fullWidthParams());
-        row.addView(difficulty, ui.fullWidthParams());
+        row.addView(titleRow, ui.fullWidthParams());
+        LinearLayout.LayoutParams metadataParams = ui.fullWidthParams();
+        metadataParams.setMargins(0, ui.dp(2), 0, 0);
+        row.addView(metadataRow, metadataParams);
         LinearLayout.LayoutParams detailParams = ui.fullWidthParams();
-        detailParams.setMargins(0, ui.dp(8), 0, 0);
+        detailParams.setMargins(0, ui.dp(10), 0, 0);
         row.addView(detail, detailParams);
         LinearLayout.LayoutParams sessionParams = ui.fullWidthParams();
         sessionParams.setMargins(0, ui.dp(8), 0, 0);

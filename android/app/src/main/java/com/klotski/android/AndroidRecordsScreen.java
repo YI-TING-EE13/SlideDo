@@ -2,7 +2,8 @@ package com.klotski.android;
 
 import static com.klotski.android.AndroidUi.COLOR_MUTED_TEXT;
 import static com.klotski.android.AndroidUi.COLOR_PANEL;
-import static com.klotski.android.AndroidUi.COLOR_PRIMARY;
+import static com.klotski.android.AndroidUi.COLOR_PANEL_HIGHLIGHT;
+import static com.klotski.android.AndroidUi.COLOR_POSITIVE_TEXT;
 
 import android.app.Activity;
 import android.graphics.Color;
@@ -34,7 +35,7 @@ final class AndroidRecordsScreen {
         addRecordRow(screen.content, 4, R.string.mode_classic, best4);
         addRecordRow(screen.content, 5, R.string.mode_expert, best5);
 
-        Button backButton = ui.addWideButton(screen.content, R.string.nav_back, COLOR_PRIMARY,
+        Button backButton = ui.addWideButton(screen.content, R.string.nav_back, COLOR_PANEL,
                 v -> actions.onBack());
         backButton.setId(R.id.records_back_button);
         return screen;
@@ -45,6 +46,8 @@ final class AndroidRecordsScreen {
                 15, COLOR_MUTED_TEXT, Typeface.NORMAL);
         explanation.setId(R.id.records_explanation_text);
         explanation.setLineSpacing(0, 1.12f);
+        explanation.setPadding(ui.dp(16), ui.dp(14), ui.dp(16), ui.dp(14));
+        explanation.setBackground(ui.makePanelBackground(COLOR_PANEL_HIGHLIGHT));
         LinearLayout.LayoutParams params = ui.fullWidthParams();
         params.setMargins(0, 0, 0, ui.dp(16));
         parent.addView(explanation, params);
@@ -57,8 +60,11 @@ final class AndroidRecordsScreen {
         row.setBackground(ui.makePanelBackground(COLOR_PANEL));
 
         TextView title = ui.createText(activity.getString(R.string.records_row_title,
-                size, size, activity.getString(difficultyResId)), 20, Color.WHITE, Typeface.BOLD);
-        TextView best = ui.createText(bestText, 15, COLOR_MUTED_TEXT, Typeface.NORMAL);
+                size, size, activity.getString(difficultyResId)), 15, COLOR_MUTED_TEXT, Typeface.BOLD);
+        TextView best = ui.createText(bestText, 20,
+                activity.getString(R.string.records_empty).equals(bestText)
+                        ? Color.WHITE : COLOR_POSITIVE_TEXT,
+                Typeface.BOLD);
 
         row.addView(title, ui.fullWidthParams());
         LinearLayout.LayoutParams bestParams = ui.fullWidthParams();

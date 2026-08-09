@@ -1,8 +1,8 @@
 package com.klotski.android;
 
 import static com.klotski.android.AndroidUi.COLOR_MUTED_TEXT;
+import static com.klotski.android.AndroidUi.COLOR_DANGER_PANEL;
 import static com.klotski.android.AndroidUi.COLOR_PANEL;
-import static com.klotski.android.AndroidUi.COLOR_PRIMARY;
 
 import android.app.Activity;
 import android.graphics.Color;
@@ -31,19 +31,21 @@ final class AndroidSettingsScreen {
         ui.addScreenHeader(screen.content,
                 activity.getString(R.string.settings_title),
                 activity.getString(R.string.settings_subtitle));
+        ui.addSectionLabel(screen.content, R.string.settings_section_preferences);
         addSettingsSwitch(screen.content, R.id.settings_haptic_switch, R.string.settings_haptic_title,
                 R.string.settings_haptic_body, hapticEnabled, actions::onHapticChanged);
         addSettingsSwitch(screen.content, R.id.settings_reduced_motion_switch,
                 R.string.settings_reduced_motion_title, R.string.settings_reduced_motion_body,
                 reducedMotionEnabled, actions::onReducedMotionChanged);
 
-        Button resetSaveButton = ui.addWideButton(screen.content, R.string.settings_reset_save, COLOR_PANEL,
+        ui.addSectionLabel(screen.content, R.string.settings_section_local_data);
+        Button resetSaveButton = ui.addWideButton(screen.content, R.string.settings_reset_save, COLOR_DANGER_PANEL,
                 v -> actions.onResetSave());
         resetSaveButton.setId(R.id.settings_reset_save_button);
-        Button resetRecordsButton = ui.addWideButton(screen.content, R.string.settings_reset_records, COLOR_PANEL,
+        Button resetRecordsButton = ui.addWideButton(screen.content, R.string.settings_reset_records, COLOR_DANGER_PANEL,
                 v -> actions.onResetRecords());
         resetRecordsButton.setId(R.id.settings_reset_records_button);
-        Button backButton = ui.addWideButton(screen.content, R.string.nav_back, COLOR_PRIMARY,
+        Button backButton = ui.addWideButton(screen.content, R.string.nav_back, COLOR_PANEL,
                 v -> actions.onBack());
         backButton.setId(R.id.settings_back_button);
         return screen;

@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">SlideDo</string>
-    <string name="home_tagline">A quick number puzzle for taps, swipes, and clean solves.</string>
-    <string name="home_summary">Arrange the tiles in order and leave the empty cell at the end.</string>
+    <string name="home_tagline">A calm number puzzle for quick, satisfying solves.</string>
+    <string name="home_summary">Order the tiles. Leave the empty cell in the bottom-right.</string>
     <string name="home_continue">Continue</string>
     <string name="home_continue_summary">%1$s: %2$dx%3$d, %4$s, %5$ds, %6$s</string>
     <string name="home_continue_active">Active save</string>
@@ -19,6 +19,8 @@
     <string name="home_how_to_play">How to Play</string>
     <string name="home_settings">Settings</string>
     <string name="home_records">Records</string>
+    <string name="home_section_learn">LEARN</string>
+    <string name="home_section_your_game">YOUR GAME</string>
     <string name="nav_home">Home</string>
     <string name="nav_back">Back</string>
     <string name="onboarding_title">Start with the Basics</string>
@@ -55,10 +57,12 @@
     <string name="mode_easy_detail">Short sessions and fast solves.</string>
     <string name="mode_classic_detail">The standard SlideDo challenge.</string>
     <string name="mode_expert_detail">More tiles, longer plans, higher risk.</string>
-    <string name="mode_easy_session">Session: usually 1-3 minutes. Recommended first puzzle.</string>
+    <string name="mode_easy_session">Session: usually 1-3 minutes.</string>
     <string name="mode_classic_session">Session: usually 5-10 minutes.</string>
     <string name="mode_expert_session">Session: longer focused play.</string>
     <string name="mode_best_label">Best: %1$s</string>
+    <string name="mode_recommended">Recommended</string>
+    <string name="mode_recommended_accessibility">Recommended first puzzle.</string>
     <string name="mode_card_accessibility">%1$dx%2$d Puzzle. %3$s. %4$s %5$s Best: %6$s.</string>
     <string name="how_title">How to Play</string>
     <string name="how_subtitle">Use the empty cell to pull tiles into order.</string>
@@ -81,15 +85,19 @@
     <string name="records_empty">No record yet</string>
     <string name="settings_title">Settings</string>
     <string name="settings_subtitle">Tune feedback and manage local game data.</string>
+    <string name="settings_section_preferences">PREFERENCES</string>
+    <string name="settings_section_local_data">LOCAL DATA</string>
     <string name="settings_haptic_title">Haptic feedback</string>
     <string name="settings_haptic_body">Use short vibration feedback for board moves and key actions.</string>
     <string name="settings_reduced_motion_title">Reduced motion</string>
-    <string name="settings_reduced_motion_body">Complete board moves without transition animation.</string>
+    <string name="settings_reduced_motion_body">Skip board movement and screen transition animations.</string>
     <string name="settings_reset_save">Reset Saved Game</string>
     <string name="settings_reset_records">Reset Records</string>
     <string name="results_title">Results</string>
     <string name="results_player_subtitle">Puzzle solved.</string>
     <string name="results_assisted_subtitle">Solved with assist.</string>
+    <string name="results_completion_mark">✓</string>
+    <string name="results_completion_description">Puzzle complete</string>
     <string name="results_size_format">%1$dx%2$d Puzzle</string>
     <string name="results_stats_format">%1$s   Time: %2$ds</string>
     <string name="results_first_record">First player record for this size.</string>

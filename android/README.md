@@ -16,6 +16,11 @@ an emulator or connected Android device.
   highlights, and whole-line slide practice
 - Mode Select for 3x3, 4x4, and 5x5 games with difficulty labels, expected
   session length, first-puzzle guidance, and local best records
+- Short screen exit transitions and staggered content entrances across Home,
+  onboarding, Practice Tutorial, Mode Select, How to Play, Settings, Records,
+  Results, and Game
+- Flat rounded surfaces, press ripples, grouped Home actions, clearer Settings
+  data boundaries, and a structured Results summary
 - Visual How to Play, Beginner Guide, Quick Reminder, and Records screens
 - Tap a tile in the same row/column as the blank space to slide one or more tiles
 - Swipe a movable tile toward the blank space
@@ -32,6 +37,8 @@ an emulator or connected Android device.
 - Activity state restoration, back-navigation decisions, shared UI primitives,
   and learning-content builders are split out of `MainActivity` for maintainable
   Android iteration
+- `AndroidMotion` owns presentation-only screen timing and interaction locking;
+  navigation targets and state remain in `MainActivity`
 - Home screen construction, including Continue metadata presentation, is split
   into `AndroidHomeScreen`
 - Game and Practice Tutorial screen construction is split into
@@ -47,7 +54,8 @@ an emulator or connected Android device.
   file
 - Signed release APK/AAB builds are available through `build-release.bat`
 - Rotation restore for the active game screen
-- Settings for haptic feedback, reduced motion, reset saved game, and reset records
+- Settings for haptic feedback, reduced board/screen motion, reset saved game,
+  and reset records
 - Per-size best record tracking
 - Results screen with Play Again, New Size, Home, and solver-assisted wording
 - BFS, A*, and IDA* solver controls in Assist with warnings for expensive board sizes
@@ -91,12 +99,12 @@ This runs `verify.bat` and `verify-release.bat`. CI release artifacts are
 verification outputs and use the temporary signing key unless real Play upload
 signing is explicitly configured.
 
-Latest 2026-08-09 performance-validation status: `..\verify.bat` passes, and
-`..\verify-connected.bat` passed all 32 connected instrumentation tests on the
-Pixel_7 AVD running Android 15 after the BFS optimization. A clean-install
-manual smoke flow also covered onboarding, Home, mode selection, whole-line
-movement and Undo, assisted BFS playback and Results, the 4x4 BFS warning, and
-background/resume state preservation.
+Latest 2026-08-09 validation status: `..\verify-connected.bat` passed all 35
+connected instrumentation tests on the Pixel_7 AVD running Android 15. The
+suite covers the normal animated transition path and the Reduced motion bypass.
+A manual emulator pass inspected Home, Mode Select, Game, Settings, and Results;
+an assisted 3x3 BFS solve completed through Results without writing a player
+record or producing an Android runtime error.
 
 For Android build and lint only:
 
@@ -194,6 +202,8 @@ check-screenshot-set.bat ..\screenshots\android\0.2.0-beta.1
 - Use Skip, Practice Tutorial, and Start 3x3 in onboarding; returning launches should go to Home.
 - Confirm the app opens on Home, not directly on the board.
 - Open Beginner Guide, Practice Tutorial, and How to Play from Home.
+- Confirm screen changes fade the outgoing screen and reveal content in reading
+  order without accepting a second navigation action during the exit.
 - In Practice Tutorial, tap the emphasized 6 for the first move, then tap the
   emphasized 5 to demonstrate a whole-line slide counted as one move.
 - Open New Game, then start 3x3, 4x4, and 5x5 from Mode Select.
@@ -205,7 +215,8 @@ check-screenshot-set.bat ..\screenshots\android\0.2.0-beta.1
 - Confirm saved-game metadata updates with the saved size, move count, elapsed
   time, and active/solved state.
 - Open Menu, check Quick Reminder, and open Settings.
-- Toggle haptics and reduced motion, then return to gameplay.
+- Toggle haptics and Reduced motion, then return to gameplay. Reduced motion
+  should skip both screen transitions and board movement animation.
 - Use Settings reset actions only after confirming the dialogs.
 - Open Assist, choose Show Movable Tiles, and confirm the status explains the
   highlighted legal moves while the move count stays unchanged.

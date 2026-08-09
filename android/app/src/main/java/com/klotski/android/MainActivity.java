@@ -15,6 +15,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
+import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -69,6 +71,7 @@ public class MainActivity extends Activity implements GameObserver {
     private final List<Button> commandButtons = new ArrayList<>();
 
     private AndroidUi ui;
+    private AndroidMotion motion;
     private AndroidLearningContent learningContent;
     private AndroidHomeScreen homeScreen;
     private AndroidModeSelectScreen modeSelectScreen;
@@ -97,6 +100,8 @@ public class MainActivity extends Activity implements GameObserver {
     private boolean gameStarted;
     private boolean tutorialAdvancePending;
     private boolean hintActive;
+    private boolean renderingScreenChange;
+    private boolean screenTransitionRunning;
     private long lastWinTimeMs = -1;
 
     /**
@@ -125,6 +130,7 @@ public class MainActivity extends Activity implements GameObserver {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         ui = new AndroidUi(this, commandButtons);
+        motion = new AndroidMotion(this);
         learningContent = new AndroidLearningContent(this, ui);
         homeScreen = new AndroidHomeScreen(this, ui);
         modeSelectScreen = new AndroidModeSelectScreen(this, ui);
@@ -223,6 +229,50 @@ public class MainActivity extends Activity implements GameObserver {
         }
     }
 
+    private boolean deferScreenChange(Runnable renderDestination) {
+        if (renderingScreenChange) {
+            return false;
+        }
+        if (screenTransitionRunning) {
+            return true;
+        }
+
+        View currentRoot = currentContentRoot();
+        if (currentRoot == null || isReducedMotionEnabled()) {
+            return false;
+        }
+
+        screenTransitionRunning = true;
+        motion.animateExit(currentRoot, false, () -> {
+            if (isFinishing() || isDestroyed()) {
+                screenTransitionRunning = false;
+                return;
+            }
+            renderingScreenChange = true;
+            try {
+                renderDestination.run();
+            } finally {
+                renderingScreenChange = false;
+                screenTransitionRunning = false;
+            }
+        });
+        return true;
+    }
+
+    private void presentContentView(View root) {
+        setContentView(root);
+        motion.animateEntrance(root, isReducedMotionEnabled());
+    }
+
+    private View currentContentRoot() {
+        View content = findViewById(android.R.id.content);
+        if (!(content instanceof ViewGroup)) {
+            return null;
+        }
+        ViewGroup contentGroup = (ViewGroup) content;
+        return contentGroup.getChildCount() == 0 ? null : contentGroup.getChildAt(0);
+    }
+
     private void attachModel(GameModel newModel) {
         if (model != null) {
             model.removeObserver(this);
@@ -282,6 +332,9 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private void showHomeScreen() {
+        if (deferScreenChange(this::showHomeScreen)) {
+            return;
+        }
         currentScreen = Screen.HOME;
         infoReturnScreen = Screen.HOME;
         tutorialAdvancePending = false;
@@ -334,10 +387,13 @@ public class MainActivity extends Activity implements GameObserver {
             }
         });
 
-        setContentView(screen.root);
+        presentContentView(screen.root);
     }
 
     private void showOnboardingScreen(int requestedPage) {
+        if (deferScreenChange(() -> showOnboardingScreen(requestedPage))) {
+            return;
+        }
         currentScreen = Screen.ONBOARDING;
         infoReturnScreen = Screen.HOME;
         statusText = null;
@@ -383,10 +439,13 @@ public class MainActivity extends Activity implements GameObserver {
                 v -> skipOnboarding());
         skipButton.setId(R.id.onboarding_skip_button);
 
-        setContentView(screen.root);
+        presentContentView(screen.root);
     }
 
     private void showModeSelectScreen() {
+        if (deferScreenChange(this::showModeSelectScreen)) {
+            return;
+        }
         currentScreen = Screen.MODE_SELECT;
         statusText = null;
         gameTitleText = null;
@@ -405,10 +464,13 @@ public class MainActivity extends Activity implements GameObserver {
                     }
                 });
 
-        setContentView(screen.root);
+        presentContentView(screen.root);
     }
 
     private void showHowToScreen(Screen returnScreen) {
+        if (deferScreenChange(() -> showHowToScreen(returnScreen))) {
+            return;
+        }
         currentScreen = Screen.HOW_TO_PLAY;
         infoReturnScreen = returnScreen;
         statusText = null;
@@ -430,13 +492,16 @@ public class MainActivity extends Activity implements GameObserver {
         learningContent.addInstruction(screen.content, R.string.how_swipe_title, R.string.how_swipe_body);
         learningContent.addInstruction(screen.content, R.string.how_tools_title, R.string.how_tools_body);
         learningContent.addInstruction(screen.content, R.string.how_records_title, R.string.how_records_body);
-        Button backButton = ui.addWideButton(screen.content, R.string.nav_back, COLOR_PRIMARY, v -> returnFromInfoScreen());
+        Button backButton = ui.addWideButton(screen.content, R.string.nav_back, COLOR_PANEL, v -> returnFromInfoScreen());
         backButton.setId(R.id.how_back_button);
 
-        setContentView(screen.root);
+        presentContentView(screen.root);
     }
 
     private void showRecordsScreen(Screen returnScreen) {
+        if (deferScreenChange(() -> showRecordsScreen(returnScreen))) {
+            return;
+        }
         currentScreen = Screen.RECORDS;
         infoReturnScreen = returnScreen;
         statusText = null;
@@ -451,10 +516,13 @@ public class MainActivity extends Activity implements GameObserver {
                     }
                 });
 
-        setContentView(screen.root);
+        presentContentView(screen.root);
     }
 
     private void showSettingsScreen(Screen returnScreen) {
+        if (deferScreenChange(() -> showSettingsScreen(returnScreen))) {
+            return;
+        }
         currentScreen = Screen.SETTINGS;
         infoReturnScreen = returnScreen;
         statusText = null;
@@ -491,10 +559,13 @@ public class MainActivity extends Activity implements GameObserver {
                     }
                 });
 
-        setContentView(screen.root);
+        presentContentView(screen.root);
     }
 
     private void showResultsScreen() {
+        if (deferScreenChange(this::showResultsScreen)) {
+            return;
+        }
         if (currentResult == null) {
             showHomeScreen();
             return;
@@ -526,10 +597,13 @@ public class MainActivity extends Activity implements GameObserver {
                     }
                 });
 
-        setContentView(screen.root);
+        presentContentView(screen.root);
     }
 
     private void showTutorialScreen(int requestedStep) {
+        if (deferScreenChange(() -> showTutorialScreen(requestedStep))) {
+            return;
+        }
         currentScreen = Screen.TUTORIAL;
         infoReturnScreen = Screen.HOME;
         tutorialAdvancePending = false;
@@ -575,7 +649,7 @@ public class MainActivity extends Activity implements GameObserver {
         tutorialInstructionText = views.instructionText;
         tutorialStatusText = views.statusText;
 
-        setContentView(views.root);
+        presentContentView(views.root);
         updateTutorialStatus();
     }
 
@@ -588,6 +662,9 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private void showGameScreen() {
+        if (deferScreenChange(this::showGameScreen)) {
+            return;
+        }
         currentScreen = Screen.GAME;
         tutorialAdvancePending = false;
         hintActive = false;
@@ -644,7 +721,7 @@ public class MainActivity extends Activity implements GameObserver {
         gameTitleText = views.titleText;
         statusText = views.statusText;
 
-        setContentView(views.root);
+        presentContentView(views.root);
         updateStatus();
     }
 
@@ -879,7 +956,6 @@ public class MainActivity extends Activity implements GameObserver {
                 .setPositiveButton(R.string.dialog_reset, (dialog, which) -> {
                     clearSavedGame();
                     Toast.makeText(this, R.string.toast_save_reset, Toast.LENGTH_SHORT).show();
-                    showSettingsScreen(infoReturnScreen);
                 })
                 .setNegativeButton(R.string.dialog_cancel, null)
                 .show();
@@ -892,7 +968,6 @@ public class MainActivity extends Activity implements GameObserver {
                 .setPositiveButton(R.string.dialog_reset, (dialog, which) -> {
                     clearRecords();
                     Toast.makeText(this, R.string.toast_records_reset, Toast.LENGTH_SHORT).show();
-                    showSettingsScreen(infoReturnScreen);
                 })
                 .setNegativeButton(R.string.dialog_cancel, null)
                 .show();

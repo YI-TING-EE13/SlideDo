@@ -31,6 +31,10 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
   - Mode Select starts 3x3, 4x4, or 5x5 games and shows difficulty, expected
     session length, recommended first mode, and local best records.
   - Visual How to Play examples and an in-game Quick Reminder explain the key movement rules.
+  - Screen changes use a short exit followed by staggered content entrance;
+    Reduced motion skips both screen transitions and board movement animation.
+  - Home groups play, learning, and personal actions so the main path remains
+    visible without giving every action the same visual weight.
   - Whole-line tap behavior maps naturally to touch screens.
   - One user gesture counts as one move.
   - Undo restores the entire previous user action.
@@ -50,7 +54,7 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
 - **Native Android Project**:
   - Gradle wrapper included.
   - Custom Android view.
-  - Home, onboarding, interactive Practice Tutorial, Mode Select, visual How to Play, Settings, Records, Results, touch controls, synchronized whole-line animation, haptics, autosave, manual save/load, best records, Assist hints, accessibility descriptions, solver controls, and instrumentation tests.
+  - Home, onboarding, interactive Practice Tutorial, Mode Select, visual How to Play, Settings, Records, Results, coordinated screen transitions, touch controls, synchronized whole-line animation, haptics, autosave, manual save/load, best records, Assist hints, accessibility descriptions, solver controls, and instrumentation tests.
 
 ---
 
@@ -334,12 +338,14 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
   Mode Select guidance and accessibility text, Continue metadata, How to Play,
   Settings, Results, Assist hints, whole-line movement, undo, save/load
   persistence, app-state store behavior, Activity state/navigation helpers,
-  rotation, and solver-assisted record protection.
+  rotation, screen-transition behavior, Reduced motion, and solver-assisted
+  record protection.
 - Connected Android instrumentation helpers now wait for the foreground app
   window and fall back to direct swipe scrolling for long help content, reducing
   false failures on slow emulator runs.
-- The 2026-08-09 connected Android instrumentation run on the Pixel_7 AVD with
-  Android 15 passed all 32 tests after the BFS optimization.
+- The latest 2026-08-09 connected Android instrumentation run on the Pixel_7
+  AVD with Android 15 passed all 35 tests after the Android motion and visual
+  hierarchy pass.
 - Latest local `ci.bat` run passed the no-device verification and release
   readiness gates.
 - Android emulator smoke testing for install/launch, Home visibility, whole-line movement, undo, restart, save/load, solver warning dialog, rotation, and background resume.
@@ -426,6 +432,8 @@ android\screenshot-smoke.bat
 
 - Desktop UI tests are still manual/smoke-level.
 - Connected Android instrumentation tests still require a running emulator or device.
+- Screen-transition frame timing has been sampled on the Pixel_7 AVD; smaller,
+  larger, and lower-refresh devices still need the pre-launch visual pass.
 - Screenshot smoke validates captured PNG readability and dimensions, but is
   not a pixel-diff gate.
 - `MainActivity` has been reduced by extracting state/navigation/UI helpers and
@@ -505,7 +513,7 @@ Contributions are welcome. Good areas to improve:
 - Automated tests.
 - Solver heuristics and performance.
 - Difficulty calibration.
-- UI polish and animation tuning.
+- Cross-device UI polish and animation tuning.
 - Release packaging.
 
 ---

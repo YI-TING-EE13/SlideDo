@@ -207,7 +207,8 @@ public class MainActivityFlowTest {
         assertActivityHasView(R.id.mode_4_button);
         assertActivityHasView(R.id.mode_5_button);
         assertActivityTextContains(R.id.mode_3_title_text, "3x3 Puzzle");
-        assertActivityTextContains(R.id.mode_3_session_text, "Recommended first puzzle");
+        assertActivityTextContains(R.id.mode_3_session_text, "1-3 minutes");
+        assertActivityTextContains(R.id.mode_3_recommended_text, "Recommended");
         assertActivityTextContains(R.id.mode_4_session_text, "5-10 minutes");
         assertActivityTextContains(R.id.mode_5_session_text, "longer focused play");
         assertActivityContentDescriptionContains(R.id.mode_3_button, "Recommended first puzzle");
@@ -226,6 +227,62 @@ public class MainActivityFlowTest {
         assertActivityContentDescriptionContains(R.id.game_undo_button, "Undo the previous move");
         assertActivityContentDescriptionContains(R.id.game_restart_button, "Restart this puzzle");
         assertActivityContentDescriptionContains(R.id.game_assist_button, "Open assist actions");
+    }
+
+    @Test
+    public void screenNavigationKeepsOutgoingContentUntilTransitionCompletes() throws Exception {
+        markOnboardingSeen();
+        launchApp();
+
+        instrumentation.runOnMainSync(() -> {
+            View play = activity.findViewById(R.id.home_new_game_button);
+            assertNotNull(play);
+            assertTrue(play.performClick());
+            assertNotNull("Outgoing Home should remain during its exit animation",
+                    activity.findViewById(R.id.home_root));
+            assertFalse("Outgoing actions should be disabled during exit", play.isEnabled());
+            assertNull(activity.findViewById(R.id.mode_root));
+        });
+
+        waitForId("mode_root");
+    }
+
+    @Test
+    public void screenTransitionDisablesOutgoingBoardInteraction() throws Exception {
+        writeSavedGame(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 0);
+        launchApp();
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+
+        instrumentation.runOnMainSync(() -> {
+            View home = activity.findViewById(R.id.game_home_button);
+            View board = activity.findViewById(R.id.game_board);
+            assertNotNull(home);
+            assertNotNull(board);
+            assertTrue(home.performClick());
+            assertFalse("Board should reject touch while Game exits", board.isEnabled());
+            assertNotNull(activity.findViewById(R.id.game_root));
+        });
+
+        waitForId("home_root");
+    }
+
+    @Test
+    public void reducedMotionSkipsScreenTransitionAnimation() throws Exception {
+        markOnboardingSeen();
+        targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean("reduced_motion", true)
+                .commit();
+        launchApp();
+
+        instrumentation.runOnMainSync(() -> {
+            View play = activity.findViewById(R.id.home_new_game_button);
+            assertNotNull(play);
+            assertTrue(play.performClick());
+            assertNotNull(activity.findViewById(R.id.mode_root));
+            assertNull(activity.findViewById(R.id.home_root));
+        });
     }
 
     @Test
@@ -290,7 +347,7 @@ public class MainActivityFlowTest {
         waitForContentDescriptionContaining("settings_haptic_switch",
                 "Haptic feedback. Use short vibration feedback");
         waitForContentDescriptionContaining("settings_reduced_motion_switch",
-                "Reduced motion. Complete board moves without transition animation");
+                "Reduced motion. Skip board movement and screen transition animations");
 
         toggleSwitch(R.id.settings_haptic_switch);
         toggleSwitch(R.id.settings_reduced_motion_switch);

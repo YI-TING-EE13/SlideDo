@@ -46,7 +46,7 @@ final class AndroidTutorialScreen {
 
         LinearLayout lesson = new LinearLayout(activity);
         lesson.setOrientation(LinearLayout.VERTICAL);
-        lesson.setPadding(ui.dp(14), ui.dp(12), ui.dp(14), ui.dp(12));
+        lesson.setPadding(ui.dp(16), ui.dp(14), ui.dp(16), ui.dp(14));
         lesson.setBackground(ui.makePanelBackground(COLOR_PANEL));
         LinearLayout.LayoutParams lessonParams = ui.fullWidthParams();
         lessonParams.setMargins(0, ui.dp(10), 0, ui.dp(10));
@@ -63,9 +63,11 @@ final class AndroidTutorialScreen {
         instructionParams.setMargins(0, ui.dp(6), 0, 0);
         lesson.addView(instructionText, instructionParams);
 
-        TextView statusText = ui.createText("", 15, Color.WHITE, Typeface.BOLD);
+        TextView statusText = ui.createText("", 14, COLOR_MUTED_TEXT, Typeface.BOLD);
         statusText.setId(R.id.tutorial_status_text);
         statusText.setGravity(Gravity.CENTER);
+        statusText.setPadding(ui.dp(12), ui.dp(8), ui.dp(12), ui.dp(8));
+        statusText.setBackground(ui.makePanelBackground(COLOR_PANEL));
         LinearLayout.LayoutParams statusParams = ui.fullWidthParams();
         statusParams.setMargins(0, 0, 0, ui.dp(8));
         root.addView(statusText, statusParams);

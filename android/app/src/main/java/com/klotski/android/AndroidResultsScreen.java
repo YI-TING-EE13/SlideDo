@@ -3,6 +3,8 @@ package com.klotski.android;
 import static com.klotski.android.AndroidUi.COLOR_ACCENT;
 import static com.klotski.android.AndroidUi.COLOR_MUTED_TEXT;
 import static com.klotski.android.AndroidUi.COLOR_PANEL;
+import static com.klotski.android.AndroidUi.COLOR_PANEL_HIGHLIGHT;
+import static com.klotski.android.AndroidUi.COLOR_POSITIVE_TEXT;
 import static com.klotski.android.AndroidUi.COLOR_PRIMARY;
 
 import android.app.Activity;
@@ -35,11 +37,28 @@ final class AndroidResultsScreen {
                         ? R.string.results_assisted_subtitle
                         : R.string.results_player_subtitle));
 
+        TextView completionMark = ui.createText(activity.getString(R.string.results_completion_mark),
+                30, COLOR_POSITIVE_TEXT, Typeface.BOLD);
+        completionMark.setGravity(Gravity.CENTER);
+        completionMark.setContentDescription(activity.getString(R.string.results_completion_description));
+        completionMark.setBackground(ui.makeCircleBackground(
+                COLOR_PANEL_HIGHLIGHT, COLOR_POSITIVE_TEXT));
+        LinearLayout.LayoutParams markParams = new LinearLayout.LayoutParams(ui.dp(62), ui.dp(62));
+        markParams.gravity = Gravity.CENTER_HORIZONTAL;
+        markParams.setMargins(0, 0, 0, ui.dp(16));
+        screen.content.addView(completionMark, markParams);
+
+        LinearLayout summary = new LinearLayout(activity);
+        summary.setGravity(Gravity.CENTER_HORIZONTAL);
+        summary.setOrientation(LinearLayout.VERTICAL);
+        summary.setPadding(ui.dp(18), ui.dp(18), ui.dp(18), ui.dp(18));
+        summary.setBackground(ui.makePanelBackground(COLOR_PANEL));
+
         TextView size = ui.createText(activity.getString(R.string.results_size_format,
                 result.size, result.size), 18, Color.WHITE, Typeface.BOLD);
         size.setId(R.id.results_size_text);
         size.setGravity(Gravity.CENTER);
-        screen.content.addView(size, ui.fullWidthParams());
+        summary.addView(size, ui.fullWidthParams());
 
         TextView stats = ui.createText(activity.getString(R.string.results_stats_format,
                 movesText, result.timeMs / 1000), 24, Color.WHITE, Typeface.BOLD);
@@ -47,7 +66,7 @@ final class AndroidResultsScreen {
         stats.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams statsParams = ui.fullWidthParams();
         statsParams.setMargins(0, ui.dp(10), 0, ui.dp(10));
-        screen.content.addView(stats, statsParams);
+        summary.addView(stats, statsParams);
 
         TextView record = ui.createText(recordText, 16,
                 result.newBest ? COLOR_ACCENT : COLOR_MUTED_TEXT, Typeface.BOLD);
@@ -55,8 +74,11 @@ final class AndroidResultsScreen {
         record.setGravity(Gravity.CENTER);
         record.setLineSpacing(0, 1.12f);
         LinearLayout.LayoutParams recordParams = ui.fullWidthParams();
-        recordParams.setMargins(0, 0, 0, ui.dp(22));
-        screen.content.addView(record, recordParams);
+        summary.addView(record, recordParams);
+
+        LinearLayout.LayoutParams summaryParams = ui.fullWidthParams();
+        summaryParams.setMargins(0, 0, 0, ui.dp(18));
+        screen.content.addView(summary, summaryParams);
 
         Button playAgainButton = ui.addWideButton(screen.content, R.string.results_play_again, COLOR_PRIMARY,
                 v -> actions.onPlayAgain());

@@ -38,7 +38,7 @@ final class AndroidHomeScreen {
         summary.setGravity(Gravity.CENTER);
         summary.setLineSpacing(0, 1.12f);
         LinearLayout.LayoutParams summaryParams = ui.fullWidthParams();
-        summaryParams.setMargins(0, ui.dp(8), 0, ui.dp(24));
+        summaryParams.setMargins(0, 0, 0, ui.dp(20));
         screen.content.addView(summary, summaryParams);
 
         if (hasSave) {
@@ -62,27 +62,41 @@ final class AndroidHomeScreen {
                 v -> actions.onPlay());
         newGameButton.setId(R.id.home_new_game_button);
 
-        Button onboardingButton = ui.addWideButton(screen.content,
+        ui.addSectionLabel(screen.content, R.string.home_section_learn);
+        LinearLayout learningRow = createActionRow(screen.content);
+        Button onboardingButton = ui.addRowButton(learningRow,
                 R.string.home_beginner_guide, COLOR_PANEL, v -> actions.onBeginnerGuide());
         onboardingButton.setId(R.id.home_onboarding_button);
 
-        Button tutorialButton = ui.addWideButton(screen.content,
-                R.string.home_tutorial, COLOR_PRIMARY, v -> actions.onPracticeTutorial());
+        Button tutorialButton = ui.addRowButton(learningRow,
+                R.string.home_tutorial, COLOR_PANEL_LIGHT, v -> actions.onPracticeTutorial());
         tutorialButton.setId(R.id.home_tutorial_button);
 
         Button howToButton = ui.addWideButton(screen.content,
                 R.string.home_how_to_play, COLOR_PANEL, v -> actions.onHowToPlay());
         howToButton.setId(R.id.home_how_to_play_button);
 
-        Button settingsButton = ui.addWideButton(screen.content,
+        ui.addSectionLabel(screen.content, R.string.home_section_your_game);
+        LinearLayout personalRow = createActionRow(screen.content);
+        Button settingsButton = ui.addRowButton(personalRow,
                 R.string.home_settings, COLOR_PANEL, v -> actions.onSettings());
         settingsButton.setId(R.id.home_settings_button);
 
-        Button recordsButton = ui.addWideButton(screen.content,
+        Button recordsButton = ui.addRowButton(personalRow,
                 R.string.home_records, COLOR_PANEL, v -> actions.onRecords());
         recordsButton.setId(R.id.home_records_button);
 
         return screen;
+    }
+
+    private LinearLayout createActionRow(LinearLayout parent) {
+        LinearLayout row = new LinearLayout(activity);
+        row.setGravity(Gravity.CENTER);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams params = ui.fullWidthParams();
+        params.setMargins(-ui.dp(4), 0, -ui.dp(4), ui.dp(10));
+        parent.addView(row, params);
+        return row;
     }
 
     private String formatContinueSummary(AndroidGameStore.SaveMetadata metadata) {

@@ -1,6 +1,7 @@
 package com.klotski.android;
 
 import static com.klotski.android.AndroidUi.COLOR_PANEL;
+import static com.klotski.android.AndroidUi.COLOR_MUTED_TEXT;
 
 import android.app.Activity;
 import android.graphics.Color;
@@ -37,7 +38,7 @@ final class AndroidGameScreen {
         homeButton.setContentDescription(activity.getString(R.string.accessibility_game_home));
         homeButton.setOnClickListener(v -> actions.onHome());
         commandButtons.add(homeButton);
-        topBar.addView(homeButton, ui.fixedButtonParams(88));
+        topBar.addView(homeButton, ui.fixedButtonParams(78));
 
         TextView titleText = ui.createText("", 20, Color.WHITE, Typeface.BOLD);
         titleText.setId(R.id.game_title_text);
@@ -50,15 +51,18 @@ final class AndroidGameScreen {
         menuButton.setContentDescription(activity.getString(R.string.accessibility_game_menu));
         menuButton.setOnClickListener(v -> actions.onMenu());
         commandButtons.add(menuButton);
-        topBar.addView(menuButton, ui.fixedButtonParams(88));
+        topBar.addView(menuButton, ui.fixedButtonParams(78));
 
-        TextView statusText = ui.createText("", 15, Color.WHITE, Typeface.NORMAL);
+        TextView statusText = ui.createText("", 14, COLOR_MUTED_TEXT, Typeface.NORMAL);
         statusText.setId(R.id.game_status_text);
         statusText.setGravity(Gravity.CENTER);
         statusText.setSingleLine(false);
+        statusText.setLineSpacing(0, 1.08f);
+        statusText.setPadding(ui.dp(12), ui.dp(9), ui.dp(12), ui.dp(9));
+        statusText.setBackground(ui.makePanelBackground(COLOR_PANEL));
         statusText.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
         LinearLayout.LayoutParams statusParams = ui.fullWidthParams();
-        statusParams.setMargins(0, ui.dp(8), 0, ui.dp(8));
+        statusParams.setMargins(0, ui.dp(10), 0, ui.dp(8));
         root.addView(statusText, statusParams);
 
         ViewParentRemover.removeFromParent(boardView);

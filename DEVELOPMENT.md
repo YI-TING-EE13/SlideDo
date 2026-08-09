@@ -18,11 +18,8 @@ Use this section as the first stop in a fresh Codex conversation.
 
 Current handoff status:
 
-- Latest verified implementation baseline before this code-review/planning pass:
-  `6867971 Extract Android game store and expand verification`.
-- This handoff guide is committed on top of that baseline; use `git log` to
-  confirm the current `HEAD` in a future session.
-- Working tree was clean after the handoff commit.
+- The Git `HEAD` plus the current working tree are authoritative. Use `git log`
+  and `git status` before relying on an older hash in this development record.
 - `DEVELOPMENT.md` is now the primary continuity artifact; older planning notes
   were consolidated here.
 - The Android app has completed the MVP pass for Home, Mode Select, onboarding,
@@ -367,8 +364,9 @@ planning layer above implementation tickets.
   whole-line slides, undo/restart, and record rules. Practice Tutorial adds a
   narrow guided first puzzle that highlights movable aligned tiles, teaches one
   first move, and demonstrates a whole-line slide.
-- Home is understandable and appropriately simple. Continue, New Game, Beginner
-  Guide, Practice Tutorial, How to Play, Settings, and Records are clear.
+- Home separates play, learning, and personal actions. Continue/New Game remains
+  the primary path while Beginner Guide, Practice Tutorial, How to Play,
+  Settings, and Records use compact grouped actions.
   Records now explains that only player solves count, fewer moves rank first,
   ties use faster time, and assisted wins are excluded from best records.
 - Mode Select communicates size, rough difficulty, local best record, expected
@@ -378,10 +376,13 @@ planning layer above implementation tickets.
 - How to Play now includes small static board examples for the solved goal,
   adjacent tap moves, and whole-line slides. It still needs richer visual
   examples for swipe, undo, restart, and solver-assisted completion rules.
-- The in-game hierarchy is now much closer to a product app: board first,
-  progress visible, Undo/Restart available, secondary actions behind Menu and
-  Assist. The next UX risk is that all controls are still text buttons and the
-  screen has limited visual personality.
+- The in-game hierarchy keeps the board first, places status in a quiet surface,
+  keeps Undo/Restart visible, and leaves secondary actions behind Menu and
+  Assist. Controls still use text-only labels, so icon and TalkBack review
+  remains future work.
+- All top-level Android destinations now use one short exit and staggered
+  entrance system. Reduced motion bypasses these transitions and board movement
+  animation. Interactive surfaces also use ripple feedback.
 - Navigation is reasonable for the current one-Activity architecture. Back
   behavior returns from Game to Home and from informational screens to the right
   context. Longer-term, the app needs a clearer navigation model before adding
@@ -408,21 +409,23 @@ planning layer above implementation tickets.
 - First-run guided path is MVP-level: the new Practice Tutorial covers a first
   move and whole-line slide, but it is still not a full multi-step coached
   first game.
-- Settings are MVP-level: haptic feedback, reduced motion, reset save, and reset
-  records exist, but sound and theme controls still wait on those systems.
-- Results are MVP-level: the post-game screen shows record status and next
-  actions, but there is no celebration animation, sharing, or progression hook.
-- Missing complete feedback system: no sound, celebratory animation, progression
-  feedback, or differentiated assisted-completion treatment beyond Results text.
+- Settings are MVP-level: haptic feedback, board/screen Reduced motion, reset
+  save, and reset records exist, but sound and theme controls still wait on
+  those systems.
+- Results now uses a completion mark, grouped score summary, record status, and
+  clear next actions. A bespoke celebration, sharing, and progression hook do
+  not exist.
+- The feedback system still lacks sound, a bespoke win celebration, progression
+  feedback, and visual treatment beyond Results copy for assisted completion.
 - Hint system is MVP-level: Assist can now highlight movable tiles without
   moving the board, but it does not yet suggest strategic progress toward a
   solve.
 - Missing progression loops: no daily puzzle, streak, recent games, difficulty
   progression, achievements, or session goals.
-- Accessibility is MVP-level: board summaries, settings switch descriptions, and
-  primary game-control descriptions exist, but the app still needs a manual
-  TalkBack pass, larger touch-target review, color-contrast review, and broader
-  reduced-motion validation.
+- Accessibility is MVP-level: board summaries, settings switch descriptions,
+  primary game-control descriptions, 48dp action targets, and automated Reduced
+  motion navigation coverage exist. The app still needs a manual TalkBack pass,
+  color-contrast review, and cross-device motion review.
 - Missing Play Store readiness systems: real upload-key handoff, reviewed
   feature graphic upload, reviewed store screenshots, published privacy policy
   URL, manual accessibility sign-off, optional future crash
@@ -751,6 +754,10 @@ Recommended scope:
 
 ### UX Improvement Directions
 
+- [x] Add consistent top-level exit/entrance motion, pressed-state ripples, and
+  a Reduced motion bypass shared by every Android destination.
+- [x] Group Home actions by play, learning, and personal intent instead of
+  presenting every action as an equal full-width button.
 - Use icon-plus-text buttons for Home, Menu, Assist, Undo, Restart, Save, Load,
   and Settings once the app has a stable visual language.
 - Strengthen Home as a game entry screen with a small playable board preview or
@@ -762,8 +769,9 @@ Recommended scope:
 - Separate Assist from Solver. Assist should first offer one-step hints or
   highlight movable lines; full solver playback can remain in an advanced Tools
   area.
-- Add stronger completion feedback: board settle animation, short celebration,
-  record badge, and clear next action.
+- [x] Add an immediate completion mark, grouped result summary, record status,
+  and clear next actions.
+- Add a short bespoke celebration after the board settles.
 - Add clear empty-cell affordance and movable-tile hints for first-time players.
 - Review typography and spacing on smaller emulator profiles, not only
   1080 x 2400.
@@ -901,6 +909,25 @@ Priority: Low to Medium
 
 ### 2026-08-09
 
+- Added `AndroidMotion` and routed all nine top-level Android destinations
+  through a short exit plus staggered entrance sequence. The transition locks
+  outgoing interactions until `MainActivity` installs the destination view.
+- Extended Reduced motion from board-only movement to both board movement and
+  screen transitions. Added instrumentation coverage for the normal deferred
+  transition and the synchronous Reduced motion path.
+- Refined the Android visual hierarchy with grouped Home actions, a recommended
+  Mode Select card, quiet status surfaces, destructive Settings grouping,
+  press ripples, responsive menu content width, and a structured Results card.
+- Ran `verify-connected.bat` with `ANDROID_SERIAL=emulator-5554`; the Pixel_7
+  AVD on Android 15 passed all 35 tests with 0 failures, errors, or skips. The
+  final XML from that run reported 143.205 seconds of test time.
+- Recorded and reviewed the onboarding-to-Home transition frame by frame. A
+  manual 3x3 BFS flow found a 19-move solution, animated it through Results,
+  preserved the assisted-record rule, and produced no Android runtime error.
+- Sampled five warm Home-to-Mode-to-Home cycles on the Pixel_7 AVD after
+  grouping header motion and removing decorative scale transforms: 355 frames,
+  15 janky frames (4.23%), 0 missed-vsync events, and one slow UI-thread frame.
+  This is an emulator diagnostic, not a cross-device performance guarantee.
 - Added `benchmark.bat` and a dependency-free solver benchmark that validates a
   fixed optimal 31-move 3x3 workload while reporting median latency and
   current-thread allocation.

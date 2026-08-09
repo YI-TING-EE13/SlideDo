@@ -10,7 +10,7 @@ import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.HapticFeedbackConstants;
-import android.view.animation.DecelerateInterpolator;
+import android.view.animation.PathInterpolator;
 
 import com.klotski.core.Direction;
 import com.klotski.core.GameModel;
@@ -30,6 +30,8 @@ import java.util.List;
  * </p>
  */
 public class KlotskiView extends View implements GameObserver {
+    private static final long MOVE_ANIMATION_DURATION_MS = 170;
+
     private final Paint boardPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint tilePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint tileHighlightPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -105,13 +107,13 @@ public class KlotskiView extends View implements GameObserver {
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_YES);
         setHapticFeedbackEnabled(true);
 
-        gap = dp(10);
-        boardPaint.setColor(Color.rgb(31, 41, 55));
-        tilePaint.setColor(Color.rgb(46, 125, 50));
-        tileHighlightPaint.setColor(Color.argb(70, 255, 255, 255));
-        hintFillPaint.setColor(Color.argb(70, 245, 158, 11));
+        gap = dp(9);
+        boardPaint.setColor(AndroidUi.COLOR_PANEL);
+        tilePaint.setColor(AndroidUi.COLOR_PRIMARY);
+        tileHighlightPaint.setColor(Color.argb(42, 255, 255, 255));
+        hintFillPaint.setColor(Color.argb(64, 251, 191, 36));
         hintFillPaint.setStyle(Paint.Style.FILL);
-        hintStrokePaint.setColor(Color.argb(230, 245, 158, 11));
+        hintStrokePaint.setColor(Color.argb(230, 251, 191, 36));
         hintStrokePaint.setStyle(Paint.Style.STROKE);
         hintStrokePaint.setStrokeWidth(dp(3));
         targetStrokePaint.setColor(Color.WHITE);
@@ -362,7 +364,8 @@ public class KlotskiView extends View implements GameObserver {
      */
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        if (model == null) {
+        if (!isEnabled() || model == null) {
+            clearTouchState();
             return true;
         }
 
@@ -545,8 +548,8 @@ public class KlotskiView extends View implements GameObserver {
         }
 
         ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
-        animator.setDuration(140);
-        animator.setInterpolator(new DecelerateInterpolator());
+        animator.setDuration(MOVE_ANIMATION_DURATION_MS);
+        animator.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
         animator.addUpdateListener(valueAnimator -> {
             animationProgress = (float) valueAnimator.getAnimatedValue();
             invalidate();
@@ -622,8 +625,8 @@ public class KlotskiView extends View implements GameObserver {
             return;
         }
         ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
-        animator.setDuration(140);
-        animator.setInterpolator(new DecelerateInterpolator());
+        animator.setDuration(MOVE_ANIMATION_DURATION_MS);
+        animator.setInterpolator(new PathInterpolator(0.2f, 0f, 0f, 1f));
         animator.addUpdateListener(valueAnimator -> {
             animationProgress = (float) valueAnimator.getAnimatedValue();
             invalidate();

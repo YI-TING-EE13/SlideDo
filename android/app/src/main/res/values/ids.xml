@@ -27,6 +27,7 @@
     <item name="mode_3_button" type="id" />
     <item name="mode_3_title_text" type="id" />
     <item name="mode_3_difficulty_text" type="id" />
+    <item name="mode_3_recommended_text" type="id" />
     <item name="mode_3_detail_text" type="id" />
     <item name="mode_3_session_text" type="id" />
     <item name="mode_3_best_text" type="id" />
