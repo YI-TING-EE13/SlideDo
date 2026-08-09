@@ -259,6 +259,8 @@ SlideDo/
   android/
     app/                     # Native Android app
     gradle/wrapper/          # Gradle wrapper
+  benchmark/                 # Deterministic shared-solver benchmark
+  benchmark.bat              # Benchmark compile/run helper
   run.bat                    # Desktop compile/run helper
   build.gradle               # Root desktop/core test build
   README.md
@@ -300,7 +302,7 @@ Whole-line slides are handled by `GameModel.slideLineTo(row, col)`. This method:
 
 | Solver | Best For | Behavior |
 | :--- | :--- | :--- |
-| BFS | 3x3 | Finds shortest paths but uses high memory. |
+| BFS | 3x3 | Finds shortest paths; boards up to 4x4 use compact packed states, but the search space still grows quickly. |
 | A* | Small to medium boards | Uses Manhattan distance to prioritize promising states. |
 | IDA* | Lower-memory experiments | Uses iterative deepening with Manhattan distance and linear conflict. |
 
@@ -326,7 +328,8 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
 - Signed Android release APK/AAB generation through `android\build-release.bat`.
 - Desktop ZIP package and optional `jpackage` app-image generation through `package-desktop.bat`.
 - Release notes/version matching through `version.properties` and `release-notes/<version>.md`.
-- Android lint with no reported issues during the latest local run.
+- Android lint completes without fatal issues; the 2026-08-09 report contains
+  21 pre-existing warnings that remain outside the solver performance scope.
 - Android instrumentation tests for onboarding, Home launch, Practice Tutorial,
   Mode Select guidance and accessibility text, Continue metadata, How to Play,
   Settings, Results, Assist hints, whole-line movement, undo, save/load
@@ -377,6 +380,17 @@ Shared core tests:
 ```bat
 android\gradlew.bat -p . test
 ```
+
+Shared solver performance benchmark:
+
+```bat
+benchmark.bat
+```
+
+Use `benchmark.bat BFS` to measure only the player-visible BFS bottleneck. The
+benchmark runs a fixed 31-move 3x3 position, validates the returned optimal
+solution, and reports median latency and current-thread allocated bytes. The
+reported timings are machine-specific diagnostics, not pass/fail thresholds.
 
 Android build and lint:
 

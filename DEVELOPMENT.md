@@ -233,6 +233,46 @@ Android API comments:
 "C:\Program Files\Java\jdk-25\bin\javadoc.exe" -quiet -public -Xdoclint:all -encoding UTF-8 -charset UTF-8 -classpath "%LOCALAPPDATA%\Android\Sdk\platforms\android-36\android.jar;src" -sourcepath "android\app\src\main\java;src" -d %TEMP%\slidedo-android-javadocs android\app\src\main\java\com\klotski\android\*.java
 ```
 
+Shared solver performance benchmark:
+
+```bat
+benchmark.bat
+```
+
+Use `benchmark.bat BFS` for an isolated BFS run.
+
+## Solver Performance Baseline
+
+`benchmark.bat` measures shared solver latency without adding a benchmark
+dependency to the app. The harness uses the canonical hardest 3x3 position,
+whose optimal solution has 31 moves. Every iteration verifies the solution
+length, replays the path to a solved board, and confirms that the solver did not
+mutate its input model.
+
+The 2026-08-09 comparison used Windows, Java HotSpot 25.0.1, a 768 MiB fixed
+heap, three independent JVM processes, two warmup iterations per process, and
+seven measured iterations per process. Each value below is the median of the
+three per-process medians.
+
+| BFS metric | Before | After | Change |
+| :--- | ---: | ---: | ---: |
+| Median latency | 198.480 ms | 15.121 ms | 92.4% lower; 13.13x speedup |
+| Median current-thread allocation | 191.257 MiB | 13.875 MiB | 92.7% lower |
+| Returned solution length | 31 moves | 31 moves | Unchanged and optimal |
+
+The baseline identified BFS state representation as the dominant shared-solver
+bottleneck. The previous implementation copied a two-dimensional grid for each
+candidate and created string keys during visited-state checks. `BfsSolver` now
+packs boards up to 4x4 into one `long`, stores visited boards in a primitive
+open-addressed set, uses `ArrayDeque` for the frontier, and reuses the fixed
+direction array. The array-based path remains available for 5x5 compatibility.
+
+These figures measure the shared JVM solver path, which Android and desktop both
+call from background work. They do not measure Android frame timing, startup,
+battery use, or whole-app memory. No emulator or device was connected during
+this benchmark pass, so Android runtime profiling remains unverified. Do not
+turn these machine-specific figures into CI timing thresholds.
+
 ## Product Direction: Common Game App Experience
 
 The next product direction is to make SlideDo feel more like a complete casual game app instead of opening directly into a developer-style gameplay board.
@@ -856,6 +896,24 @@ Priority: Low to Medium
 - Run the final desktop accessibility review.
 
 ## Development Log
+
+### 2026-08-09
+
+- Added `benchmark.bat` and a dependency-free solver benchmark that validates a
+  fixed optimal 31-move 3x3 workload while reporting median latency and
+  current-thread allocation.
+- Measured BFS at 198.480 ms and 191.257 MiB allocated before optimization,
+  using the median of three independent JVM-process medians.
+- Replaced BFS 3x3/4x4 grid copies and string visited keys with a packed `long`
+  board, primitive open-addressed visited set, `ArrayDeque` frontier, and cached
+  direction array. Kept the array-based 5x5 compatibility path.
+- Repeated the same benchmark after optimization: BFS measured 15.121 ms and
+  13.875 MiB allocated, reducing median latency by 92.4% and allocation by
+  92.7% while retaining the 31-move optimal solution.
+- Added focused BFS regression coverage for the canonical hardest 3x3 board,
+  input immutability, the packed 4x4 tile-value boundary, and 5x5 fallback.
+- Android frame timing and device-level memory remain unverified because no
+  emulator or device was connected during this pass.
 
 ### 2026-06-18
 
