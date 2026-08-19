@@ -144,11 +144,13 @@ public class AndroidGameStoreTest {
         assertEquals(AndroidAppLocale.DEFAULT_LANGUAGE_TAG, store.getLanguageTag());
         store.setLanguageTag(AndroidAppLocale.TRADITIONAL_CHINESE_LANGUAGE_TAG);
         assertEquals(AndroidAppLocale.TRADITIONAL_CHINESE_LANGUAGE_TAG, store.getLanguageTag());
+        store.setLanguageTag(AndroidAppLocale.JAPANESE_LANGUAGE_TAG);
+        assertEquals(AndroidAppLocale.JAPANESE_LANGUAGE_TAG, store.getLanguageTag());
     }
 
     @Test
     public void unsupportedStoredLanguageFallsBackToEnglish() {
-        prefs.edit().putString("language_tag", "ja-JP").commit();
+        prefs.edit().putString("language_tag", "fr-FR").commit();
 
         assertEquals(AndroidAppLocale.DEFAULT_LANGUAGE_TAG, store.getLanguageTag());
     }
@@ -165,5 +167,9 @@ public class AndroidGameStoreTest {
         Context traditionalChineseContext = AndroidAppLocale.wrap(
                 chineseDeviceContext, AndroidAppLocale.TRADITIONAL_CHINESE_LANGUAGE_TAG);
         assertEquals("設定", traditionalChineseContext.getString(R.string.settings_title));
+
+        Context japaneseContext = AndroidAppLocale.wrap(
+                chineseDeviceContext, AndroidAppLocale.JAPANESE_LANGUAGE_TAG);
+        assertEquals("設定", japaneseContext.getString(R.string.settings_title));
     }
 }

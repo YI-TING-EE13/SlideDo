@@ -90,6 +90,7 @@
     <string name="settings_language_accessibility">Choose app language. Current language: %1$s.</string>
     <string name="language_english">English</string>
     <string name="language_traditional_chinese">繁體中文</string>
+    <string name="language_japanese">日本語</string>
     <string name="settings_section_preferences">PREFERENCES</string>
     <string name="settings_section_local_data">LOCAL DATA</string>
     <string name="settings_haptic_title">Haptic feedback</string>

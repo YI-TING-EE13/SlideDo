@@ -404,6 +404,43 @@ public class MainActivityFlowTest {
     }
 
     @Test
+    public void japaneseLanguageSelectionPersistsAndPreservesActiveGame() throws Exception {
+        writeSavedGame(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 0);
+        launchApp();
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+        tapCell(3, 1, 2);
+        waitForStatusContaining("1 move");
+
+        clickId(R.id.game_menu_button);
+        waitForText("Settings").click();
+        device.waitForIdle();
+        waitForId("settings_root");
+        waitForText("App language: English").click();
+        waitForText("Choose language");
+        waitForText("日本語").click();
+        device.waitForIdle();
+
+        waitForId("settings_root");
+        waitForText("設定");
+        waitForText("アプリの言語：日本語");
+        assertEquals("ja-JP", targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getString("language_tag", null));
+
+        clickId(R.id.settings_back_button);
+        waitForId("game_root");
+        waitForText("3x3 パズル");
+        waitForStatusContaining("1手");
+
+        relaunchApp();
+        waitForId("home_root");
+        waitForText("新しいゲーム");
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+        waitForStatusContaining("1手");
+    }
+
+    @Test
     public void traditionalChineseMajorScreensAndDialogsAreLocalized() throws Exception {
         setLanguage(AndroidAppLocale.TRADITIONAL_CHINESE_LANGUAGE_TAG);
         launchApp();
@@ -506,6 +543,111 @@ public class MainActivityFlowTest {
         clickId(R.id.home_records_button);
         waitForId("records_root");
         waitForTextContaining("1 次移動");
+    }
+
+    @Test
+    public void japaneseMajorScreensAndDialogsAreLocalized() throws Exception {
+        setLanguage(AndroidAppLocale.JAPANESE_LANGUAGE_TAG);
+        launchApp();
+
+        waitForId("onboarding_root");
+        waitForText("基本から始めよう");
+        waitForText("全4ページ中1ページ");
+        clickId(R.id.onboarding_skip_button);
+        waitForId("home_root");
+        waitForText("プレイ");
+        waitForText("初心者ガイド");
+
+        clickId(R.id.home_tutorial_button);
+        waitForId("tutorial_root");
+        waitForText("練習チュートリアル");
+        waitForTextContaining("目立つように表示された6");
+        clickId(R.id.tutorial_home_button);
+        waitForId("home_root");
+
+        clickId(R.id.home_new_game_button);
+        waitForId("mode_root");
+        assertActivityTextContains(R.id.mode_3_title_text, "3x3 パズル");
+        assertActivityTextContains(R.id.mode_4_title_text, "4x4 パズル");
+        assertActivityTextContains(R.id.mode_5_title_text, "5x5 パズル");
+        assertActivityTextContains(R.id.mode_3_recommended_text, "おすすめ");
+        assertActivityContentDescriptionContains(R.id.mode_3_button, "最初のパズルにおすすめ");
+
+        clickId(R.id.mode_4_button);
+        waitForId("game_root");
+        assertActivityTextContains(R.id.game_title_text, "4x4 パズル");
+        assertActivityTextContains(R.id.game_status_text, "0手");
+        assertActivityContentDescriptionContains(R.id.game_board, "空きマスは");
+        assertActivityContentDescriptionContains(R.id.game_menu_button, "ゲームメニューを開きます");
+
+        clickId(R.id.game_menu_button);
+        waitForText("操作の確認").click();
+        waitForText("動かし方");
+        waitForTextContaining("まとめて動きます");
+        device.pressBack();
+        waitForId("game_root");
+
+        clickId(R.id.game_assist_button);
+        waitForText("動かせるタイルを表示");
+        waitForText("ソルバーツール").click();
+        waitForTextContaining("プレイヤーの記録を上書き");
+        waitForText("BFS").click();
+        waitForText("警告");
+        waitForTextContaining("メモリ不足");
+        waitForText("閉じる").click();
+        waitForId("game_root");
+
+        clickId(R.id.game_home_button);
+        waitForId("home_root");
+        clickId(R.id.home_how_to_play_button);
+        waitForId("how_root");
+        waitForText("目的");
+        scrollToText("まとめてスライド");
+        scrollToText("記録");
+        clickId(R.id.how_back_button);
+        waitForId("home_root");
+
+        clickId(R.id.home_settings_button);
+        waitForId("settings_root");
+        waitForText("アプリの言語：日本語");
+        clickId(R.id.settings_reset_save_button);
+        waitForText("セーブデータをリセットしますか？");
+        waitForText("キャンセル").click();
+        clickId(R.id.settings_reset_records_button);
+        waitForText("記録をリセットしますか？");
+        waitForText("キャンセル").click();
+        clickId(R.id.settings_back_button);
+        waitForId("home_root");
+
+        clickId(R.id.home_records_button);
+        waitForId("records_root");
+        waitForText("記録");
+        waitForTextContaining("自力で解いた結果だけを記録");
+        waitForText("記録はまだありません");
+    }
+
+    @Test
+    public void japanesePlayerResultAndRecordAreLocalized() throws Exception {
+        writeSavedGame(ONE_MOVE_WIN_GRID, ONE_MOVE_WIN_GRID, 0);
+        setLanguage(AndroidAppLocale.JAPANESE_LANGUAGE_TAG);
+        launchApp();
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+
+        tapCell(3, 2, 2);
+
+        waitForId("results_root");
+        waitForText("結果");
+        waitForText("パズルをクリアしました。");
+        waitForText("このサイズで最初のプレイヤー記録です。");
+        waitForTextContaining("1手");
+        assertActivityContentDescriptionContains(R.id.results_completion_mark, "パズルクリア");
+
+        clickId(R.id.results_home_button);
+        waitForId("home_root");
+        clickId(R.id.home_records_button);
+        waitForId("records_root");
+        waitForTextContaining("1手");
     }
 
     @Test

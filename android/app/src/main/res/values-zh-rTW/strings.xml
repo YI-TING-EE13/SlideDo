@@ -90,6 +90,7 @@
     <string name="settings_language_accessibility">選擇應用程式語言。目前語言：%1$s。</string>
     <string name="language_english">英文</string>
     <string name="language_traditional_chinese">繁體中文</string>
+    <string name="language_japanese">日文</string>
     <string name="settings_section_preferences">偏好設定</string>
     <string name="settings_section_local_data">本機資料</string>
     <string name="settings_haptic_title">觸覺回饋</string>

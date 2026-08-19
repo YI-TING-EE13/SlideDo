@@ -16,11 +16,13 @@ import java.util.Locale;
 final class AndroidAppLocale {
     static final String DEFAULT_LANGUAGE_TAG = "en";
     static final String TRADITIONAL_CHINESE_LANGUAGE_TAG = "zh-TW";
+    static final String JAPANESE_LANGUAGE_TAG = "ja-JP";
 
     private static final LanguageOption[] SUPPORTED_LANGUAGES = {
             new LanguageOption(DEFAULT_LANGUAGE_TAG, R.string.language_english),
             new LanguageOption(TRADITIONAL_CHINESE_LANGUAGE_TAG,
-                    R.string.language_traditional_chinese)
+                    R.string.language_traditional_chinese),
+            new LanguageOption(JAPANESE_LANGUAGE_TAG, R.string.language_japanese)
     };
 
     private AndroidAppLocale() {
