@@ -8,6 +8,8 @@ import static org.junit.Assert.assertTrue;
 
 import android.os.Bundle;
 
+import com.klotski.core.PuzzleDifficulty;
+
 import org.junit.Test;
 
 /**
@@ -48,7 +50,8 @@ public class AndroidActivityStateTest {
     public void activityStateRoundTripPreservesNavigationAndResult() {
         Bundle bundle = new Bundle();
         AndroidGameStore.Best previousBest = new AndroidGameStore.Best(20, 40_000);
-        GameResult result = new GameResult(4, 18, 35_000, false, true, previousBest);
+        GameResult result = new GameResult(4, PuzzleDifficulty.CHALLENGE,
+                18, 35_000, false, true, previousBest);
 
         AndroidActivityState.save(bundle, Screen.RESULTS, Screen.GAME, true, 2, 1, result);
         AndroidActivityState.Snapshot snapshot = AndroidActivityState.restore(bundle, 0);
@@ -60,6 +63,7 @@ public class AndroidActivityStateTest {
         assertEquals(1, snapshot.tutorialStep);
         assertNotNull(snapshot.result);
         assertEquals(4, snapshot.result.size);
+        assertEquals(PuzzleDifficulty.CHALLENGE, snapshot.result.difficulty);
         assertEquals(18, snapshot.result.moves);
         assertEquals(35_000, snapshot.result.timeMs);
         assertFalse(snapshot.result.assisted);

@@ -27,6 +27,7 @@ public class GameModel {
     private long timerStartedAtMs;
     private boolean timerRunning;
     private boolean isGameRunning;
+    private PuzzleDifficulty difficulty = PuzzleDifficulty.CLASSIC;
     private int[][] initialGrid;
     private final Deque<int[][]> undoStack = new ArrayDeque<>();
 
@@ -85,6 +86,32 @@ public class GameModel {
      * @param moves number of random moves to apply
      */
     public void scramble(int moves) {
+        scramble(moves, random, PuzzleDifficulty.CLASSIC);
+    }
+
+    /**
+     * Scrambles the board using a named intensity preset.
+     *
+     * @param difficulty scramble-intensity preset
+     */
+    public void scramble(PuzzleDifficulty difficulty) {
+        PuzzleDifficulty selected = Objects.requireNonNull(difficulty, "difficulty");
+        scramble(selected.scrambleMovesForSize(size), random, selected);
+    }
+
+    /**
+     * Scrambles the board reproducibly using a named intensity preset.
+     * Equal sizes, difficulties, and seeds produce equal starting grids.
+     *
+     * @param difficulty scramble-intensity preset
+     * @param seed deterministic random seed
+     */
+    public void scramble(PuzzleDifficulty difficulty, long seed) {
+        PuzzleDifficulty selected = Objects.requireNonNull(difficulty, "difficulty");
+        scramble(selected.scrambleMovesForSize(size), new Random(seed), selected);
+    }
+
+    private void scramble(int moves, Random scrambleRandom, PuzzleDifficulty selectedDifficulty) {
         Direction lastDir = null;
         for (int i = 0; i < moves; i++) {
             List<Direction> validMoves = getValidMoves();
@@ -93,14 +120,23 @@ public class GameModel {
                 validMoves.remove(lastDir.opposite());
             }
 
-            Direction dir = validMoves.get(random.nextInt(validMoves.size()));
+            Direction dir = validMoves.get(scrambleRandom.nextInt(validMoves.size()));
             moveInternal(dir, false, false, false, false);
             lastDir = dir;
+        }
+        if (moves > 0 && isSolvedGrid()) {
+            List<Direction> validMoves = getValidMoves();
+            if (lastDir != null && validMoves.size() > 1) {
+                validMoves.remove(lastDir.opposite());
+            }
+            Direction dir = validMoves.get(scrambleRandom.nextInt(validMoves.size()));
+            moveInternal(dir, false, false, false, false);
         }
         moveCount = 0; // Reset moves after scramble
         isGameRunning = true;
         resetTimer(true, 0L);
         isSolved = false;
+        difficulty = selectedDifficulty;
         initialGrid = copyGrid(grid);
         undoStack.clear();
         notifyGridChanged();
@@ -431,6 +467,15 @@ public class GameModel {
     }
 
     /**
+     * Returns the scramble preset associated with the current puzzle.
+     *
+     * @return current difficulty, defaulting to Classic for legacy state
+     */
+    public PuzzleDifficulty getDifficulty() {
+        return difficulty;
+    }
+
+    /**
      * Returns the effective timer anchor used by legacy timer consumers.
      * While paused, the anchor advances so subtracting it from the current time
      * continues to equal active elapsed time.
@@ -527,6 +572,7 @@ public class GameModel {
         findEmptyTile();
         this.isSolved = data.solved || isSolvedGrid();
         this.isGameRunning = !isSolved && (data.active || data.updatedAt == 0);
+        this.difficulty = data.difficulty == null ? PuzzleDifficulty.CLASSIC : data.difficulty;
         resetTimer(isGameRunning, data.elapsedTime);
         if (data.initialGrid != null) {
             this.initialGrid = copyGrid(data.initialGrid);

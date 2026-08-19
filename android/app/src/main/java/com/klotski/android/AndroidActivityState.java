@@ -2,6 +2,8 @@ package com.klotski.android;
 
 import android.os.Bundle;
 
+import com.klotski.core.PuzzleDifficulty;
+
 /**
  * Bundle serialization for Activity-level navigation and result state.
  */
@@ -13,6 +15,7 @@ final class AndroidActivityState {
     private static final String STATE_TUTORIAL_STEP = "tutorial_step";
     private static final String STATE_RESULT_AVAILABLE = "result_available";
     private static final String STATE_RESULT_SIZE = "result_size";
+    private static final String STATE_RESULT_DIFFICULTY = "result_difficulty";
     private static final String STATE_RESULT_MOVES = "result_moves";
     private static final String STATE_RESULT_TIME = "result_time";
     private static final String STATE_RESULT_ASSISTED = "result_assisted";
@@ -62,6 +65,7 @@ final class AndroidActivityState {
         }
         outState.putBoolean(STATE_RESULT_AVAILABLE, true);
         outState.putInt(STATE_RESULT_SIZE, currentResult.size);
+        outState.putString(STATE_RESULT_DIFFICULTY, currentResult.difficulty.getId());
         outState.putInt(STATE_RESULT_MOVES, currentResult.moves);
         outState.putLong(STATE_RESULT_TIME, currentResult.timeMs);
         outState.putBoolean(STATE_RESULT_ASSISTED, currentResult.assisted);
@@ -86,6 +90,7 @@ final class AndroidActivityState {
                 : new AndroidGameStore.Best(previousMoves, previousTime);
         return new GameResult(
                 savedInstanceState.getInt(STATE_RESULT_SIZE, 4),
+                PuzzleDifficulty.fromId(savedInstanceState.getString(STATE_RESULT_DIFFICULTY)),
                 savedInstanceState.getInt(STATE_RESULT_MOVES, 0),
                 savedInstanceState.getLong(STATE_RESULT_TIME, 0),
                 savedInstanceState.getBoolean(STATE_RESULT_ASSISTED, false),

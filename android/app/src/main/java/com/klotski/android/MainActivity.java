@@ -31,6 +31,7 @@ import com.klotski.core.Direction;
 import com.klotski.core.GameModel;
 import com.klotski.core.GameObserver;
 import com.klotski.core.IdaStarSolver;
+import com.klotski.core.PuzzleDifficulty;
 import com.klotski.core.SaveManager;
 import com.klotski.core.Solver;
 
@@ -451,6 +452,23 @@ public class MainActivity extends Activity implements GameObserver {
         presentContentView(screen.root);
     }
 
+    private void showDifficultyDialog(int size) {
+        PuzzleDifficulty[] difficulties = PuzzleDifficulty.values();
+        String[] labels = new String[difficulties.length];
+        for (int i = 0; i < difficulties.length; i++) {
+            labels[i] = difficultyName(difficulties[i]);
+        }
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.difficulty_dialog_title)
+                .setSingleChoiceItems(labels, store.getLastDifficulty().ordinal(), (selectedDialog, which) -> {
+                    beginNewGame(size, difficulties[which]);
+                    selectedDialog.dismiss();
+                })
+                .setNegativeButton(R.string.dialog_cancel, null)
+                .create();
+        showTimerPausingDialog(dialog);
+    }
+
     private void showOnboardingScreen(int requestedPage) {
         pauseGameForNavigation();
         if (deferScreenChange(() -> showOnboardingScreen(requestedPage))) {
@@ -518,7 +536,7 @@ public class MainActivity extends Activity implements GameObserver {
                 formatBestForCard(4), formatBestForCard(5), new AndroidModeSelectScreen.ModeActions() {
                     @Override
                     public void onModeSelected(int size) {
-                        beginNewGame(size);
+                        showDifficultyDialog(size);
                     }
 
                     @Override
@@ -573,8 +591,8 @@ public class MainActivity extends Activity implements GameObserver {
         gameTitleText = null;
         commandButtons.clear();
 
-        ScreenLayout screen = recordsScreen.build(formatBestForCard(3),
-                formatBestForCard(4), formatBestForCard(5), new AndroidRecordsScreen.RecordsActions() {
+        ScreenLayout screen = recordsScreen.build(this::formatBestForCard,
+                new AndroidRecordsScreen.RecordsActions() {
                     @Override
                     public void onBack() {
                         returnFromInfoScreen();
@@ -654,7 +672,7 @@ public class MainActivity extends Activity implements GameObserver {
                 resultRecordText(currentResult), new AndroidResultsScreen.ResultsActions() {
                     @Override
                     public void onPlayAgain() {
-                        beginNewGame(currentResult.size);
+                        beginNewGame(currentResult.size, currentResult.difficulty);
                     }
 
                     @Override
@@ -1188,11 +1206,15 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private void beginNewGame(int size) {
+        beginNewGame(size, PuzzleDifficulty.CLASSIC);
+    }
+
+    private void beginNewGame(int size, PuzzleDifficulty difficulty) {
         if (solverRunning) {
             return;
         }
         attachModel(new GameModel(size));
-        model.scramble(size * size * 5);
+        model.scramble(difficulty);
         gameStarted = true;
         pendingWin = null;
         currentResult = null;
@@ -1200,6 +1222,7 @@ public class MainActivity extends Activity implements GameObserver {
         hintActive = false;
         lastWinTimeMs = -1;
         store.setLastSize(size);
+        store.setLastDifficulty(difficulty);
         syncGameTimerState();
         performBoardHaptic(HapticFeedbackConstants.VIRTUAL_KEY);
         showGameScreen();
@@ -1230,10 +1253,11 @@ public class MainActivity extends Activity implements GameObserver {
         }
 
         if (gameTitleText != null) {
-            gameTitleText.setText(getString(R.string.game_title_format, model.getSize(), model.getSize()));
+            gameTitleText.setText(getString(R.string.game_title_format,
+                    model.getSize(), model.getSize(), difficultyName(model.getDifficulty())));
         }
 
-        AndroidGameStore.Best best = getBest(model.getSize());
+        AndroidGameStore.Best best = getBest(model.getSize(), model.getDifficulty());
         String bestText = best == null
                 ? getString(R.string.best_empty)
                 : getString(R.string.best_format, formatMoves(best.moves), best.timeMs / 1000);
@@ -1322,11 +1346,15 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private AndroidGameStore.Best getBest(int size) {
-        return store.getBest(size);
+        return getBest(size, PuzzleDifficulty.CLASSIC);
     }
 
-    private void recordBest(int size, int moves, long timeMs) {
-        store.recordBestIfBetter(size, moves, timeMs);
+    private AndroidGameStore.Best getBest(int size, PuzzleDifficulty difficulty) {
+        return store.getBest(size, difficulty);
+    }
+
+    private void recordBest(int size, PuzzleDifficulty difficulty, int moves, long timeMs) {
+        store.recordBestIfBetter(size, difficulty, moves, timeMs);
     }
 
     private void clearRecords() {
@@ -1413,10 +1441,22 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private String formatBestForCard(int size) {
-        AndroidGameStore.Best best = getBest(size);
+        return formatBestForCard(size, PuzzleDifficulty.CLASSIC);
+    }
+
+    private String formatBestForCard(int size, PuzzleDifficulty difficulty) {
+        AndroidGameStore.Best best = getBest(size, difficulty);
         return best == null
                 ? getString(R.string.records_empty)
                 : getString(R.string.best_format, formatMoves(best.moves), best.timeMs / 1000);
+    }
+
+    private String difficultyName(PuzzleDifficulty difficulty) {
+        return getString(switch (difficulty) {
+            case RELAXED -> R.string.difficulty_relaxed;
+            case CLASSIC -> R.string.difficulty_classic;
+            case CHALLENGE -> R.string.difficulty_challenge;
+        });
     }
 
     private String resultRecordText(GameResult result) {
@@ -1434,7 +1474,7 @@ public class MainActivity extends Activity implements GameObserver {
                             getString(R.string.best_format, formatMoves(result.previousBest.moves),
                                     result.previousBest.timeMs / 1000));
         }
-        AndroidGameStore.Best best = getBest(result.size);
+        AndroidGameStore.Best best = getBest(result.size, result.difficulty);
         String bestText = best == null
                 ? getString(R.string.records_empty)
                 : getString(R.string.best_format, formatMoves(best.moves), best.timeMs / 1000);
@@ -1519,7 +1559,7 @@ public class MainActivity extends Activity implements GameObserver {
             return;
         }
         lastWinTimeMs = timeMs;
-        pendingWin = new PendingWin(model.getSize(), moves, timeMs, assistedSolveActive);
+        pendingWin = new PendingWin(model.getSize(), model.getDifficulty(), moves, timeMs, assistedSolveActive);
         handler.postDelayed(this::showWinWhenReady, 180);
     }
 
@@ -1534,12 +1574,13 @@ public class MainActivity extends Activity implements GameObserver {
 
         PendingWin win = pendingWin;
         pendingWin = null;
-        AndroidGameStore.Best previousBest = getBest(win.size);
+        AndroidGameStore.Best previousBest = getBest(win.size, win.difficulty);
         boolean newBest = !win.assisted && AndroidGameStore.isBetterRecord(previousBest, win.moves, win.timeMs);
         if (newBest) {
-            recordBest(win.size, win.moves, win.timeMs);
+            recordBest(win.size, win.difficulty, win.moves, win.timeMs);
         }
-        currentResult = new GameResult(win.size, win.moves, win.timeMs, win.assisted, newBest, previousBest);
+        currentResult = new GameResult(win.size, win.difficulty, win.moves,
+                win.timeMs, win.assisted, newBest, previousBest);
         assistedSolveActive = false;
         performBoardHaptic(HapticFeedbackConstants.LONG_PRESS);
         updateStatus();

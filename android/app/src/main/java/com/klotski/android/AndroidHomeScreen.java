@@ -116,9 +116,18 @@ final class AndroidHomeScreen {
                 state,
                 metadata.size,
                 metadata.size,
+                difficultyName(metadata.difficulty),
                 formatMoves(metadata.moves),
                 Math.max(0, metadata.elapsedMs) / 1000,
                 formatSavedAge(metadata.updatedAt));
+    }
+
+    private String difficultyName(com.klotski.core.PuzzleDifficulty difficulty) {
+        return activity.getString(switch (difficulty) {
+            case RELAXED -> R.string.difficulty_relaxed;
+            case CLASSIC -> R.string.difficulty_classic;
+            case CHALLENGE -> R.string.difficulty_challenge;
+        });
     }
 
     private String formatSavedAge(long updatedAt) {

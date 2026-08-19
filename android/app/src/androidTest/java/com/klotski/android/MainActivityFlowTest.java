@@ -124,7 +124,7 @@ public class MainActivityFlowTest {
         clickId(R.id.onboarding_start_3_button);
 
         waitForId("game_root");
-        waitForText("3x3 Puzzle");
+        waitForText("3x3 · Classic");
         assertTrue(isOnboardingSeen());
     }
 
@@ -196,7 +196,7 @@ public class MainActivityFlowTest {
 
         clickId(R.id.tutorial_start_game_button);
         waitForId("game_root");
-        waitForText("3x3 Puzzle");
+        waitForText("3x3 · Classic");
     }
 
     @Test
@@ -215,11 +215,13 @@ public class MainActivityFlowTest {
         assertActivityTextContains(R.id.mode_4_session_text, "5-10 minutes");
         assertActivityTextContains(R.id.mode_5_session_text, "longer focused play");
         assertActivityContentDescriptionContains(R.id.mode_3_button, "Recommended first puzzle");
-        assertActivityContentDescriptionContains(R.id.mode_4_button, "Best: No record yet");
+        assertActivityContentDescriptionContains(R.id.mode_4_button, "Classic best: No record yet");
 
         clickId(R.id.mode_4_button);
+        waitForText("Choose Difficulty");
+        waitForText("Challenge").click();
         waitForActivityView(R.id.game_board);
-        assertActivityTextContains(R.id.game_title_text, "4x4 Puzzle");
+        assertActivityTextContains(R.id.game_title_text, "4x4 · Challenge");
         assertActivityHasView(R.id.game_undo_button);
         assertActivityHasView(R.id.game_restart_button);
         assertActivityHasView(R.id.game_assist_button);
@@ -306,7 +308,7 @@ public class MainActivityFlowTest {
         assertTrue(summary.getText().contains("saved earlier"));
         clickId(R.id.home_continue_button);
         waitForId("game_root");
-        waitForText("3x3 Puzzle");
+        waitForText("3x3 · Classic");
         waitForStatusContaining("0 moves");
     }
 
@@ -320,6 +322,21 @@ public class MainActivityFlowTest {
         assertTrue(summary.getText().contains("7 moves"));
         assertTrue(summary.getText().contains("123s"));
         assertTrue(summary.getText().contains("saved just now"));
+    }
+
+    @Test
+    public void continueSummaryAndGameTitlePreserveDifficulty() throws Exception {
+        writeSavedGameWithMetadata(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 3, 12_000, true, false);
+        assertTrue(targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putString("difficulty", "challenge")
+                .commit());
+        launchApp();
+
+        UiObject2 summary = waitForId("home_continue_summary_text");
+        assertTrue(summary.getText().contains("3x3 · Challenge"));
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+        assertActivityTextContains(R.id.game_title_text, "3x3 · Challenge");
     }
 
     @Test
@@ -392,7 +409,7 @@ public class MainActivityFlowTest {
 
         clickId(R.id.settings_back_button);
         waitForId("game_root");
-        waitForText("3x3 拼圖");
+        waitForText("3x3 · 經典");
         waitForStatusContaining("1 次移動");
 
         relaunchApp();
@@ -429,7 +446,7 @@ public class MainActivityFlowTest {
 
         clickId(R.id.settings_back_button);
         waitForId("game_root");
-        waitForText("3x3 パズル");
+        waitForText("3x3 · クラシック");
         waitForStatusContaining("1手");
 
         relaunchApp();
@@ -469,8 +486,10 @@ public class MainActivityFlowTest {
         assertActivityContentDescriptionContains(R.id.mode_3_button, "建議從這個拼圖開始");
 
         clickId(R.id.mode_4_button);
+        waitForText("選擇難度");
+        waitForText("挑戰").click();
         waitForId("game_root");
-        assertActivityTextContains(R.id.game_title_text, "4x4 拼圖");
+        assertActivityTextContains(R.id.game_title_text, "4x4 · 挑戰");
         assertActivityTextContains(R.id.game_status_text, "0 次移動");
         assertActivityContentDescriptionContains(R.id.game_board, "空格位於");
         assertActivityContentDescriptionContains(R.id.game_menu_button, "開啟遊戲選單");
@@ -534,7 +553,7 @@ public class MainActivityFlowTest {
         waitForId("results_root");
         waitForText("結果");
         waitForText("拼圖完成。");
-        waitForText("這是此尺寸的第一筆玩家紀錄。");
+        waitForText("這是此尺寸與難度的第一筆玩家紀錄。");
         waitForTextContaining("1 次移動");
         assertActivityContentDescriptionContains(R.id.results_completion_mark, "拼圖完成");
 
@@ -574,8 +593,10 @@ public class MainActivityFlowTest {
         assertActivityContentDescriptionContains(R.id.mode_3_button, "最初のパズルにおすすめ");
 
         clickId(R.id.mode_4_button);
+        waitForText("難易度を選ぶ");
+        waitForText("チャレンジ").click();
         waitForId("game_root");
-        assertActivityTextContains(R.id.game_title_text, "4x4 パズル");
+        assertActivityTextContains(R.id.game_title_text, "4x4 · チャレンジ");
         assertActivityTextContains(R.id.game_status_text, "0手");
         assertActivityContentDescriptionContains(R.id.game_board, "空きマスは");
         assertActivityContentDescriptionContains(R.id.game_menu_button, "ゲームメニューを開きます");
@@ -639,7 +660,7 @@ public class MainActivityFlowTest {
         waitForId("results_root");
         waitForText("結果");
         waitForText("パズルをクリアしました。");
-        waitForText("このサイズで最初のプレイヤー記録です。");
+        waitForText("このサイズと難易度で最初のプレイヤー記録です。");
         waitForTextContaining("1手");
         assertActivityContentDescriptionContains(R.id.results_completion_mark, "パズルクリア");
 
@@ -884,7 +905,7 @@ public class MainActivityFlowTest {
         waitForId("results_root");
         waitForText("Results");
         waitForText("Puzzle solved.");
-        waitForText("First player record for this size.");
+        waitForText("First player record for this size and difficulty.");
         assertNotNull(findById("results_completion_mark"));
         assertActivityContentDescriptionContains(R.id.results_completion_mark, "Puzzle complete");
         assertNotNull(findById("results_play_again_button"));
@@ -950,7 +971,7 @@ public class MainActivityFlowTest {
 
         clickId(R.id.results_play_again_button);
         waitForId("game_root");
-        waitForText("3x3 Puzzle");
+        waitForText("3x3 · Classic");
 
         invokeActivityMethod("onGameWon", new Class<?>[] {int.class, long.class}, 1, 0L);
         waitForId("results_root");
@@ -1180,7 +1201,7 @@ public class MainActivityFlowTest {
         instrumentation.waitForIdleSync();
         waitForResumedMainActivity();
         waitForActivityView(R.id.game_board);
-        assertActivityTextContains(R.id.game_title_text, "3x3 Puzzle");
+        assertActivityTextContains(R.id.game_title_text, "3x3 · Classic");
     }
 
     private void waitForResumedMainActivity() throws InterruptedException {

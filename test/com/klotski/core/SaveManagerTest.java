@@ -38,6 +38,7 @@ class SaveManagerTest {
         assertTrue(data.updatedAt > 0);
         assertTrue(data.active);
         assertTrue(!data.solved);
+        assertEquals(PuzzleDifficulty.CLASSIC, data.difficulty);
         assertArrayEquals(model.getGridCopy(), data.grid);
         assertArrayEquals(initial, data.initialGrid);
     }
@@ -48,7 +49,7 @@ class SaveManagerTest {
         System.setProperty(SaveManager.DATA_DIR_PROPERTY, tempDir.getAbsolutePath());
         try {
             GameModel model = new GameModel(3);
-            model.scramble(5);
+            model.scramble(PuzzleDifficulty.CHALLENGE, 91L);
 
             assertTrue(SaveManager.saveGame(model));
 
@@ -58,6 +59,7 @@ class SaveManagerTest {
             assertNotNull(loaded);
             assertEquals(3, loaded.size);
             assertTrue(loaded.active);
+            assertEquals(PuzzleDifficulty.CHALLENGE, loaded.difficulty);
         } finally {
             if (oldValue == null) {
                 System.clearProperty(SaveManager.DATA_DIR_PROPERTY);

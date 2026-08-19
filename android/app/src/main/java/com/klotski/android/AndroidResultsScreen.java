@@ -58,7 +58,8 @@ final class AndroidResultsScreen {
         summary.setBackground(ui.makePanelBackground(COLOR_PANEL));
 
         TextView size = ui.createText(activity.getString(R.string.results_size_format,
-                result.size, result.size), 18, Color.WHITE, Typeface.BOLD);
+                result.size, result.size, difficultyName(result.difficulty)),
+                18, Color.WHITE, Typeface.BOLD);
         size.setId(R.id.results_size_text);
         size.setGravity(Gravity.CENTER);
         summary.addView(size, ui.fullWidthParams());
@@ -96,6 +97,14 @@ final class AndroidResultsScreen {
                 v -> actions.onHome());
         homeButton.setId(R.id.results_home_button);
         return screen;
+    }
+
+    private String difficultyName(com.klotski.core.PuzzleDifficulty difficulty) {
+        return activity.getString(switch (difficulty) {
+            case RELAXED -> R.string.difficulty_relaxed;
+            case CLASSIC -> R.string.difficulty_classic;
+            case CHALLENGE -> R.string.difficulty_challenge;
+        });
     }
 
     interface ResultsActions {

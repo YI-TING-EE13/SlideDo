@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 
 import com.klotski.core.GameModel;
+import com.klotski.core.PuzzleDifficulty;
 import com.klotski.core.SaveManager;
 
 /**
@@ -26,7 +27,9 @@ final class AndroidGameStore {
     private static final String KEY_UPDATED_AT = "updated_at";
     private static final String KEY_ACTIVE = "active";
     private static final String KEY_SOLVED = "solved";
+    private static final String KEY_DIFFICULTY = "difficulty";
     private static final String KEY_LAST_SIZE = "last_size";
+    private static final String KEY_LAST_DIFFICULTY = "last_difficulty";
     private static final String KEY_BEST_PREFIX = "best_";
     private static final String KEY_ONBOARDING_SEEN = "onboarding_seen";
     private static final String KEY_HAPTIC_ENABLED = "haptic_enabled";
@@ -49,6 +52,17 @@ final class AndroidGameStore {
             return;
         }
         prefs.edit().putInt(KEY_LAST_SIZE, size).apply();
+    }
+
+    PuzzleDifficulty getLastDifficulty() {
+        return PuzzleDifficulty.fromId(prefs.getString(
+                KEY_LAST_DIFFICULTY, PuzzleDifficulty.CLASSIC.getId()));
+    }
+
+    void setLastDifficulty(PuzzleDifficulty difficulty) {
+        if (difficulty != null) {
+            prefs.edit().putString(KEY_LAST_DIFFICULTY, difficulty.getId()).apply();
+        }
     }
 
     boolean isOnboardingSeen() {
@@ -96,6 +110,7 @@ final class AndroidGameStore {
                 .putLong(KEY_UPDATED_AT, System.currentTimeMillis())
                 .putBoolean(KEY_ACTIVE, model.isGameRunning())
                 .putBoolean(KEY_SOLVED, model.isSolved())
+                .putString(KEY_DIFFICULTY, model.getDifficulty().getId())
                 .apply();
     }
 
@@ -127,6 +142,7 @@ final class AndroidGameStore {
         data.updatedAt = prefs.getLong(KEY_UPDATED_AT, 0);
         data.solved = prefs.getBoolean(KEY_SOLVED, false);
         data.active = prefs.getBoolean(KEY_ACTIVE, false);
+        data.difficulty = PuzzleDifficulty.fromId(prefs.getString(KEY_DIFFICULTY, null));
         normalizeStateMetadata(data);
         return data;
     }
@@ -137,7 +153,7 @@ final class AndroidGameStore {
             return null;
         }
         return new SaveMetadata(data.updatedAt, data.size, data.moveCount,
-                data.elapsedTime, data.active, data.solved);
+                data.elapsedTime, data.active, data.solved, data.difficulty);
     }
 
     boolean hasSavedGame() {
@@ -154,12 +170,23 @@ final class AndroidGameStore {
                 .remove(KEY_UPDATED_AT)
                 .remove(KEY_ACTIVE)
                 .remove(KEY_SOLVED)
+                .remove(KEY_DIFFICULTY)
                 .commit();
     }
 
     Best getBest(int size) {
-        int moves = prefs.getInt(KEY_BEST_PREFIX + size + "_moves", -1);
-        long timeMs = prefs.getLong(KEY_BEST_PREFIX + size + "_time", -1);
+        return getBest(size, PuzzleDifficulty.CLASSIC);
+    }
+
+    Best getBest(int size, PuzzleDifficulty difficulty) {
+        String prefix = difficultyBestPrefix(size, difficulty);
+        int moves = prefs.getInt(prefix + "_moves", -1);
+        long timeMs = prefs.getLong(prefix + "_time", -1);
+        if ((moves < 0 || timeMs < 0) && difficulty == PuzzleDifficulty.CLASSIC) {
+            // Original Android releases keyed best records by size only.
+            moves = prefs.getInt(KEY_BEST_PREFIX + size + "_moves", -1);
+            timeMs = prefs.getLong(KEY_BEST_PREFIX + size + "_time", -1);
+        }
         if (moves < 0 || timeMs < 0) {
             return null;
         }
@@ -167,14 +194,19 @@ final class AndroidGameStore {
     }
 
     boolean recordBestIfBetter(int size, int moves, long timeMs) {
-        Best best = getBest(size);
+        return recordBestIfBetter(size, PuzzleDifficulty.CLASSIC, moves, timeMs);
+    }
+
+    boolean recordBestIfBetter(int size, PuzzleDifficulty difficulty, int moves, long timeMs) {
+        Best best = getBest(size, difficulty);
         if (!isBetterRecord(best, moves, timeMs)) {
             return false;
         }
 
+        String prefix = difficultyBestPrefix(size, difficulty);
         prefs.edit()
-                .putInt(KEY_BEST_PREFIX + size + "_moves", moves)
-                .putLong(KEY_BEST_PREFIX + size + "_time", timeMs)
+                .putInt(prefix + "_moves", moves)
+                .putLong(prefix + "_time", timeMs)
                 .apply();
         return true;
     }
@@ -184,6 +216,11 @@ final class AndroidGameStore {
         for (int size = 3; size <= 5; size++) {
             editor.remove(KEY_BEST_PREFIX + size + "_moves");
             editor.remove(KEY_BEST_PREFIX + size + "_time");
+            for (PuzzleDifficulty difficulty : PuzzleDifficulty.values()) {
+                String prefix = difficultyBestPrefix(size, difficulty);
+                editor.remove(prefix + "_moves");
+                editor.remove(prefix + "_time");
+            }
         }
         editor.commit();
     }
@@ -195,6 +232,11 @@ final class AndroidGameStore {
 
     private static boolean isSupportedSize(int size) {
         return size >= 3 && size <= 5;
+    }
+
+    private static String difficultyBestPrefix(int size, PuzzleDifficulty difficulty) {
+        PuzzleDifficulty selected = difficulty == null ? PuzzleDifficulty.CLASSIC : difficulty;
+        return KEY_BEST_PREFIX + size + "_" + selected.getId();
     }
 
     private static String flatten(int[][] grid) {
@@ -256,14 +298,17 @@ final class AndroidGameStore {
         final long elapsedMs;
         final boolean active;
         final boolean solved;
+        final PuzzleDifficulty difficulty;
 
-        SaveMetadata(long updatedAt, int size, int moves, long elapsedMs, boolean active, boolean solved) {
+        SaveMetadata(long updatedAt, int size, int moves, long elapsedMs, boolean active, boolean solved,
+                PuzzleDifficulty difficulty) {
             this.updatedAt = updatedAt;
             this.size = size;
             this.moves = moves;
             this.elapsedMs = elapsedMs;
             this.active = active;
             this.solved = solved;
+            this.difficulty = difficulty == null ? PuzzleDifficulty.CLASSIC : difficulty;
         }
     }
 

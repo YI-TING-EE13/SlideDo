@@ -12,6 +12,8 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.klotski.core.PuzzleDifficulty;
+
 /**
  * Builder for the Android records screen.
  */
@@ -24,16 +26,19 @@ final class AndroidRecordsScreen {
         this.ui = ui;
     }
 
-    ScreenLayout build(String best3, String best4, String best5, RecordsActions actions) {
+    ScreenLayout build(RecordTextProvider records, RecordsActions actions) {
         ScreenLayout screen = ui.createScreenLayout();
         screen.root.setId(R.id.records_root);
         ui.addScreenHeader(screen.content,
                 activity.getString(R.string.records_title),
                 activity.getString(R.string.records_subtitle));
         addExplanation(screen.content);
-        addRecordRow(screen.content, 3, R.string.mode_easy, best3);
-        addRecordRow(screen.content, 4, R.string.mode_classic, best4);
-        addRecordRow(screen.content, 5, R.string.mode_expert, best5);
+        for (int size = 3; size <= 5; size++) {
+            for (PuzzleDifficulty difficulty : PuzzleDifficulty.values()) {
+                addRecordRow(screen.content, size, difficulty,
+                        records.getRecordText(size, difficulty));
+            }
+        }
 
         Button backButton = ui.addWideButton(screen.content, R.string.nav_back, COLOR_PANEL,
                 v -> actions.onBack());
@@ -53,14 +58,14 @@ final class AndroidRecordsScreen {
         parent.addView(explanation, params);
     }
 
-    private void addRecordRow(LinearLayout parent, int size, int difficultyResId, String bestText) {
+    private void addRecordRow(LinearLayout parent, int size, PuzzleDifficulty difficulty, String bestText) {
         LinearLayout row = new LinearLayout(activity);
         row.setOrientation(LinearLayout.VERTICAL);
         row.setPadding(ui.dp(16), ui.dp(14), ui.dp(16), ui.dp(14));
         row.setBackground(ui.makePanelBackground(COLOR_PANEL));
 
         TextView title = ui.createText(activity.getString(R.string.records_row_title,
-                size, size, activity.getString(difficultyResId)), 15, COLOR_MUTED_TEXT, Typeface.BOLD);
+                size, size, difficultyName(difficulty)), 15, COLOR_MUTED_TEXT, Typeface.BOLD);
         TextView best = ui.createText(bestText, 20,
                 activity.getString(R.string.records_empty).equals(bestText)
                         ? Color.WHITE : COLOR_POSITIVE_TEXT,
@@ -74,6 +79,18 @@ final class AndroidRecordsScreen {
         LinearLayout.LayoutParams rowParams = ui.fullWidthParams();
         rowParams.setMargins(0, 0, 0, ui.dp(12));
         parent.addView(row, rowParams);
+    }
+
+    private String difficultyName(PuzzleDifficulty difficulty) {
+        return activity.getString(switch (difficulty) {
+            case RELAXED -> R.string.difficulty_relaxed;
+            case CLASSIC -> R.string.difficulty_classic;
+            case CHALLENGE -> R.string.difficulty_challenge;
+        });
+    }
+
+    interface RecordTextProvider {
+        String getRecordText(int size, PuzzleDifficulty difficulty);
     }
 
     interface RecordsActions {

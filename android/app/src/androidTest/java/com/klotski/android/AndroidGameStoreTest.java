@@ -15,6 +15,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.klotski.core.GameModel;
+import com.klotski.core.PuzzleDifficulty;
 import com.klotski.core.SaveManager;
 
 import org.junit.After;
@@ -63,6 +64,7 @@ public class AndroidGameStoreTest {
         };
         data.moveCount = 1;
         data.elapsedTime = 1234L;
+        data.difficulty = PuzzleDifficulty.CHALLENGE;
 
         GameModel model = new GameModel(3);
         model.loadState(data);
@@ -76,6 +78,7 @@ public class AndroidGameStoreTest {
         assertTrue(loaded.updatedAt > 0);
         assertTrue(loaded.active);
         assertFalse(loaded.solved);
+        assertEquals(PuzzleDifficulty.CHALLENGE, loaded.difficulty);
         assertTrue(Arrays.deepEquals(data.grid, loaded.grid));
         assertTrue(Arrays.deepEquals(data.initialGrid, loaded.initialGrid));
 
@@ -87,11 +90,25 @@ public class AndroidGameStoreTest {
         assertEquals(5678L, metadata.elapsedMs);
         assertTrue(metadata.active);
         assertFalse(metadata.solved);
+        assertEquals(PuzzleDifficulty.CHALLENGE, metadata.difficulty);
 
         GameModel restored = new GameModel(3);
         restored.loadState(loaded);
         restored.restartCurrentGame();
         assertTrue(Arrays.deepEquals(data.initialGrid, restored.getGridCopy()));
+    }
+
+    @Test
+    public void difficultyPreferenceAndScopedBestRecordsRemainIndependent() {
+        assertEquals(PuzzleDifficulty.CLASSIC, store.getLastDifficulty());
+        store.setLastDifficulty(PuzzleDifficulty.CHALLENGE);
+        assertEquals(PuzzleDifficulty.CHALLENGE, store.getLastDifficulty());
+
+        assertTrue(store.recordBestIfBetter(4, PuzzleDifficulty.RELAXED, 10, 5_000L));
+        assertTrue(store.recordBestIfBetter(4, PuzzleDifficulty.CHALLENGE, 20, 9_000L));
+        assertEquals(10, store.getBest(4, PuzzleDifficulty.RELAXED).moves);
+        assertEquals(20, store.getBest(4, PuzzleDifficulty.CHALLENGE).moves);
+        assertNull(store.getBest(4, PuzzleDifficulty.CLASSIC));
     }
 
     @Test

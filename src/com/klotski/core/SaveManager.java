@@ -59,6 +59,7 @@ public class SaveManager {
         data.updatedAt = System.currentTimeMillis();
         data.active = model.isGameRunning();
         data.solved = model.isSolved();
+        data.difficulty = model.getDifficulty();
 
         try {
             writeText(saveFile, toJson(data));
@@ -209,13 +210,14 @@ public class SaveManager {
     private static String toJson(SaveData data) {
         StringBuilder sb = new StringBuilder();
         sb.append("{\n");
-        sb.append("  \"version\": 1,\n");
+        sb.append("  \"version\": 2,\n");
         sb.append("  \"size\": ").append(data.size).append(",\n");
         sb.append("  \"moveCount\": ").append(data.moveCount).append(",\n");
         sb.append("  \"elapsedTime\": ").append(data.elapsedTime).append(",\n");
         sb.append("  \"updatedAt\": ").append(data.updatedAt).append(",\n");
         sb.append("  \"active\": ").append(data.active).append(",\n");
         sb.append("  \"solved\": ").append(data.solved).append(",\n");
+        sb.append("  \"difficulty\": \"").append(data.difficulty.getId()).append("\",\n");
         sb.append("  \"grid\": ").append(gridToJson(data.grid)).append(",\n");
         sb.append("  \"initialGrid\": ").append(gridToJson(data.initialGrid)).append("\n");
         sb.append("}\n");
@@ -230,6 +232,7 @@ public class SaveManager {
         data.updatedAt = optionalLongField(json, "updatedAt", 0);
         data.active = optionalBooleanField(json, "active", false);
         data.solved = optionalBooleanField(json, "solved", false);
+        data.difficulty = PuzzleDifficulty.fromId(optionalStringField(json, "difficulty", null));
         data.grid = gridField(json, "grid", data.size);
         data.initialGrid = gridField(json, "initialGrid", data.size);
         return data;
@@ -244,6 +247,9 @@ public class SaveManager {
         }
         if (data.initialGrid == null) {
             data.initialGrid = data.grid;
+        }
+        if (data.difficulty == null) {
+            data.difficulty = PuzzleDifficulty.CLASSIC;
         }
         boolean solvedGrid = isSolvedGrid(data.grid);
         data.solved = data.solved || solvedGrid;
@@ -294,6 +300,11 @@ public class SaveManager {
     private static boolean optionalBooleanField(String json, String key, boolean fallback) {
         Matcher matcher = Pattern.compile("\"" + key + "\"\\s*:\\s*(true|false)").matcher(json);
         return matcher.find() ? Boolean.parseBoolean(matcher.group(1)) : fallback;
+    }
+
+    private static String optionalStringField(String json, String key, String fallback) {
+        Matcher matcher = Pattern.compile("\\\"" + key + "\\\"\\s*:\\s*\\\"([^\\\"]*)\\\"").matcher(json);
+        return matcher.find() ? matcher.group(1) : fallback;
     }
 
     private static int[][] gridField(String json, String key, int size) {
@@ -459,6 +470,9 @@ public class SaveManager {
 
         /** Whether the persisted puzzle is solved. */
         public boolean solved;
+
+        /** Scramble-intensity preset, defaulting to Classic for legacy saves. */
+        public PuzzleDifficulty difficulty;
     }
 
     /**

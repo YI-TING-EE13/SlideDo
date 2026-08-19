@@ -14,8 +14,10 @@ an emulator or connected Android device.
 - First-run onboarding with Skip and Start 3x3 actions
 - Interactive Practice Tutorial for the first move, movable aligned-tile
   highlights, and whole-line slide practice
-- Mode Select for 3x3, 4x4, and 5x5 games with difficulty labels, expected
-  session length, first-puzzle guidance, and local best records
+- Mode Select for 3x3, 4x4, and 5x5 games, followed by Relaxed, Classic, or
+  Challenge shuffle-depth selection
+- Difficulty-aware Continue metadata, compact game/results titles, and local
+  best records scoped by size and difficulty; legacy data defaults to Classic
 - Short screen exit transitions and staggered content entrances across Home,
   onboarding, Practice Tutorial, Mode Select, How to Play, Settings, Records,
   Results, and Game
@@ -141,14 +143,15 @@ This runs `verify.bat` and `verify-release.bat`. CI release artifacts are
 verification outputs and use the temporary signing key unless real Play upload
 signing is explicitly configured.
 
-Latest 2026-08-20 validation status: all 49 connected instrumentation tests
+Latest 2026-08-20 validation status: all 51 connected instrumentation tests
 passed on both the Pixel_7 AVD running Android 15 at 1080x2400 and the
 `small_phone` AVD running Android 16 / API 36.1 at 720x1280. The suite covers the
 normal animated transition path, the Reduced motion bypass, English-default
 locale isolation, persistent English, Traditional Chinese, and Japanese switching,
-explicit Traditional Chinese and Japanese major-screen/dialog/result flows, and
-active-play timer pausing across game menus, nested dialogs, Assist, Settings,
-and background/resume.
+explicit Traditional Chinese and Japanese major-screen/dialog/result flows,
+difficulty selection and persistence, scoped best records, and active-play
+timer pausing across game menus, nested dialogs, Assist, Settings, and
+background/resume.
 CLI-captured manual review covered English onboarding, Traditional Chinese
 Home/Settings/Mode Select/Game, and Japanese Home/Settings/Mode Select/How to
 Play/Game on the compact AVD. The compact controls remained single-line after
@@ -157,6 +160,10 @@ Restart, and Assist labels to `チュートリアル`, `再挑戦`, and `ヒン�
 Pixel_7 app process emitted no `AndroidRuntime` error.
 The Stage 1 small-phone manual pass also kept the complete game menu visible and
 confirmed that a five-second menu stay did not increase the play timer.
+The Stage 2 small-phone manual pass confirmed that all three difficulty choices
+are visible and tappable and that `4x4 · Challenge` stays on one line beside
+Home and Menu. The final APK SHA-256 is
+`F9424A8612F040756E37F02BB042582A630AA979E2C2FCA8C835132C4C598E63`.
 
 For Android build and lint only:
 
@@ -258,14 +265,16 @@ check-screenshot-set.bat ..\screenshots\android\0.2.0-beta.1
   order without accepting a second navigation action during the exit.
 - In Practice Tutorial, tap the emphasized 6 for the first move, then tap the
   emphasized 5 to demonstrate a whole-line slide counted as one move.
-- Open New Game, then start 3x3, 4x4, and 5x5 from Mode Select.
+- Open New Game, then start 3x3, 4x4, and 5x5 from Mode Select. For each size,
+  choose Relaxed, Classic, and Challenge and confirm the selected label appears
+  in the compact game title.
 - Return Home and confirm Continue appears after a game has been saved.
 - Tap adjacent and non-adjacent aligned tiles; a whole-line slide should count as one move.
 - Undo after a whole-line slide; the entire gesture should restore in one step.
 - Restart; moves and timer should reset without reshuffling.
 - Save after a move from Menu, restart, then Load; board, move count, timer, and restart grid should be restored.
-- Confirm saved-game metadata updates with the saved size, move count, elapsed
-  time, and active/solved state.
+- Confirm saved-game metadata updates with the saved size, difficulty, move
+  count, elapsed time, and active/solved state.
 - Open Menu, check Quick Reminder, and open Settings.
 - Leave Menu, Quick Reminder, Assist, and Solver Tools open briefly; returning
   to Game must not add those intervals to the play timer.

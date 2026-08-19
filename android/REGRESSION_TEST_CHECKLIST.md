@@ -77,7 +77,7 @@ Run every item in all supported locales.
 - [ ] New Game opens Mode Select; Back/Home returns to Home without creating a game.
 - [ ] First-launch onboarding pages show correct progress and support Next, Back, Skip, Practice Tutorial, and Start 3x3.
 - [ ] Beginner Guide can be reopened from Home after onboarding is complete.
-- [ ] Home Continue summary correctly distinguishes active, saved, and solved state and displays size, moves, time, and age.
+- [ ] Home Continue summary correctly distinguishes active, saved, and solved state and displays size, difficulty, moves, time, and age.
 
 ### How to Play and tutorial
 
@@ -90,16 +90,17 @@ Run every item in all supported locales.
 
 ### Mode Select
 
-- [ ] 3x3, 4x4, and 5x5 cards show size, difficulty, session guidance, record, and 3x3 recommendation.
-- [ ] Each size card starts the requested board size and updates the last selected size.
+- [ ] 3x3, 4x4, and 5x5 cards show size class, session guidance, Classic record, and 3x3 recommendation.
+- [ ] Each size card opens Relaxed, Classic, and Challenge choices; tapping one starts the requested size/difficulty and updates both last selections.
+- [ ] Difficulty changes scramble depth only. Equal size/difficulty/seed inputs reproduce the same solvable grid.
 - [ ] Mode Select content fits without clipped controls on the compact AVD in all supported locales.
 
 ### Settings and Records
 
 - [ ] Haptic and Reduced Motion switches toggle, persist after relaunch, and keep localized accessibility descriptions.
 - [ ] Reset Saved Game Cancel preserves the save; Reset clears it and shows a localized confirmation toast.
-- [ ] Reset Records Cancel preserves all records; Reset clears 3x3, 4x4, and 5x5 records and shows a localized toast.
-- [ ] Records shows the correct empty state or stored best for every size and explains player-only ranking.
+- [ ] Reset Records Cancel preserves all records; Reset clears every size/difficulty record and shows a localized toast.
+- [ ] Records shows the correct empty state or stored best for all nine size/difficulty combinations and explains player-only ranking.
 - [ ] Back returns to the originating screen without stale or duplicate content.
 
 ## D. Gameplay and State Integrity
@@ -116,7 +117,7 @@ Run every item on 3x3, 4x4, and 5x5 in all supported locales where practical.
 - [ ] Input is ignored while board animation or solver playback is active.
 - [ ] Menu Resume returns to the same board; time spent in the menu is excluded from elapsed play time.
 - [ ] Quick Reminder, Assist, Solver Tools, and solver dialogs keep elapsed play time paused until the final dialog closes.
-- [ ] Save after a move, Restart, then Load restores size, grid, `initialGrid`, moves, elapsed time, active/solved state, and restart behavior.
+- [ ] Save after a move, Restart, then Load restores size, difficulty, grid, `initialGrid`, moves, elapsed time, active/solved state, and restart behavior.
 - [ ] Load with no save shows the localized no-save toast and keeps the current game valid.
 - [ ] Home saves the current puzzle; Continue restores it after relaunch.
 - [ ] Rotation preserves screen, board, move count, elapsed time, hint state, and relevant dialog/screen state.
@@ -138,8 +139,8 @@ result is required.
 - [ ] A solver failure/timeout shows the localized failure dialog without corrupting the board.
 - [ ] A found solution shows the localized move count and supports Close and Animate.
 - [ ] Solver playback completes once, blocks conflicting input, and creates exactly one assisted Results transition.
-- [ ] Player solve Results shows size, moves, time, and correct first/new/unchanged record message.
-- [ ] Play Again starts the same size; New Size opens Mode Select; Home returns Home.
+- [ ] Player solve Results shows size, difficulty, moves, time, and correct first/new/unchanged record message.
+- [ ] Play Again starts a new puzzle at the same size/difficulty; New Size opens Mode Select; Home returns Home.
 - [ ] Player best compares fewer moves first and lower time second.
 - [ ] Solver-assisted completion is labeled assisted and never overwrites the player best.
 
@@ -162,6 +163,24 @@ Do not mark the localization work complete until every applicable item above is
 checked in all supported locales, failures are fixed and rerun, and any
 unavailable device coverage is explicitly recorded as a limitation rather than
 reported as passed.
+
+### 2026-08-20 Stage 2 difficulty-selection pass
+
+| Evidence | Result |
+| --- | --- |
+| Debug APK SHA-256 | `F9424A8612F040756E37F02BB042582A630AA979E2C2FCA8C835132C4C598E63` |
+| Local verification | All 32 shared tests passed; `verify.bat` passed desktop compile, Android assemble/test APK/lint, and both Javadoc/doclint gates |
+| Pixel_7 | 51/51 connected tests passed on Android 15 at 1080x2400; 0 failed, 0 errors, 0 skipped; XML time 337.606 seconds |
+| `small_phone` | 51/51 connected tests passed on Android 16 / API 36.1 at 720x1280; 0 failed, 0 errors, 0 skipped; XML time 295.657 seconds |
+| Core difficulty contract | Three tests cover stable IDs/increasing budgets, Classic compatibility fallback, and deterministic seeded grid reproduction; save tests cover Classic and Challenge round trips |
+| Android persistence and flow | Store tests cover last difficulty, independent scoped records, and difficulty save metadata; flow tests cover English/Traditional Chinese/Japanese selection and Challenge Continue restoration |
+| Manual UI review | All three choices were visible and tappable at 720x1280; Mode Select scrolled correctly and `4x4 · Challenge` remained a single-line game title with no clipped board or controls |
+| Runtime review | `AndroidRuntime:E` logcat filters were empty on both AVDs after the full suite and manual review |
+
+Difficulty is persisted using stable lowercase IDs. Saves or result state without
+the new field default to Classic, and legacy size-only best records are exposed
+as Classic records. The original `scramble(int)` path remains available and uses
+Classic metadata, so desktop and older callers retain their previous behavior.
 
 ### 2026-08-20 Stage 1 active-play timer pass
 
