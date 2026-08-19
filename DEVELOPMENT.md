@@ -38,10 +38,12 @@ Current handoff status:
 - The latest local verification pass was warning-clean for the previously noisy
   Gradle DSL deprecation, Java native-access warning, and Android Java
   deprecation note.
-- The latest connected regression pass ran 51 tests on each of
+- The latest dual-AVD acceptance covered all 52 Android tests on each of
   Pixel_7 (Android 15, 1080x2400) and `small_phone` (Android 16 / API 36.1,
-  720x1280), with no failures or skips. It includes difficulty selection,
-  persistence, scoped records, and active-play timing regression coverage.
+  720x1280), with no failures or skips. Five isolated instrumentation batches
+  avoid cross-device emulator contention while retaining every test. Coverage
+  includes exact-puzzle replay before and after Results recreation, difficulty
+  selection, persistence, scoped records, and active-play timing.
 
 Start a new implementation session by checking:
 
@@ -60,8 +62,8 @@ verify-connected.bat
 
 The active product program is now the eight-stage Personal Play roadmap in
 `Roadmap And Planning`. It prioritizes offline replay value and personal
-convenience over public distribution. Stages 1 and 2 are implemented and
-verified. Stage 3, replaying the exact same puzzle, is next.
+convenience over public distribution. Stages 1 through 3 are implemented and
+verified. Stage 4, independent save slots for each board size, is next.
 
 Real Play upload signing is intentionally deferred until store submission. It
 is not required for a local push-ready commit, and no Git remote or push is part
@@ -353,7 +355,7 @@ Target experience:
 
 6. Win/results screen:
    - Show moves, time, and whether a new best record was achieved.
-   - Offer Play Again, New Size, and Home.
+   - Offer Replay Puzzle, New Size, and Home.
    - Keep solver-assisted completions visually distinct and do not record them as player bests.
 
 ### UX Engineering Direction
@@ -490,8 +492,8 @@ Every stage uses the same delivery gate:
 | ---: | --- | --- | --- |
 | 1 | True timer pausing | Count active Game-screen time only; exclude dialogs, other screens, and background time while preserving save compatibility. | Completed and verified on 2026-08-20. |
 | 2 | Difficulty selection | Add Relaxed, Classic, and Challenge choices backed by reproducible, solvable scramble definitions. | Completed and verified on 2026-08-20. |
-| 3 | Replay the same puzzle | Let Results restart the exact starting board without generating another scramble. | Next. |
-| 4 | Per-size saves | Preserve independent 3x3, 4x4, and 5x5 active games and expose the correct Continue choices. | Planned. |
+| 3 | Replay the same puzzle | Let Results restart the exact starting board without generating another scramble. | Completed and verified on 2026-08-20. |
+| 4 | Per-size saves | Preserve independent 3x3, 4x4, and 5x5 active games and expose the correct Continue choices. | Next. |
 | 5 | History and personal stats | Store bounded local completion history and show meaningful per-size and per-difficulty summaries. | Planned. |
 | 6 | Offline daily challenge | Generate one deterministic local puzzle per date and record completion/streak state without a server. | Planned. |
 | 7 | Strategic hint | Suggest a useful next move, mark the game assisted, and preserve player-record protection. | Planned. |
@@ -577,7 +579,7 @@ Desktop/Android feature parity matrix:
 | Save/load metadata | `AndroidGameStore` persists size, grid, initial grid, moves, elapsed, updated-at, active, solved, records, settings, and onboarding state. | Desktop JSON save persists size, grid, initial grid, moves, elapsed, updated-at, active, and solved; records live in user-data path. | Android includes mobile-only settings/onboarding; shared gameplay metadata is aligned. | Android store instrumentation, root save metadata tests. |
 | Settings / preferences | Persistent English, Traditional Chinese, and Japanese language selection, haptic feedback, reduced motion, reset saved game, and reset records. | Reduced motion preference plus desktop records/save flows. | App-language and haptics are Android-only; desktop currently remains English. | Android locale/store/settings instrumentation; desktop preferences copy tests/manual smoke. |
 | Records | Per-size local best records, fewer moves then lower time, solver-assisted protection, and player-facing policy explanation. | Per-size local best records with the same comparison, solver-assisted protection, and policy explanation. | Aligned. | Android records/results instrumentation; desktop result and records tests. |
-| Results | Full Results screen with Play Again, New Size, Home, record status, and assisted wording. | Android-style Results dialog with Play Again, New Size, Home, record status, and assisted wording. | Surface type differs due to Swing dialogs vs Android screens, wording and actions align. | Android results instrumentation; desktop results copy tests. |
+| Results | Full Results screen with exact-board Replay Puzzle, New Size, Home, record status, and assisted wording. | Android-style Results dialog with Play Again, New Size, Home, record status, and assisted wording. | Android now replays the same starting board for the Personal Play roadmap; desktop retains its new-puzzle action. | Android replay/results instrumentation; desktop results copy tests. |
 | Accessibility | Board summaries, settings switch descriptions, and primary control descriptions exist. | Basic Swing labels/dialog text exist, but no full assistive-tech audit. | Both platforms still need broader manual accessibility review before public release. | Android accessibility instrumentation plus manual TalkBack/desktop review. |
 | Packaging / release | Debug build, connected tests, signed APK/AAB, Play readiness file check, screenshot smoke workflow. | Desktop ZIP and optional app-image package with user-data paths plus a desktop beta readiness check. | Android still needs real Play upload key and Play Console external assets; desktop package is not a signed installer. | `verify.bat`, `verify-connected.bat`, `verify-release.bat`, manual screenshot smoke, desktop beta smoke checklist. |
 
@@ -755,7 +757,7 @@ Status: Completed on 2026-05-25.
 - [x] Replace the solved-game dialog with a full Results screen.
 - [x] Show size, moves, time, previous best, and whether the player set a new best.
 - [x] Show solver-assisted completions with distinct wording and no record write.
-- [x] Offer Play Again, New Size, Home, and optionally Share later.
+- [x] Offer Replay Puzzle, New Size, Home, and optionally Share later.
 
 Recommended MVP scope:
 
@@ -1000,6 +1002,24 @@ Priority: Low to Medium
   1080x2400; 337.606 seconds) and `small_phone` (Android 16 / API 36.1,
   720x1280; 295.657 seconds). Manual small-phone inspection found no clipping or
   overlap, and both final runtime error filters were empty.
+- Completed Stage 3 exact-puzzle replay. Results now offers Replay Puzzle and
+  restores the saved `initialGrid`, difficulty, and size while resetting moves,
+  elapsed time, assisted state, and pending result state. It does not generate a
+  new scramble.
+- Results recreation now reloads the completed saved model before rendering, so
+  rotating or recreating Results retains the exact starting board needed by
+  Replay Puzzle. English, Traditional Chinese, and Japanese labels are covered.
+- Added a deterministic shared restart-after-win contract test and two connected
+  replay flows covering exact board identity, zeroed run state, and Results
+  rotation. The UI harness now waits for board animation completion, treats a
+  completed transition away from the board as idle, waits for portrait recovery,
+  and scrolls compact-screen dialog content before interaction.
+- Final Stage 3 evidence: all 33 shared tests and `verify.bat` passed. All 52
+  Android tests passed on both Pixel_7 and `small_phone` in five isolated batches
+  (12 + 10 + 10 + 10 + 10) with zero failures or skips. The final debug APK hash
+  is `5722E65AF47727B2E270E564057D0340D3C376AAB2E7A27888929173A407BEB9`;
+  installed-app visual review found no clipping, and both runtime error filters
+  were empty.
 
 ### 2026-08-19
 

@@ -15,6 +15,7 @@ import android.content.SharedPreferences;
 import android.os.SystemClock;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.TextView;
@@ -62,6 +63,7 @@ public class MainActivityFlowTest {
         device = UiDevice.getInstance(instrumentation);
         targetContext = instrumentation.getTargetContext();
         device.setOrientationNatural();
+        waitForPortraitOrientation();
         clearAppPreferences();
     }
 
@@ -74,6 +76,7 @@ public class MainActivityFlowTest {
             activity = null;
         }
         device.setOrientationNatural();
+        waitForPortraitOrientation();
         device.pressHome();
     }
 
@@ -102,13 +105,15 @@ public class MainActivityFlowTest {
         waitForId("home_root");
         assertNull(findById("onboarding_root"));
         waitForText("SlideDo");
-        assertNotNull(findById("home_new_game_button"));
-        assertNotNull(findById("home_onboarding_button"));
-        assertNotNull(findById("home_tutorial_button"));
-        assertNotNull(findById("home_how_to_play_button"));
-        assertNotNull(findById("home_settings_button"));
-        assertNotNull(findById("home_records_button"));
-        assertNull(findById("home_continue_button"));
+        assertActivityHasView(R.id.home_new_game_button);
+        assertActivityHasView(R.id.home_onboarding_button);
+        assertActivityHasView(R.id.home_tutorial_button);
+        assertActivityHasView(R.id.home_how_to_play_button);
+        assertActivityHasView(R.id.home_settings_button);
+        assertActivityHasView(R.id.home_records_button);
+        scrollToText("Settings");
+        scrollToText("Records");
+        assertActivityMissingView(R.id.home_continue_button);
     }
 
     @Test
@@ -166,13 +171,15 @@ public class MainActivityFlowTest {
 
         waitForId("home_root");
         waitForText("SlideDo");
-        assertNotNull(findById("home_new_game_button"));
-        assertNotNull(findById("home_onboarding_button"));
-        assertNotNull(findById("home_tutorial_button"));
-        assertNotNull(findById("home_how_to_play_button"));
-        assertNotNull(findById("home_settings_button"));
-        assertNotNull(findById("home_records_button"));
-        assertNull(findById("home_continue_button"));
+        assertActivityHasView(R.id.home_new_game_button);
+        assertActivityHasView(R.id.home_onboarding_button);
+        assertActivityHasView(R.id.home_tutorial_button);
+        assertActivityHasView(R.id.home_how_to_play_button);
+        assertActivityHasView(R.id.home_settings_button);
+        assertActivityHasView(R.id.home_records_button);
+        scrollToText("Settings");
+        scrollToText("Records");
+        assertActivityMissingView(R.id.home_continue_button);
     }
 
     @Test
@@ -367,7 +374,7 @@ public class MainActivityFlowTest {
         clickId(R.id.home_settings_button);
         waitForId("settings_root");
         waitForText("Haptic feedback");
-        waitForText("Reduced motion");
+        scrollToText("Reduced motion");
         assertNotNull(findById("settings_haptic_switch"));
         assertNotNull(findById("settings_reduced_motion_switch"));
         waitForContentDescriptionContaining("settings_haptic_switch",
@@ -393,7 +400,7 @@ public class MainActivityFlowTest {
         waitForStatusContaining("1 move");
 
         clickId(R.id.game_menu_button);
-        waitForText("Settings").click();
+        scrollToText("Settings").click();
         device.waitForIdle();
         waitForId("settings_root");
         waitForText("App language: English").click();
@@ -430,7 +437,7 @@ public class MainActivityFlowTest {
         waitForStatusContaining("1 move");
 
         clickId(R.id.game_menu_button);
-        waitForText("Settings").click();
+        scrollToText("Settings").click();
         device.waitForIdle();
         waitForId("settings_root");
         waitForText("App language: English").click();
@@ -495,7 +502,7 @@ public class MainActivityFlowTest {
         assertActivityContentDescriptionContains(R.id.game_menu_button, "開啟遊戲選單");
 
         clickId(R.id.game_menu_button);
-        waitForText("快速提示").click();
+        scrollToText("快速提示").click();
         waitForText("移動提示");
         waitForTextContaining("整列一起滑動");
         device.pressBack();
@@ -554,14 +561,15 @@ public class MainActivityFlowTest {
         waitForText("結果");
         waitForText("拼圖完成。");
         waitForText("這是此尺寸與難度的第一筆玩家紀錄。");
-        waitForTextContaining("1 次移動");
+        assertActivityTextContains(R.id.results_stats_text, "1 次移動");
+        assertActivityTextContains(R.id.results_play_again_button, "重玩本盤");
         assertActivityContentDescriptionContains(R.id.results_completion_mark, "拼圖完成");
 
         clickId(R.id.results_home_button);
         waitForId("home_root");
         clickId(R.id.home_records_button);
         waitForId("records_root");
-        waitForTextContaining("1 次移動");
+        assertActivityContainsText("1 次移動");
     }
 
     @Test
@@ -602,7 +610,7 @@ public class MainActivityFlowTest {
         assertActivityContentDescriptionContains(R.id.game_menu_button, "ゲームメニューを開きます");
 
         clickId(R.id.game_menu_button);
-        waitForText("操作の確認").click();
+        scrollToText("操作の確認").click();
         waitForText("動かし方");
         waitForTextContaining("まとめて動きます");
         device.pressBack();
@@ -661,14 +669,15 @@ public class MainActivityFlowTest {
         waitForText("結果");
         waitForText("パズルをクリアしました。");
         waitForText("このサイズと難易度で最初のプレイヤー記録です。");
-        waitForTextContaining("1手");
+        assertActivityTextContains(R.id.results_stats_text, "1手");
+        assertActivityTextContains(R.id.results_play_again_button, "同じ問題を再挑戦");
         assertActivityContentDescriptionContains(R.id.results_completion_mark, "パズルクリア");
 
         clickId(R.id.results_home_button);
         waitForId("home_root");
         clickId(R.id.home_records_button);
         waitForId("records_root");
-        waitForTextContaining("1手");
+        assertActivityContainsText("1手");
     }
 
     @Test
@@ -726,7 +735,7 @@ public class MainActivityFlowTest {
         waitForId("game_root");
 
         clickId(R.id.game_menu_button);
-        waitForText("Settings").click();
+        scrollToText("Settings").click();
         device.waitForIdle();
 
         waitForId("settings_root");
@@ -742,7 +751,7 @@ public class MainActivityFlowTest {
         waitForId("game_root");
 
         clickId(R.id.game_menu_button);
-        UiObject2 reminder = waitForText("Quick Reminder");
+        UiObject2 reminder = scrollToText("Quick Reminder");
         reminder.click();
         device.waitForIdle();
 
@@ -779,7 +788,7 @@ public class MainActivityFlowTest {
         waitForId("game_root");
 
         clickId(R.id.game_menu_button);
-        waitForText("Quick Reminder").click();
+        scrollToText("Quick Reminder").click();
         waitForText("Move reminder");
         SystemClock.sleep(2_200L);
         device.pressHome();
@@ -881,7 +890,7 @@ public class MainActivityFlowTest {
         long elapsedBeforeSettings = targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .getLong("elapsed", -1L);
         clickId(R.id.game_menu_button);
-        waitForText("Settings").click();
+        scrollToText("Settings").click();
         waitForId("settings_root");
         SystemClock.sleep(2_200L);
         device.pressHome();
@@ -906,11 +915,14 @@ public class MainActivityFlowTest {
         waitForText("Results");
         waitForText("Puzzle solved.");
         waitForText("First player record for this size and difficulty.");
+        assertActivityTextContains(R.id.results_play_again_button, "Replay Puzzle");
         assertNotNull(findById("results_completion_mark"));
         assertActivityContentDescriptionContains(R.id.results_completion_mark, "Puzzle complete");
-        assertNotNull(findById("results_play_again_button"));
-        assertNotNull(findById("results_new_size_button"));
-        assertNotNull(findById("results_home_button"));
+        assertActivityHasView(R.id.results_play_again_button);
+        assertActivityHasView(R.id.results_new_size_button);
+        assertActivityHasView(R.id.results_home_button);
+        scrollToText("New Size");
+        scrollToText("Home");
 
         clickId(R.id.results_home_button);
         waitForId("home_root");
@@ -918,7 +930,7 @@ public class MainActivityFlowTest {
         waitForId("records_root");
         assertNotNull(findById("records_explanation_text"));
         waitForTextContaining("Player solves only.");
-        waitForTextContaining("1 move");
+        assertActivityContainsText("1 move");
     }
 
     @Test
@@ -966,17 +978,43 @@ public class MainActivityFlowTest {
         launchApp();
         clickId(R.id.home_continue_button);
         waitForId("game_root");
+        String startingBoard = getActivityContentDescription(R.id.game_board);
         tapCell(3, 2, 2);
         waitForId("results_root");
+        assertActivityTextContains(R.id.results_play_again_button, "Replay Puzzle");
 
         clickId(R.id.results_play_again_button);
         waitForId("game_root");
         waitForText("3x3 · Classic");
+        assertEquals(startingBoard, getActivityContentDescription(R.id.game_board));
+        waitForStatusContaining("0 moves");
 
         invokeActivityMethod("onGameWon", new Class<?>[] {int.class, long.class}, 1, 0L);
         waitForId("results_root");
         clickId(R.id.results_new_size_button);
         waitForId("mode_root");
+    }
+
+    @Test
+    public void resultReplayRestoresSamePuzzleAfterRotation() throws Exception {
+        writeSavedGame(ONE_MOVE_WIN_GRID, ONE_MOVE_WIN_GRID, 0);
+        launchApp();
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+        String startingBoard = getActivityContentDescription(R.id.game_board);
+        tapCell(3, 2, 2);
+        waitForId("results_root");
+
+        device.setOrientationLeft();
+        waitForForegroundApp();
+        instrumentation.waitForIdleSync();
+        waitForResumedMainActivity();
+        waitForActivityView(R.id.results_root);
+
+        clickId(R.id.results_play_again_button);
+        waitForId("game_root");
+        assertEquals(startingBoard, getActivityContentDescription(R.id.game_board));
+        waitForStatusContaining("0 moves");
     }
 
     @Test
@@ -1076,6 +1114,18 @@ public class MainActivityFlowTest {
         fail("App window did not become foreground");
     }
 
+    private void waitForPortraitOrientation() throws InterruptedException {
+        long deadline = System.currentTimeMillis() + TIMEOUT_MS;
+        while (System.currentTimeMillis() < deadline) {
+            if (device.getDisplayHeight() > device.getDisplayWidth()) {
+                device.waitForIdle();
+                return;
+            }
+            Thread.sleep(100);
+        }
+        fail("Emulator did not return to natural portrait orientation");
+    }
+
     private void clearAppPreferences() {
         targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().commit();
         device.waitForIdle();
@@ -1152,6 +1202,37 @@ public class MainActivityFlowTest {
     private void assertActivityHasView(int resourceId) {
         instrumentation.runOnMainSync(() ->
                 assertNotNull("Missing activity view id: " + resourceId, activity.findViewById(resourceId)));
+    }
+
+    private void assertActivityContainsText(String expectedText) {
+        instrumentation.runOnMainSync(() -> {
+            View content = activity.findViewById(android.R.id.content);
+            assertTrue("Missing activity text containing: " + expectedText,
+                    viewTreeContainsText(content, expectedText));
+        });
+    }
+
+    private boolean viewTreeContainsText(View view, String expectedText) {
+        if (view instanceof TextView) {
+            CharSequence text = ((TextView) view).getText();
+            if (text != null && text.toString().contains(expectedText)) {
+                return true;
+            }
+        }
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int index = 0; index < group.getChildCount(); index++) {
+                if (viewTreeContainsText(group.getChildAt(index), expectedText)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private void assertActivityMissingView(int resourceId) {
+        instrumentation.runOnMainSync(() ->
+                assertNull("Unexpected activity view id: " + resourceId, activity.findViewById(resourceId)));
     }
 
     private void assertActivityButtonHasStartIcon(int resourceId) {
@@ -1253,6 +1334,18 @@ public class MainActivityFlowTest {
             assertTrue("Expected content description for " + resourceId + " to contain \"" + expectedText
                     + "\" but was: " + description, description.toString().contains(expectedText));
         });
+    }
+
+    private String getActivityContentDescription(int resourceId) {
+        String[] result = new String[1];
+        instrumentation.runOnMainSync(() -> {
+            View view = activity.findViewById(resourceId);
+            assertNotNull("Missing activity view id: " + resourceId, view);
+            CharSequence description = view.getContentDescription();
+            assertNotNull("Missing content description for activity view id: " + resourceId, description);
+            result[0] = description.toString();
+        });
+        return result[0];
     }
 
     private UiObject2 waitForText(String text) {
@@ -1384,7 +1477,25 @@ public class MainActivityFlowTest {
             up.recycle();
         });
         instrumentation.waitForIdleSync();
-        Thread.sleep(250);
+        waitForBoardIdle(boardResourceId);
+    }
+
+    private void waitForBoardIdle(int boardResourceId) throws InterruptedException {
+        long deadline = System.currentTimeMillis() + TIMEOUT_MS;
+        while (System.currentTimeMillis() < deadline) {
+            boolean[] idle = new boolean[1];
+            instrumentation.runOnMainSync(() -> {
+                View board = activity.findViewById(boardResourceId);
+                idle[0] = board == null
+                        || board instanceof KlotskiView && !((KlotskiView) board).isBusy();
+            });
+            if (idle[0]) {
+                instrumentation.waitForIdleSync();
+                return;
+            }
+            Thread.sleep(50);
+        }
+        fail("Board did not become idle after tapping: " + boardResourceId);
     }
 
     private Object invokeActivityMethod(String methodName) throws Exception {

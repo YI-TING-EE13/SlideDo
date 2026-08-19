@@ -114,7 +114,7 @@
     <string name="results_new_best">New best. Previous best: %1$s</string>
     <string name="results_no_new_best">Best remains: %1$s</string>
     <string name="results_assisted_record">Assist result not saved. Player best: %1$s</string>
-    <string name="results_play_again">Play Again</string>
+    <string name="results_play_again">Replay Puzzle</string>
     <string name="results_new_size">New Size</string>
     <string name="game_title_format">%1$dx%2$d · %3$s</string>
     <string name="game_menu">Menu</string>

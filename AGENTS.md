@@ -23,8 +23,8 @@ Prioritize:
 
 - True active-play timer pausing (completed).
 - Difficulty selection and reproducible scrambles (completed).
-- Replay of the same puzzle (current stage).
-- Independent saves by board size.
+- Replay of the same puzzle (completed).
+- Independent saves by board size (current stage).
 - Local history and personal statistics.
 - Offline daily challenge and streak state.
 - Strategic hints with assisted-record protection.
@@ -48,6 +48,7 @@ Keep `GameModel` platform-independent. Navigation and presentation changes belon
 - Difficulty changes scramble depth only; it does not change movement rules.
 - Equal size, difficulty, and seed values must reproduce the same scramble.
 - Restart restores `initialGrid`.
+- Results Replay Puzzle restores the same `initialGrid`; it must not reshuffle.
 - Saves must preserve size, difficulty, grid, initial grid, move count, and elapsed milliseconds.
 - Best records compare fewer moves first, then lower time.
 - Android best records are scoped by both size and difficulty.

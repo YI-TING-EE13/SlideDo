@@ -363,7 +363,9 @@ public class MainActivity extends Activity implements GameObserver {
         }
 
         if (savedScreen == Screen.RESULTS) {
-            if (currentResult != null) {
+            GameResult restoredResult = currentResult;
+            if (restoredResult != null && savedGameStarted && loadGame()) {
+                currentResult = restoredResult;
                 showResultsScreen();
                 return true;
             }
@@ -672,7 +674,7 @@ public class MainActivity extends Activity implements GameObserver {
                 resultRecordText(currentResult), new AndroidResultsScreen.ResultsActions() {
                     @Override
                     public void onPlayAgain() {
-                        beginNewGame(currentResult.size, currentResult.difficulty);
+                        replayCurrentPuzzle();
                     }
 
                     @Override
@@ -1241,6 +1243,24 @@ public class MainActivity extends Activity implements GameObserver {
         syncGameTimerState();
         performBoardHaptic(HapticFeedbackConstants.VIRTUAL_KEY);
         updateStatus();
+    }
+
+    private void replayCurrentPuzzle() {
+        if (solverRunning || currentResult == null || model == null
+                || model.getSize() != currentResult.size
+                || model.getDifficulty() != currentResult.difficulty) {
+            return;
+        }
+        model.restartCurrentGame();
+        gameStarted = true;
+        pendingWin = null;
+        currentResult = null;
+        assistedSolveActive = false;
+        clearGameHint();
+        lastWinTimeMs = -1;
+        syncGameTimerState();
+        performBoardHaptic(HapticFeedbackConstants.VIRTUAL_KEY);
+        showGameScreen();
     }
 
     private boolean canAcceptCommand() {

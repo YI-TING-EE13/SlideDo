@@ -18,6 +18,8 @@ an emulator or connected Android device.
   Challenge shuffle-depth selection
 - Difficulty-aware Continue metadata, compact game/results titles, and local
   best records scoped by size and difficulty; legacy data defaults to Classic
+- Results Replay Puzzle restores the exact initial board, difficulty, and size
+  while resetting moves and active-play time without reshuffling
 - Short screen exit transitions and staggered content entrances across Home,
   onboarding, Practice Tutorial, Mode Select, How to Play, Settings, Records,
   Results, and Game
@@ -65,7 +67,7 @@ an emulator or connected Android device.
   haptic feedback, reduced board/screen motion, reset saved game, and reset
   records
 - Per-size best record tracking
-- Results screen with a completion-mark settle, Play Again, New Size, Home, and
+- Results screen with a completion-mark settle, Replay Puzzle, New Size, Home, and
   solver-assisted wording; Reduced motion skips the settle animation
 - BFS, A*, and IDA* solver controls in advanced Solver Tools with warnings for
   expensive board sizes
@@ -143,15 +145,16 @@ This runs `verify.bat` and `verify-release.bat`. CI release artifacts are
 verification outputs and use the temporary signing key unless real Play upload
 signing is explicitly configured.
 
-Latest 2026-08-20 validation status: all 51 connected instrumentation tests
-passed on both the Pixel_7 AVD running Android 15 at 1080x2400 and the
-`small_phone` AVD running Android 16 / API 36.1 at 720x1280. The suite covers the
+Latest 2026-08-20 validation status: all 52 Android tests passed in five isolated
+instrumentation batches on both the Pixel_7 AVD running Android 15 at 1080x2400
+and the `small_phone` AVD running Android 16 / API 36.1 at 720x1280. The suite covers the
 normal animated transition path, the Reduced motion bypass, English-default
 locale isolation, persistent English, Traditional Chinese, and Japanese switching,
 explicit Traditional Chinese and Japanese major-screen/dialog/result flows,
 difficulty selection and persistence, scoped best records, and active-play
 timer pausing across game menus, nested dialogs, Assist, Settings, and
-background/resume.
+background/resume. Exact-puzzle replay is checked before and after Results
+rotation, including board identity and zeroed run state.
 CLI-captured manual review covered English onboarding, Traditional Chinese
 Home/Settings/Mode Select/Game, and Japanese Home/Settings/Mode Select/How to
 Play/Game on the compact AVD. The compact controls remained single-line after
@@ -162,8 +165,8 @@ The Stage 1 small-phone manual pass also kept the complete game menu visible and
 confirmed that a five-second menu stay did not increase the play timer.
 The Stage 2 small-phone manual pass confirmed that all three difficulty choices
 are visible and tappable and that `4x4 · Challenge` stays on one line beside
-Home and Menu. The final APK SHA-256 is
-`F9424A8612F040756E37F02BB042582A630AA979E2C2FCA8C835132C4C598E63`.
+Home and Menu. The Stage 3 final APK SHA-256 is
+`5722E65AF47727B2E270E564057D0340D3C376AAB2E7A27888929173A407BEB9`.
 
 For Android build and lint only:
 
@@ -299,7 +302,10 @@ check-screenshot-set.bat ..\screenshots\android\0.2.0-beta.1
   A*, and IDA*.
 - Choose an expensive solver such as BFS on 4x4 and confirm the warning dialog appears.
 - Finish a game and confirm Results shows the completion mark, moves, time,
-  record status, and Play Again/New Size/Home actions.
+  record status, and Replay Puzzle/New Size/Home actions. Replay Puzzle must
+  restore the identical starting board with zero moves and zero elapsed time.
+- Rotate Results, then use Replay Puzzle and confirm the same starting board is
+  still restored.
 - Confirm solver-assisted completion reaches Results without updating player best records.
 - Background and return to the app; autosave should preserve the current board
   and the away interval must not increase elapsed play time.

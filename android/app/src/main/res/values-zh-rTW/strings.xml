@@ -114,7 +114,7 @@
     <string name="results_new_best">新的最佳紀錄。先前最佳：%1$s</string>
     <string name="results_no_new_best">最佳紀錄仍為：%1$s</string>
     <string name="results_assisted_record">輔助結果未儲存。玩家最佳：%1$s</string>
-    <string name="results_play_again">再玩一次</string>
+    <string name="results_play_again">重玩本盤</string>
     <string name="results_new_size">其他尺寸</string>
     <string name="game_title_format">%1$dx%2$d · %3$s</string>
     <string name="game_menu">選單</string>

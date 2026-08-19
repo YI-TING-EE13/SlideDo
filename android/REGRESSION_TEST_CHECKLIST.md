@@ -140,7 +140,8 @@ result is required.
 - [ ] A found solution shows the localized move count and supports Close and Animate.
 - [ ] Solver playback completes once, blocks conflicting input, and creates exactly one assisted Results transition.
 - [ ] Player solve Results shows size, difficulty, moves, time, and correct first/new/unchanged record message.
-- [ ] Play Again starts a new puzzle at the same size/difficulty; New Size opens Mode Select; Home returns Home.
+- [ ] Replay Puzzle restores the exact `initialGrid` at the same size/difficulty with zero moves and elapsed time; it does not reshuffle. New Size opens Mode Select; Home returns Home.
+- [ ] After Results rotation/recreation, Replay Puzzle still restores the exact original starting board.
 - [ ] Player best compares fewer moves first and lower time second.
 - [ ] Solver-assisted completion is labeled assisted and never overwrites the player best.
 
@@ -163,6 +164,22 @@ Do not mark the localization work complete until every applicable item above is
 checked in all supported locales, failures are fixed and rerun, and any
 unavailable device coverage is explicitly recorded as a limitation rather than
 reported as passed.
+
+### 2026-08-20 Stage 3 exact-puzzle replay pass
+
+| Evidence | Result |
+| --- | --- |
+| Debug APK SHA-256 | `5722E65AF47727B2E270E564057D0340D3C376AAB2E7A27888929173A407BEB9` |
+| Local verification | All 33 shared tests passed; `verify.bat` passed desktop compile, Android assemble/test APK/lint, and both Javadoc/doclint gates |
+| Pixel_7 | All 52 Android tests passed on Android 15 at 1080x2400 in five isolated batches (12 + 10 + 10 + 10 + 10); 0 failed, 0 skipped |
+| `small_phone` | All 52 Android tests passed on Android 16 / API 36.1 at 720x1280 in the same five isolated batches; 0 failed, 0 skipped |
+| Replay contract | Shared coverage verifies restart after a win restores the byte-for-byte starting grid, difficulty, running state, zero moves, and zero elapsed time |
+| Android flow | Results Replay Puzzle preserves exact board identity; rotation/recreation keeps the completed save available for the same replay; labels are verified in English, Traditional Chinese, and Japanese |
+| UI and runtime review | Final installed Pixel onboarding and compact Home renders had no clipping or overlap; compact dialog scrolling passed; `AndroidRuntime:E` and `ActivityManager:E` filters were empty on both AVDs |
+
+Replay Puzzle intentionally reuses the completed save's `initialGrid`; it never
+calls the scramble path. Activity restoration reloads that completed model before
+showing Results so configuration changes cannot silently replace puzzle identity.
 
 ### 2026-08-20 Stage 2 difficulty-selection pass
 

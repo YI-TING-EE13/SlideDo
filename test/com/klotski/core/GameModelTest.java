@@ -233,6 +233,36 @@ class GameModelTest {
         assertGridEquals(initial, model);
     }
 
+    @Test
+    void restartAfterWinReplaysExactStartingGridAndResetsRunState() {
+        MutableTimeSource time = new MutableTimeSource(50_000L);
+        SaveManager.SaveData data = new SaveManager.SaveData();
+        data.grid = new int[][] {
+                { 1, 2, 3 },
+                { 4, 5, 0 },
+                { 7, 8, 6 }
+        };
+        data.initialGrid = data.grid;
+        data.active = true;
+        data.updatedAt = 1L;
+        data.difficulty = PuzzleDifficulty.CHALLENGE;
+        GameModel model = new GameModel(3, time::now);
+        model.loadState(data);
+
+        time.advance(2_000L);
+        assertTrue(model.move(Direction.DOWN));
+        assertTrue(model.isSolved());
+
+        model.restartCurrentGame();
+
+        assertGridEquals(data.initialGrid, model);
+        assertEquals(PuzzleDifficulty.CHALLENGE, model.getDifficulty());
+        assertEquals(0, model.getMoveCount());
+        assertEquals(0L, model.getElapsedTime());
+        assertTrue(model.isGameRunning());
+        assertTrue(model.isTimerRunning());
+    }
+
     private static GameModel runningModel(int[][] grid) {
         GameModel model = new GameModel(grid.length);
         model.loadState(grid, 0);

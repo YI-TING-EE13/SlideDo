@@ -43,6 +43,8 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
   - Android includes icon-plus-text controls, an outlined empty cell with a first-move prompt, menu-based save/load, autosave, persistent English, Traditional Chinese, and Japanese language selection, haptic and reduced-motion settings, local best records, and a short completion-mark settle on Results.
   - The play timer excludes time spent in game dialogs, non-game screens, and
     the background, then resumes when the Game screen becomes interactive.
+  - Results offers Replay Puzzle, which restores the exact starting board and
+    resets moves and active-play time without generating a new scramble.
   - Assist keeps Show Movable Tiles at the first level; BFS, A*, and IDA* are grouped under advanced Solver Tools with player-record protection explained before use.
   - Android exposes board state, empty-cell position, highlighted movable tiles, and primary controls through accessibility descriptions.
 - **Quality-of-Life Gameplay**:
@@ -356,13 +358,14 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
 - Connected Android instrumentation helpers now wait for the foreground app
   window and fall back to direct swipe scrolling for long help content, reducing
   false failures on slow emulator runs.
-- The latest 2026-08-20 connected Android instrumentation run passed all 51
-  tests on both the Pixel_7 AVD (Android 15, 1080x2400) and the `small_phone`
-  AVD (Android 16 / API 36.1, 720x1280), with no failures or skips. The suite
+- The latest 2026-08-20 dual-AVD Android acceptance passed all 52 tests in five
+  isolated batches on both the Pixel_7 AVD (Android 15, 1080x2400) and the
+  `small_phone` AVD (Android 16 / API 36.1, 720x1280), with no failures or skips. The suite
   includes English-default isolation from device locale, persistent language
   switching, active-game preservation, and explicit Traditional Chinese and
   Japanese major-screen, difficulty-selection, save/record scoping,
-  solver-warning, Results, Records, and active-play timer-pause flows.
+  solver-warning, exact-puzzle replay across Results rotation, Records, and
+  active-play timer-pause flows.
 - Latest local `ci.bat` run passed the no-device verification and release
   readiness gates.
 - Android emulator smoke testing for install/launch, Home visibility, whole-line movement, undo, restart, save/load, solver warning dialog, rotation, and background resume.
@@ -499,8 +502,8 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
 - The active Personal Play roadmap proceeds through eight independently tested
   and committed stages: active-play timer pausing, difficulty selection,
   replaying the same puzzle, per-size saves, local history/statistics, an
-  offline daily challenge, strategic hints, and sound/themes. Stages 1 and 2
-  are complete; replaying the exact same puzzle is next. `DEVELOPMENT.md` owns
+  offline daily challenge, strategic hints, and sound/themes. Stages 1 through 3
+  are complete; independent save slots for each board size are next. `DEVELOPMENT.md` owns
   the detailed acceptance criteria and status.
 - Desktop/mobile player-facing parity MVP is complete for Home/start, Records, Preferences, Results, How to Play, Practice Tutorial, and Assist hints.
 - Save files now include release-readiness metadata and desktop saves now live in the user-data directory.

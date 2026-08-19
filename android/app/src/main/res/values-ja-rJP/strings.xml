@@ -115,7 +115,7 @@
     <string name="results_new_best">新記録です。これまでの最高：%1$s</string>
     <string name="results_no_new_best">最高記録：%1$s</string>
     <string name="results_assisted_record">アシスト結果は保存されません。プレイヤー最高：%1$s</string>
-    <string name="results_play_again">もう一度</string>
+    <string name="results_play_again">同じ問題を再挑戦</string>
     <string name="results_new_size">サイズ変更</string>
     <string name="game_title_format">%1$dx%2$d · %3$s</string>
     <string name="game_menu">メニュー</string>
