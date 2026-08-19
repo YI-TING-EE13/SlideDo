@@ -85,6 +85,11 @@
     <string name="records_empty">No record yet</string>
     <string name="settings_title">Settings</string>
     <string name="settings_subtitle">Tune feedback and manage local game data.</string>
+    <string name="settings_section_language">LANGUAGE</string>
+    <string name="settings_language_button">App language: %1$s</string>
+    <string name="settings_language_accessibility">Choose app language. Current language: %1$s.</string>
+    <string name="language_english">English</string>
+    <string name="language_traditional_chinese">繁體中文</string>
     <string name="settings_section_preferences">PREFERENCES</string>
     <string name="settings_section_local_data">LOCAL DATA</string>
     <string name="settings_haptic_title">Haptic feedback</string>
@@ -152,6 +157,7 @@
     <string name="dialog_continue">Continue</string>
     <string name="dialog_animate">Animate</string>
     <string name="dialog_cancel">Cancel</string>
+    <string name="dialog_language_title">Choose language</string>
     <string name="dialog_reset">Reset</string>
     <string name="dialog_reset_save_title">Reset saved game?</string>
     <string name="dialog_reset_save_message">This clears the local saved puzzle. Current play can continue until you leave the game.</string>

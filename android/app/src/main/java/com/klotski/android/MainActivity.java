@@ -8,6 +8,7 @@ import static com.klotski.android.AndroidUi.COLOR_PRIMARY;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.graphics.Typeface;
 import android.os.Build;
 import android.os.Bundle;
@@ -108,6 +109,17 @@ public class MainActivity extends Activity implements GameObserver {
      * Creates the Android activity instance used by the platform launcher.
      */
     public MainActivity() {
+    }
+
+    /**
+     * Applies the stored app language before Android inflates or creates UI resources.
+     *
+     * @param newBase platform-provided base context
+     */
+    @Override
+    protected void attachBaseContext(Context newBase) {
+        String languageTag = new AndroidGameStore(newBase).getLanguageTag();
+        super.attachBaseContext(AndroidAppLocale.wrap(newBase, languageTag));
     }
 
     private final Runnable ticker = new Runnable() {
@@ -530,7 +542,13 @@ public class MainActivity extends Activity implements GameObserver {
         commandButtons.clear();
 
         ScreenLayout screen = settingsScreen.build(isHapticEnabled(), isReducedMotionEnabled(),
+                store.getLanguageTag(),
                 new AndroidSettingsScreen.SettingsActions() {
+                    @Override
+                    public void onLanguageRequested() {
+                        showLanguageDialog();
+                    }
+
                     @Override
                     public void onHapticChanged(boolean checked) {
                         store.setHapticEnabled(checked);
@@ -970,6 +988,35 @@ public class MainActivity extends Activity implements GameObserver {
                 })
                 .setNegativeButton(R.string.dialog_cancel, null)
                 .show();
+    }
+
+    private void showLanguageDialog() {
+        AndroidAppLocale.LanguageOption[] options = AndroidAppLocale.getSupportedLanguages();
+        String[] labels = new String[options.length];
+        for (int index = 0; index < options.length; index++) {
+            labels[index] = getString(options[index].displayNameResId);
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.dialog_language_title)
+                .setSingleChoiceItems(labels, AndroidAppLocale.indexOf(store.getLanguageTag()),
+                        (dialog, which) -> {
+                            String selectedTag = options[which].languageTag;
+                            dialog.dismiss();
+                            applyLanguage(selectedTag);
+                        })
+                .setNegativeButton(R.string.dialog_cancel, null)
+                .show();
+    }
+
+    private void applyLanguage(String languageTag) {
+        String selectedTag = AndroidAppLocale.normalizeLanguageTag(languageTag);
+        if (selectedTag.equals(store.getLanguageTag())) {
+            return;
+        }
+        saveGame();
+        store.setLanguageTag(selectedTag);
+        recreate();
     }
 
     private void confirmResetRecords() {

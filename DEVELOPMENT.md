@@ -30,9 +30,17 @@ Current handoff status:
 - The Android UI polish pass now includes icon-plus-text player actions, an
   outlined empty cell with first-move guidance, nested advanced Solver Tools,
   and a short completion-mark settle animation with a Reduced motion bypass.
+- Android now defaults to English independently of device language and offers
+  persistent English/Traditional Chinese selection in Settings. The locale
+  registry is isolated in `AndroidAppLocale` so another locale requires a
+  registry entry and a complete translated resource directory, not navigation
+  or gameplay changes.
 - The latest local verification pass was warning-clean for the previously noisy
   Gradle DSL deprecation, Java native-access warning, and Android Java
   deprecation note.
+- The latest connected localization/regression pass ran 41 tests on each of
+  Pixel_7 (Android 15, 1080x2400) and `small_phone` (Android 16 / API 36.1,
+  720x1280), with no failures or skips.
 
 Start a new implementation session by checking:
 
@@ -122,9 +130,10 @@ Android currently supports:
 - Best records by puzzle size.
 - BFS, A*, and IDA* solver controls behind Assist with expensive-operation warnings.
 - Solver-assisted completion protection so player records are not overwritten.
-- Settings for haptic feedback, reduced motion, reset saved game, and reset records.
+- Settings for app language, haptic feedback, reduced motion, reset saved game,
+  and reset records.
 - Android app-state persistence through `AndroidGameStore` for saves, records,
-  settings, onboarding state, and the last selected puzzle size.
+  settings, app language, onboarding state, and the last selected puzzle size.
 - Results screen with a completion-mark settle animation, player-record status,
   solver-assisted completion wording, and a Reduced motion bypass.
 - Haptic feedback.
@@ -359,6 +368,9 @@ Current implementation approach:
 - Store lightweight preferences and saves through `AndroidGameStore`, which
   remains backed by `SharedPreferences` until there is a concrete need for a
   database.
+- Apply the stored Android language through `AndroidAppLocale` in
+  `MainActivity.attachBaseContext` before any screen reads resources. English
+  remains the explicit fallback instead of inheriting the device locale.
 
 UX acceptance criteria completed in the 2026-05-25 Android navigation pass:
 
@@ -430,9 +442,9 @@ planning layer above implementation tickets.
 - First-run guided path is MVP-level: the new Practice Tutorial covers a first
   move and whole-line slide, but it is still not a full multi-step coached
   first game.
-- Settings are MVP-level: haptic feedback, board/screen Reduced motion, reset
-  save, and reset records exist, but sound and theme controls still wait on
-  those systems.
+- Settings cover language, haptic feedback, board/screen Reduced motion, reset
+  save, and reset records, but sound and theme controls still wait on those
+  systems.
 - Results now uses a completion mark, grouped score summary, record status, and
   clear next actions. A bespoke celebration, sharing, and progression hook do
   not exist.
@@ -551,7 +563,7 @@ Desktop/Android feature parity matrix:
 | Touch/mouse movement | Tap/swipe aligned tiles; whole-line slide counts as one move and one undo snapshot. | Mouse click/release movement plus keyboard controls; whole-line slide uses shared model. | Input method differs by platform, rule outcome matches. | Shared core tests, Android whole-line instrumentation, desktop smoke. |
 | Assist / hints | Assist menu can highlight movable tiles and offer solver playback. | Assist menu highlights movable tiles and supports solver playback. | Solver UI differs; solver-assisted wins do not update records on both platforms. | Android assist/results instrumentation; desktop result-copy tests. |
 | Save/load metadata | `AndroidGameStore` persists size, grid, initial grid, moves, elapsed, updated-at, active, solved, records, settings, and onboarding state. | Desktop JSON save persists size, grid, initial grid, moves, elapsed, updated-at, active, and solved; records live in user-data path. | Android includes mobile-only settings/onboarding; shared gameplay metadata is aligned. | Android store instrumentation, root save metadata tests. |
-| Settings / preferences | Haptic feedback, reduced motion, reset saved game, and reset records. | Reduced motion preference plus desktop records/save flows. | Haptics are Android-only; desktop has no vibration setting by design. | Android settings instrumentation; desktop preferences copy tests/manual smoke. |
+| Settings / preferences | Persistent English/Traditional Chinese language selection, haptic feedback, reduced motion, reset saved game, and reset records. | Reduced motion preference plus desktop records/save flows. | App-language and haptics are Android-only; desktop currently remains English. | Android locale/store/settings instrumentation; desktop preferences copy tests/manual smoke. |
 | Records | Per-size local best records, fewer moves then lower time, solver-assisted protection, and player-facing policy explanation. | Per-size local best records with the same comparison, solver-assisted protection, and policy explanation. | Aligned. | Android records/results instrumentation; desktop result and records tests. |
 | Results | Full Results screen with Play Again, New Size, Home, record status, and assisted wording. | Android-style Results dialog with Play Again, New Size, Home, record status, and assisted wording. | Surface type differs due to Swing dialogs vs Android screens, wording and actions align. | Android results instrumentation; desktop results copy tests. |
 | Accessibility | Board summaries, settings switch descriptions, and primary control descriptions exist. | Basic Swing labels/dialog text exist, but no full assistive-tech audit. | Both platforms still need broader manual accessibility review before public release. | Android accessibility instrumentation plus manual TalkBack/desktop review. |
@@ -932,6 +944,33 @@ Priority: Low to Medium
 - Run the final desktop accessibility review.
 
 ## Development Log
+
+### 2026-08-19
+
+- Audited the Android screen builders, all user-visible resources,
+  `AndroidGameStore` persistence schema, and connected-test seams before
+  implementation, then created `android/REGRESSION_TEST_CHECKLIST.md` as the
+  bilingual acceptance baseline.
+- Added `AndroidAppLocale`, which applies the stored app language from
+  `MainActivity.attachBaseContext`. English is an explicit default independent
+  of device language; Settings can switch between English and Traditional
+  Chinese, and `AndroidGameStore` persists the selected tag.
+- Added a complete `values-zh-rTW` resource set. All 182 string/plural keys and
+  their format placeholders match the base English resources, and the Android
+  Java source scan found no user-visible hard-coded copy.
+- Added test-first persistence and end-to-end localization coverage for default
+  English, unsupported-language fallback, language switching, activity
+  recreation, relaunch, active-game preservation, Traditional Chinese major
+  screens/dialogs, BFS warning safety, player Results, and Records.
+- Ran the final 41-test connected suite on Pixel_7 (Android 15, 1080x2400) and
+  `small_phone` (Android 16 / API 36.1, 720x1280): both passed with zero
+  failures and zero skips.
+- Reviewed CLI-captured English onboarding and Traditional Chinese Home,
+  Settings, Mode Select, and Game screens on the 720x1280 AVD. Shortened the
+  localized Restart control to `重來` after the first capture exposed a wrapped
+  label, then confirmed all compact game controls stayed on one line. Relaunch
+  retained language/save state and the inspected app process had no
+  `AndroidRuntime` error.
 
 ### 2026-08-10
 

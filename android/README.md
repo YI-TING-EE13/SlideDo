@@ -36,7 +36,7 @@ an emulator or connected Android device.
 - Manual Save and Load controls in the in-game menu
 - Auto-save through `SharedPreferences`
 - App-state persistence is isolated in `AndroidGameStore` for saves, settings,
-  records, onboarding, and last selected size
+  records, onboarding, app language, and last selected size
 - Activity state restoration, back-navigation decisions, shared UI primitives,
   and learning-content builders are split out of `MainActivity` for maintainable
   Android iteration
@@ -57,8 +57,9 @@ an emulator or connected Android device.
   file
 - Signed release APK/AAB builds are available through `build-release.bat`
 - Rotation restore for the active game screen
-- Settings for haptic feedback, reduced board/screen motion, reset saved game,
-  and reset records
+- Settings for persistent English/Traditional Chinese language selection,
+  haptic feedback, reduced board/screen motion, reset saved game, and reset
+  records
 - Per-size best record tracking
 - Results screen with a completion-mark settle, Play Again, New Size, Home, and
   solver-assisted wording; Reduced motion skips the settle animation
@@ -70,6 +71,23 @@ an emulator or connected Android device.
   flows
 - Connected test helpers wait for the foreground app window and include a swipe
   fallback for long help screens to reduce slow-emulator false failures
+
+## Language Selection
+
+English is the default app language regardless of device language. Players can
+open Settings and choose **App language** to switch between English and
+Traditional Chinese (`zh-TW`). The selection is stored by
+`AndroidGameStore`, applied before `MainActivity` creates UI resources, and
+survives activity recreation and app relaunch.
+
+`AndroidAppLocale` is the language registry and context wrapper. To add a
+future language such as Japanese:
+
+1. Add one `LanguageOption` entry and its display-name resource.
+2. Add a complete localized resource directory such as `values-ja-rJP`.
+3. Keep every string/plural key and format placeholder compatible with the base
+   English resources.
+4. Run the full bilingual/multilingual regression matrix.
 
 ## Build Notes
 
@@ -107,6 +125,10 @@ The verification script runs shared core tests, desktop compilation, Android
 assemble/lint, Android instrumentation test APK assembly, and public
 Javadoc/doclint checks.
 
+The detailed English/Traditional Chinese acceptance matrix is maintained in
+[`REGRESSION_TEST_CHECKLIST.md`](REGRESSION_TEST_CHECKLIST.md). Run it for every
+locale or navigation/persistence change.
+
 To run the same no-device gate used by GitHub Actions plus release readiness:
 
 ```bat
@@ -117,13 +139,17 @@ This runs `verify.bat` and `verify-release.bat`. CI release artifacts are
 verification outputs and use the temporary signing key unless real Play upload
 signing is explicitly configured.
 
-Latest 2026-08-10 validation status: all 36 connected instrumentation tests
+Latest 2026-08-19 validation status: all 41 connected instrumentation tests
 passed on both the Pixel_7 AVD running Android 15 at 1080x2400 and the
 `small_phone` AVD running Android 16 / API 36.1 at 720x1280. The suite covers the
-normal animated transition path and the Reduced motion bypass. CLI-captured
-manual review covered onboarding, Home, Mode Select, Game, Assist, Solver Tools,
-and Results. A 23-move assisted 3x3 BFS solve completed through Results without
-writing a player record or producing an Android runtime error.
+normal animated transition path, the Reduced motion bypass, English-default
+locale isolation, persistent English/Traditional Chinese switching, and
+Traditional Chinese major-screen/dialog/result flows. CLI-captured manual review
+covered English onboarding plus Traditional Chinese Home, Settings, Mode Select,
+Game, localized accessibility descriptions, and relaunch persistence on the
+compact AVD. The compact game controls remained single-line after shortening the
+Traditional Chinese Restart label, and the reviewed process emitted no
+`AndroidRuntime` error.
 
 For Android build and lint only:
 
@@ -234,6 +260,10 @@ check-screenshot-set.bat ..\screenshots\android\0.2.0-beta.1
 - Confirm saved-game metadata updates with the saved size, move count, elapsed
   time, and active/solved state.
 - Open Menu, check Quick Reminder, and open Settings.
+- In Settings, switch to Traditional Chinese, return to the active game, and
+  confirm the board, move count, timer, save, and navigation state remain intact.
+- Relaunch the app and confirm the selected language persists; switch back to
+  English and repeat the same major flow.
 - Toggle haptics and Reduced motion, then return to gameplay. Reduced motion
   should skip both screen transitions and board movement animation.
 - Use Settings reset actions only after confirming the dialogs.

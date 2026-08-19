@@ -31,6 +31,7 @@ final class AndroidGameStore {
     private static final String KEY_ONBOARDING_SEEN = "onboarding_seen";
     private static final String KEY_HAPTIC_ENABLED = "haptic_enabled";
     private static final String KEY_REDUCED_MOTION = "reduced_motion";
+    static final String KEY_LANGUAGE_TAG = "language_tag";
 
     private final SharedPreferences prefs;
 
@@ -72,6 +73,16 @@ final class AndroidGameStore {
 
     void setReducedMotionEnabled(boolean enabled) {
         prefs.edit().putBoolean(KEY_REDUCED_MOTION, enabled).apply();
+    }
+
+    String getLanguageTag() {
+        return AndroidAppLocale.normalizeLanguageTag(
+                prefs.getString(KEY_LANGUAGE_TAG, AndroidAppLocale.DEFAULT_LANGUAGE_TAG));
+    }
+
+    void setLanguageTag(String languageTag) {
+        prefs.edit().putString(KEY_LANGUAGE_TAG,
+                AndroidAppLocale.normalizeLanguageTag(languageTag)).apply();
     }
 
     void saveGame(GameModel model, long elapsedMs) {

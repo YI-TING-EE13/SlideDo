@@ -8,6 +8,8 @@ import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
+import android.os.LocaleList;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -21,6 +23,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.Arrays;
+import java.util.Locale;
 
 /**
  * Focused instrumentation coverage for Android app-state persistence.
@@ -137,5 +140,30 @@ public class AndroidGameStoreTest {
         assertEquals(5, store.getLastSize(4));
         store.setLastSize(9);
         assertEquals(5, store.getLastSize(4));
+
+        assertEquals(AndroidAppLocale.DEFAULT_LANGUAGE_TAG, store.getLanguageTag());
+        store.setLanguageTag(AndroidAppLocale.TRADITIONAL_CHINESE_LANGUAGE_TAG);
+        assertEquals(AndroidAppLocale.TRADITIONAL_CHINESE_LANGUAGE_TAG, store.getLanguageTag());
+    }
+
+    @Test
+    public void unsupportedStoredLanguageFallsBackToEnglish() {
+        prefs.edit().putString("language_tag", "ja-JP").commit();
+
+        assertEquals(AndroidAppLocale.DEFAULT_LANGUAGE_TAG, store.getLanguageTag());
+    }
+
+    @Test
+    public void appLanguageOverridesDeviceContextLanguage() {
+        Configuration deviceConfiguration = new Configuration(targetContext.getResources().getConfiguration());
+        deviceConfiguration.setLocales(new LocaleList(Locale.forLanguageTag("zh-TW")));
+        Context chineseDeviceContext = targetContext.createConfigurationContext(deviceConfiguration);
+
+        Context defaultContext = AndroidAppLocale.wrap(chineseDeviceContext, store.getLanguageTag());
+        assertEquals("Settings", defaultContext.getString(R.string.settings_title));
+
+        Context traditionalChineseContext = AndroidAppLocale.wrap(
+                chineseDeviceContext, AndroidAppLocale.TRADITIONAL_CHINESE_LANGUAGE_TAG);
+        assertEquals("設定", traditionalChineseContext.getString(R.string.settings_title));
     }
 }

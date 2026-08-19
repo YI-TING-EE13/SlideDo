@@ -38,7 +38,7 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
   - Whole-line tap behavior maps naturally to touch screens.
   - One user gesture counts as one move.
   - Undo restores the entire previous user action.
-  - Android includes icon-plus-text controls, an outlined empty cell with a first-move prompt, menu-based save/load, autosave, haptic and reduced-motion settings, local best records, and a short completion-mark settle on Results.
+  - Android includes icon-plus-text controls, an outlined empty cell with a first-move prompt, menu-based save/load, autosave, persistent English/Traditional Chinese language selection, haptic and reduced-motion settings, local best records, and a short completion-mark settle on Results.
   - Assist keeps Show Movable Tiles at the first level; BFS, A*, and IDA* are grouped under advanced Solver Tools with player-record protection explained before use.
   - Android exposes board state, empty-cell position, highlighted movable tiles, and primary controls through accessibility descriptions.
 - **Quality-of-Life Gameplay**:
@@ -55,7 +55,7 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
 - **Native Android Project**:
   - Gradle wrapper included.
   - Custom Android view.
-  - Home, onboarding, interactive Practice Tutorial, Mode Select, visual How to Play, Settings, Records, Results, coordinated screen transitions, icon-plus-text controls, empty-cell guidance, touch controls, synchronized whole-line animation, haptics, autosave, manual save/load, best records, Assist hints, accessibility descriptions, nested solver controls, and instrumentation tests.
+  - Home, onboarding, interactive Practice Tutorial, Mode Select, visual How to Play, Settings, Records, Results, coordinated screen transitions, English/Traditional Chinese localization, icon-plus-text controls, empty-cell guidance, touch controls, synchronized whole-line animation, haptics, autosave, manual save/load, best records, Assist hints, accessibility descriptions, nested solver controls, and instrumentation tests.
 
 ---
 
@@ -221,6 +221,10 @@ same-row or same-column choices without moving the board. BFS, A*, and IDA* are
 one level deeper under Solver Tools. Solver-assisted wins show Results but do not
 overwrite player best records.
 
+English is the Android default even when the device uses another language. Open
+Settings, choose **App language**, and select **English** or **繁體中文**. The
+selection is saved locally and remains active after the app is restarted.
+
 If the emulator does not show SlideDo in the launcher, reinstall and start it
 directly:
 
@@ -337,16 +341,20 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
   21 pre-existing warnings that remain outside the solver performance scope.
 - Android instrumentation tests for onboarding, Home launch, Practice Tutorial,
   Mode Select guidance and accessibility text, Continue metadata, How to Play,
-  Settings, Results, Assist hints, whole-line movement, undo, save/load
+  Settings, persistent English/Traditional Chinese language switching, Results,
+  Assist hints, whole-line movement, undo, save/load
   persistence, app-state store behavior, Activity state/navigation helpers,
   rotation, screen-transition behavior, Reduced motion, and solver-assisted
   record protection.
 - Connected Android instrumentation helpers now wait for the foreground app
   window and fall back to direct swipe scrolling for long help content, reducing
   false failures on slow emulator runs.
-- The latest 2026-08-10 connected Android instrumentation runs passed all 36
+- The latest 2026-08-19 connected Android instrumentation runs passed all 41
   tests on both the Pixel_7 AVD (Android 15, 1080x2400) and the `small_phone`
-  AVD (Android 16 / API 36.1, 720x1280), with no failures or skips.
+  AVD (Android 16 / API 36.1, 720x1280), with no failures or skips. The suite
+  includes English-default isolation from device locale, persistent language
+  switching, active-game preservation, and Traditional Chinese major-screen,
+  solver-warning, Results, and Records flows.
 - Latest local `ci.bat` run passed the no-device verification and release
   readiness gates.
 - Android emulator smoke testing for install/launch, Home visibility, whole-line movement, undo, restart, save/load, solver warning dialog, rotation, and background resume.

@@ -25,12 +25,25 @@ final class AndroidSettingsScreen {
         this.ui = ui;
     }
 
-    ScreenLayout build(boolean hapticEnabled, boolean reducedMotionEnabled, SettingsActions actions) {
+    ScreenLayout build(boolean hapticEnabled, boolean reducedMotionEnabled, String languageTag,
+            SettingsActions actions) {
         ScreenLayout screen = ui.createScreenLayout();
         screen.root.setId(R.id.settings_root);
         ui.addScreenHeader(screen.content,
                 activity.getString(R.string.settings_title),
                 activity.getString(R.string.settings_subtitle));
+        ui.addSectionLabel(screen.content, R.string.settings_section_language);
+        String languageName = activity.getString(AndroidAppLocale.getDisplayNameResId(languageTag));
+        Button languageButton = ui.createButton(
+                activity.getString(R.string.settings_language_button, languageName), COLOR_PANEL);
+        languageButton.setId(R.id.settings_language_button);
+        languageButton.setContentDescription(activity.getString(
+                R.string.settings_language_accessibility, languageName));
+        languageButton.setOnClickListener(v -> actions.onLanguageRequested());
+        LinearLayout.LayoutParams languageParams = ui.fullWidthParams();
+        languageParams.setMargins(0, 0, 0, ui.dp(10));
+        screen.content.addView(languageButton, languageParams);
+
         ui.addSectionLabel(screen.content, R.string.settings_section_preferences);
         addSettingsSwitch(screen.content, R.id.settings_haptic_switch, R.string.settings_haptic_title,
                 R.string.settings_haptic_body, hapticEnabled, actions::onHapticChanged);
@@ -87,6 +100,8 @@ final class AndroidSettingsScreen {
     }
 
     interface SettingsActions {
+        void onLanguageRequested();
+
         void onHapticChanged(boolean checked);
 
         void onReducedMotionChanged(boolean checked);

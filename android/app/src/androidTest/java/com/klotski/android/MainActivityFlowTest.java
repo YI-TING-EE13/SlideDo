@@ -367,6 +367,148 @@ public class MainActivityFlowTest {
     }
 
     @Test
+    public void languageSelectionPersistsAndPreservesActiveGame() throws Exception {
+        writeSavedGame(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 0);
+        launchApp();
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+        tapCell(3, 1, 2);
+        waitForStatusContaining("1 move");
+
+        clickId(R.id.game_menu_button);
+        waitForText("Settings").click();
+        device.waitForIdle();
+        waitForId("settings_root");
+        waitForText("App language: English").click();
+        waitForText("Choose language");
+        waitForText("繁體中文").click();
+        device.waitForIdle();
+
+        waitForId("settings_root");
+        waitForText("設定");
+        waitForText("應用程式語言：繁體中文");
+        assertEquals("zh-TW", targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getString("language_tag", null));
+
+        clickId(R.id.settings_back_button);
+        waitForId("game_root");
+        waitForText("3x3 拼圖");
+        waitForStatusContaining("1 次移動");
+
+        relaunchApp();
+        waitForId("home_root");
+        waitForText("開始新遊戲");
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+        waitForStatusContaining("1 次移動");
+    }
+
+    @Test
+    public void traditionalChineseMajorScreensAndDialogsAreLocalized() throws Exception {
+        setLanguage(AndroidAppLocale.TRADITIONAL_CHINESE_LANGUAGE_TAG);
+        launchApp();
+
+        waitForId("onboarding_root");
+        waitForText("從基礎開始");
+        waitForText("第 1 頁，共 4 頁");
+        clickId(R.id.onboarding_skip_button);
+        waitForId("home_root");
+        waitForText("開始遊戲");
+        waitForText("新手指南");
+
+        clickId(R.id.home_tutorial_button);
+        waitForId("tutorial_root");
+        waitForText("練習教學");
+        waitForTextContaining("點按標示的 6");
+        clickId(R.id.tutorial_home_button);
+        waitForId("home_root");
+
+        clickId(R.id.home_new_game_button);
+        waitForId("mode_root");
+        assertActivityTextContains(R.id.mode_3_title_text, "3x3 拼圖");
+        assertActivityTextContains(R.id.mode_4_title_text, "4x4 拼圖");
+        assertActivityTextContains(R.id.mode_5_title_text, "5x5 拼圖");
+        assertActivityTextContains(R.id.mode_3_recommended_text, "推薦");
+        assertActivityContentDescriptionContains(R.id.mode_3_button, "建議從這個拼圖開始");
+
+        clickId(R.id.mode_4_button);
+        waitForId("game_root");
+        assertActivityTextContains(R.id.game_title_text, "4x4 拼圖");
+        assertActivityTextContains(R.id.game_status_text, "0 次移動");
+        assertActivityContentDescriptionContains(R.id.game_board, "空格位於");
+        assertActivityContentDescriptionContains(R.id.game_menu_button, "開啟遊戲選單");
+
+        clickId(R.id.game_menu_button);
+        waitForText("快速提示").click();
+        waitForText("移動提示");
+        waitForTextContaining("整列一起滑動");
+        device.pressBack();
+        waitForId("game_root");
+
+        clickId(R.id.game_assist_button);
+        waitForText("顯示可移動方塊");
+        waitForText("解題器工具").click();
+        waitForTextContaining("絕不會取代玩家紀錄");
+        waitForText("BFS").click();
+        waitForText("警告");
+        waitForTextContaining("耗盡記憶體");
+        waitForText("關閉").click();
+        waitForId("game_root");
+
+        clickId(R.id.game_home_button);
+        waitForId("home_root");
+        clickId(R.id.home_how_to_play_button);
+        waitForId("how_root");
+        waitForText("目標");
+        scrollToText("整列滑動");
+        scrollToText("紀錄");
+        clickId(R.id.how_back_button);
+        waitForId("home_root");
+
+        clickId(R.id.home_settings_button);
+        waitForId("settings_root");
+        waitForText("應用程式語言：繁體中文");
+        clickId(R.id.settings_reset_save_button);
+        waitForText("要重設遊戲存檔嗎？");
+        waitForText("取消").click();
+        clickId(R.id.settings_reset_records_button);
+        waitForText("要重設紀錄嗎？");
+        waitForText("取消").click();
+        clickId(R.id.settings_back_button);
+        waitForId("home_root");
+
+        clickId(R.id.home_records_button);
+        waitForId("records_root");
+        waitForText("紀錄");
+        waitForTextContaining("只記錄玩家自行完成的成績");
+        waitForText("尚無紀錄");
+    }
+
+    @Test
+    public void traditionalChinesePlayerResultAndRecordAreLocalized() throws Exception {
+        writeSavedGame(ONE_MOVE_WIN_GRID, ONE_MOVE_WIN_GRID, 0);
+        setLanguage(AndroidAppLocale.TRADITIONAL_CHINESE_LANGUAGE_TAG);
+        launchApp();
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+
+        tapCell(3, 2, 2);
+
+        waitForId("results_root");
+        waitForText("結果");
+        waitForText("拼圖完成。");
+        waitForText("這是此尺寸的第一筆玩家紀錄。");
+        waitForTextContaining("1 次移動");
+        assertActivityContentDescriptionContains(R.id.results_completion_mark, "拼圖完成");
+
+        clickId(R.id.results_home_button);
+        waitForId("home_root");
+        clickId(R.id.home_records_button);
+        waitForId("records_root");
+        waitForTextContaining("1 次移動");
+    }
+
+    @Test
     public void settingsCanResetSavedGame() throws Exception {
         writeSavedGame(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 0);
         launchApp();
@@ -700,6 +842,12 @@ public class MainActivityFlowTest {
     private void markOnboardingSeen() {
         assertTrue(targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 .putBoolean("onboarding_seen", true)
+                .commit());
+    }
+
+    private void setLanguage(String languageTag) {
+        assertTrue(targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putString(AndroidGameStore.KEY_LANGUAGE_TAG, languageTag)
                 .commit());
     }
 
