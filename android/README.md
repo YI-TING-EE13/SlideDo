@@ -35,6 +35,8 @@ an emulator or connected Android device.
   expose accessibility descriptions for screen readers
 - Manual Save and Load controls in the in-game menu
 - Auto-save through `SharedPreferences`
+- Active-play timing pauses for game dialogs, navigation outside Game, and app
+  background time, then resumes only when the Game screen is interactive
 - App-state persistence is isolated in `AndroidGameStore` for saves, settings,
   records, onboarding, app language, and last selected size
 - Activity state restoration, back-navigation decisions, shared UI primitives,
@@ -139,18 +141,22 @@ This runs `verify.bat` and `verify-release.bat`. CI release artifacts are
 verification outputs and use the temporary signing key unless real Play upload
 signing is explicitly configured.
 
-Latest 2026-08-19 validation status: all 44 connected instrumentation tests
+Latest 2026-08-20 validation status: all 49 connected instrumentation tests
 passed on both the Pixel_7 AVD running Android 15 at 1080x2400 and the
 `small_phone` AVD running Android 16 / API 36.1 at 720x1280. The suite covers the
 normal animated transition path, the Reduced motion bypass, English-default
 locale isolation, persistent English, Traditional Chinese, and Japanese switching,
-and explicit Traditional Chinese and Japanese major-screen/dialog/result flows.
+explicit Traditional Chinese and Japanese major-screen/dialog/result flows, and
+active-play timer pausing across game menus, nested dialogs, Assist, Settings,
+and background/resume.
 CLI-captured manual review covered English onboarding, Traditional Chinese
 Home/Settings/Mode Select/Game, and Japanese Home/Settings/Mode Select/How to
 Play/Game on the compact AVD. The compact controls remained single-line after
 shortening the Traditional Chinese Restart label to `重來` and the Japanese Home,
 Restart, and Assist labels to `チュートリアル`, `再挑戦`, and `ヒント`. The final
 Pixel_7 app process emitted no `AndroidRuntime` error.
+The Stage 1 small-phone manual pass also kept the complete game menu visible and
+confirmed that a five-second menu stay did not increase the play timer.
 
 For Android build and lint only:
 
@@ -261,6 +267,8 @@ check-screenshot-set.bat ..\screenshots\android\0.2.0-beta.1
 - Confirm saved-game metadata updates with the saved size, move count, elapsed
   time, and active/solved state.
 - Open Menu, check Quick Reminder, and open Settings.
+- Leave Menu, Quick Reminder, Assist, and Solver Tools open briefly; returning
+  to Game must not add those intervals to the play timer.
 - In Settings, switch to Traditional Chinese and Japanese in turn. After each
   switch, return to the active game and confirm the board, move count, timer,
   save, and navigation state remain intact.
@@ -284,7 +292,8 @@ check-screenshot-set.bat ..\screenshots\android\0.2.0-beta.1
 - Finish a game and confirm Results shows the completion mark, moves, time,
   record status, and Play Again/New Size/Home actions.
 - Confirm solver-assisted completion reaches Results without updating player best records.
-- Background and return to the app; autosave should preserve the current board.
+- Background and return to the app; autosave should preserve the current board
+  and the away interval must not increase elapsed play time.
 - Rotate and return to portrait; the current game state should remain intact.
 
 `build-debug.bat` uses Android Studio's bundled JBR when available, which avoids

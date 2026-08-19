@@ -9,6 +9,98 @@ import org.junit.jupiter.api.Test;
 
 class GameModelTest {
     @Test
+    void elapsedTimeStopsWhilePausedAndContinuesAfterResume() {
+        MutableTimeSource time = new MutableTimeSource(1_000L);
+        GameModel model = new GameModel(3, time::now);
+        model.loadState(new int[][] {
+                { 1, 2, 3 },
+                { 4, 0, 6 },
+                { 7, 5, 8 }
+        }, 0);
+
+        time.advance(1_500L);
+        assertEquals(1_500L, model.getElapsedTime());
+
+        model.pauseTimer();
+        time.advance(5_000L);
+        assertEquals(1_500L, model.getElapsedTime());
+
+        model.resumeTimer();
+        time.advance(500L);
+        assertEquals(2_000L, model.getElapsedTime());
+    }
+
+    @Test
+    void pauseAndResumeAreIdempotent() {
+        MutableTimeSource time = new MutableTimeSource(10_000L);
+        GameModel model = new GameModel(3, time::now);
+        model.loadState(new int[][] {
+                { 1, 2, 3 },
+                { 4, 0, 6 },
+                { 7, 5, 8 }
+        }, 0);
+
+        time.advance(1_000L);
+        model.pauseTimer();
+        model.pauseTimer();
+        time.advance(4_000L);
+        model.resumeTimer();
+        model.resumeTimer();
+        time.advance(750L);
+
+        assertEquals(1_750L, model.getElapsedTime());
+        assertTrue(model.isTimerRunning());
+    }
+
+    @Test
+    void loadedElapsedTimeContinuesWithoutCountingPausedTime() {
+        MutableTimeSource time = new MutableTimeSource(20_000L);
+        SaveManager.SaveData data = new SaveManager.SaveData();
+        data.grid = new int[][] {
+                { 1, 2, 3 },
+                { 4, 0, 6 },
+                { 7, 5, 8 }
+        };
+        data.initialGrid = data.grid;
+        data.moveCount = 4;
+        data.elapsedTime = 12_000L;
+        data.active = true;
+        data.updatedAt = 1L;
+
+        GameModel model = new GameModel(3, time::now);
+        model.loadState(data);
+        time.advance(1_000L);
+        model.pauseTimer();
+        time.advance(9_000L);
+
+        assertEquals(13_000L, model.getElapsedTime());
+    }
+
+    @Test
+    void winningTimeContainsOnlyActivePlayTime() {
+        MutableTimeSource time = new MutableTimeSource(30_000L);
+        GameModel model = new GameModel(3, time::now);
+        model.loadState(new int[][] {
+                { 1, 2, 3 },
+                { 4, 5, 0 },
+                { 7, 8, 6 }
+        }, 0);
+        ObserverSpy observer = new ObserverSpy();
+        model.addObserver(observer);
+
+        time.advance(1_000L);
+        model.pauseTimer();
+        time.advance(5_000L);
+        model.resumeTimer();
+        time.advance(2_000L);
+        assertTrue(model.move(Direction.DOWN));
+
+        assertEquals(3_000L, observer.lastWinTimeMs);
+        assertEquals(3_000L, model.getElapsedTime());
+        assertFalse(model.isTimerRunning());
+    }
+
+    @Test
     void moveUpdatesEmptyTileMoveCountAndUndoSnapshot() {
         GameModel model = runningModel(new int[][] {
                 { 1, 2, 3 },
@@ -155,6 +247,7 @@ class GameModelTest {
         private Direction lastLineDirection;
         private int lastLineSteps;
         private int lineMoveCount;
+        private long lastWinTimeMs = -1L;
 
         @Override
         public void onGridChanged() {
@@ -173,6 +266,23 @@ class GameModelTest {
 
         @Override
         public void onGameWon(int moves, long timeMs) {
+            lastWinTimeMs = timeMs;
+        }
+    }
+
+    private static final class MutableTimeSource {
+        private long now;
+
+        MutableTimeSource(long now) {
+            this.now = now;
+        }
+
+        long now() {
+            return now;
+        }
+
+        void advance(long milliseconds) {
+            now += milliseconds;
         }
     }
 }

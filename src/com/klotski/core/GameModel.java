@@ -4,12 +4,14 @@ import java.util.ArrayList;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
+import java.util.function.LongSupplier;
 
 /**
  * Platform-independent state container and rules engine for Number Klotski.
  * <p>
- * The model owns the board, move count, timer anchor, undo stack, and win
+ * The model owns the board, move count, active-play timer, undo stack, and win
  * detection. It emits observer callbacks but contains no Swing or Android code,
  * which keeps the same rules usable by both desktop and mobile front ends.
  * </p>
@@ -21,13 +23,16 @@ public class GameModel {
     private int emptyCol;
     private boolean isSolved;
     private int moveCount;
-    private long startTime;
+    private long elapsedTimeMs;
+    private long timerStartedAtMs;
+    private boolean timerRunning;
     private boolean isGameRunning;
     private int[][] initialGrid;
     private final Deque<int[][]> undoStack = new ArrayDeque<>();
 
     private final List<GameObserver> observers = new ArrayList<>();
     private final Random random = new Random();
+    private final LongSupplier timeSource;
 
     /**
      * Creates a model for a square puzzle.
@@ -35,7 +40,12 @@ public class GameModel {
      * @param size board width and height
      */
     public GameModel(int size) {
+        this(size, System::currentTimeMillis);
+    }
+
+    GameModel(int size, LongSupplier timeSource) {
         this.size = size;
+        this.timeSource = Objects.requireNonNull(timeSource, "timeSource");
         reset();
     }
 
@@ -59,6 +69,7 @@ public class GameModel {
         isSolved = true;
         moveCount = 0;
         isGameRunning = false;
+        resetTimer(false, 0L);
         initialGrid = copyGrid(grid);
         undoStack.clear();
         notifyGridChanged();
@@ -88,7 +99,7 @@ public class GameModel {
         }
         moveCount = 0; // Reset moves after scramble
         isGameRunning = true;
-        startTime = System.currentTimeMillis();
+        resetTimer(true, 0L);
         isSolved = false;
         initialGrid = copyGrid(grid);
         undoStack.clear();
@@ -230,7 +241,7 @@ public class GameModel {
         moveCount = 0;
         isSolved = isSolvedGrid();
         isGameRunning = !isSolved;
-        startTime = System.currentTimeMillis();
+        resetTimer(isGameRunning, 0L);
         undoStack.clear();
         notifyGridChanged();
     }
@@ -301,9 +312,10 @@ public class GameModel {
             }
         }
 
+        pauseTimer();
         isSolved = true;
         isGameRunning = false;
-        long timeTaken = System.currentTimeMillis() - startTime;
+        long timeTaken = getElapsedTime();
         notifyGameWon(timeTaken);
     }
 
@@ -419,24 +431,65 @@ public class GameModel {
     }
 
     /**
-     * Returns the current timer anchor.
+     * Returns the effective timer anchor used by legacy timer consumers.
+     * While paused, the anchor advances so subtracting it from the current time
+     * continues to equal active elapsed time.
      *
-     * @return start timestamp in milliseconds since epoch
+     * @return effective start timestamp in milliseconds since epoch
      */
     public long getStartTime() {
-        return startTime;
+        return timeSource.getAsLong() - getElapsedTime();
     }
 
     /**
-     * Returns elapsed time for the active game.
+     * Returns elapsed active-play time for the current game.
      *
-     * @return elapsed time in milliseconds, or {@code 0} when no game is running
+     * @return elapsed time in milliseconds
      */
     public long getElapsedTime() {
-        if (isGameRunning) {
-            return System.currentTimeMillis() - startTime;
+        if (timerRunning) {
+            return elapsedTimeMs + Math.max(0L, timeSource.getAsLong() - timerStartedAtMs);
         }
-        return 0;
+        return elapsedTimeMs;
+    }
+
+    /**
+     * Stops active-play time accumulation without changing the puzzle state.
+     * Repeated calls are safe.
+     */
+    public void pauseTimer() {
+        if (!timerRunning) {
+            return;
+        }
+        elapsedTimeMs = getElapsedTime();
+        timerRunning = false;
+    }
+
+    /**
+     * Resumes active-play time accumulation for an unsolved running puzzle.
+     * Repeated calls are safe.
+     */
+    public void resumeTimer() {
+        if (!isGameRunning || isSolved || timerRunning) {
+            return;
+        }
+        timerStartedAtMs = timeSource.getAsLong();
+        timerRunning = true;
+    }
+
+    /**
+     * Checks whether active-play time is currently accumulating.
+     *
+     * @return {@code true} while the game timer is running
+     */
+    public boolean isTimerRunning() {
+        return timerRunning;
+    }
+
+    private void resetTimer(boolean running, long elapsedMs) {
+        elapsedTimeMs = Math.max(0L, elapsedMs);
+        timerStartedAtMs = timeSource.getAsLong();
+        timerRunning = running;
     }
 
     /**
@@ -449,7 +502,6 @@ public class GameModel {
         this.size = savedGrid.length;
         this.grid = copyGrid(savedGrid);
         this.moveCount = savedMoveCount;
-        this.startTime = System.currentTimeMillis(); // Reset timer for this loaded state
 
         // Find empty tile
         findEmptyTile();
@@ -457,6 +509,7 @@ public class GameModel {
         this.isGameRunning = true;
         this.isSolved = isSolvedGrid();
         this.isGameRunning = !isSolved;
+        resetTimer(isGameRunning, 0L);
         this.initialGrid = copyGrid(savedGrid);
         this.undoStack.clear();
         notifyGridChanged();
@@ -471,10 +524,10 @@ public class GameModel {
         this.size = data.grid.length;
         this.grid = copyGrid(data.grid);
         this.moveCount = data.moveCount;
-        this.startTime = System.currentTimeMillis() - data.elapsedTime;
         findEmptyTile();
         this.isSolved = data.solved || isSolvedGrid();
         this.isGameRunning = !isSolved && (data.active || data.updatedAt == 0);
+        resetTimer(isGameRunning, data.elapsedTime);
         if (data.initialGrid != null) {
             this.initialGrid = copyGrid(data.initialGrid);
         } else {

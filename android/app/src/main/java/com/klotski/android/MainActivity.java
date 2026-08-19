@@ -103,6 +103,9 @@ public class MainActivity extends Activity implements GameObserver {
     private boolean hintActive;
     private boolean renderingScreenChange;
     private boolean screenTransitionRunning;
+    private boolean activityResumed;
+    private boolean gameNavigationPending = true;
+    private int timerPausingDialogCount;
     private long lastWinTimeMs = -1;
 
     /**
@@ -185,8 +188,20 @@ public class MainActivity extends Activity implements GameObserver {
      */
     @Override
     protected void onPause() {
+        activityResumed = false;
+        syncGameTimerState();
         super.onPause();
         saveGame();
+    }
+
+    /**
+     * Resumes active-play timing only when the game screen is interactive.
+     */
+    @Override
+    protected void onResume() {
+        super.onResume();
+        activityResumed = true;
+        syncGameTimerState();
     }
 
     /**
@@ -296,6 +311,39 @@ public class MainActivity extends Activity implements GameObserver {
         }
     }
 
+    private void pauseGameForNavigation() {
+        gameNavigationPending = true;
+        syncGameTimerState();
+    }
+
+    private void syncGameTimerState() {
+        if (model == null) {
+            return;
+        }
+        boolean shouldRun = activityResumed
+                && gameStarted
+                && currentScreen == Screen.GAME
+                && !gameNavigationPending
+                && timerPausingDialogCount == 0;
+        if (shouldRun) {
+            model.resumeTimer();
+        } else {
+            model.pauseTimer();
+        }
+    }
+
+    private void showTimerPausingDialog(AlertDialog dialog) {
+        timerPausingDialogCount++;
+        syncGameTimerState();
+        dialog.setOnDismissListener(ignored -> {
+            if (timerPausingDialogCount > 0) {
+                timerPausingDialogCount--;
+            }
+            syncGameTimerState();
+        });
+        dialog.show();
+    }
+
     private boolean restoreAppScreen(Bundle savedInstanceState) {
         AndroidActivityState.Snapshot savedState =
                 AndroidActivityState.restore(savedInstanceState, TUTORIAL_FIRST_MOVE);
@@ -344,6 +392,7 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private void showHomeScreen() {
+        pauseGameForNavigation();
         if (deferScreenChange(this::showHomeScreen)) {
             return;
         }
@@ -403,6 +452,7 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private void showOnboardingScreen(int requestedPage) {
+        pauseGameForNavigation();
         if (deferScreenChange(() -> showOnboardingScreen(requestedPage))) {
             return;
         }
@@ -455,6 +505,7 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private void showModeSelectScreen() {
+        pauseGameForNavigation();
         if (deferScreenChange(this::showModeSelectScreen)) {
             return;
         }
@@ -480,6 +531,7 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private void showHowToScreen(Screen returnScreen) {
+        pauseGameForNavigation();
         if (deferScreenChange(() -> showHowToScreen(returnScreen))) {
             return;
         }
@@ -511,6 +563,7 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private void showRecordsScreen(Screen returnScreen) {
+        pauseGameForNavigation();
         if (deferScreenChange(() -> showRecordsScreen(returnScreen))) {
             return;
         }
@@ -532,6 +585,7 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private void showSettingsScreen(Screen returnScreen) {
+        pauseGameForNavigation();
         if (deferScreenChange(() -> showSettingsScreen(returnScreen))) {
             return;
         }
@@ -581,6 +635,7 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private void showResultsScreen() {
+        pauseGameForNavigation();
         if (deferScreenChange(this::showResultsScreen)) {
             return;
         }
@@ -630,6 +685,7 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private void showTutorialScreen(int requestedStep) {
+        pauseGameForNavigation();
         if (deferScreenChange(() -> showTutorialScreen(requestedStep))) {
             return;
         }
@@ -648,6 +704,7 @@ public class MainActivity extends Activity implements GameObserver {
         commandButtons.clear();
 
         loadTutorialModel(tutorialStep);
+        syncGameTimerState();
 
         ensureBoardView();
         boardView.setId(R.id.tutorial_board);
@@ -695,6 +752,7 @@ public class MainActivity extends Activity implements GameObserver {
             return;
         }
         currentScreen = Screen.GAME;
+        gameNavigationPending = false;
         tutorialAdvancePending = false;
         hintActive = false;
         statusText = null;
@@ -751,6 +809,7 @@ public class MainActivity extends Activity implements GameObserver {
         statusText = views.statusText;
 
         presentContentView(views.root);
+        syncGameTimerState();
         updateStatus();
     }
 
@@ -805,7 +864,7 @@ public class MainActivity extends Activity implements GameObserver {
                 getString(R.string.nav_home)
         };
 
-        new AlertDialog.Builder(this)
+        AlertDialog menuDialog = new AlertDialog.Builder(this)
                 .setTitle(R.string.menu_title)
                 .setItems(items, (dialog, which) -> {
                     switch (which) {
@@ -840,15 +899,17 @@ public class MainActivity extends Activity implements GameObserver {
                         }
                     }
                 })
-                .show();
+                .create();
+        showTimerPausingDialog(menuDialog);
     }
 
     private void showQuickReminder() {
-        new AlertDialog.Builder(this)
+        AlertDialog reminderDialog = new AlertDialog.Builder(this)
                 .setTitle(R.string.quick_reminder_title)
                 .setMessage(R.string.quick_reminder_message)
                 .setPositiveButton(R.string.dialog_close, null)
-                .show();
+                .create();
+        showTimerPausingDialog(reminderDialog);
     }
 
     private void startGuidedTutorial() {
@@ -1037,7 +1098,7 @@ public class MainActivity extends Activity implements GameObserver {
                 getString(R.string.button_solver_tools)
         };
 
-        new AlertDialog.Builder(this)
+        AlertDialog assistDialog = new AlertDialog.Builder(this)
                 .setTitle(R.string.assist_title)
                 .setItems(items, (dialog, which) -> {
                     if (which == 0) {
@@ -1046,7 +1107,8 @@ public class MainActivity extends Activity implements GameObserver {
                         showSolverTools();
                     }
                 })
-                .show();
+                .create();
+        showTimerPausingDialog(assistDialog);
     }
 
     private void showSolverTools() {
@@ -1082,7 +1144,7 @@ public class MainActivity extends Activity implements GameObserver {
             dialog.dismiss();
             runSolver(new IdaStarSolver());
         });
-        dialog.show();
+        showTimerPausingDialog(dialog);
     }
 
     private void startFirstPuzzle() {
@@ -1138,6 +1200,7 @@ public class MainActivity extends Activity implements GameObserver {
         hintActive = false;
         lastWinTimeMs = -1;
         store.setLastSize(size);
+        syncGameTimerState();
         performBoardHaptic(HapticFeedbackConstants.VIRTUAL_KEY);
         showGameScreen();
     }
@@ -1152,6 +1215,7 @@ public class MainActivity extends Activity implements GameObserver {
         assistedSolveActive = false;
         clearGameHint();
         lastWinTimeMs = -1;
+        syncGameTimerState();
         performBoardHaptic(HapticFeedbackConstants.VIRTUAL_KEY);
         updateStatus();
     }
@@ -1176,13 +1240,13 @@ public class MainActivity extends Activity implements GameObserver {
         if (!model.isGameRunning() && model.isSolved()) {
             long elapsed = lastWinTimeMs >= 0
                     ? lastWinTimeMs / 1000
-                    : Math.max(0, System.currentTimeMillis() - model.getStartTime()) / 1000;
+                    : model.getElapsedTime() / 1000;
             statusText.setText(getString(R.string.status_solved_format, model.getMoveCount(), elapsed, bestText));
             updateControlsEnabled();
             return;
         }
 
-        long elapsed = Math.max(0, System.currentTimeMillis() - model.getStartTime()) / 1000;
+        long elapsed = model.getElapsedTime() / 1000;
         String status = getString(R.string.status_format, formatMoves(model.getMoveCount()), elapsed, bestText);
         if (hintActive) {
             status += "\n" + getString(R.string.status_hint_movable);
@@ -1232,7 +1296,7 @@ public class MainActivity extends Activity implements GameObserver {
 
         long elapsed = model.isSolved() && lastWinTimeMs >= 0
                 ? lastWinTimeMs
-                : Math.max(0, System.currentTimeMillis() - model.getStartTime());
+                : model.getElapsedTime();
         store.saveGame(model, elapsed);
     }
 
@@ -1249,6 +1313,7 @@ public class MainActivity extends Activity implements GameObserver {
         currentResult = null;
         hintActive = false;
         gameStarted = true;
+        syncGameTimerState();
         return true;
     }
 
@@ -1275,12 +1340,13 @@ public class MainActivity extends Activity implements GameObserver {
 
         int warning = solverWarningMessage(solver);
         if (warning != 0) {
-            new AlertDialog.Builder(this)
+            AlertDialog warningDialog = new AlertDialog.Builder(this)
                     .setTitle(R.string.dialog_solver_warning_title)
                     .setMessage(warning)
                     .setPositiveButton(R.string.dialog_continue, (dialog, which) -> startSolver(solver))
                     .setNegativeButton(R.string.dialog_close, null)
-                    .show();
+                    .create();
+            showTimerPausingDialog(warningDialog);
             return;
         }
 
@@ -1316,15 +1382,16 @@ public class MainActivity extends Activity implements GameObserver {
         if (solution == null) {
             boardView.setInputLocked(false);
             updateStatus();
-            new AlertDialog.Builder(this)
+            AlertDialog failedDialog = new AlertDialog.Builder(this)
                     .setTitle(R.string.dialog_solver_result_title)
                     .setMessage(R.string.dialog_solver_failed)
                     .setPositiveButton(R.string.dialog_close, null)
-                    .show();
+                    .create();
+            showTimerPausingDialog(failedDialog);
             return;
         }
 
-        new AlertDialog.Builder(this)
+        AlertDialog solutionDialog = new AlertDialog.Builder(this)
                 .setTitle(R.string.dialog_solver_result_title)
                 .setMessage(getString(R.string.dialog_solver_found, solution.size()))
                 .setPositiveButton(R.string.dialog_animate, (dialog, which) -> {
@@ -1341,7 +1408,8 @@ public class MainActivity extends Activity implements GameObserver {
                     boardView.setInputLocked(false);
                     updateStatus();
                 })
-                .show();
+                .create();
+        showTimerPausingDialog(solutionDialog);
     }
 
     private String formatBestForCard(int size) {

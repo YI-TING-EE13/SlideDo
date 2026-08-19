@@ -16,15 +16,23 @@ The shared `GameModel` is the canonical source for puzzle rules. Desktop is the 
 
 ## Current Product Direction
 
-The next product goal is to make Android feel like a complete casual game app.
+The active goal is an eight-stage Personal Play program for offline, owner-only
+use. Public store submission is not a prerequisite.
 
 Prioritize:
 
-- Home screen on app launch instead of opening directly into the board.
-- Mode Select for 3x3, 4x4, and 5x5.
-- How to Play / onboarding before gameplay.
-- In-game board screen with compact controls.
-- Pause/Menu, Settings, Records, and Results surfaces later.
+- True active-play timer pausing (completed).
+- Difficulty selection and reproducible scrambles.
+- Replay of the same puzzle.
+- Independent saves by board size.
+- Local history and personal statistics.
+- Offline daily challenge and streak state.
+- Strategic hints with assisted-record protection.
+- Optional sound and themes.
+
+Complete, verify, document, and commit each stage before starting the next one.
+Defer store signing, store assets, accounts, cloud sync, ads, analytics, and
+other public-distribution work unless the owner changes direction.
 
 Keep `GameModel` platform-independent. Navigation and presentation changes belong in Android UI/controller code.
 

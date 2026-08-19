@@ -30,9 +30,10 @@ build-debug.bat :app:assembleDebug :app:lintDebug :app:connectedDebugAndroidTest
 adb shell am start -n com.klotski.android/.MainActivity
 ```
 
-For two AVDs, run connected tests serially against one emulator at a time so
-the package, preferences, and instrumentation lifecycle cannot interfere across
-devices. Capture `adb devices -l`, the APK SHA-256, and the final test summary.
+With both AVDs online, `verify-connected.bat` lets Gradle run the isolated test
+package on each device. If either emulator becomes unstable, rerun serially with
+an explicit device serial before classifying the result as an app failure.
+Capture `adb devices -l`, the APK SHA-256, and the final test summary.
 
 ## A. Build, Resources, and Static Checks
 
@@ -113,12 +114,14 @@ Run every item on 3x3, 4x4, and 5x5 in all supported locales where practical.
 - [ ] Undo restores the exact previous board and decrements moves by one.
 - [ ] Restart restores `initialGrid`, zeroes moves and elapsed time, and does not change board size.
 - [ ] Input is ignored while board animation or solver playback is active.
-- [ ] Menu Resume returns to the same board and timer.
+- [ ] Menu Resume returns to the same board; time spent in the menu is excluded from elapsed play time.
+- [ ] Quick Reminder, Assist, Solver Tools, and solver dialogs keep elapsed play time paused until the final dialog closes.
 - [ ] Save after a move, Restart, then Load restores size, grid, `initialGrid`, moves, elapsed time, active/solved state, and restart behavior.
 - [ ] Load with no save shows the localized no-save toast and keeps the current game valid.
 - [ ] Home saves the current puzzle; Continue restores it after relaunch.
 - [ ] Rotation preserves screen, board, move count, elapsed time, hint state, and relevant dialog/screen state.
-- [ ] Background/resume continues with a valid timer and no duplicate move or result.
+- [ ] How to Play, Settings, Records, Mode Select, Results, and Home do not add time to an active saved game.
+- [ ] Background/resume excludes away time and does not create a duplicate move or result.
 - [ ] Game title, status, first-move hint, movable-tile hint, timer, best record, and button accessibility labels are localized.
 - [ ] Board accessibility description includes size, empty-cell position, highlighted count, row values, and moving state in the active language.
 
@@ -159,6 +162,25 @@ Do not mark the localization work complete until every applicable item above is
 checked in all supported locales, failures are fixed and rerun, and any
 unavailable device coverage is explicitly recorded as a limitation rather than
 reported as passed.
+
+### 2026-08-20 Stage 1 active-play timer pass
+
+| Evidence | Result |
+| --- | --- |
+| Debug APK SHA-256 | `E63E7163B8BB65549D155026E6BCAEBA206165CAE470A30D8E4E9AAD4E2B3329` |
+| Local verification | `verify.bat` passed shared tests, desktop compile, Android assemble/test APK/lint, and both Javadoc/doclint gates; the explicit `--warning-mode all` shared test run was warning-clean |
+| Pixel_7 | 49/49 connected tests passed on Android 15 at 1080x2400; 0 failed, 0 errors, 0 skipped; XML time 336.642 seconds |
+| `small_phone` | 49/49 connected tests passed on Android 16 / API 36.1 at 720x1280; 0 failed, 0 errors, 0 skipped; XML time 312.410 seconds |
+| Core timer contract | Four deterministic tests cover pause/resume, idempotence, saved elapsed restoration, and solved-time exclusion of paused intervals |
+| Android timing flows | Five connected tests cover the game menu, nested Quick Reminder, Assist, Settings, and background/resume |
+| Manual UI and timing review | Complete Game Menu remained visible at 720x1280; a measured five-second menu stay was excluded from elapsed play time |
+| Runtime review | `AndroidRuntime:E` logcat filters were empty on both AVDs after the final suite and manual launch |
+
+Existing save fields remain compatible. The model restores stored elapsed
+milliseconds and begins accumulating again only when Android presents an
+interactive Game screen. This stage did not change puzzle movement, records,
+solver-assisted protection, resources, dependencies, permissions, or the
+manifest.
 
 ### 2026-08-19 English / Traditional Chinese pass
 

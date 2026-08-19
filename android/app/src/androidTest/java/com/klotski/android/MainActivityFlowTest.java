@@ -732,6 +732,45 @@ public class MainActivityFlowTest {
     }
 
     @Test
+    public void gameMenuPausesElapsedPlayTime() throws Exception {
+        writeSavedGameWithMetadata(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 0, 5_000L, true, false);
+        launchApp();
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+
+        clickId(R.id.game_menu_button);
+        waitForText("Resume");
+        SystemClock.sleep(2_200L);
+        waitForText("Save").click();
+        device.waitForIdle();
+
+        long savedElapsed = targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getLong("elapsed", -1L);
+        assertTrue("Menu time should not be added to elapsed play time: " + savedElapsed,
+                savedElapsed >= 5_000L && savedElapsed < 6_500L);
+    }
+
+    @Test
+    public void quickReminderKeepsElapsedPlayTimePausedUntilClosed() throws Exception {
+        writeSavedGameWithMetadata(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 0, 5_000L, true, false);
+        launchApp();
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+
+        clickId(R.id.game_menu_button);
+        waitForText("Quick Reminder").click();
+        waitForText("Move reminder");
+        SystemClock.sleep(2_200L);
+        device.pressHome();
+        device.waitForIdle();
+
+        long savedElapsed = targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getLong("elapsed", -1L);
+        assertTrue("Nested reminder time should not be added to elapsed play time: " + savedElapsed,
+                savedElapsed >= 5_000L && savedElapsed < 6_500L);
+    }
+
+    @Test
     public void assistShowsMovableTileHintWithoutMoving() throws Exception {
         writeSavedGame(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 0);
         launchApp();
@@ -761,6 +800,76 @@ public class MainActivityFlowTest {
         tapCell(3, 1, 2);
         waitForStatusContaining("1 move");
         waitForStatusNotContaining("Hint: highlighted tiles can slide into the empty cell.");
+    }
+
+    @Test
+    public void assistMenuPausesElapsedPlayTime() throws Exception {
+        writeSavedGameWithMetadata(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 0, 5_000L, true, false);
+        launchApp();
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+
+        clickId(R.id.game_assist_button);
+        waitForText("Show Movable Tiles");
+        SystemClock.sleep(2_200L);
+        device.pressHome();
+        device.waitForIdle();
+
+        long savedElapsed = targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getLong("elapsed", -1L);
+        assertTrue("Assist-menu time should not be added to elapsed play time: " + savedElapsed,
+                savedElapsed >= 5_000L && savedElapsed < 6_500L);
+    }
+
+    @Test
+    public void backgroundAndResumeExcludeAwayTime() throws Exception {
+        writeSavedGameWithMetadata(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 0, 5_000L, true, false);
+        launchApp();
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+
+        device.pressHome();
+        device.waitForIdle();
+        long elapsedBeforeAway = targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getLong("elapsed", -1L);
+        SystemClock.sleep(5_000L);
+        device.executeShellCommand("am start -n " + PACKAGE_NAME + "/.MainActivity");
+        waitForForegroundApp();
+        SystemClock.sleep(300L);
+        device.pressHome();
+        device.waitForIdle();
+
+        long savedElapsed = targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getLong("elapsed", -1L);
+        long foregroundIncrease = savedElapsed - elapsedBeforeAway;
+        assertTrue("Background time should not be added after resume; foreground increase was "
+                        + foregroundIncrease + "ms",
+                foregroundIncrease >= 0L && foregroundIncrease < 3_500L);
+    }
+
+    @Test
+    public void leavingGameForSettingsPausesElapsedPlayTime() throws Exception {
+        writeSavedGameWithMetadata(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 0, 5_000L, true, false);
+        launchApp();
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+
+        clickId(R.id.game_menu_button);
+        waitForText("Save").click();
+        device.waitForIdle();
+        long elapsedBeforeSettings = targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getLong("elapsed", -1L);
+        clickId(R.id.game_menu_button);
+        waitForText("Settings").click();
+        waitForId("settings_root");
+        SystemClock.sleep(2_200L);
+        device.pressHome();
+        device.waitForIdle();
+
+        long savedElapsed = targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getLong("elapsed", -1L);
+        assertTrue("Settings time should not be added to elapsed play time: " + savedElapsed,
+                savedElapsed >= elapsedBeforeSettings && savedElapsed - elapsedBeforeSettings < 1_200L);
     }
 
     @Test

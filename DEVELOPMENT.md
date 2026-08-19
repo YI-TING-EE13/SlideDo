@@ -38,9 +38,10 @@ Current handoff status:
 - The latest local verification pass was warning-clean for the previously noisy
   Gradle DSL deprecation, Java native-access warning, and Android Java
   deprecation note.
-- The latest connected localization/regression pass ran 44 tests on each of
+- The latest connected regression pass ran 49 tests on each of
   Pixel_7 (Android 15, 1080x2400) and `small_phone` (Android 16 / API 36.1,
-  720x1280), with no failures or skips.
+  720x1280), with no failures or skips. It includes active-play timing across
+  dialogs, non-game screens, and background/resume.
 
 Start a new implementation session by checking:
 
@@ -57,20 +58,11 @@ verify.bat
 verify-connected.bat
 ```
 
-Recommended next product tasks after the completed parity and Android polish
-passes:
-
-1. Close the remaining public-beta handoff work: review the generated Play
-   feature graphic and final screenshots, publish the privacy-policy URL, choose
-   the download/issue channels, and run the desktop package smoke checklist from
-   an extracted ZIP.
-2. Broaden Android accessibility and device coverage with TalkBack, larger font
-   settings, contrast review, landscape/background-resume checks, and a physical
-   device or tablet/foldable profile.
-3. Decide the beta release posture for minification and for presenting advanced
-   Solver Tools in store-facing material.
-4. Add daily puzzles, progression, achievements, sound, and themes only after
-   the beta handoff and accessibility gates are closed.
+The active product program is now the eight-stage Personal Play roadmap in
+`Roadmap And Planning`. It prioritizes offline replay value and personal
+convenience over public distribution. Stage 1, active-play timer pausing, is
+implemented and verified. Stage 2, difficulty selection and reproducible
+scrambling, is next.
 
 Real Play upload signing is intentionally deferred until store submission. It
 is not required for a local push-ready commit, and no Git remote or push is part
@@ -137,6 +129,8 @@ Android currently supports:
 - Results screen with a completion-mark settle animation, player-record status,
   solver-assisted completion wording, and a Reduced motion bypass.
 - Haptic feedback.
+- Active-play timing that pauses for game dialogs, non-game screens, and app
+  background time, then resumes when the Game screen is interactive again.
 - Warning-clean local Gradle verification under `--warning-mode all` for the
   root tests and Android assemble/lint flow.
 - Release verification now checks Android Play Store readiness and desktop
@@ -472,23 +466,35 @@ planning layer above implementation tickets.
 
 ### Recommended Next Implementation Order
 
-The next product milestone should first align the desktop and Android player
-experience before adding repeat-play systems. Recommended order:
+The project owner uses SlideDo primarily as a personal offline game. Public
+store submission, upload signing, analytics, accounts, ads, cloud sync, and
+store assets are not prerequisites for this program.
 
-1. Desktop/mobile parity pass.
-2. Targeted architecture split that supports parity work.
-3. Daily puzzle, progression loops, and achievement systems.
-4. Stronger completion feedback, sound/theme systems, and broader accessibility
-   validation.
+Every stage uses the same delivery gate:
 
-Rationale:
+1. Add one failing behavior test at an agreed public seam.
+2. Implement the complete stage scope and required compatibility handling.
+3. Run focused tests, `verify.bat`, the full connected Android suite on Pixel_7
+   and `small_phone`, and manual UI/flow review when the stage changes Android UI.
+4. Fix every required failure and rerun affected checks.
+5. Update this guide, the applicable README, and the regression checklist.
+6. Create one cohesive commit only after every required check passes.
 
-- Android now has the richer product surface. Desktop still has strong gameplay
-  coverage but lacks Android's Home, onboarding/tutorial, How to Play, Assist
-  hint presentation, Settings, and Results surfaces.
-- Aligning desktop first keeps both front ends honest around the shared
-  `GameModel` contract before adding daily/progression systems that would need
-  to exist in both experiences.
+| Stage | Goal | Required outcome | Status |
+| ---: | --- | --- | --- |
+| 1 | True timer pausing | Count active Game-screen time only; exclude dialogs, other screens, and background time while preserving save compatibility. | Completed and verified on 2026-08-20. |
+| 2 | Difficulty selection | Add Casual, Standard, and Challenge choices backed by reproducible, solvable scramble definitions. | Next. |
+| 3 | Replay the same puzzle | Let Results restart the exact starting board without generating another scramble. | Planned. |
+| 4 | Per-size saves | Preserve independent 3x3, 4x4, and 5x5 active games and expose the correct Continue choices. | Planned. |
+| 5 | History and personal stats | Store bounded local completion history and show meaningful per-size and per-difficulty summaries. | Planned. |
+| 6 | Offline daily challenge | Generate one deterministic local puzzle per date and record completion/streak state without a server. | Planned. |
+| 7 | Strategic hint | Suggest a useful next move, mark the game assisted, and preserve player-record protection. | Planned. |
+| 8 | Sound and themes | Add optional local sound feedback and selectable visual themes with persistent settings and accessibility-safe defaults. | Planned. |
+
+Shared puzzle rules, deterministic puzzle identity, elapsed milliseconds, save
+compatibility, and assisted-record protection remain core contracts. Android
+may receive the player-facing flow first, but reusable puzzle and persistence
+rules stay outside Android view code.
 
 ### Next Phase: Desktop/Mobile Parity Pass
 
@@ -945,6 +951,28 @@ Priority: Low to Medium
 - Run the final desktop accessibility review.
 
 ## Development Log
+
+### 2026-08-20
+
+- Replaced the public-beta-first roadmap with an eight-stage Personal Play
+  program. Every stage now requires focused tests, the local verification gate,
+  dual-AVD connected regression, documentation sync, and its own commit before
+  the next stage begins.
+- Completed Stage 1 active-play timing. `GameModel` now accumulates elapsed
+  milliseconds across idempotent pause/resume transitions and retains elapsed
+  time when a puzzle is solved or restored from an existing save.
+- Android pauses the model timer while the game menu, Quick Reminder, Assist,
+  Solver Tools, and solver dialogs are open; while navigation is outside the
+  Game screen; and while the Activity is backgrounded. The timer resumes only
+  when the Game screen is interactive.
+- Added four deterministic core timer tests and five connected Android timing
+  flows covering game-menu, nested-dialog, Assist, Settings, and
+  background/resume behavior.
+- `verify.bat` passed. The final connected suite passed 49/49 tests with no
+  failures, errors, or skips on both Pixel_7 (Android 15, 1080x2400) and
+  `small_phone` (Android 16 / API 36.1, 720x1280). Manual small-phone review
+  confirmed the full game menu remains visible and a five-second menu stay does
+  not contribute to the displayed play timer.
 
 ### 2026-08-19
 
