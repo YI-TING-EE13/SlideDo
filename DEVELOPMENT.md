@@ -38,12 +38,13 @@ Current handoff status:
 - The latest local verification pass was warning-clean for the previously noisy
   Gradle DSL deprecation, Java native-access warning, and Android Java
   deprecation note.
-- The latest dual-AVD acceptance covered all 52 Android tests on each of
+- The latest dual-AVD acceptance covered all 58 Android tests on each of
   Pixel_7 (Android 15, 1080x2400) and `small_phone` (Android 16 / API 36.1,
   720x1280), with no failures or skips. Five isolated instrumentation batches
   avoid cross-device emulator contention while retaining every test. Coverage
   includes exact-puzzle replay before and after Results recreation, difficulty
-  selection, persistence, scoped records, and active-play timing.
+  selection, independent per-size saves, legacy-save migration, scoped records,
+  and active-play timing.
 
 Start a new implementation session by checking:
 
@@ -62,8 +63,9 @@ verify-connected.bat
 
 The active product program is now the eight-stage Personal Play roadmap in
 `Roadmap And Planning`. It prioritizes offline replay value and personal
-convenience over public distribution. Stages 1 through 3 are implemented and
-verified. Stage 4, independent save slots for each board size, is next.
+convenience over public distribution. Stages 1 through 4 are implemented and
+verified. Stage 5, bounded local completion history and personal statistics, is
+next.
 
 Real Play upload signing is intentionally deferred until store submission. It
 is not required for a local push-ready commit, and no Git remote or push is part
@@ -126,11 +128,11 @@ Android currently supports:
   treated as Classic.
 - BFS, A*, and IDA* solver controls behind Assist with expensive-operation warnings.
 - Solver-assisted completion protection so player records are not overwritten.
-- Settings for app language, haptic feedback, reduced motion, reset saved game,
-  and reset records.
-- Android app-state persistence through `AndroidGameStore` for saves, difficulty,
-  scoped records, settings, app language, onboarding state, and the last selected
-  puzzle size/difficulty.
+- Settings for app language, haptic feedback, reduced motion, reset all saved
+  games, and reset records.
+- Android app-state persistence through `AndroidGameStore` for independent
+  3x3, 4x4, and 5x5 saves, difficulty, scoped records, settings, app language,
+  onboarding state, and the last selected puzzle size/difficulty.
 - Results screen with a completion-mark settle animation, player-record status,
   solver-assisted completion wording, and a Reduced motion bypass.
 - Haptic feedback.
@@ -422,10 +424,11 @@ planning layer above implementation tickets.
   behavior returns from Game to Home and from informational screens to the right
   context. Longer-term, the app needs a clearer navigation model before adding
   Daily Puzzle, progression, and deeper Stats surfaces.
-- Current persistence is adequate for a simple casual game: one autosave, manual
-  Save/Load, last selected size/difficulty, visible Continue metadata, and
-  size-and-difficulty records. It is not yet a polished product save system because it still lacks
-  multiple puzzle slots and a cloud/back-up strategy. Save payloads include
+- Current persistence is adequate for a personal casual game: independent 3x3,
+  4x4, and 5x5 autosaves, current-size manual Save/Load, last selected
+  size/difficulty, visible Continue choices, and size-and-difficulty records.
+  It intentionally has no arbitrary extra slots, export, or cloud/back-up path.
+  Save payloads include
   explicit updated-at, size, moves, elapsed, active, and solved metadata for
   Continue and release diagnostics.
 - The app does not yet have audio, themes, reviewed store screenshots, or a
@@ -493,8 +496,8 @@ Every stage uses the same delivery gate:
 | 1 | True timer pausing | Count active Game-screen time only; exclude dialogs, other screens, and background time while preserving save compatibility. | Completed and verified on 2026-08-20. |
 | 2 | Difficulty selection | Add Relaxed, Classic, and Challenge choices backed by reproducible, solvable scramble definitions. | Completed and verified on 2026-08-20. |
 | 3 | Replay the same puzzle | Let Results restart the exact starting board without generating another scramble. | Completed and verified on 2026-08-20. |
-| 4 | Per-size saves | Preserve independent 3x3, 4x4, and 5x5 active games and expose the correct Continue choices. | Next. |
-| 5 | History and personal stats | Store bounded local completion history and show meaningful per-size and per-difficulty summaries. | Planned. |
+| 4 | Per-size saves | Preserve independent 3x3, 4x4, and 5x5 active games and expose the correct Continue choices. | Completed and verified on 2026-08-20. |
+| 5 | History and personal stats | Store bounded local completion history and show meaningful per-size and per-difficulty summaries. | Next. |
 | 6 | Offline daily challenge | Generate one deterministic local puzzle per date and record completion/streak state without a server. | Planned. |
 | 7 | Strategic hint | Suggest a useful next move, mark the game assisted, and preserve player-record protection. | Planned. |
 | 8 | Sound and themes | Add optional local sound feedback and selectable visual themes with persistent settings and accessibility-safe defaults. | Planned. |
@@ -576,8 +579,8 @@ Desktop/Android feature parity matrix:
 | Learning surfaces | First-run onboarding, visual How to Play, Quick Reminder, and interactive Practice Tutorial. | How to Play and Practice Tutorial dialogs use Android-aligned language. | Android remains more visual and interactive; desktop parity covers the same concepts. | Android onboarding/tutorial/how-to instrumentation; desktop help-content tests. |
 | Touch/mouse movement | Tap/swipe aligned tiles; whole-line slide counts as one move and one undo snapshot. | Mouse click/release movement plus keyboard controls; whole-line slide uses shared model. | Input method differs by platform, rule outcome matches. | Shared core tests, Android whole-line instrumentation, desktop smoke. |
 | Assist / hints | Assist menu can highlight movable tiles and offer solver playback. | Assist menu highlights movable tiles and supports solver playback. | Solver UI differs; solver-assisted wins do not update records on both platforms. | Android assist/results instrumentation; desktop result-copy tests. |
-| Save/load metadata | `AndroidGameStore` persists size, grid, initial grid, moves, elapsed, updated-at, active, solved, records, settings, and onboarding state. | Desktop JSON save persists size, grid, initial grid, moves, elapsed, updated-at, active, and solved; records live in user-data path. | Android includes mobile-only settings/onboarding; shared gameplay metadata is aligned. | Android store instrumentation, root save metadata tests. |
-| Settings / preferences | Persistent English, Traditional Chinese, and Japanese language selection, haptic feedback, reduced motion, reset saved game, and reset records. | Reduced motion preference plus desktop records/save flows. | App-language and haptics are Android-only; desktop currently remains English. | Android locale/store/settings instrumentation; desktop preferences copy tests/manual smoke. |
+| Save/load metadata | `AndroidGameStore` persists independent 3x3, 4x4, and 5x5 slots with size, grid, initial grid, moves, elapsed, updated-at, active, solved, and difficulty; it migrates the legacy single save without replacing a newer matching slot. | Desktop JSON save persists one size, grid, initial grid, moves, elapsed, updated-at, active, and solved; records live in user-data path. | Shared gameplay metadata is aligned; Android adds per-size slots and mobile-only settings/onboarding. | Android store instrumentation, root save metadata tests. |
+| Settings / preferences | Persistent English, Traditional Chinese, and Japanese language selection, haptic feedback, reduced motion, reset all saved games, and reset records. | Reduced motion preference plus desktop records/save flows. | App-language and haptics are Android-only; desktop currently remains English. | Android locale/store/settings instrumentation; desktop preferences copy tests/manual smoke. |
 | Records | Per-size local best records, fewer moves then lower time, solver-assisted protection, and player-facing policy explanation. | Per-size local best records with the same comparison, solver-assisted protection, and policy explanation. | Aligned. | Android records/results instrumentation; desktop result and records tests. |
 | Results | Full Results screen with exact-board Replay Puzzle, New Size, Home, record status, and assisted wording. | Android-style Results dialog with Play Again, New Size, Home, record status, and assisted wording. | Android now replays the same starting board for the Personal Play roadmap; desktop retains its new-puzzle action. | Android replay/results instrumentation; desktop results copy tests. |
 | Accessibility | Board summaries, settings switch descriptions, and primary control descriptions exist. | Basic Swing labels/dialog text exist, but no full assistive-tech audit. | Both platforms still need broader manual accessibility review before public release. | Android accessibility instrumentation plus manual TalkBack/desktop review. |
@@ -1020,6 +1023,27 @@ Priority: Low to Medium
   is `5722E65AF47727B2E270E564057D0340D3C376AAB2E7A27888929173A407BEB9`;
   installed-app visual review found no clipping, and both runtime error filters
   were empty.
+- Completed Stage 4 per-size saves. `AndroidGameStore` now keeps independent
+  3x3, 4x4, and 5x5 payloads, exposes ordered metadata for Home, scopes in-game
+  Load to the current board size, and reloads the result size during Results
+  recreation.
+- Home continues a sole save directly and opens a compact size chooser when
+  several saves exist. The chooser shows localized size, difficulty, state,
+  moves, and time. Reset Saved Games clears all three slots while leaving
+  records and settings intact.
+- Legacy single-save fields migrate lazily into their matching size slot and
+  are removed after migration. An older legacy payload cannot overwrite a newer
+  matching slot.
+- Added store coverage for all three independent slots, default/latest loading,
+  migration and precedence, metadata ordering, and full reset. Added connected
+  flows for multiple-save selection, English/Traditional Chinese/Japanese copy,
+  and reset-all behavior.
+- Final Stage 4 evidence: all 33 shared tests and `verify.bat` passed. All 58
+  Android tests passed on Pixel_7 and `small_phone` in five isolated batches
+  (16 + 10 + 12 + 10 + 10) with zero failures or skips. Manual 720x1280 review
+  found no clipping or overlap in Home or the two-save chooser, both
+  `AndroidRuntime:E` filters were empty, and the final debug APK hash is
+  `56C5B37A1C6E17F9E3EF57B3985E53627FF1D7EE528467D18CC4694CC4587518`.
 
 ### 2026-08-19
 

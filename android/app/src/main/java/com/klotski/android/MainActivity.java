@@ -364,7 +364,7 @@ public class MainActivity extends Activity implements GameObserver {
 
         if (savedScreen == Screen.RESULTS) {
             GameResult restoredResult = currentResult;
-            if (restoredResult != null && savedGameStarted && loadGame()) {
+            if (restoredResult != null && savedGameStarted && loadGame(restoredResult.size)) {
                 currentResult = restoredResult;
                 showResultsScreen();
                 return true;
@@ -410,10 +410,10 @@ public class MainActivity extends Activity implements GameObserver {
         tutorialStatusText = null;
         commandButtons.clear();
 
-        ScreenLayout screen = homeScreen.build(store.getSaveMetadata(), new AndroidHomeScreen.HomeActions() {
+        ScreenLayout screen = homeScreen.build(store.getAllSaveMetadata(), new AndroidHomeScreen.HomeActions() {
             @Override
             public void onContinue() {
-                continueSavedGame();
+                continueSavedGameFromHome();
             }
 
             @Override
@@ -893,7 +893,7 @@ public class MainActivity extends Activity implements GameObserver {
                             Toast.makeText(this, R.string.toast_game_saved, Toast.LENGTH_SHORT).show();
                         }
                         case 2 -> {
-                            if (loadGame()) {
+                            if (loadGame(model.getSize())) {
                                 pendingWin = null;
                                 assistedSolveActive = false;
                                 showGameScreen();
@@ -1195,8 +1195,28 @@ public class MainActivity extends Activity implements GameObserver {
         return page;
     }
 
-    private void continueSavedGame() {
-        if (loadGame()) {
+    private void continueSavedGameFromHome() {
+        AndroidGameStore.SaveMetadata[] saves = store.getAllSaveMetadata();
+        if (saves.length == 0) {
+            Toast.makeText(this, R.string.toast_no_save, Toast.LENGTH_SHORT).show();
+            showHomeScreen();
+        } else if (saves.length == 1) {
+            continueSavedGame(saves[0].size);
+        } else {
+            String[] labels = new String[saves.length];
+            for (int index = 0; index < saves.length; index++) {
+                labels[index] = formatSaveChoice(saves[index]);
+            }
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.home_save_picker_title)
+                    .setItems(labels, (dialog, which) -> continueSavedGame(saves[which].size))
+                    .setNegativeButton(R.string.dialog_cancel, null)
+                    .show();
+        }
+    }
+
+    private void continueSavedGame(int size) {
+        if (loadGame(size)) {
             pendingWin = null;
             currentResult = null;
             assistedSolveActive = false;
@@ -1205,6 +1225,17 @@ public class MainActivity extends Activity implements GameObserver {
             Toast.makeText(this, R.string.toast_no_save, Toast.LENGTH_SHORT).show();
             showHomeScreen();
         }
+    }
+
+    private String formatSaveChoice(AndroidGameStore.SaveMetadata metadata) {
+        String state = metadata.solved
+                ? getString(R.string.home_continue_solved)
+                : (metadata.active
+                        ? getString(R.string.home_continue_active)
+                        : getString(R.string.home_continue_saved));
+        return getString(R.string.home_save_choice_format,
+                metadata.size, metadata.size, difficultyName(metadata.difficulty), state,
+                formatMoves(metadata.moves), Math.max(0, metadata.elapsedMs) / 1000);
     }
 
     private void beginNewGame(int size) {
@@ -1345,7 +1376,12 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private boolean loadGame() {
-        SaveManager.SaveData data = store.loadSavedGame();
+        int size = model == null ? store.getLastSize(4) : model.getSize();
+        return loadGame(size);
+    }
+
+    private boolean loadGame(int size) {
+        SaveManager.SaveData data = store.loadSavedGame(size);
         if (data == null) {
             return false;
         }
@@ -1357,6 +1393,7 @@ public class MainActivity extends Activity implements GameObserver {
         currentResult = null;
         hintActive = false;
         gameStarted = true;
+        store.setLastSize(data.size);
         syncGameTimerState();
         return true;
     }

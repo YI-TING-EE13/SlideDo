@@ -99,6 +99,110 @@ public class AndroidGameStoreTest {
     }
 
     @Test
+    public void savesForDifferentSizesUseIndependentSlots() {
+        store.saveGame(createSavedModel(3, PuzzleDifficulty.RELAXED, 3), 3_000L);
+        store.saveGame(createSavedModel(4, PuzzleDifficulty.CHALLENGE, 4), 4_000L);
+        store.saveGame(createSavedModel(5, PuzzleDifficulty.CLASSIC, 5), 5_000L);
+
+        assertTrue(prefs.contains("save_3_grid"));
+        assertTrue(prefs.contains("save_4_grid"));
+        assertTrue(prefs.contains("save_5_grid"));
+        assertEquals("relaxed", prefs.getString("save_3_difficulty", null));
+        assertEquals("challenge", prefs.getString("save_4_difficulty", null));
+        assertEquals(3_000L, prefs.getLong("save_3_elapsed", -1L));
+        assertEquals(4_000L, prefs.getLong("save_4_elapsed", -1L));
+        assertEquals(5_000L, prefs.getLong("save_5_elapsed", -1L));
+
+        SaveManager.SaveData three = store.loadSavedGame(3);
+        SaveManager.SaveData four = store.loadSavedGame(4);
+        SaveManager.SaveData five = store.loadSavedGame(5);
+        assertNotNull(three);
+        assertNotNull(four);
+        assertNotNull(five);
+        assertEquals(3, three.moveCount);
+        assertEquals(4, four.moveCount);
+        assertEquals(PuzzleDifficulty.RELAXED, three.difficulty);
+        assertEquals(PuzzleDifficulty.CHALLENGE, four.difficulty);
+        assertEquals(PuzzleDifficulty.CLASSIC, five.difficulty);
+        assertEquals(5, store.loadSavedGame().size);
+
+        AndroidGameStore.SaveMetadata[] saves = store.getAllSaveMetadata();
+        assertEquals(3, saves.length);
+        assertEquals(3, saves[0].size);
+        assertEquals(4, saves[1].size);
+        assertEquals(5, saves[2].size);
+    }
+
+    @Test
+    public void legacySingleSaveMigratesIntoItsSizeSlot() {
+        prefs.edit()
+                .putInt("size", 3)
+                .putString("grid", "1,2,3,4,5,0,7,8,6")
+                .putString("initial_grid", "1,2,3,4,5,0,7,8,6")
+                .putInt("moves", 7)
+                .putLong("elapsed", 7_000L)
+                .putLong("updated_at", 77L)
+                .putBoolean("active", true)
+                .putBoolean("solved", false)
+                .putString("difficulty", "challenge")
+                .commit();
+
+        SaveManager.SaveData migrated = store.loadSavedGame();
+
+        assertNotNull(migrated);
+        assertEquals(3, migrated.size);
+        assertEquals(7, migrated.moveCount);
+        assertEquals(PuzzleDifficulty.CHALLENGE, migrated.difficulty);
+        assertTrue(prefs.contains("save_3_grid"));
+        assertFalse(prefs.contains("grid"));
+    }
+
+    @Test
+    public void olderLegacySaveDoesNotOverwriteNewerSizeSlot() {
+        prefs.edit()
+                .putInt("save_3_size", 3)
+                .putString("save_3_grid", "1,2,3,4,5,0,7,8,6")
+                .putString("save_3_initial_grid", "1,2,3,4,5,0,7,8,6")
+                .putInt("save_3_moves", 2)
+                .putLong("save_3_elapsed", 2_000L)
+                .putLong("save_3_updated_at", 200L)
+                .putString("save_3_difficulty", "classic")
+                .putInt("size", 3)
+                .putString("grid", "1,2,3,4,5,0,7,8,6")
+                .putString("initial_grid", "1,2,3,4,5,0,7,8,6")
+                .putInt("moves", 9)
+                .putLong("elapsed", 9_000L)
+                .putLong("updated_at", 100L)
+                .putString("difficulty", "challenge")
+                .commit();
+
+        SaveManager.SaveData loaded = store.loadSavedGame(3);
+
+        assertNotNull(loaded);
+        assertEquals(2, loaded.moveCount);
+        assertEquals(2_000L, loaded.elapsedTime);
+        assertEquals(PuzzleDifficulty.CLASSIC, loaded.difficulty);
+        assertFalse(prefs.contains("grid"));
+    }
+
+    @Test
+    public void clearSavedGameRemovesEverySizeSlot() {
+        prefs.edit()
+                .putString("save_3_grid", "slot-three")
+                .putString("save_4_grid", "slot-four")
+                .putString("save_5_grid", "slot-five")
+                .putString("grid", "legacy")
+                .commit();
+
+        store.clearSavedGame();
+
+        assertFalse(prefs.contains("save_3_grid"));
+        assertFalse(prefs.contains("save_4_grid"));
+        assertFalse(prefs.contains("save_5_grid"));
+        assertFalse(prefs.contains("grid"));
+    }
+
+    @Test
     public void difficultyPreferenceAndScopedBestRecordsRemainIndependent() {
         assertEquals(PuzzleDifficulty.CLASSIC, store.getLastDifficulty());
         store.setLastDifficulty(PuzzleDifficulty.CHALLENGE);
@@ -188,5 +292,28 @@ public class AndroidGameStoreTest {
         Context japaneseContext = AndroidAppLocale.wrap(
                 chineseDeviceContext, AndroidAppLocale.JAPANESE_LANGUAGE_TAG);
         assertEquals("設定", japaneseContext.getString(R.string.settings_title));
+    }
+
+    private GameModel createSavedModel(int size, PuzzleDifficulty difficulty, int moves) {
+        int[][] grid = new int[size][size];
+        int value = 1;
+        for (int row = 0; row < size; row++) {
+            for (int col = 0; col < size; col++) {
+                grid[row][col] = value++;
+            }
+        }
+        grid[size - 1][size - 2] = 0;
+        grid[size - 1][size - 1] = size * size - 1;
+
+        SaveManager.SaveData data = new SaveManager.SaveData();
+        data.size = size;
+        data.grid = grid;
+        data.initialGrid = grid;
+        data.moveCount = moves;
+        data.active = true;
+        data.difficulty = difficulty;
+        GameModel model = new GameModel(size);
+        model.loadState(data);
+        return model;
     }
 }

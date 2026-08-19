@@ -77,7 +77,9 @@ Run every item in all supported locales.
 - [ ] New Game opens Mode Select; Back/Home returns to Home without creating a game.
 - [ ] First-launch onboarding pages show correct progress and support Next, Back, Skip, Practice Tutorial, and Start 3x3.
 - [ ] Beginner Guide can be reopened from Home after onboarding is complete.
-- [ ] Home Continue summary correctly distinguishes active, saved, and solved state and displays size, difficulty, moves, time, and age.
+- [ ] With one save, Home Continue shows its state, size, difficulty, moves,
+  time, and age; with multiple saves, it shows the count and opens a localized
+  chooser containing each saved size, difficulty, state, moves, and time.
 
 ### How to Play and tutorial
 
@@ -98,7 +100,9 @@ Run every item in all supported locales.
 ### Settings and Records
 
 - [ ] Haptic and Reduced Motion switches toggle, persist after relaunch, and keep localized accessibility descriptions.
-- [ ] Reset Saved Game Cancel preserves the save; Reset clears it and shows a localized confirmation toast.
+- [ ] Reset Saved Games Cancel preserves every size slot; Reset clears all 3x3,
+  4x4, and 5x5 slots while preserving records/settings and shows a localized
+  confirmation toast.
 - [ ] Reset Records Cancel preserves all records; Reset clears every size/difficulty record and shows a localized toast.
 - [ ] Records shows the correct empty state or stored best for all nine size/difficulty combinations and explains player-only ranking.
 - [ ] Back returns to the originating screen without stale or duplicate content.
@@ -117,9 +121,14 @@ Run every item on 3x3, 4x4, and 5x5 in all supported locales where practical.
 - [ ] Input is ignored while board animation or solver playback is active.
 - [ ] Menu Resume returns to the same board; time spent in the menu is excluded from elapsed play time.
 - [ ] Quick Reminder, Assist, Solver Tools, and solver dialogs keep elapsed play time paused until the final dialog closes.
-- [ ] Save after a move, Restart, then Load restores size, difficulty, grid, `initialGrid`, moves, elapsed time, active/solved state, and restart behavior.
+- [ ] Save after a move, Restart, then Load restores the current-size slot's
+  difficulty, grid, `initialGrid`, moves, elapsed time, active/solved state, and
+  restart behavior without replacing another size.
 - [ ] Load with no save shows the localized no-save toast and keeps the current game valid.
-- [ ] Home saves the current puzzle; Continue restores it after relaunch.
+- [ ] Home saves the current puzzle; Continue restores it after relaunch. Three
+  different boards can coexist in the 3x3, 4x4, and 5x5 slots.
+- [ ] A legacy single-save payload migrates once into its matching size slot;
+  an older legacy payload never overwrites a newer matching slot.
 - [ ] Rotation preserves screen, board, move count, elapsed time, hint state, and relevant dialog/screen state.
 - [ ] How to Play, Settings, Records, Mode Select, Results, and Home do not add time to an active saved game.
 - [ ] Background/resume excludes away time and does not create a duplicate move or result.
@@ -164,6 +173,23 @@ Do not mark the localization work complete until every applicable item above is
 checked in all supported locales, failures are fixed and rerun, and any
 unavailable device coverage is explicitly recorded as a limitation rather than
 reported as passed.
+
+### 2026-08-20 Stage 4 per-size save pass
+
+| Evidence | Result |
+| --- | --- |
+| Debug APK SHA-256 | `56C5B37A1C6E17F9E3EF57B3985E53627FF1D7EE528467D18CC4694CC4587518` |
+| Local verification | All 33 shared tests passed; `verify.bat` passed desktop compile, Android assemble/test APK/lint, and both Javadoc/doclint gates |
+| Pixel_7 | All 58 Android tests passed on Android 15 at 1080x2400 in five isolated batches (16 + 10 + 12 + 10 + 10); 0 failed, 0 skipped |
+| `small_phone` | All 58 Android tests passed on Android 16 / API 36.1 at 720x1280 in the same five batches; 0 failed, 0 skipped |
+| Persistence contract | Store coverage verifies independent 3x3, 4x4, and 5x5 slots, default/latest loading, legacy migration, newer-slot precedence, metadata ordering, and clearing every slot |
+| Android flow | One save continues directly; multiple saves open the correct localized chooser; in-game Load is size-scoped; Results recreation reloads the result size; reset clears all slots but keeps records/settings |
+| UI and runtime review | Compact Home and two-save chooser fit at 720x1280 without clipping or overlap; chooser details are readable; `AndroidRuntime:E` filters were empty on both AVDs |
+
+Each slot uses a `save_<size>_` namespace. Reads lazily migrate the previous
+single-save fields, then remove them so future writes and reset behavior use one
+schema. The no-argument load path prefers the last selected size and otherwise
+falls back to the newest valid slot.
 
 ### 2026-08-20 Stage 3 exact-puzzle replay pass
 

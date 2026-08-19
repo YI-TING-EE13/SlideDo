@@ -4,6 +4,9 @@
     <string name="home_summary">Order the tiles. Leave the empty cell in the bottom-right.</string>
     <string name="home_continue">Continue</string>
     <string name="home_continue_summary">%1$s: %2$dx%3$d · %4$s, %5$s, %6$ds, %7$s</string>
+    <string name="home_multiple_saves_summary">%1$d saved games. Choose a size to continue.</string>
+    <string name="home_save_picker_title">Choose saved game</string>
+    <string name="home_save_choice_format">%1$dx%2$d · %3$s\n%4$s · %5$s · %6$ds</string>
     <string name="home_continue_active">Active save</string>
     <string name="home_continue_solved">Solved save</string>
     <string name="home_continue_saved">Saved game</string>
@@ -101,7 +104,7 @@
     <string name="settings_haptic_body">Use short vibration feedback for board moves and key actions.</string>
     <string name="settings_reduced_motion_title">Reduced motion</string>
     <string name="settings_reduced_motion_body">Skip board movement and screen transition animations.</string>
-    <string name="settings_reset_save">Reset Saved Game</string>
+    <string name="settings_reset_save">Reset Saved Games</string>
     <string name="settings_reset_records">Reset Records</string>
     <string name="results_title">Results</string>
     <string name="results_player_subtitle">Puzzle solved.</string>
@@ -156,7 +159,7 @@
     <string name="toast_game_saved">Game saved.</string>
     <string name="toast_game_loaded">Game loaded!</string>
     <string name="toast_no_save">No save file found.</string>
-    <string name="toast_save_reset">Saved game reset.</string>
+    <string name="toast_save_reset">Saved games reset.</string>
     <string name="toast_records_reset">Records reset.</string>
     <string name="dialog_close">Close</string>
     <string name="dialog_continue">Continue</string>
@@ -164,8 +167,8 @@
     <string name="dialog_cancel">Cancel</string>
     <string name="dialog_language_title">Choose language</string>
     <string name="dialog_reset">Reset</string>
-    <string name="dialog_reset_save_title">Reset saved game?</string>
-    <string name="dialog_reset_save_message">This clears the local saved puzzle. Current play can continue until you leave the game.</string>
+    <string name="dialog_reset_save_title">Reset all saved games?</string>
+    <string name="dialog_reset_save_message">This clears the local 3x3, 4x4, and 5x5 saves. Records and settings stay. Current play can continue until you leave the game.</string>
     <string name="dialog_reset_records_title">Reset records?</string>
     <string name="dialog_reset_records_message">This clears local best records for every size and difficulty.</string>
     <string name="dialog_solver_warning_title">Warning</string>

@@ -24,8 +24,11 @@ final class AndroidHomeScreen {
         this.ui = ui;
     }
 
-    ScreenLayout build(AndroidGameStore.SaveMetadata metadata, HomeActions actions) {
-        boolean hasSave = metadata != null;
+    ScreenLayout build(AndroidGameStore.SaveMetadata[] saves, HomeActions actions) {
+        AndroidGameStore.SaveMetadata[] availableSaves = saves == null
+                ? new AndroidGameStore.SaveMetadata[0]
+                : saves;
+        boolean hasSave = availableSaves.length > 0;
         ScreenLayout screen = ui.createScreenLayout();
         screen.root.setId(R.id.home_root);
         screen.content.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -47,7 +50,10 @@ final class AndroidHomeScreen {
                     v -> actions.onContinue());
             continueButton.setId(R.id.home_continue_button);
 
-            TextView continueSummary = ui.createText(formatContinueSummary(metadata),
+            String summaryText = availableSaves.length == 1
+                    ? formatContinueSummary(availableSaves[0])
+                    : activity.getString(R.string.home_multiple_saves_summary, availableSaves.length);
+            TextView continueSummary = ui.createText(summaryText,
                     14, COLOR_MUTED_TEXT, Typeface.NORMAL);
             continueSummary.setId(R.id.home_continue_summary_text);
             continueSummary.setGravity(Gravity.CENTER);

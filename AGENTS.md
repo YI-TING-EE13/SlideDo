@@ -24,8 +24,8 @@ Prioritize:
 - True active-play timer pausing (completed).
 - Difficulty selection and reproducible scrambles (completed).
 - Replay of the same puzzle (completed).
-- Independent saves by board size (current stage).
-- Local history and personal statistics.
+- Independent saves by board size (completed).
+- Local history and personal statistics (current stage).
 - Offline daily challenge and streak state.
 - Strategic hints with assisted-record protection.
 - Optional sound and themes.

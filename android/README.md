@@ -56,16 +56,18 @@ an emulator or connected Android device.
 - Mode Select, Records, Settings, and Results construction is split into
   package-private builders while `MainActivity` owns navigation, persistence,
   settings application, and record-result text
-- Saved-game metadata includes updated time, puzzle size, move count, elapsed
-  time, and active/solved state; Home now surfaces this metadata next to
-  Continue
+- Independent 3x3, 4x4, and 5x5 save slots include updated time, puzzle size,
+  difficulty, move count, elapsed time, and active/solved state; Home opens a
+  compact chooser when more than one slot exists
+- Legacy single-save data migrates once into its matching size slot without
+  replacing a newer slot
 - Release versioning is shared through the repository-root `version.properties`
   file
 - Signed release APK/AAB builds are available through `build-release.bat`
 - Rotation restore for the active game screen
 - Settings for persistent English, Traditional Chinese, and Japanese language selection,
-  haptic feedback, reduced board/screen motion, reset saved game, and reset
-  records
+  haptic feedback, reduced board/screen motion, reset all saved games, and
+  reset records
 - Per-size best record tracking
 - Results screen with a completion-mark settle, Replay Puzzle, New Size, Home, and
   solver-assisted wording; Reduced motion skips the settle animation
@@ -145,16 +147,17 @@ This runs `verify.bat` and `verify-release.bat`. CI release artifacts are
 verification outputs and use the temporary signing key unless real Play upload
 signing is explicitly configured.
 
-Latest 2026-08-20 validation status: all 52 Android tests passed in five isolated
+Latest 2026-08-20 validation status: all 58 Android tests passed in five isolated
 instrumentation batches on both the Pixel_7 AVD running Android 15 at 1080x2400
 and the `small_phone` AVD running Android 16 / API 36.1 at 720x1280. The suite covers the
 normal animated transition path, the Reduced motion bypass, English-default
 locale isolation, persistent English, Traditional Chinese, and Japanese switching,
 explicit Traditional Chinese and Japanese major-screen/dialog/result flows,
-difficulty selection and persistence, scoped best records, and active-play
-timer pausing across game menus, nested dialogs, Assist, Settings, and
-background/resume. Exact-puzzle replay is checked before and after Results
-rotation, including board identity and zeroed run state.
+difficulty selection and persistence, independent per-size saves, legacy-save
+migration, scoped best records, and active-play timer pausing across game menus,
+nested dialogs, Assist, Settings, and background/resume. Exact-puzzle replay is
+checked before and after Results rotation, including board identity and zeroed
+run state.
 CLI-captured manual review covered English onboarding, Traditional Chinese
 Home/Settings/Mode Select/Game, and Japanese Home/Settings/Mode Select/How to
 Play/Game on the compact AVD. The compact controls remained single-line after
@@ -167,6 +170,10 @@ The Stage 2 small-phone manual pass confirmed that all three difficulty choices
 are visible and tappable and that `4x4 · Challenge` stays on one line beside
 Home and Menu. The Stage 3 final APK SHA-256 is
 `5722E65AF47727B2E270E564057D0340D3C376AAB2E7A27888929173A407BEB9`.
+The Stage 4 small-phone manual pass confirmed the two-save Home summary and
+chooser fit at 720x1280 and display size, difficulty, state, moves, and time.
+The Stage 4 final APK SHA-256 is
+`56C5B37A1C6E17F9E3EF57B3985E53627FF1D7EE528467D18CC4694CC4587518`.
 
 For Android build and lint only:
 

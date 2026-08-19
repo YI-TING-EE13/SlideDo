@@ -5,6 +5,9 @@
     <string name="home_summary">タイルを順番に並べ、空きマスを右下に置きましょう。</string>
     <string name="home_continue">続きから</string>
     <string name="home_continue_summary">%1$s：%2$dx%3$d · %4$s、%5$s、%6$d秒、%7$s</string>
+    <string name="home_multiple_saves_summary">セーブデータが%1$d件あります。続けるサイズを選んでください。</string>
+    <string name="home_save_picker_title">セーブデータを選択</string>
+    <string name="home_save_choice_format">%1$dx%2$d · %3$s\n%4$s · %5$s · %6$d秒</string>
     <string name="home_continue_active">プレイ中のセーブ</string>
     <string name="home_continue_solved">クリア済みのセーブ</string>
     <string name="home_continue_saved">セーブデータ</string>
@@ -102,7 +105,7 @@
     <string name="settings_haptic_body">タイル移動や主な操作で短く振動します。</string>
     <string name="settings_reduced_motion_title">動きを減らす</string>
     <string name="settings_reduced_motion_body">タイル移動と画面切り替えの動きを省略します。</string>
-    <string name="settings_reset_save">セーブデータをリセット</string>
+    <string name="settings_reset_save">すべてのセーブをリセット</string>
     <string name="settings_reset_records">記録をリセット</string>
     <string name="results_title">結果</string>
     <string name="results_player_subtitle">パズルをクリアしました。</string>
@@ -157,7 +160,7 @@
     <string name="toast_game_saved">ゲームを保存しました。</string>
     <string name="toast_game_loaded">ゲームを読み込みました。</string>
     <string name="toast_no_save">セーブデータが見つかりません。</string>
-    <string name="toast_save_reset">セーブデータをリセットしました。</string>
+    <string name="toast_save_reset">すべてのセーブデータをリセットしました。</string>
     <string name="toast_records_reset">記録をリセットしました。</string>
     <string name="dialog_close">閉じる</string>
     <string name="dialog_continue">続ける</string>
@@ -165,8 +168,8 @@
     <string name="dialog_cancel">キャンセル</string>
     <string name="dialog_language_title">言語を選択</string>
     <string name="dialog_reset">リセット</string>
-    <string name="dialog_reset_save_title">セーブデータをリセットしますか？</string>
-    <string name="dialog_reset_save_message">ローカルのセーブデータを消去します。現在のゲームは、画面を離れるまで続けられます。</string>
+    <string name="dialog_reset_save_title">すべてのセーブをリセットしますか？</string>
+    <string name="dialog_reset_save_message">ローカルの3x3、4x4、5x5セーブを消去します。記録と設定は残ります。現在のゲームは、画面を離れるまで続けられます。</string>
     <string name="dialog_reset_records_title">記録をリセットしますか？</string>
     <string name="dialog_reset_records_message">すべてのサイズと難易度のローカル最高記録を消去します。</string>
     <string name="dialog_solver_warning_title">警告</string>

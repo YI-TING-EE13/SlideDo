@@ -32,6 +32,8 @@ import androidx.test.uiautomator.UiScrollable;
 import androidx.test.uiautomator.UiSelector;
 import androidx.test.uiautomator.Until;
 
+import com.klotski.core.SaveManager;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -320,6 +322,53 @@ public class MainActivityFlowTest {
     }
 
     @Test
+    public void multipleSizeSavesOfferTheCorrectContinueChoice() throws Exception {
+        writeIndependentSizeSlots();
+        launchApp();
+
+        waitForId("home_root");
+        waitForText("2 saved games. Choose a size to continue.");
+        clickId(R.id.home_continue_button);
+        waitForText("Choose saved game");
+        waitForTextContaining("3x3 · Classic");
+        waitForTextContaining("4x4 · Challenge").click();
+        waitForId("game_root");
+        waitForText("4x4 · Challenge");
+        waitForStatusContaining("4 moves");
+
+        clickId(R.id.game_home_button);
+        waitForId("home_root");
+        clickId(R.id.home_continue_button);
+        waitForText("Choose saved game");
+        waitForTextContaining("3x3 · Classic").click();
+        waitForId("game_root");
+        waitForText("3x3 · Classic");
+        waitForStatusContaining("3 moves");
+    }
+
+    @Test
+    public void multipleSaveChooserIsLocalizedInChineseAndJapanese() throws Exception {
+        writeIndependentSizeSlots();
+        setLanguage(AndroidAppLocale.TRADITIONAL_CHINESE_LANGUAGE_TAG);
+        launchApp();
+
+        waitForText("共有 2 個存檔。請選擇要繼續的尺寸。");
+        clickId(R.id.home_continue_button);
+        waitForText("選擇遊戲存檔");
+        waitForTextContaining("3x3 · 經典");
+        waitForTextContaining("4x4 · 挑戰");
+        device.pressBack();
+
+        setLanguage(AndroidAppLocale.JAPANESE_LANGUAGE_TAG);
+        relaunchApp();
+        waitForText("セーブデータが2件あります。続けるサイズを選んでください。");
+        clickId(R.id.home_continue_button);
+        waitForText("セーブデータを選択");
+        waitForTextContaining("3x3 · クラシック");
+        waitForTextContaining("4x4 · チャレンジ");
+    }
+
+    @Test
     public void homeShowsContinueMetadataForCurrentSaveFormat() throws Exception {
         writeSavedGameWithMetadata(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 7, 123_000, true, false);
         launchApp();
@@ -532,7 +581,7 @@ public class MainActivityFlowTest {
         waitForId("settings_root");
         waitForText("應用程式語言：繁體中文");
         clickId(R.id.settings_reset_save_button);
-        waitForText("要重設遊戲存檔嗎？");
+        waitForText("要重設所有遊戲存檔嗎？");
         waitForText("取消").click();
         clickId(R.id.settings_reset_records_button);
         waitForText("要重設紀錄嗎？");
@@ -640,7 +689,7 @@ public class MainActivityFlowTest {
         waitForId("settings_root");
         waitForText("アプリの言語：日本語");
         clickId(R.id.settings_reset_save_button);
-        waitForText("セーブデータをリセットしますか？");
+        waitForText("すべてのセーブをリセットしますか？");
         waitForText("キャンセル").click();
         clickId(R.id.settings_reset_records_button);
         waitForText("記録をリセットしますか？");
@@ -681,15 +730,15 @@ public class MainActivityFlowTest {
     }
 
     @Test
-    public void settingsCanResetSavedGame() throws Exception {
-        writeSavedGame(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 0);
+    public void settingsCanResetAllSavedGames() throws Exception {
+        writeIndependentSizeSlots();
         launchApp();
         assertNotNull(findById("home_continue_button"));
 
         clickId(R.id.home_settings_button);
         waitForId("settings_root");
         clickId(R.id.settings_reset_save_button);
-        waitForText("Reset saved game?");
+        waitForText("Reset all saved games?");
         waitForText("RESET").click();
         device.waitForIdle();
         instrumentation.waitForIdleSync();
@@ -699,6 +748,7 @@ public class MainActivityFlowTest {
         waitForId("home_root");
         assertNull(findById("home_continue_button"));
         assertNull(findById("home_continue_summary_text"));
+        assertEquals(0, new AndroidGameStore(targetContext).getAllSaveMetadata().length);
     }
 
     @Test
@@ -774,8 +824,7 @@ public class MainActivityFlowTest {
         waitForText("Save").click();
         device.waitForIdle();
 
-        long savedElapsed = targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .getLong("elapsed", -1L);
+        long savedElapsed = savedElapsedForSize(3);
         assertTrue("Menu time should not be added to elapsed play time: " + savedElapsed,
                 savedElapsed >= 5_000L && savedElapsed < 6_500L);
     }
@@ -794,8 +843,7 @@ public class MainActivityFlowTest {
         device.pressHome();
         device.waitForIdle();
 
-        long savedElapsed = targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .getLong("elapsed", -1L);
+        long savedElapsed = savedElapsedForSize(3);
         assertTrue("Nested reminder time should not be added to elapsed play time: " + savedElapsed,
                 savedElapsed >= 5_000L && savedElapsed < 6_500L);
     }
@@ -845,8 +893,7 @@ public class MainActivityFlowTest {
         device.pressHome();
         device.waitForIdle();
 
-        long savedElapsed = targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .getLong("elapsed", -1L);
+        long savedElapsed = savedElapsedForSize(3);
         assertTrue("Assist-menu time should not be added to elapsed play time: " + savedElapsed,
                 savedElapsed >= 5_000L && savedElapsed < 6_500L);
     }
@@ -860,8 +907,7 @@ public class MainActivityFlowTest {
 
         device.pressHome();
         device.waitForIdle();
-        long elapsedBeforeAway = targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .getLong("elapsed", -1L);
+        long elapsedBeforeAway = savedElapsedForSize(3);
         SystemClock.sleep(5_000L);
         device.executeShellCommand("am start -n " + PACKAGE_NAME + "/.MainActivity");
         waitForForegroundApp();
@@ -869,8 +915,7 @@ public class MainActivityFlowTest {
         device.pressHome();
         device.waitForIdle();
 
-        long savedElapsed = targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .getLong("elapsed", -1L);
+        long savedElapsed = savedElapsedForSize(3);
         long foregroundIncrease = savedElapsed - elapsedBeforeAway;
         assertTrue("Background time should not be added after resume; foreground increase was "
                         + foregroundIncrease + "ms",
@@ -887,8 +932,7 @@ public class MainActivityFlowTest {
         clickId(R.id.game_menu_button);
         waitForText("Save").click();
         device.waitForIdle();
-        long elapsedBeforeSettings = targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .getLong("elapsed", -1L);
+        long elapsedBeforeSettings = savedElapsedForSize(3);
         clickId(R.id.game_menu_button);
         scrollToText("Settings").click();
         waitForId("settings_root");
@@ -896,8 +940,7 @@ public class MainActivityFlowTest {
         device.pressHome();
         device.waitForIdle();
 
-        long savedElapsed = targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .getLong("elapsed", -1L);
+        long savedElapsed = savedElapsedForSize(3);
         assertTrue("Settings time should not be added to elapsed play time: " + savedElapsed,
                 savedElapsed >= elapsedBeforeSettings && savedElapsed - elapsedBeforeSettings < 1_200L);
     }
@@ -1131,6 +1174,12 @@ public class MainActivityFlowTest {
         device.waitForIdle();
     }
 
+    private long savedElapsedForSize(int size) {
+        SaveManager.SaveData data = new AndroidGameStore(targetContext).loadSavedGame(size);
+        assertNotNull("Missing saved game for size: " + size, data);
+        return data.elapsedTime;
+    }
+
     private void writeSavedGame(String grid, String initialGrid, int moves) {
         SharedPreferences.Editor editor = targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit();
         editor.clear();
@@ -1159,6 +1208,31 @@ public class MainActivityFlowTest {
         editor.putInt("last_size", 3);
         editor.putBoolean("onboarding_seen", true);
         assertTrue(editor.commit());
+    }
+
+    private void writeIndependentSizeSlots() {
+        SharedPreferences.Editor editor = targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit();
+        editor.clear();
+        writeSlot(editor, 3, "1,2,3,4,5,0,7,8,6", 3, 3_000L, "classic");
+        writeSlot(editor, 4, "1,2,3,4,5,6,7,8,9,10,11,12,13,14,0,15",
+                4, 4_000L, "challenge");
+        editor.putInt("last_size", 4);
+        editor.putBoolean("onboarding_seen", true);
+        assertTrue(editor.commit());
+    }
+
+    private void writeSlot(SharedPreferences.Editor editor, int size, String grid,
+            int moves, long elapsedMs, String difficulty) {
+        String prefix = "save_" + size + "_";
+        editor.putInt(prefix + "size", size);
+        editor.putString(prefix + "grid", grid);
+        editor.putString(prefix + "initial_grid", grid);
+        editor.putInt(prefix + "moves", moves);
+        editor.putLong(prefix + "elapsed", elapsedMs);
+        editor.putLong(prefix + "updated_at", System.currentTimeMillis());
+        editor.putBoolean(prefix + "active", true);
+        editor.putBoolean(prefix + "solved", false);
+        editor.putString(prefix + "difficulty", difficulty);
     }
 
     private void markOnboardingSeen() {

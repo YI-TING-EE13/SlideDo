@@ -7,13 +7,18 @@ import com.klotski.core.GameModel;
 import com.klotski.core.PuzzleDifficulty;
 import com.klotski.core.SaveManager;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * SharedPreferences-backed Android state store for app-level data.
  * <p>
- * This class owns the Android persistence schema for saves, records, settings,
- * onboarding, and the last selected puzzle size. Puzzle rules and validation
- * still belong to {@link GameModel}; persisted game data is loaded back into
- * the shared model before any gameplay behavior runs.
+ * This class owns the Android persistence schema for independent per-size
+ * saves, records, settings, onboarding, and the last selected puzzle size. A
+ * legacy single-save payload is migrated into its matching size slot without
+ * overwriting a newer slot. Puzzle rules and validation still belong to
+ * {@link GameModel}; persisted game data is loaded back into the shared model
+ * before any gameplay behavior runs.
  * </p>
  */
 final class AndroidGameStore {
@@ -28,6 +33,7 @@ final class AndroidGameStore {
     private static final String KEY_ACTIVE = "active";
     private static final String KEY_SOLVED = "solved";
     private static final String KEY_DIFFICULTY = "difficulty";
+    private static final String KEY_SAVE_PREFIX = "save_";
     private static final String KEY_LAST_SIZE = "last_size";
     private static final String KEY_LAST_DIFFICULTY = "last_difficulty";
     private static final String KEY_BEST_PREFIX = "best_";
@@ -100,51 +106,40 @@ final class AndroidGameStore {
     }
 
     void saveGame(GameModel model, long elapsedMs) {
-        prefs.edit()
-                .putInt(KEY_SIZE, model.getSize())
-                .putString(KEY_GRID, flatten(model.getGridCopy()))
-                .putString(KEY_INITIAL_GRID, flatten(model.getInitialGridCopy()))
-                .putInt(KEY_MOVES, model.getMoveCount())
-                .putInt(KEY_LAST_SIZE, model.getSize())
-                .putLong(KEY_ELAPSED, Math.max(0, elapsedMs))
-                .putLong(KEY_UPDATED_AT, System.currentTimeMillis())
-                .putBoolean(KEY_ACTIVE, model.isGameRunning())
-                .putBoolean(KEY_SOLVED, model.isSolved())
-                .putString(KEY_DIFFICULTY, model.getDifficulty().getId())
-                .apply();
+        if (model == null || !isSupportedSize(model.getSize())) {
+            return;
+        }
+        String prefix = savePrefix(model.getSize());
+        SharedPreferences.Editor editor = prefs.edit();
+        putSave(editor, prefix, model.getSize(), model.getGridCopy(), model.getInitialGridCopy(),
+                model.getMoveCount(), Math.max(0, elapsedMs), System.currentTimeMillis(),
+                model.isGameRunning(), model.isSolved(), model.getDifficulty());
+        editor.putInt(KEY_LAST_SIZE, model.getSize()).apply();
     }
 
     SaveManager.SaveData loadSavedGame() {
-        if (!prefs.contains(KEY_GRID)) {
-            return null;
+        migrateLegacySaveIfNeeded();
+        int preferredSize = getLastSize(4);
+        SaveManager.SaveData preferred = readSavedGame(savePrefix(preferredSize), preferredSize);
+        if (preferred != null) {
+            return preferred;
         }
 
-        int size = prefs.getInt(KEY_SIZE, 4);
+        SaveMetadata latest = null;
+        for (SaveMetadata metadata : getAllSaveMetadata()) {
+            if (latest == null || metadata.updatedAt > latest.updatedAt) {
+                latest = metadata;
+            }
+        }
+        return latest == null ? null : readSavedGame(savePrefix(latest.size), latest.size);
+    }
+
+    SaveManager.SaveData loadSavedGame(int size) {
         if (!isSupportedSize(size)) {
             return null;
         }
-        int[][] grid = parseGrid(prefs.getString(KEY_GRID, ""), size);
-        if (grid == null) {
-            return null;
-        }
-        int[][] initialGrid = parseGrid(prefs.getString(KEY_INITIAL_GRID, ""), size);
-        if (initialGrid == null) {
-            // Older Android saves did not always persist the restart grid.
-            initialGrid = copyGrid(grid);
-        }
-
-        SaveManager.SaveData data = new SaveManager.SaveData();
-        data.size = size;
-        data.grid = grid;
-        data.initialGrid = initialGrid;
-        data.moveCount = prefs.getInt(KEY_MOVES, 0);
-        data.elapsedTime = prefs.getLong(KEY_ELAPSED, 0);
-        data.updatedAt = prefs.getLong(KEY_UPDATED_AT, 0);
-        data.solved = prefs.getBoolean(KEY_SOLVED, false);
-        data.active = prefs.getBoolean(KEY_ACTIVE, false);
-        data.difficulty = PuzzleDifficulty.fromId(prefs.getString(KEY_DIFFICULTY, null));
-        normalizeStateMetadata(data);
-        return data;
+        migrateLegacySaveIfNeeded();
+        return readSavedGame(savePrefix(size), size);
     }
 
     SaveMetadata getSaveMetadata() {
@@ -156,22 +151,43 @@ final class AndroidGameStore {
                 data.elapsedTime, data.active, data.solved, data.difficulty);
     }
 
+    SaveMetadata getSaveMetadata(int size) {
+        SaveManager.SaveData data = loadSavedGame(size);
+        if (data == null) {
+            return null;
+        }
+        return new SaveMetadata(data.updatedAt, data.size, data.moveCount,
+                data.elapsedTime, data.active, data.solved, data.difficulty);
+    }
+
+    SaveMetadata[] getAllSaveMetadata() {
+        migrateLegacySaveIfNeeded();
+        List<SaveMetadata> saves = new ArrayList<>();
+        for (int size = 3; size <= 5; size++) {
+            SaveManager.SaveData data = readSavedGame(savePrefix(size), size);
+            if (data != null) {
+                saves.add(new SaveMetadata(data.updatedAt, data.size, data.moveCount,
+                        data.elapsedTime, data.active, data.solved, data.difficulty));
+            }
+        }
+        return saves.toArray(new SaveMetadata[0]);
+    }
+
     boolean hasSavedGame() {
-        return loadSavedGame() != null;
+        return getAllSaveMetadata().length > 0;
+    }
+
+    boolean hasSavedGame(int size) {
+        return loadSavedGame(size) != null;
     }
 
     void clearSavedGame() {
-        prefs.edit()
-                .remove(KEY_SIZE)
-                .remove(KEY_GRID)
-                .remove(KEY_INITIAL_GRID)
-                .remove(KEY_MOVES)
-                .remove(KEY_ELAPSED)
-                .remove(KEY_UPDATED_AT)
-                .remove(KEY_ACTIVE)
-                .remove(KEY_SOLVED)
-                .remove(KEY_DIFFICULTY)
-                .commit();
+        SharedPreferences.Editor editor = prefs.edit();
+        removeSave(editor, "");
+        for (int size = 3; size <= 5; size++) {
+            removeSave(editor, savePrefix(size));
+        }
+        editor.commit();
     }
 
     Best getBest(int size) {
@@ -232,6 +248,96 @@ final class AndroidGameStore {
 
     private static boolean isSupportedSize(int size) {
         return size >= 3 && size <= 5;
+    }
+
+    private static String savePrefix(int size) {
+        return KEY_SAVE_PREFIX + size + "_";
+    }
+
+    private SaveManager.SaveData readSavedGame(String prefix, int expectedSize) {
+        if (!prefs.contains(prefix + KEY_GRID)) {
+            return null;
+        }
+
+        int fallbackSize = isSupportedSize(expectedSize) ? expectedSize : 4;
+        int size = prefs.getInt(prefix + KEY_SIZE, fallbackSize);
+        if (!isSupportedSize(size)
+                || (isSupportedSize(expectedSize) && size != expectedSize)) {
+            return null;
+        }
+        int[][] grid = parseGrid(prefs.getString(prefix + KEY_GRID, ""), size);
+        if (grid == null) {
+            return null;
+        }
+        int[][] initialGrid = parseGrid(prefs.getString(prefix + KEY_INITIAL_GRID, ""), size);
+        if (initialGrid == null) {
+            initialGrid = copyGrid(grid);
+        }
+
+        SaveManager.SaveData data = new SaveManager.SaveData();
+        data.size = size;
+        data.grid = grid;
+        data.initialGrid = initialGrid;
+        data.moveCount = prefs.getInt(prefix + KEY_MOVES, 0);
+        data.elapsedTime = prefs.getLong(prefix + KEY_ELAPSED, 0);
+        data.updatedAt = prefs.getLong(prefix + KEY_UPDATED_AT, 0);
+        data.solved = prefs.getBoolean(prefix + KEY_SOLVED, false);
+        data.active = prefs.getBoolean(prefix + KEY_ACTIVE, false);
+        data.difficulty = PuzzleDifficulty.fromId(prefs.getString(prefix + KEY_DIFFICULTY, null));
+        try {
+            normalizeStateMetadata(data);
+        } catch (RuntimeException exception) {
+            return null;
+        }
+        return data;
+    }
+
+    private void migrateLegacySaveIfNeeded() {
+        if (!prefs.contains(KEY_GRID)) {
+            return;
+        }
+
+        SaveManager.SaveData legacy = readSavedGame("", 0);
+        if (legacy == null) {
+            return;
+        }
+        String targetPrefix = savePrefix(legacy.size);
+        SaveManager.SaveData current = readSavedGame(targetPrefix, legacy.size);
+        SharedPreferences.Editor editor = prefs.edit();
+        if (current == null || legacy.updatedAt >= current.updatedAt) {
+            putSave(editor, targetPrefix, legacy.size, legacy.grid, legacy.initialGrid,
+                    legacy.moveCount, legacy.elapsedTime, legacy.updatedAt,
+                    legacy.active, legacy.solved, legacy.difficulty);
+        }
+        removeSave(editor, "");
+        editor.commit();
+    }
+
+    private static void putSave(SharedPreferences.Editor editor, String prefix, int size,
+            int[][] grid, int[][] initialGrid, int moves, long elapsedMs, long updatedAt,
+            boolean active, boolean solved, PuzzleDifficulty difficulty) {
+        PuzzleDifficulty selected = difficulty == null ? PuzzleDifficulty.CLASSIC : difficulty;
+        editor.putInt(prefix + KEY_SIZE, size)
+                .putString(prefix + KEY_GRID, flatten(grid))
+                .putString(prefix + KEY_INITIAL_GRID, flatten(initialGrid))
+                .putInt(prefix + KEY_MOVES, moves)
+                .putLong(prefix + KEY_ELAPSED, Math.max(0, elapsedMs))
+                .putLong(prefix + KEY_UPDATED_AT, updatedAt)
+                .putBoolean(prefix + KEY_ACTIVE, active)
+                .putBoolean(prefix + KEY_SOLVED, solved)
+                .putString(prefix + KEY_DIFFICULTY, selected.getId());
+    }
+
+    private static void removeSave(SharedPreferences.Editor editor, String prefix) {
+        editor.remove(prefix + KEY_SIZE)
+                .remove(prefix + KEY_GRID)
+                .remove(prefix + KEY_INITIAL_GRID)
+                .remove(prefix + KEY_MOVES)
+                .remove(prefix + KEY_ELAPSED)
+                .remove(prefix + KEY_UPDATED_AT)
+                .remove(prefix + KEY_ACTIVE)
+                .remove(prefix + KEY_SOLVED)
+                .remove(prefix + KEY_DIFFICULTY);
     }
 
     private static String difficultyBestPrefix(int size, PuzzleDifficulty difficulty) {

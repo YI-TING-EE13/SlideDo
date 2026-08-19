@@ -358,14 +358,14 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
 - Connected Android instrumentation helpers now wait for the foreground app
   window and fall back to direct swipe scrolling for long help content, reducing
   false failures on slow emulator runs.
-- The latest 2026-08-20 dual-AVD Android acceptance passed all 52 tests in five
+- The latest 2026-08-20 dual-AVD Android acceptance passed all 58 tests in five
   isolated batches on both the Pixel_7 AVD (Android 15, 1080x2400) and the
   `small_phone` AVD (Android 16 / API 36.1, 720x1280), with no failures or skips. The suite
   includes English-default isolation from device locale, persistent language
   switching, active-game preservation, and explicit Traditional Chinese and
-  Japanese major-screen, difficulty-selection, save/record scoping,
-  solver-warning, exact-puzzle replay across Results rotation, Records, and
-  active-play timer-pause flows.
+  Japanese major-screen, difficulty-selection, independent per-size saves,
+  legacy-save migration, save/record scoping, solver-warning, exact-puzzle
+  replay across Results rotation, Records, and active-play timer-pause flows.
 - Latest local `ci.bat` run passed the no-device verification and release
   readiness gates.
 - Android emulator smoke testing for install/launch, Home visibility, whole-line movement, undo, restart, save/load, solver warning dialog, rotation, and background resume.
@@ -502,9 +502,9 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
 - The active Personal Play roadmap proceeds through eight independently tested
   and committed stages: active-play timer pausing, difficulty selection,
   replaying the same puzzle, per-size saves, local history/statistics, an
-  offline daily challenge, strategic hints, and sound/themes. Stages 1 through 3
-  are complete; independent save slots for each board size are next. `DEVELOPMENT.md` owns
-  the detailed acceptance criteria and status.
+  offline daily challenge, strategic hints, and sound/themes. Stages 1 through 4
+  are complete; bounded local history and personal statistics are next.
+  `DEVELOPMENT.md` owns the detailed acceptance criteria and status.
 - Desktop/mobile player-facing parity MVP is complete for Home/start, Records, Preferences, Results, How to Play, Practice Tutorial, and Assist hints.
 - Save files now include release-readiness metadata and desktop saves now live in the user-data directory.
 - Signed Android release APK/AAB and desktop ZIP/app-image packaging scripts are available.
