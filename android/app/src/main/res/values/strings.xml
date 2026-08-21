@@ -86,10 +86,21 @@
     <string name="how_records_title">Records</string>
     <string name="how_records_body">Best records compare fewer moves first, then lower time. Solver-assisted wins are shown, but they do not overwrite player records.</string>
     <string name="records_title">Records</string>
-    <string name="records_subtitle">Best local results are tracked separately for each size and difficulty.</string>
-    <string name="records_explanation">Player solves only. Fewer moves rank first; ties use faster time. Assist and solver completions are shown on Results but never replace these records.</string>
+    <string name="records_subtitle">Your personal totals, bests, and recent completions stay on this device.</string>
+    <string name="records_explanation">Player solves only. Fewer moves rank first; ties use faster time. Every completion appears in totals and recent history. Solver-assisted completions are labeled but never replace these records.</string>
     <string name="records_row_title">%1$dx%2$d %3$s</string>
     <string name="records_empty">No record yet</string>
+    <string name="records_totals_title">PERSONAL TOTALS</string>
+    <string name="records_player_average">Player avg: %1$s · %2$ds</string>
+    <string name="records_player_average_empty">Player avg: —</string>
+    <string name="records_recent_title">RECENT COMPLETIONS</string>
+    <string name="records_recent_empty">No completed puzzles yet</string>
+    <string name="records_breakdown_title">BY SIZE &amp; DIFFICULTY</string>
+    <string name="records_scope_stats">%1$s · %2$s</string>
+    <string name="records_history_title">%1$s · %2$dx%3$d · %4$s</string>
+    <string name="records_history_player">Player</string>
+    <string name="records_history_assisted">Assisted</string>
+    <string name="records_history_metrics">%1$s · %2$s · %3$ds</string>
     <string name="settings_title">Settings</string>
     <string name="settings_subtitle">Tune feedback and manage local game data.</string>
     <string name="settings_section_language">LANGUAGE</string>
@@ -170,7 +181,7 @@
     <string name="dialog_reset_save_title">Reset all saved games?</string>
     <string name="dialog_reset_save_message">This clears the local 3x3, 4x4, and 5x5 saves. Records and settings stay. Current play can continue until you leave the game.</string>
     <string name="dialog_reset_records_title">Reset records?</string>
-    <string name="dialog_reset_records_message">This clears local best records for every size and difficulty.</string>
+    <string name="dialog_reset_records_message">This clears local bests, lifetime statistics, and recent completion history for every size and difficulty.</string>
     <string name="dialog_solver_warning_title">Warning</string>
     <string name="dialog_solver_warning_bfs">BFS on 4x4 or larger may be slow or run out of memory. Continue?</string>
     <string name="dialog_solver_warning_astar">A* on 5x5 can be very slow or memory-heavy. Continue?</string>
@@ -190,6 +201,14 @@
     <plurals name="moves_count">
         <item quantity="one">%d move</item>
         <item quantity="other">%d moves</item>
+    </plurals>
+    <plurals name="records_player_solves">
+        <item quantity="one">%d player solve</item>
+        <item quantity="other">%d player solves</item>
+    </plurals>
+    <plurals name="records_assisted_solves">
+        <item quantity="one">%d assisted solve</item>
+        <item quantity="other">%d assisted solves</item>
     </plurals>
     <plurals name="board_accessibility_highlight_count">
         <item quantity="one">%d highlighted tile can slide into the empty cell.</item>

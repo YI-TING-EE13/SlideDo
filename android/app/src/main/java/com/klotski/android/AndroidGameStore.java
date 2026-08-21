@@ -14,8 +14,9 @@ import java.util.List;
  * SharedPreferences-backed Android state store for app-level data.
  * <p>
  * This class owns the Android persistence schema for independent per-size
- * saves, records, settings, onboarding, and the last selected puzzle size. A
- * legacy single-save payload is migrated into its matching size slot without
+ * saves, records, completion history, personal statistics, settings,
+ * onboarding, and the last selected puzzle size and difficulty. A legacy
+ * single-save payload is migrated into its matching size slot without
  * overwriting a newer slot. Puzzle rules and validation still belong to
  * {@link GameModel}; persisted game data is loaded back into the shared model
  * before any gameplay behavior runs.
@@ -37,6 +38,13 @@ final class AndroidGameStore {
     private static final String KEY_LAST_SIZE = "last_size";
     private static final String KEY_LAST_DIFFICULTY = "last_difficulty";
     private static final String KEY_BEST_PREFIX = "best_";
+    private static final String KEY_STATS_PREFIX = "stats_";
+    private static final String KEY_COMPLETION_HISTORY = "completion_history_v1";
+    private static final String KEY_PLAYER_COMPLETIONS = "player_completions";
+    private static final String KEY_ASSISTED_COMPLETIONS = "assisted_completions";
+    private static final String KEY_PLAYER_MOVES = "player_moves";
+    private static final String KEY_PLAYER_TIME = "player_time";
+    private static final int MAX_COMPLETION_HISTORY = 50;
     private static final String KEY_ONBOARDING_SEEN = "onboarding_seen";
     private static final String KEY_HAPTIC_ENABLED = "haptic_enabled";
     private static final String KEY_REDUCED_MOTION = "reduced_motion";
@@ -227,8 +235,86 @@ final class AndroidGameStore {
         return true;
     }
 
+    void recordCompletion(int size, PuzzleDifficulty difficulty, int moves, long timeMs,
+            boolean assisted) {
+        recordCompletion(size, difficulty, moves, timeMs, assisted, System.currentTimeMillis());
+    }
+
+    void recordCompletion(int size, PuzzleDifficulty difficulty, int moves, long timeMs,
+            boolean assisted, long completedAt) {
+        if (!isSupportedSize(size) || moves < 0 || timeMs < 0 || completedAt < 0) {
+            return;
+        }
+        PuzzleDifficulty selected = difficulty == null ? PuzzleDifficulty.CLASSIC : difficulty;
+        CompletionRecord completion = new CompletionRecord(
+                completedAt, size, selected, moves, timeMs, assisted);
+        CompletionRecord[] currentHistory = getCompletionHistory();
+        StringBuilder encodedHistory = new StringBuilder(encodeCompletion(completion));
+        int retained = Math.min(currentHistory.length, MAX_COMPLETION_HISTORY - 1);
+        for (int index = 0; index < retained; index++) {
+            encodedHistory.append('\n').append(encodeCompletion(currentHistory[index]));
+        }
+
+        String statsPrefix = completionStatsPrefix(size, selected);
+        SharedPreferences.Editor editor = prefs.edit()
+                .putString(KEY_COMPLETION_HISTORY, encodedHistory.toString());
+        if (assisted) {
+            editor.putInt(statsPrefix + KEY_ASSISTED_COMPLETIONS,
+                    prefs.getInt(statsPrefix + KEY_ASSISTED_COMPLETIONS, 0) + 1);
+        } else {
+            editor.putInt(statsPrefix + KEY_PLAYER_COMPLETIONS,
+                    prefs.getInt(statsPrefix + KEY_PLAYER_COMPLETIONS, 0) + 1)
+                    .putLong(statsPrefix + KEY_PLAYER_MOVES,
+                            prefs.getLong(statsPrefix + KEY_PLAYER_MOVES, 0L) + moves)
+                    .putLong(statsPrefix + KEY_PLAYER_TIME,
+                            prefs.getLong(statsPrefix + KEY_PLAYER_TIME, 0L) + timeMs);
+        }
+        editor.apply();
+    }
+
+    CompletionRecord[] getCompletionHistory() {
+        String encoded = prefs.getString(KEY_COMPLETION_HISTORY, "");
+        if (encoded == null || encoded.isEmpty()) {
+            return new CompletionRecord[0];
+        }
+        List<CompletionRecord> history = new ArrayList<>();
+        for (String line : encoded.split("\\n")) {
+            CompletionRecord record = parseCompletion(line);
+            if (record != null) {
+                history.add(record);
+            }
+            if (history.size() == MAX_COMPLETION_HISTORY) {
+                break;
+            }
+        }
+        return history.toArray(new CompletionRecord[0]);
+    }
+
+    CompletionStats getCompletionStats(int size, PuzzleDifficulty difficulty) {
+        if (!isSupportedSize(size)) {
+            return CompletionStats.EMPTY;
+        }
+        String prefix = completionStatsPrefix(size, difficulty);
+        return new CompletionStats(
+                prefs.getInt(prefix + KEY_PLAYER_COMPLETIONS, 0),
+                prefs.getInt(prefix + KEY_ASSISTED_COMPLETIONS, 0),
+                prefs.getLong(prefix + KEY_PLAYER_MOVES, 0L),
+                prefs.getLong(prefix + KEY_PLAYER_TIME, 0L));
+    }
+
+    CompletionStats getOverallCompletionStats() {
+        CompletionStats total = CompletionStats.EMPTY;
+        for (int size = 3; size <= 5; size++) {
+            for (PuzzleDifficulty difficulty : PuzzleDifficulty.values()) {
+                total = total.plus(getCompletionStats(size, difficulty));
+            }
+        }
+        return total;
+    }
+
     void clearRecords() {
         SharedPreferences.Editor editor = prefs.edit();
+        editor.remove(KEY_COMPLETION_HISTORY);
         for (int size = 3; size <= 5; size++) {
             editor.remove(KEY_BEST_PREFIX + size + "_moves");
             editor.remove(KEY_BEST_PREFIX + size + "_time");
@@ -236,6 +322,11 @@ final class AndroidGameStore {
                 String prefix = difficultyBestPrefix(size, difficulty);
                 editor.remove(prefix + "_moves");
                 editor.remove(prefix + "_time");
+                String statsPrefix = completionStatsPrefix(size, difficulty);
+                editor.remove(statsPrefix + KEY_PLAYER_COMPLETIONS);
+                editor.remove(statsPrefix + KEY_ASSISTED_COMPLETIONS);
+                editor.remove(statsPrefix + KEY_PLAYER_MOVES);
+                editor.remove(statsPrefix + KEY_PLAYER_TIME);
             }
         }
         editor.commit();
@@ -345,6 +436,40 @@ final class AndroidGameStore {
         return KEY_BEST_PREFIX + size + "_" + selected.getId();
     }
 
+    private static String completionStatsPrefix(int size, PuzzleDifficulty difficulty) {
+        PuzzleDifficulty selected = difficulty == null ? PuzzleDifficulty.CLASSIC : difficulty;
+        return KEY_STATS_PREFIX + size + "_" + selected.getId() + "_";
+    }
+
+    private static String encodeCompletion(CompletionRecord record) {
+        return record.completedAt + "," + record.size + "," + record.difficulty.getId()
+                + "," + record.moves + "," + record.timeMs + "," + (record.assisted ? 1 : 0);
+    }
+
+    private static CompletionRecord parseCompletion(String encoded) {
+        if (encoded == null || encoded.isEmpty()) {
+            return null;
+        }
+        String[] fields = encoded.split(",", -1);
+        if (fields.length != 6 || !("0".equals(fields[5]) || "1".equals(fields[5]))) {
+            return null;
+        }
+        try {
+            long completedAt = Long.parseLong(fields[0]);
+            int size = Integer.parseInt(fields[1]);
+            PuzzleDifficulty difficulty = PuzzleDifficulty.fromId(fields[2]);
+            int moves = Integer.parseInt(fields[3]);
+            long timeMs = Long.parseLong(fields[4]);
+            if (completedAt < 0 || !isSupportedSize(size) || moves < 0 || timeMs < 0) {
+                return null;
+            }
+            return new CompletionRecord(completedAt, size, difficulty, moves, timeMs,
+                    "1".equals(fields[5]));
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
     private static String flatten(int[][] grid) {
         StringBuilder sb = new StringBuilder();
         for (int[] row : grid) {
@@ -415,6 +540,56 @@ final class AndroidGameStore {
             this.active = active;
             this.solved = solved;
             this.difficulty = difficulty == null ? PuzzleDifficulty.CLASSIC : difficulty;
+        }
+    }
+
+    /**
+     * Immutable completed-game entry retained in newest-first order.
+     */
+    static final class CompletionRecord {
+        final long completedAt;
+        final int size;
+        final PuzzleDifficulty difficulty;
+        final int moves;
+        final long timeMs;
+        final boolean assisted;
+
+        CompletionRecord(long completedAt, int size, PuzzleDifficulty difficulty,
+                int moves, long timeMs, boolean assisted) {
+            this.completedAt = completedAt;
+            this.size = size;
+            this.difficulty = difficulty == null ? PuzzleDifficulty.CLASSIC : difficulty;
+            this.moves = moves;
+            this.timeMs = timeMs;
+            this.assisted = assisted;
+        }
+    }
+
+    /**
+     * Lifetime completion counters for one scope or an aggregate of scopes.
+     */
+    static final class CompletionStats {
+        private static final CompletionStats EMPTY = new CompletionStats(0, 0, 0L, 0L);
+
+        final int playerCompletions;
+        final int assistedCompletions;
+        final long playerMoves;
+        final long playerTimeMs;
+
+        CompletionStats(int playerCompletions, int assistedCompletions,
+                long playerMoves, long playerTimeMs) {
+            this.playerCompletions = Math.max(0, playerCompletions);
+            this.assistedCompletions = Math.max(0, assistedCompletions);
+            this.playerMoves = Math.max(0L, playerMoves);
+            this.playerTimeMs = Math.max(0L, playerTimeMs);
+        }
+
+        private CompletionStats plus(CompletionStats other) {
+            return new CompletionStats(
+                    playerCompletions + other.playerCompletions,
+                    assistedCompletions + other.assistedCompletions,
+                    playerMoves + other.playerMoves,
+                    playerTimeMs + other.playerTimeMs);
         }
     }
 

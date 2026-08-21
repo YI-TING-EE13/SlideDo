@@ -203,6 +203,78 @@ public class AndroidGameStoreTest {
     }
 
     @Test
+    public void completionHistoryAndLifetimeStatsRemainIndependentByScope() {
+        store.recordCompletion(3, PuzzleDifficulty.CLASSIC, 10, 1_000L, false, 100L);
+        store.recordCompletion(3, PuzzleDifficulty.CLASSIC, 20, 3_000L, false, 200L);
+        store.recordCompletion(3, PuzzleDifficulty.CLASSIC, 50, 5_000L, true, 300L);
+        store.recordCompletion(4, PuzzleDifficulty.CHALLENGE, 40, 8_000L, false, 400L);
+
+        AndroidGameStore.CompletionRecord[] history = store.getCompletionHistory();
+        assertEquals(4, history.length);
+        assertEquals(400L, history[0].completedAt);
+        assertEquals(4, history[0].size);
+        assertEquals(PuzzleDifficulty.CHALLENGE, history[0].difficulty);
+        assertFalse(history[0].assisted);
+        assertEquals(100L, history[3].completedAt);
+
+        AndroidGameStore.CompletionStats classic =
+                store.getCompletionStats(3, PuzzleDifficulty.CLASSIC);
+        assertEquals(2, classic.playerCompletions);
+        assertEquals(1, classic.assistedCompletions);
+        assertEquals(30L, classic.playerMoves);
+        assertEquals(4_000L, classic.playerTimeMs);
+
+        AndroidGameStore.CompletionStats challenge =
+                store.getCompletionStats(4, PuzzleDifficulty.CHALLENGE);
+        assertEquals(1, challenge.playerCompletions);
+        assertEquals(0, challenge.assistedCompletions);
+        assertEquals(40L, challenge.playerMoves);
+        assertEquals(8_000L, challenge.playerTimeMs);
+
+        AndroidGameStore.CompletionStats overall = store.getOverallCompletionStats();
+        assertEquals(3, overall.playerCompletions);
+        assertEquals(1, overall.assistedCompletions);
+        assertEquals(70L, overall.playerMoves);
+        assertEquals(12_000L, overall.playerTimeMs);
+    }
+
+    @Test
+    public void completionHistoryIsBoundedWithoutTruncatingLifetimeStats() {
+        for (int index = 0; index < 55; index++) {
+            store.recordCompletion(5, PuzzleDifficulty.RELAXED,
+                    100 + index, 1_000L + index, false, index);
+        }
+
+        AndroidGameStore.CompletionRecord[] history = store.getCompletionHistory();
+        assertEquals(50, history.length);
+        assertEquals(54L, history[0].completedAt);
+        assertEquals(5L, history[49].completedAt);
+
+        AndroidGameStore.CompletionStats stats =
+                store.getCompletionStats(5, PuzzleDifficulty.RELAXED);
+        assertEquals(55, stats.playerCompletions);
+        assertEquals(0, stats.assistedCompletions);
+    }
+
+    @Test
+    public void clearRecordsRemovesBestsHistoryAndLifetimeStats() {
+        assertTrue(store.recordBestIfBetter(3, PuzzleDifficulty.CLASSIC, 10, 1_000L));
+        store.recordCompletion(3, PuzzleDifficulty.CLASSIC, 10, 1_000L, false, 100L);
+        store.recordCompletion(3, PuzzleDifficulty.CLASSIC, 20, 2_000L, true, 200L);
+
+        store.clearRecords();
+
+        assertNull(store.getBest(3, PuzzleDifficulty.CLASSIC));
+        assertEquals(0, store.getCompletionHistory().length);
+        AndroidGameStore.CompletionStats stats =
+                store.getCompletionStats(3, PuzzleDifficulty.CLASSIC);
+        assertEquals(0, stats.playerCompletions);
+        assertEquals(0, stats.assistedCompletions);
+        assertEquals(0L, stats.playerMoves);
+        assertEquals(0L, stats.playerTimeMs);
+    }
+
+    @Test
     public void difficultyPreferenceAndScopedBestRecordsRemainIndependent() {
         assertEquals(PuzzleDifficulty.CLASSIC, store.getLastDifficulty());
         store.setLastDifficulty(PuzzleDifficulty.CHALLENGE);

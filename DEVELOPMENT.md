@@ -38,13 +38,14 @@ Current handoff status:
 - The latest local verification pass was warning-clean for the previously noisy
   Gradle DSL deprecation, Java native-access warning, and Android Java
   deprecation note.
-- The latest dual-AVD acceptance covered all 58 Android tests on each of
+- The latest dual-AVD acceptance covered all 63 Android tests on each of
   Pixel_7 (Android 15, 1080x2400) and `small_phone` (Android 16 / API 36.1,
-  720x1280), with no failures or skips. Five isolated instrumentation batches
+  720x1280), with no failures or skips. Six isolated instrumentation batches
   avoid cross-device emulator contention while retaining every test. Coverage
   includes exact-puzzle replay before and after Results recreation, difficulty
   selection, independent per-size saves, legacy-save migration, scoped records,
-  and active-play timing.
+  active-play timing, bounded completion history, lifetime statistics, and
+  player/solver-assisted separation.
 
 Start a new implementation session by checking:
 
@@ -63,9 +64,9 @@ verify-connected.bat
 
 The active product program is now the eight-stage Personal Play roadmap in
 `Roadmap And Planning`. It prioritizes offline replay value and personal
-convenience over public distribution. Stages 1 through 4 are implemented and
-verified. Stage 5, bounded local completion history and personal statistics, is
-next.
+convenience over public distribution. Stages 1 through 5 are implemented and
+verified. Stage 6, the deterministic offline daily challenge and local streak
+state, is next.
 
 Real Play upload signing is intentionally deferred until store submission. It
 is not required for a local push-ready commit, and no Git remote or push is part
@@ -125,14 +126,16 @@ Android currently supports:
   movable tiles, and primary game/settings controls.
 - Manual Save/Load plus autosave through the in-game menu.
 - Best records by puzzle size and difficulty, with legacy size-only records
-  treated as Classic.
+  treated as Classic; player and solver-assisted completions also feed separate
+  lifetime totals and a newest-first local history.
 - BFS, A*, and IDA* solver controls behind Assist with expensive-operation warnings.
 - Solver-assisted completion protection so player records are not overwritten.
 - Settings for app language, haptic feedback, reduced motion, reset all saved
   games, and reset records.
 - Android app-state persistence through `AndroidGameStore` for independent
-  3x3, 4x4, and 5x5 saves, difficulty, scoped records, settings, app language,
-  onboarding state, and the last selected puzzle size/difficulty.
+  3x3, 4x4, and 5x5 saves, difficulty, scoped records, bounded completion
+  history, lifetime statistics, settings, app language, onboarding state, and
+  the last selected puzzle size/difficulty.
 - Results screen with a completion-mark settle animation, player-record status,
   solver-assisted completion wording, and a Reduced motion bypass.
 - Haptic feedback.
@@ -497,8 +500,8 @@ Every stage uses the same delivery gate:
 | 2 | Difficulty selection | Add Relaxed, Classic, and Challenge choices backed by reproducible, solvable scramble definitions. | Completed and verified on 2026-08-20. |
 | 3 | Replay the same puzzle | Let Results restart the exact starting board without generating another scramble. | Completed and verified on 2026-08-20. |
 | 4 | Per-size saves | Preserve independent 3x3, 4x4, and 5x5 active games and expose the correct Continue choices. | Completed and verified on 2026-08-20. |
-| 5 | History and personal stats | Store bounded local completion history and show meaningful per-size and per-difficulty summaries. | Next. |
-| 6 | Offline daily challenge | Generate one deterministic local puzzle per date and record completion/streak state without a server. | Planned. |
+| 5 | History and personal stats | Store bounded local completion history and show meaningful per-size and per-difficulty summaries. | Completed and verified on 2026-08-21. |
+| 6 | Offline daily challenge | Generate one deterministic local puzzle per date and record completion/streak state without a server. | Next. |
 | 7 | Strategic hint | Suggest a useful next move, mark the game assisted, and preserve player-record protection. | Planned. |
 | 8 | Sound and themes | Add optional local sound feedback and selectable visual themes with persistent settings and accessibility-safe defaults. | Planned. |
 
@@ -962,6 +965,39 @@ Priority: Low to Medium
 - Run the final desktop accessibility review.
 
 ## Development Log
+
+### 2026-08-21
+
+- Completed Stage 5 local completion history and personal statistics.
+  `AndroidGameStore` retains the newest 50 player or solver-assisted
+  completions while lifetime counters continue independently for all nine
+  size/difficulty scopes. Each record stores completion time, size, difficulty,
+  moves, elapsed milliseconds, and assisted state.
+- Records now shows overall player and assisted totals, player-only averages,
+  the newest 10 completion entries, and per-scope bests, totals, and averages.
+  English, Traditional Chinese, and Japanese resources use locale-aware dates,
+  move plurals, difficulty names, and player/assisted labels.
+- Results records each completion exactly once before evaluating the player
+  best. Solver-assisted completions contribute to history and assisted totals
+  but cannot replace a player best. Reset Records clears bests, history, and
+  lifetime statistics while preserving saves and settings.
+- Added three persistence tests for scope isolation, the 50-entry retention
+  boundary, unbounded lifetime counters, and full record reset. Added connected
+  flows for player/assisted history, localized statistics, record reset, and
+  Results recreation without duplicate history writes.
+- Connected-test review exposed two harness races on the compact AVD. Button
+  clicks now wait for a visible, enabled, focused activity view. Board gestures
+  now use screen coordinates and UIAutomator device clicks instead of injecting
+  `MotionEvent` objects directly into the View. The two-step tutorial passed five
+  consecutive compact-AVD repetitions after the change.
+- Final Stage 5 evidence: all 33 shared tests and `verify.bat` passed. All 63
+  Android tests passed on Pixel_7 and `small_phone` in six isolated batches
+  (19 + 10 + 10 + 8 + 9 + 7), with zero failures or skips. The final installed
+  APK also passed the 18-test Stage 5 subset on both AVDs. Manual 720x1280
+  review reached the totals, recent entries, all nine breakdown panels, and Back
+  without clipping or overlap. Fresh post-launch `AndroidRuntime` and crash
+  buffers were empty on both AVDs, and the final debug APK SHA-256 is
+  `C8D78B4CE1E295D20DA80D366BF2940106D9F1C0B9849918519865F435AB2180`.
 
 ### 2026-08-20
 

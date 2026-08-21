@@ -593,7 +593,28 @@ public class MainActivity extends Activity implements GameObserver {
         gameTitleText = null;
         commandButtons.clear();
 
-        ScreenLayout screen = recordsScreen.build(this::formatBestForCard,
+        ScreenLayout screen = recordsScreen.build(new AndroidRecordsScreen.RecordsDataProvider() {
+            @Override
+            public String getRecordText(int size, PuzzleDifficulty difficulty) {
+                return formatBestForCard(size, difficulty);
+            }
+
+            @Override
+            public AndroidGameStore.CompletionStats getStats(
+                    int size, PuzzleDifficulty difficulty) {
+                return store.getCompletionStats(size, difficulty);
+            }
+
+            @Override
+            public AndroidGameStore.CompletionStats getOverallStats() {
+                return store.getOverallCompletionStats();
+            }
+
+            @Override
+            public AndroidGameStore.CompletionRecord[] getHistory() {
+                return store.getCompletionHistory();
+            }
+        },
                 new AndroidRecordsScreen.RecordsActions() {
                     @Override
                     public void onBack() {
@@ -1631,6 +1652,7 @@ public class MainActivity extends Activity implements GameObserver {
 
         PendingWin win = pendingWin;
         pendingWin = null;
+        store.recordCompletion(win.size, win.difficulty, win.moves, win.timeMs, win.assisted);
         AndroidGameStore.Best previousBest = getBest(win.size, win.difficulty);
         boolean newBest = !win.assisted && AndroidGameStore.isBetterRecord(previousBest, win.moves, win.timeMs);
         if (newBest) {

@@ -51,6 +51,10 @@
     <item name="how_back_button" type="id" />
     <item name="records_root" type="id" />
     <item name="records_explanation_text" type="id" />
+    <item name="records_overall_player_text" type="id" />
+    <item name="records_overall_assisted_text" type="id" />
+    <item name="records_overall_average_text" type="id" />
+    <item name="records_history_empty_text" type="id" />
     <item name="records_back_button" type="id" />
     <item name="settings_root" type="id" />
     <item name="settings_language_button" type="id" />

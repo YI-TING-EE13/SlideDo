@@ -42,7 +42,8 @@ an emulator or connected Android device.
 - Active-play timing pauses for game dialogs, navigation outside Game, and app
   background time, then resumes only when the Game screen is interactive
 - App-state persistence is isolated in `AndroidGameStore` for saves, settings,
-  records, onboarding, app language, and last selected size
+  best records, completion history, personal statistics, onboarding, app
+  language, and last selected size/difficulty
 - Activity state restoration, back-navigation decisions, shared UI primitives,
   and learning-content builders are split out of `MainActivity` for maintainable
   Android iteration
@@ -68,7 +69,9 @@ an emulator or connected Android device.
 - Settings for persistent English, Traditional Chinese, and Japanese language selection,
   haptic feedback, reduced board/screen motion, reset all saved games, and
   reset records
-- Per-size best record tracking
+- Per-size and per-difficulty best records plus local lifetime completion
+  totals, player averages, and newest-first recent history; assisted
+  completions are counted separately and cannot replace player bests
 - Results screen with a completion-mark settle, Replay Puzzle, New Size, Home, and
   solver-assisted wording; Reduced motion skips the settle animation
 - BFS, A*, and IDA* solver controls in advanced Solver Tools with warnings for
@@ -147,7 +150,7 @@ This runs `verify.bat` and `verify-release.bat`. CI release artifacts are
 verification outputs and use the temporary signing key unless real Play upload
 signing is explicitly configured.
 
-Latest 2026-08-20 validation status: all 58 Android tests passed in five isolated
+Latest 2026-08-21 validation status: all 63 Android tests passed in six isolated
 instrumentation batches on both the Pixel_7 AVD running Android 15 at 1080x2400
 and the `small_phone` AVD running Android 16 / API 36.1 at 720x1280. The suite covers the
 normal animated transition path, the Reduced motion bypass, English-default
@@ -157,7 +160,9 @@ difficulty selection and persistence, independent per-size saves, legacy-save
 migration, scoped best records, and active-play timer pausing across game menus,
 nested dialogs, Assist, Settings, and background/resume. Exact-puzzle replay is
 checked before and after Results rotation, including board identity and zeroed
-run state.
+run state. The suite also verifies bounded completion history, lifetime
+statistics, player/assisted separation, localized Records summaries, full
+record reset, and duplicate prevention during Results recreation.
 CLI-captured manual review covered English onboarding, Traditional Chinese
 Home/Settings/Mode Select/Game, and Japanese Home/Settings/Mode Select/How to
 Play/Game on the compact AVD. The compact controls remained single-line after
@@ -174,6 +179,12 @@ The Stage 4 small-phone manual pass confirmed the two-save Home summary and
 chooser fit at 720x1280 and display size, difficulty, state, moves, and time.
 The Stage 4 final APK SHA-256 is
 `56C5B37A1C6E17F9E3EF57B3985E53627FF1D7EE528467D18CC4694CC4587518`.
+The Stage 5 small-phone manual pass reached overall totals, recent completions,
+all nine size/difficulty breakdown panels, and Back without clipping or overlap.
+The newest 50 entries remain in local storage, Records displays the newest 10,
+and lifetime statistics continue beyond the history limit. The Stage 5 final
+APK SHA-256 is
+`C8D78B4CE1E295D20DA80D366BF2940106D9F1C0B9849918519865F435AB2180`.
 
 For Android build and lint only:
 

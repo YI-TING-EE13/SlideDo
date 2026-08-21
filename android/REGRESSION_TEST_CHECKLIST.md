@@ -103,8 +103,16 @@ Run every item in all supported locales.
 - [ ] Reset Saved Games Cancel preserves every size slot; Reset clears all 3x3,
   4x4, and 5x5 slots while preserving records/settings and shows a localized
   confirmation toast.
-- [ ] Reset Records Cancel preserves all records; Reset clears every size/difficulty record and shows a localized toast.
-- [ ] Records shows the correct empty state or stored best for all nine size/difficulty combinations and explains player-only ranking.
+- [ ] Reset Records Cancel preserves all data; Reset clears every
+  size/difficulty best, lifetime statistic, and recent-history entry while
+  preserving saves/settings, then shows a localized toast.
+- [ ] Records shows the correct empty state or stored best for all nine
+  size/difficulty combinations and explains player-only ranking.
+- [ ] Records shows separate overall player and assisted totals, a player-only
+  average, and per-size/per-difficulty totals and averages.
+- [ ] Recent completions are newest first, visibly distinguish player and
+  assisted solves, and use the active locale for date, difficulty, moves, and
+  time.
 - [ ] Back returns to the originating screen without stale or duplicate content.
 
 ## D. Gameplay and State Integrity
@@ -153,6 +161,11 @@ result is required.
 - [ ] After Results rotation/recreation, Replay Puzzle still restores the exact original starting board.
 - [ ] Player best compares fewer moves first and lower time second.
 - [ ] Solver-assisted completion is labeled assisted and never overwrites the player best.
+- [ ] Every completed player or solver-assisted game adds exactly one history
+  entry and updates the matching lifetime counters; Results
+  rotation/recreation does not duplicate it.
+- [ ] Recent history retains at most 50 local entries while lifetime counters
+  continue beyond that limit; Records displays the newest 10 entries.
 
 ## F. Visual and Accessibility Acceptance
 
@@ -173,6 +186,24 @@ Do not mark the localization work complete until every applicable item above is
 checked in all supported locales, failures are fixed and rerun, and any
 unavailable device coverage is explicitly recorded as a limitation rather than
 reported as passed.
+
+### 2026-08-21 Stage 5 history and personal-statistics pass
+
+| Evidence | Result |
+| --- | --- |
+| Debug APK SHA-256 | `C8D78B4CE1E295D20DA80D366BF2940106D9F1C0B9849918519865F435AB2180` |
+| Local verification | All 33 shared tests passed; `verify.bat` passed desktop compile, Android assemble/test APK/lint, and both Javadoc/doclint gates |
+| Pixel_7 | All 63 Android tests passed on Android 15 at 1080x2400 in six isolated batches (19 + 10 + 10 + 8 + 9 + 7); 0 failed, 0 skipped |
+| `small_phone` | All 63 Android tests passed on Android 16 / API 36.1 at 720x1280 in the same six batches; 0 failed, 0 skipped |
+| Final Stage 5 subset | The final installed APK passed 18/18 store, reset, localized-statistics, player/assisted, and Results-recreation tests on each AVD |
+| Persistence contract | The newest 50 completions remain in newest-first history while per-size/per-difficulty lifetime counters continue beyond the limit; malformed or unsupported entries are ignored |
+| Android flow | Every player or solver-assisted completion creates one history entry; only player solves update bests; Reset Records clears bests, history, and statistics without clearing saves/settings |
+| UI and runtime review | Compact Records scrolled through totals, recent entries, all nine breakdown panels, and Back without clipping or overlap; fresh `AndroidRuntime` and crash buffers were empty after cold launch on both AVDs |
+
+Records displays the newest 10 of the retained 50 entries. Player averages use
+player-only move and elapsed-time totals; assisted completions remain visible in
+separate counters and history labels. Results writes completion data before it
+evaluates the player best, and Activity recreation does not repeat that write.
 
 ### 2026-08-20 Stage 4 per-size save pass
 

@@ -87,10 +87,21 @@
     <string name="how_records_title">記録</string>
     <string name="how_records_body">最高記録は手数の少なさを優先し、同じ手数なら時間の短さで比較します。ソルバーを使った結果は表示されますが、プレイヤーの記録を上書きしません。</string>
     <string name="records_title">記録</string>
-    <string name="records_subtitle">サイズと難易度ごとにローカルの最高記録を保存します。</string>
-    <string name="records_explanation">自力で解いた結果だけを記録します。手数が少ない記録を優先し、同じ手数なら速い記録が上位です。ヒントやソルバーを使った結果は結果画面に表示されますが、ここにある記録を更新しません。</string>
+    <string name="records_subtitle">個人の合計、最高記録、最近のクリアを端末内に保存します。</string>
+    <string name="records_explanation">自力で解いた結果だけを記録します。手数が少ない記録を優先し、同じ手数なら速い記録が上位です。すべてのクリアは合計と最近の履歴に残り、ソルバーを使った結果には印が付きますが、ここにある記録を更新しません。</string>
     <string name="records_row_title">%1$dx%2$d %3$s</string>
     <string name="records_empty">記録はまだありません</string>
+    <string name="records_totals_title">個人合計</string>
+    <string name="records_player_average">自力平均：%1$s・%2$d秒</string>
+    <string name="records_player_average_empty">自力平均：—</string>
+    <string name="records_recent_title">最近のクリア</string>
+    <string name="records_recent_empty">クリア履歴はまだありません</string>
+    <string name="records_breakdown_title">サイズ・難易度別</string>
+    <string name="records_scope_stats">%1$s・%2$s</string>
+    <string name="records_history_title">%1$s・%2$dx%3$d・%4$s</string>
+    <string name="records_history_player">自力</string>
+    <string name="records_history_assisted">アシスト</string>
+    <string name="records_history_metrics">%1$s・%2$s・%3$d秒</string>
     <string name="settings_title">設定</string>
     <string name="settings_subtitle">操作のフィードバックとローカルのゲームデータを管理します。</string>
     <string name="settings_section_language">言語</string>
@@ -171,7 +182,7 @@
     <string name="dialog_reset_save_title">すべてのセーブをリセットしますか？</string>
     <string name="dialog_reset_save_message">ローカルの3x3、4x4、5x5セーブを消去します。記録と設定は残ります。現在のゲームは、画面を離れるまで続けられます。</string>
     <string name="dialog_reset_records_title">記録をリセットしますか？</string>
-    <string name="dialog_reset_records_message">すべてのサイズと難易度のローカル最高記録を消去します。</string>
+    <string name="dialog_reset_records_message">すべてのサイズと難易度の最高記録、累計統計、最近のクリア履歴を消去します。</string>
     <string name="dialog_solver_warning_title">警告</string>
     <string name="dialog_solver_warning_bfs">4x4以上でBFSを使うと、処理が遅くなったりメモリ不足になったりする場合があります。続けますか？</string>
     <string name="dialog_solver_warning_astar">5x5でA*を使うと、処理が非常に遅くなったり大量のメモリを使ったりする場合があります。続けますか？</string>
@@ -191,6 +202,14 @@
     <plurals name="moves_count">
         <item quantity="one">%d手</item>
         <item quantity="other">%d手</item>
+    </plurals>
+    <plurals name="records_player_solves">
+        <item quantity="one">%d回の自力クリア</item>
+        <item quantity="other">%d回の自力クリア</item>
+    </plurals>
+    <plurals name="records_assisted_solves">
+        <item quantity="one">%d回のアシストクリア</item>
+        <item quantity="other">%d回のアシストクリア</item>
     </plurals>
     <plurals name="board_accessibility_highlight_count">
         <item quantity="one">%d個の強調表示されたタイルを空きマスへ動かせます。</item>

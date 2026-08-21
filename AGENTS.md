@@ -25,8 +25,8 @@ Prioritize:
 - Difficulty selection and reproducible scrambles (completed).
 - Replay of the same puzzle (completed).
 - Independent saves by board size (completed).
-- Local history and personal statistics (current stage).
-- Offline daily challenge and streak state.
+- Local history and personal statistics (completed).
+- Offline daily challenge and streak state (current stage).
 - Strategic hints with assisted-record protection.
 - Optional sound and themes.
 
@@ -52,6 +52,8 @@ Keep `GameModel` platform-independent. Navigation and presentation changes belon
 - Saves must preserve size, difficulty, grid, initial grid, move count, and elapsed milliseconds.
 - Best records compare fewer moves first, then lower time.
 - Android best records are scoped by both size and difficulty.
+- Every player and solver-assisted completion updates local history and lifetime
+  statistics; only player completions can update best records.
 - Solver-assisted wins must not overwrite player best records.
 
 ## Working Style

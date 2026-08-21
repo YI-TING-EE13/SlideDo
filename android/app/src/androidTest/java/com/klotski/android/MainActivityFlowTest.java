@@ -13,7 +13,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.SystemClock;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -32,6 +31,7 @@ import androidx.test.uiautomator.UiScrollable;
 import androidx.test.uiautomator.UiSelector;
 import androidx.test.uiautomator.Until;
 
+import com.klotski.core.PuzzleDifficulty;
 import com.klotski.core.SaveManager;
 
 import org.junit.After;
@@ -39,9 +39,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import java.util.Collection;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Collection;
 
 /**
  * End-to-end Android smoke coverage for the app-level SlideDo flow.
@@ -403,7 +403,7 @@ public class MainActivityFlowTest {
         clickId(R.id.home_how_to_play_button);
         waitForId("how_root");
         waitForText("Goal");
-        waitForText("Tap");
+        scrollToText("Tap");
         scrollToText("Whole-line slide");
         scrollToText("Empty");
         assertActivityHasView(R.id.how_goal_example);
@@ -593,7 +593,7 @@ public class MainActivityFlowTest {
         waitForId("records_root");
         waitForText("紀錄");
         waitForTextContaining("只記錄玩家自行完成的成績");
-        waitForText("尚無紀錄");
+        assertActivityContainsText("尚無紀錄");
     }
 
     @Test
@@ -701,7 +701,7 @@ public class MainActivityFlowTest {
         waitForId("records_root");
         waitForText("記録");
         waitForTextContaining("自力で解いた結果だけを記録");
-        waitForText("記録はまだありません");
+        assertActivityContainsText("記録はまだありません");
     }
 
     @Test
@@ -755,6 +755,9 @@ public class MainActivityFlowTest {
     public void settingsCanResetRecords() throws Exception {
         markOnboardingSeen();
         writeBestRecords();
+        AndroidGameStore store = new AndroidGameStore(targetContext);
+        store.recordCompletion(3, PuzzleDifficulty.CLASSIC, 20, 30_000L, false, 100L);
+        store.recordCompletion(4, PuzzleDifficulty.CHALLENGE, 80, 120_000L, true, 200L);
         launchApp();
 
         clickId(R.id.home_settings_button);
@@ -774,7 +777,11 @@ public class MainActivityFlowTest {
         waitForTextContaining("Player solves only.");
         waitForTextContaining("Fewer moves rank first");
         waitForTextContaining("never replace these records");
-        waitForText("No record yet");
+        assertActivityContainsText("No record yet");
+        assertActivityContainsText("No completed puzzles yet");
+        assertEquals(0, store.getCompletionHistory().length);
+        assertEquals(0, store.getOverallCompletionStats().playerCompletions);
+        assertEquals(0, store.getOverallCompletionStats().assistedCompletions);
     }
 
     @Test
@@ -977,6 +984,74 @@ public class MainActivityFlowTest {
     }
 
     @Test
+    public void playerAndAssistedWinsAppearInStatsAndRecentHistory() throws Exception {
+        writeSavedGame(ONE_MOVE_WIN_GRID, ONE_MOVE_WIN_GRID, 0);
+        launchApp();
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+
+        tapCell(3, 2, 2);
+        waitForId("results_root");
+        clickId(R.id.results_play_again_button);
+        waitForId("game_root");
+        setActivityField("assistedSolveActive", true);
+        tapCell(3, 2, 2);
+        waitForId("results_root");
+
+        clickId(R.id.results_home_button);
+        waitForId("home_root");
+        clickId(R.id.home_records_button);
+        waitForId("records_root");
+
+        waitForText("1 player solve");
+        waitForText("1 assisted solve");
+        scrollToText("RECENT COMPLETIONS");
+
+        AndroidGameStore store = new AndroidGameStore(targetContext);
+        AndroidGameStore.CompletionRecord[] history = store.getCompletionHistory();
+        assertEquals(2, history.length);
+        assertActivityContainsText("Player avg: 1 move · "
+                + Math.round(history[1].timeMs / 1000.0) + "s");
+        assertActivityContainsText("Assisted · 1 move · " + history[0].timeMs / 1000 + "s");
+        assertActivityContainsText("Player · 1 move · " + history[1].timeMs / 1000 + "s");
+        assertEquals(1, store.getOverallCompletionStats().playerCompletions);
+        assertEquals(1, store.getOverallCompletionStats().assistedCompletions);
+        assertEquals(1, store.getBest(3, PuzzleDifficulty.CLASSIC).moves);
+    }
+
+    @Test
+    public void personalStatsAndRecentHistoryAreLocalizedInChineseAndJapanese() throws Exception {
+        markOnboardingSeen();
+        AndroidGameStore store = new AndroidGameStore(targetContext);
+        store.recordCompletion(3, PuzzleDifficulty.CLASSIC, 10, 1_000L, false, 100L);
+        store.recordCompletion(4, PuzzleDifficulty.CHALLENGE, 20, 2_000L, true, 200L);
+        setLanguage(AndroidAppLocale.TRADITIONAL_CHINESE_LANGUAGE_TAG);
+        launchApp();
+
+        clickId(R.id.home_records_button);
+        waitForId("records_root");
+        waitForText("個人總計");
+        waitForText("1 次玩家完成");
+        waitForText("1 次輔助完成");
+        waitForText("玩家平均：10 次移動 · 1 秒");
+        scrollToText("近期完成");
+        assertActivityContainsText("輔助 · 20 次移動 · 2 秒");
+        assertActivityContainsText("玩家 · 10 次移動 · 1 秒");
+
+        setLanguage(AndroidAppLocale.JAPANESE_LANGUAGE_TAG);
+        relaunchApp();
+        clickId(R.id.home_records_button);
+        waitForId("records_root");
+        waitForText("個人合計");
+        waitForText("1回の自力クリア");
+        waitForText("1回のアシストクリア");
+        assertActivityContainsText("自力平均：10手・1秒");
+        scrollToText("最近のクリア");
+        assertActivityContainsText("アシスト・20手・2秒");
+        assertActivityContainsText("自力・10手・1秒");
+    }
+
+    @Test
     public void reducedMotionSkipsCompletionMarkAnimation() throws Exception {
         writeSavedGame(ONE_MOVE_WIN_GRID, ONE_MOVE_WIN_GRID, 0);
         assertTrue(targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -1012,7 +1087,7 @@ public class MainActivityFlowTest {
         clickId(R.id.home_records_button);
         waitForId("records_root");
         waitForTextContaining("never replace these records");
-        waitForText("No record yet");
+        assertActivityContainsText("No record yet");
     }
 
     @Test
@@ -1047,12 +1122,14 @@ public class MainActivityFlowTest {
         String startingBoard = getActivityContentDescription(R.id.game_board);
         tapCell(3, 2, 2);
         waitForId("results_root");
+        assertEquals(1, new AndroidGameStore(targetContext).getCompletionHistory().length);
 
         device.setOrientationLeft();
         waitForForegroundApp();
         instrumentation.waitForIdleSync();
         waitForResumedMainActivity();
         waitForActivityView(R.id.results_root);
+        assertEquals(1, new AndroidGameStore(targetContext).getCompletionHistory().length);
 
         clickId(R.id.results_play_again_button);
         waitForId("game_root");
@@ -1473,13 +1550,34 @@ public class MainActivityFlowTest {
         }
     }
 
-    private void clickId(int resourceId) {
+    private void clickId(int resourceId) throws InterruptedException {
+        waitForActivityClickReady(resourceId);
         instrumentation.runOnMainSync(() -> {
             View view = activity.findViewById(resourceId);
             assertNotNull("Missing view id: " + resourceId, view);
             assertTrue("View click was not handled: " + resourceId, view.performClick());
         });
         instrumentation.waitForIdleSync();
+    }
+
+    private void waitForActivityClickReady(int resourceId) throws InterruptedException {
+        long deadline = System.currentTimeMillis() + TIMEOUT_MS;
+        while (System.currentTimeMillis() < deadline) {
+            boolean[] ready = new boolean[1];
+            instrumentation.runOnMainSync(() -> {
+                View view = activity.findViewById(resourceId);
+                ready[0] = view != null
+                        && view.isShown()
+                        && view.isEnabled()
+                        && activity.hasWindowFocus();
+            });
+            if (ready[0]) {
+                instrumentation.waitForIdleSync();
+                return;
+            }
+            Thread.sleep(50);
+        }
+        fail("View did not become ready for click: " + resourceId);
     }
 
     private void toggleSwitch(int resourceId) {
@@ -1526,11 +1624,13 @@ public class MainActivityFlowTest {
     }
 
     private void tapCell(int boardResourceId, int size, int row, int col) throws InterruptedException {
+        waitForBoardReady(boardResourceId);
+        int[] screenPoint = new int[2];
         instrumentation.runOnMainSync(() -> {
             View board = activity.findViewById(boardResourceId);
             assertNotNull("Missing board view id: " + boardResourceId, board);
             float density = targetContext.getResources().getDisplayMetrics().density;
-            float gap = 10f * density;
+            float gap = 9f * density;
             float boardSize = Math.min(board.getWidth(), board.getHeight());
             float tileSize = (boardSize - (size + 1) * gap) / size;
             float boardLeft = (board.getWidth() - boardSize) / 2f;
@@ -1539,19 +1639,38 @@ public class MainActivityFlowTest {
             float y = boardTop + gap + row * (tileSize + gap) + tileSize / 2f;
             assertFalse("Computed x is outside board bounds", x < 0 || x > board.getWidth());
             assertFalse("Computed y is outside board bounds", y < 0 || y > board.getHeight());
-
-            long downTime = SystemClock.uptimeMillis();
-            MotionEvent down = MotionEvent.obtain(downTime, downTime,
-                    MotionEvent.ACTION_DOWN, x, y, 0);
-            MotionEvent up = MotionEvent.obtain(downTime, downTime + 50,
-                    MotionEvent.ACTION_UP, x, y, 0);
-            board.dispatchTouchEvent(down);
-            board.dispatchTouchEvent(up);
-            down.recycle();
-            up.recycle();
+            int[] boardLocation = new int[2];
+            board.getLocationOnScreen(boardLocation);
+            screenPoint[0] = Math.round(boardLocation[0] + x);
+            screenPoint[1] = Math.round(boardLocation[1] + y);
         });
-        instrumentation.waitForIdleSync();
+        assertTrue("Device click was not handled for board cell",
+                device.click(screenPoint[0], screenPoint[1]));
+        device.waitForIdle();
         waitForBoardIdle(boardResourceId);
+    }
+
+    private void waitForBoardReady(int boardResourceId) throws InterruptedException {
+        long deadline = System.currentTimeMillis() + TIMEOUT_MS;
+        while (System.currentTimeMillis() < deadline) {
+            boolean[] ready = new boolean[1];
+            instrumentation.runOnMainSync(() -> {
+                View board = activity.findViewById(boardResourceId);
+                ready[0] = board instanceof KlotskiView
+                        && board.isShown()
+                        && board.isEnabled()
+                        && board.getWidth() > 0
+                        && board.getHeight() > 0
+                        && activity.hasWindowFocus()
+                        && !((KlotskiView) board).isBusy();
+            });
+            if (ready[0]) {
+                instrumentation.waitForIdleSync();
+                return;
+            }
+            Thread.sleep(50);
+        }
+        fail("Board did not become ready for touch: " + boardResourceId);
     }
 
     private void waitForBoardIdle(int boardResourceId) throws InterruptedException {
