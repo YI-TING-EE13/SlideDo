@@ -145,13 +145,14 @@
     <string name="accessibility_game_menu">開啟遊戲選單，以使用儲存、載入、設定、紀錄與首頁</string>
     <string name="accessibility_game_undo">復原上一次移動</string>
     <string name="accessibility_game_restart">從起始盤面重新開始此拼圖</string>
-    <string name="accessibility_game_assist">開啟輔助，以顯示可移動方塊或使用進階解題器工具</string>
+    <string name="accessibility_game_assist">開啟輔助，以使用策略提示、顯示可移動方塊或使用進階解題器工具</string>
     <string name="accessibility_settings_switch">%1$s。%2$s</string>
     <string name="menu_title">遊戲選單</string>
     <string name="menu_resume">繼續</string>
     <string name="menu_new_size">其他尺寸</string>
     <string name="menu_quick_reminder">快速提示</string>
     <string name="assist_title">輔助</string>
+    <string name="button_hint_strategic">策略提示</string>
     <string name="button_hint_movable">顯示可移動方塊</string>
     <string name="button_solver_tools">解題器工具</string>
     <string name="solver_tools_title">解題器工具</string>
@@ -160,7 +161,9 @@
     <string name="quick_reminder_message">點按或滑動任何與空格對齊的方塊。較遠且對齊的方塊會讓整列一起滑動，但只算一次移動。復原會退回上一次手勢。</string>
     <string name="status_format">%1$s　時間：%2$d 秒　最佳：%3$s</string>
     <string name="status_solved_format">完成！移動：%1$d 次　時間：%2$d 秒　最佳：%3$s</string>
+    <string name="status_hint_strategic">策略提示：試著移動方塊 %1$d。</string>
     <string name="status_hint_movable">提示：醒目的方塊可以滑入空格。</string>
+    <string name="status_assisted_run">已使用策略提示，本局不會更新玩家最佳紀錄。</string>
     <string name="status_first_move_hint">點按與外框空格對齊的方塊。</string>
     <string name="status_solving">正在使用 %1$s 解題…</string>
     <string name="best_empty">--</string>

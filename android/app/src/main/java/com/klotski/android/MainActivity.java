@@ -35,6 +35,7 @@ import com.klotski.core.IdaStarSolver;
 import com.klotski.core.PuzzleDifficulty;
 import com.klotski.core.SaveManager;
 import com.klotski.core.Solver;
+import com.klotski.core.StrategicHint;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -105,6 +106,7 @@ public class MainActivity extends Activity implements GameObserver {
     private boolean gameStarted;
     private boolean tutorialAdvancePending;
     private boolean hintActive;
+    private int strategicHintTile = -1;
     private boolean renderingScreenChange;
     private boolean screenTransitionRunning;
     private boolean activityResumed;
@@ -411,6 +413,7 @@ public class MainActivity extends Activity implements GameObserver {
         infoReturnScreen = Screen.HOME;
         tutorialAdvancePending = false;
         hintActive = false;
+        strategicHintTile = -1;
         statusText = null;
         gameTitleText = null;
         tutorialProgressText = null;
@@ -754,6 +757,7 @@ public class MainActivity extends Activity implements GameObserver {
         infoReturnScreen = Screen.HOME;
         tutorialAdvancePending = false;
         hintActive = false;
+        strategicHintTile = -1;
         tutorialStep = clampTutorialStep(requestedStep);
         gameStarted = false;
         pendingWin = null;
@@ -816,6 +820,7 @@ public class MainActivity extends Activity implements GameObserver {
         gameNavigationPending = false;
         tutorialAdvancePending = false;
         hintActive = false;
+        strategicHintTile = -1;
         statusText = null;
         gameTitleText = null;
         tutorialProgressText = null;
@@ -936,7 +941,6 @@ public class MainActivity extends Activity implements GameObserver {
                         case 2 -> {
                             if (loadGame(model.getSize())) {
                                 pendingWin = null;
-                                assistedSolveActive = false;
                                 showGameScreen();
                                 Toast.makeText(this, R.string.toast_game_loaded, Toast.LENGTH_SHORT).show();
                             } else {
@@ -1155,6 +1159,7 @@ public class MainActivity extends Activity implements GameObserver {
 
     private void showAssistMenu() {
         String[] items = new String[] {
+                getString(R.string.button_hint_strategic),
                 getString(R.string.button_hint_movable),
                 getString(R.string.button_solver_tools)
         };
@@ -1163,8 +1168,10 @@ public class MainActivity extends Activity implements GameObserver {
                 .setTitle(R.string.assist_title)
                 .setItems(items, (dialog, which) -> {
                     if (which == 0) {
-                        showMovableTilesHint();
+                        showStrategicHint();
                     } else if (which == 1) {
+                        showMovableTilesHint();
+                    } else if (which == 2) {
                         showSolverTools();
                     }
                 })
@@ -1260,7 +1267,6 @@ public class MainActivity extends Activity implements GameObserver {
         if (loadGame(size)) {
             pendingWin = null;
             currentResult = null;
-            assistedSolveActive = false;
             showGameScreen();
         } else {
             Toast.makeText(this, R.string.toast_no_save, Toast.LENGTH_SHORT).show();
@@ -1295,6 +1301,7 @@ public class MainActivity extends Activity implements GameObserver {
         currentResult = null;
         assistedSolveActive = false;
         hintActive = false;
+        strategicHintTile = -1;
         lastWinTimeMs = -1;
         store.setLastSize(size);
         store.setLastDifficulty(difficulty);
@@ -1310,7 +1317,6 @@ public class MainActivity extends Activity implements GameObserver {
         model.restartCurrentGame();
         pendingWin = null;
         currentResult = null;
-        assistedSolveActive = false;
         clearGameHint();
         lastWinTimeMs = -1;
         syncGameTimerState();
@@ -1324,11 +1330,12 @@ public class MainActivity extends Activity implements GameObserver {
                 || model.getDifficulty() != currentResult.difficulty) {
             return;
         }
+        boolean replayAssisted = currentResult.assisted;
         model.restartCurrentGame();
         gameStarted = true;
         pendingWin = null;
         currentResult = null;
-        assistedSolveActive = false;
+        assistedSolveActive = replayAssisted;
         clearGameHint();
         lastWinTimeMs = -1;
         syncGameTimerState();
@@ -1342,6 +1349,8 @@ public class MainActivity extends Activity implements GameObserver {
         }
         DailyChallenge challenge = DailyChallenge.forDate(LocalDate.now());
         SaveManager.SaveData saved = store.loadDailyGame(challenge.getDateId());
+        boolean savedAssisted = saved != null
+                && store.isDailyGameAssisted(challenge.getDateId());
         if (saved == null) {
             attachModel(challenge.createGame());
         } else {
@@ -1355,8 +1364,9 @@ public class MainActivity extends Activity implements GameObserver {
         gameStarted = true;
         pendingWin = null;
         currentResult = null;
-        assistedSolveActive = false;
+        assistedSolveActive = savedAssisted;
         hintActive = false;
+        strategicHintTile = -1;
         lastWinTimeMs = -1;
         syncGameTimerState();
         performBoardHaptic(HapticFeedbackConstants.VIRTUAL_KEY);
@@ -1394,13 +1404,37 @@ public class MainActivity extends Activity implements GameObserver {
 
         long elapsed = model.getElapsedTime() / 1000;
         String status = getString(R.string.status_format, formatMoves(model.getMoveCount()), elapsed, bestText);
-        if (hintActive) {
+        if (strategicHintTile >= 0) {
+            status += "\n" + getString(R.string.status_hint_strategic, strategicHintTile);
+        } else if (hintActive) {
             status += "\n" + getString(R.string.status_hint_movable);
         } else if (model.getMoveCount() == 0) {
             status += "\n" + getString(R.string.status_first_move_hint);
         }
+        if (assistedSolveActive) {
+            status += "\n" + getString(R.string.status_assisted_run);
+        }
         statusText.setText(status);
         updateControlsEnabled();
+    }
+
+    private void showStrategicHint() {
+        if (!canAcceptCommand() || model.isSolved()) {
+            return;
+        }
+        StrategicHint.Hint hint = StrategicHint.choose(model);
+        if (hint == null) {
+            return;
+        }
+        boolean[][] highlights = new boolean[model.getSize()][model.getSize()];
+        highlights[hint.getRow()][hint.getCol()] = true;
+        hintActive = true;
+        strategicHintTile = hint.getTile();
+        assistedSolveActive = true;
+        boardView.setHighlightedCells(highlights, hint.getRow(), hint.getCol());
+        performBoardHaptic(HapticFeedbackConstants.VIRTUAL_KEY);
+        saveGame();
+        updateStatus();
     }
 
     private void showMovableTilesHint() {
@@ -1408,6 +1442,7 @@ public class MainActivity extends Activity implements GameObserver {
             return;
         }
         hintActive = true;
+        strategicHintTile = -1;
         boardView.setHighlightedCells(createAlignedHintGrid(), -1, -1);
         performBoardHaptic(HapticFeedbackConstants.VIRTUAL_KEY);
         updateStatus();
@@ -1415,6 +1450,7 @@ public class MainActivity extends Activity implements GameObserver {
 
     private void clearGameHint() {
         hintActive = false;
+        strategicHintTile = -1;
         if (currentScreen == Screen.GAME && boardView != null) {
             boardView.clearHighlights();
         }
@@ -1444,9 +1480,9 @@ public class MainActivity extends Activity implements GameObserver {
                 ? lastWinTimeMs
                 : model.getElapsedTime();
         if (activeDailyDateId == null) {
-            store.saveGame(model, elapsed);
+            store.saveGame(model, elapsed, assistedSolveActive);
         } else {
-            store.saveDailyGame(activeDailyDateId, model, elapsed);
+            store.saveDailyGame(activeDailyDateId, model, elapsed, assistedSolveActive);
         }
     }
 
@@ -1467,10 +1503,11 @@ public class MainActivity extends Activity implements GameObserver {
         attachModel(new GameModel(data.size));
         model.loadState(data);
         lastWinTimeMs = model.isSolved() ? data.elapsedTime : -1;
-        assistedSolveActive = false;
+        assistedSolveActive = store.isSavedGameAssisted(data.size);
         currentResult = null;
         activeDailyDateId = null;
         hintActive = false;
+        strategicHintTile = -1;
         gameStarted = true;
         store.setLastSize(data.size);
         syncGameTimerState();
@@ -1485,10 +1522,11 @@ public class MainActivity extends Activity implements GameObserver {
         attachModel(new GameModel(data.size));
         model.loadState(data);
         lastWinTimeMs = model.isSolved() ? data.elapsedTime : -1;
-        assistedSolveActive = false;
+        assistedSolveActive = store.isDailyGameAssisted(dateId);
         currentResult = null;
         activeDailyDateId = dateId;
         hintActive = false;
+        strategicHintTile = -1;
         gameStarted = true;
         syncGameTimerState();
         return true;
@@ -1745,7 +1783,8 @@ public class MainActivity extends Activity implements GameObserver {
         }
         currentResult = new GameResult(win.size, win.difficulty, win.moves,
                 win.timeMs, win.assisted, newBest, previousBest, win.dailyDateId);
-        assistedSolveActive = false;
+        assistedSolveActive = win.assisted;
+        saveGame();
         performBoardHaptic(HapticFeedbackConstants.LONG_PRESS);
         updateStatus();
         showResultsScreen();

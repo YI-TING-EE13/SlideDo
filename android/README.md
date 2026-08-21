@@ -33,8 +33,9 @@ an emulator or connected Android device.
 - Icon-plus-text Home, game, and Results actions, with compact game navigation
   kept on one line at 720x1280
 - Outlined empty-cell affordance and a first-move prompt before the player moves
-- Lightweight Assist hint that highlights movable aligned tiles without moving
-  the board; BFS, A*, and IDA* are grouped one level deeper under Solver Tools
+- Deterministic Strategic Hint that highlights one recommended adjacent tile
+  without moving the board, plus a non-assisted movable-tile hint; BFS, A*, and
+  IDA* are grouped one level deeper under Solver Tools
 - Board, highlighted movable tiles, primary game controls, and settings switches
   expose accessibility descriptions for screen readers
 - Manual Save and Load controls in the in-game menu
@@ -150,7 +151,7 @@ This runs `verify.bat` and `verify-release.bat`. CI release artifacts are
 verification outputs and use the temporary signing key unless real Play upload
 signing is explicitly configured.
 
-Latest 2026-08-22 validation status: all 70 Android tests passed in
+Latest 2026-08-22 validation status: all 72 Android tests passed in
 instrumentation batches on both the Pixel_7 AVD running Android 15 at 1080x2400
 and the `small_phone` AVD running Android 16 / API 36.1 at 720x1280. The suite covers the
 normal animated transition path, the Reduced motion bypass, English-default
@@ -163,11 +164,13 @@ checked before and after Results rotation, including board identity and zeroed
 run state. The suite also verifies bounded completion history, lifetime
 statistics, player/assisted separation, localized Records summaries, full
 record reset, and duplicate prevention during Results recreation.
-Stage 6 adds a deterministic offline 4x4 Classic puzzle for each device-local
-date, a daily save isolated from the three normal size slots, idempotent
-completion tracking, and current/best streaks. Reset Saved Games clears the
-daily board but preserves streak records; Reset Records clears daily completion
-and streak state but preserves the daily board.
+Stage 7 adds deterministic strategic guidance, persisted assisted state for
+normal and daily saves, and player-best protection across rotation, Restart,
+Load, and Results replay. Stage 6 adds a deterministic offline 4x4 Classic
+puzzle for each device-local date, a daily save isolated from the three normal
+size slots, idempotent completion tracking, and current/best streaks. Reset
+Saved Games clears the daily board but preserves streak records; Reset Records
+clears daily completion and streak state but preserves the daily board.
 CLI-captured manual review covered English onboarding, Traditional Chinese
 Home/Settings/Mode Select/Game, and Japanese Home/Settings/Mode Select/How to
 Play/Game on the compact AVD. The compact controls remained single-line after
@@ -329,6 +332,10 @@ check-screenshot-set.bat ..\screenshots\android\0.2.0-beta.1
 - Open Assist, confirm solver names are not shown at the first level, then open
   Solver Tools and confirm the record-safety explanation appears before BFS,
   A*, and IDA*.
+- Open Assist and choose Strategic Hint. Confirm exactly one adjacent tile is
+  highlighted, the board and move count stay unchanged, and the assisted-run
+  warning remains after rotation and Restart. Complete or replay the puzzle and
+  confirm the run cannot replace a player best.
 - Choose an expensive solver such as BFS on 4x4 and confirm the warning dialog appears.
 - Finish a game and confirm Results shows the completion mark, moves, time,
   record status, and Replay Puzzle/New Size/Home actions. Replay Puzzle must

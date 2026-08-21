@@ -228,6 +228,24 @@ public class AndroidGameStoreTest {
     }
 
     @Test
+    public void assistedStateRoundTripsWithRegularAndDailySaves() {
+        GameModel regular = createSavedModel(3, PuzzleDifficulty.CLASSIC, 2);
+        DailyChallenge challenge = DailyChallenge.fromDateId("2026-08-21");
+
+        store.saveGame(regular, 2_000L, true);
+        store.saveDailyGame(challenge.getDateId(), challenge.createGame(), 3_000L, true);
+
+        assertTrue(store.isSavedGameAssisted(3));
+        assertTrue(store.isDailyGameAssisted(challenge.getDateId()));
+        assertFalse(store.isSavedGameAssisted(4));
+        assertFalse(store.isDailyGameAssisted("2026-08-22"));
+
+        store.clearSavedGame();
+        assertFalse(store.isSavedGameAssisted(3));
+        assertFalse(store.isDailyGameAssisted(challenge.getDateId()));
+    }
+
+    @Test
     public void dailyCompletionsAreIdempotentAndAdvanceConsecutiveStreak() {
         assertTrue(store.recordDailyCompletion("2026-08-20"));
         assertFalse(store.recordDailyCompletion("2026-08-20"));

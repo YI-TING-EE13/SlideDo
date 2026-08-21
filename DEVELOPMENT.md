@@ -24,7 +24,7 @@ Current handoff status:
   were consolidated here.
 - The Android app has completed the MVP pass for Home, Mode Select, onboarding,
   interactive Practice Tutorial, visual How to Play, Settings, Results, local
-  records, save/load, lightweight Assist hints, board/control accessibility
+  records, save/load, strategic and lightweight Assist hints, board/control accessibility
   descriptions, `AndroidGameStore` persistence separation, and connected
   instrumentation coverage.
 - The Android UI polish pass now includes icon-plus-text player actions, an
@@ -38,11 +38,13 @@ Current handoff status:
 - The latest local verification pass was warning-clean for the previously noisy
   Gradle DSL deprecation, Java native-access warning, and Android Java
   deprecation note.
-- The latest dual-AVD acceptance covered all 70 Android tests on each of
+- The latest dual-AVD acceptance covered all 72 Android tests on each of
   Pixel_7 (Android 15, 1080x2400) and `small_phone` (Android 16 / API 36.1,
-  720x1280), with no failures or skips. Six isolated instrumentation batches
-  avoid cross-device emulator contention while retaining every test. Coverage
-  includes the deterministic offline daily challenge and streak state,
+  720x1280), with final pass evidence and no skipped tests. The compact AVD ran
+  the full suite; five Pixel_7 shards avoided emulator contention, and one
+  transient focus failure passed on immediate isolated rerun. Coverage
+  includes strategic-hint assistance persistence and player-best protection,
+  the deterministic offline daily challenge and streak state,
   exact-puzzle replay before and after Results recreation, difficulty
   selection, independent per-size saves, legacy-save migration, scoped records,
   active-play timing, bounded completion history, lifetime statistics, and
@@ -65,9 +67,8 @@ verify-connected.bat
 
 The active product program is now the eight-stage Personal Play roadmap in
 `Roadmap And Planning`. It prioritizes offline replay value and personal
-convenience over public distribution. Stages 1 through 6 are implemented and
-verified. Stage 7, a strategic next-move hint with assisted-record protection,
-is next.
+convenience over public distribution. Stages 1 through 7 are implemented and
+verified. Stage 8, optional sound feedback and persistent visual themes, is next.
 
 Real Play upload signing is intentionally deferred until store submission. It
 is not required for a local push-ready commit, and no Git remote or push is part
@@ -124,8 +125,10 @@ Android currently supports:
   phone profile.
 - An outlined empty cell and a first-move prompt that explain where legal tiles
   can slide without changing puzzle rules.
-- Assist starts with a lightweight movable-tile hint; BFS, A*, and IDA* live in
-  a second-level Solver Tools surface with record-safety guidance.
+- Assist offers a deterministic strategic next-move hint and a lightweight
+  movable-tile hint; BFS, A*, and IDA* live in a second-level Solver Tools
+  surface with record-safety guidance. Strategic and solver assistance cannot
+  replace player best records.
 - Board-level screen-reader summaries for game/tutorial board state, highlighted
   movable tiles, and primary game/settings controls.
 - Manual Save/Load plus autosave through the in-game menu.
@@ -462,9 +465,9 @@ planning layer above implementation tickets.
   not exist.
 - The feedback system still lacks sound, a bespoke win celebration, progression
   feedback, and visual treatment beyond Results copy for assisted completion.
-- Hint system is MVP-level: Assist can now highlight movable tiles without
-  moving the board, but it does not yet suggest strategic progress toward a
-  solve.
+- Strategic hints use deterministic fixed-depth lookahead and Manhattan
+  distance. They provide useful local guidance but do not claim an optimal or
+  complete solution path.
 - Progression remains lightweight: daily puzzles, streaks, and recent games now
   exist, while achievements and session goals do not.
 - Accessibility is MVP-level: board summaries, settings switch descriptions,
@@ -506,8 +509,8 @@ Every stage uses the same delivery gate:
 | 4 | Per-size saves | Preserve independent 3x3, 4x4, and 5x5 active games and expose the correct Continue choices. | Completed and verified on 2026-08-20. |
 | 5 | History and personal stats | Store bounded local completion history and show meaningful per-size and per-difficulty summaries. | Completed and verified on 2026-08-21. |
 | 6 | Offline daily challenge | Generate one deterministic local puzzle per date and record completion/streak state without a server. | Completed and verified on 2026-08-22. |
-| 7 | Strategic hint | Suggest a useful next move, mark the game assisted, and preserve player-record protection. | Next. |
-| 8 | Sound and themes | Add optional local sound feedback and selectable visual themes with persistent settings and accessibility-safe defaults. | Planned. |
+| 7 | Strategic hint | Suggest a useful next move, mark the game assisted, and preserve player-record protection. | Completed and verified on 2026-08-22. |
+| 8 | Sound and themes | Add optional local sound feedback and selectable visual themes with persistent settings and accessibility-safe defaults. | Next. |
 
 Shared puzzle rules, deterministic puzzle identity, elapsed milliseconds, save
 compatibility, and assisted-record protection remain core contracts. Android
@@ -585,7 +588,7 @@ Desktop/Android feature parity matrix:
 | Mode selection | Mode Select starts 3x3, 4x4, and 5x5 games with difficulty labels, expected session length, first-puzzle guidance, and best record summaries. | Home/Game menu starts 3x3, 4x4, and 5x5 games and Records shows best summaries. | Android has richer pre-game guidance; available choices and record summaries match. | Android mode-select instrumentation; desktop compile/manual smoke. |
 | Learning surfaces | First-run onboarding, visual How to Play, Quick Reminder, and interactive Practice Tutorial. | How to Play and Practice Tutorial dialogs use Android-aligned language. | Android remains more visual and interactive; desktop parity covers the same concepts. | Android onboarding/tutorial/how-to instrumentation; desktop help-content tests. |
 | Touch/mouse movement | Tap/swipe aligned tiles; whole-line slide counts as one move and one undo snapshot. | Mouse click/release movement plus keyboard controls; whole-line slide uses shared model. | Input method differs by platform, rule outcome matches. | Shared core tests, Android whole-line instrumentation, desktop smoke. |
-| Assist / hints | Assist menu can highlight movable tiles and offer solver playback. | Assist menu highlights movable tiles and supports solver playback. | Solver UI differs; solver-assisted wins do not update records on both platforms. | Android assist/results instrumentation; desktop result-copy tests. |
+| Assist / hints | Assist can suggest one strategic adjacent move, highlight all movable tiles, or offer solver playback. | Assist highlights movable tiles and supports solver playback. | Strategic guidance is Android-first; strategic- and solver-assisted wins do not update Android player records. | Android strategic-hint/persistence/results instrumentation; desktop result-copy tests. |
 | Save/load metadata | `AndroidGameStore` persists independent 3x3, 4x4, and 5x5 slots with size, grid, initial grid, moves, elapsed, updated-at, active, solved, and difficulty; it migrates the legacy single save without replacing a newer matching slot. | Desktop JSON save persists one size, grid, initial grid, moves, elapsed, updated-at, active, and solved; records live in user-data path. | Shared gameplay metadata is aligned; Android adds per-size slots and mobile-only settings/onboarding. | Android store instrumentation, root save metadata tests. |
 | Settings / preferences | Persistent English, Traditional Chinese, and Japanese language selection, haptic feedback, reduced motion, reset all saved games, and reset records. | Reduced motion preference plus desktop records/save flows. | App-language and haptics are Android-only; desktop currently remains English. | Android locale/store/settings instrumentation; desktop preferences copy tests/manual smoke. |
 | Records | Per-size local best records, fewer moves then lower time, solver-assisted protection, and player-facing policy explanation. | Per-size local best records with the same comparison, solver-assisted protection, and policy explanation. | Aligned. | Android records/results instrumentation; desktop result and records tests. |
@@ -971,6 +974,32 @@ Priority: Low to Medium
 ## Development Log
 
 ### 2026-08-22
+
+- Completed Stage 7 strategic hints. The shared `StrategicHint` service uses a
+  deterministic four-ply search with Manhattan-distance evaluation to select
+  one legal adjacent tile without mutating `GameModel` or increasing moves.
+- Android Assist now presents Strategic Hint, Show Movable Tiles, and Solver
+  Tools as separate choices. A strategic hint highlights only its recommended
+  tile and clearly marks the run assisted; the lightweight movable-tile hint
+  remains presentation-only and does not mark assistance.
+- Assisted state is stored independently with normal and daily saves and
+  survives rotation, Load, Restart, and assisted Results replay. Starting a new
+  puzzle clears it. Assisted completions still enter local history but cannot
+  replace a player best.
+- Added two shared-core tests, one persistence test, and one end-to-end Android
+  flow covering no board mutation, deterministic selection, save/rotation,
+  Restart, Results replay, and player-best protection. The Android suite now
+  contains 72 tests.
+- `small_phone` passed all 72 tests. Pixel_7 passed the same 72-test coverage in
+  five isolated shards after a CLI cold boot repaired stale emulator window
+  focus; one unrelated localized Records flow transiently lost focus in a shard
+  and passed immediately when rerun alone. Manual 1080x2400 Japanese and
+  720x1280 English review confirmed the three-option Assist dialog, highlighted
+  tile, assistance warning, and bottom controls remain unclipped.
+- The final warning-clean `verify.bat` pass covered 37 shared/desktop tests,
+  desktop compilation, public core/desktop and Android API Javadocs, debug and
+  test APK assembly, and Android lint. The debug APK SHA-256 is
+  `E6067CDAB19D36B7CC8EB33826DDA60065A62627C52F4B34BEDA28B57C6B0248`.
 
 - Completed Stage 6 offline Daily Challenge. `DailyChallenge` maps a local
   ISO-8601 calendar date to a versioned deterministic seed and creates one 4x4

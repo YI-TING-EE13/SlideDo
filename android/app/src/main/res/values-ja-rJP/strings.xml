@@ -146,13 +146,14 @@
     <string name="accessibility_game_menu">保存、読み込み、設定、記録、ホームを含むゲームメニューを開きます</string>
     <string name="accessibility_game_undo">直前の1手を元に戻します</string>
     <string name="accessibility_game_restart">このパズルを開始盤面からやり直します</string>
-    <string name="accessibility_game_assist">動かせるタイルのヒントや高度なソルバーツールを使うためにアシストを開きます</string>
+    <string name="accessibility_game_assist">戦略ヒント、動かせるタイルの表示、高度なソルバーツールを使うためにアシストを開きます</string>
     <string name="accessibility_settings_switch">%1$s。%2$s</string>
     <string name="menu_title">ゲームメニュー</string>
     <string name="menu_resume">再開</string>
     <string name="menu_new_size">サイズ変更</string>
     <string name="menu_quick_reminder">操作の確認</string>
     <string name="assist_title">アシスト</string>
+    <string name="button_hint_strategic">戦略ヒント</string>
     <string name="button_hint_movable">動かせるタイルを表示</string>
     <string name="button_solver_tools">ソルバーツール</string>
     <string name="solver_tools_title">ソルバーツール</string>
@@ -161,7 +162,9 @@
     <string name="quick_reminder_message">空きマスと同じ行または列にあるタイルをタップするか、空きマスへスワイプします。離れたタイルなら一直線上のタイルがまとめて動きますが、手数は1手です。「戻す」は直前の操作を1回戻します。</string>
     <string name="status_format">%1$s　時間：%2$d秒　最高：%3$s</string>
     <string name="status_solved_format">クリア！ 手数：%1$d　時間：%2$d秒　最高：%3$s</string>
+    <string name="status_hint_strategic">戦略ヒント：タイル%1$dを動かしてみましょう。</string>
     <string name="status_hint_movable">ヒント：強調表示されたタイルを空きマスへ動かせます。</string>
+    <string name="status_assisted_run">ヒントを使用したため、このプレイは自己ベストを更新しません。</string>
     <string name="status_first_move_hint">枠で示された空きマスと同じ行または列のタイルをタップします。</string>
     <string name="status_solving">%1$sで解析中…</string>
     <string name="best_empty">--</string>

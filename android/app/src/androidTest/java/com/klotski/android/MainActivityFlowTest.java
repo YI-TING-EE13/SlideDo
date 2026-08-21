@@ -894,10 +894,54 @@ public class MainActivityFlowTest {
         waitForStatusContaining("0 moves");
         waitForContentDescriptionContaining("game_board",
                 "4 highlighted tiles can slide into the empty cell.");
+        invokeActivityMethod("saveGame");
+        assertFalse(new AndroidGameStore(targetContext).isSavedGameAssisted(3));
 
         tapCell(3, 1, 2);
         waitForStatusContaining("1 move");
         waitForStatusNotContaining("Hint: highlighted tiles can slide into the empty cell.");
+    }
+
+    @Test
+    public void strategicHintPersistsAssistanceAndProtectsPlayerBest() throws Exception {
+        writeSavedGame(ONE_MOVE_WIN_GRID, ONE_MOVE_WIN_GRID, 0);
+        AndroidGameStore store = new AndroidGameStore(targetContext);
+        assertTrue(store.recordBestIfBetter(3, PuzzleDifficulty.CLASSIC, 2, 5_000L));
+        launchApp();
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+        String startingBoard = getActivityContentDescription(R.id.game_board);
+
+        clickId(R.id.game_assist_button);
+        waitForText("Strategic Hint").click();
+        waitForStatusContaining("Strategic hint: try tile 6.");
+        waitForStatusContaining("Hint used. This run will not update player best.");
+        waitForStatusContaining("0 moves");
+        assertTrue(getActivityContentDescription(R.id.game_board).startsWith(startingBoard));
+        assertTrue(store.isSavedGameAssisted(3));
+
+        device.setOrientationLeft();
+        waitForForegroundApp();
+        instrumentation.waitForIdleSync();
+        waitForResumedMainActivity();
+        waitForId("game_root");
+        waitForStatusContaining("Hint used. This run will not update player best.");
+
+        clickId(R.id.game_menu_button);
+        waitForText("Restart").click();
+        waitForStatusContaining("0 moves");
+        waitForStatusContaining("Hint used. This run will not update player best.");
+
+        tapCell(3, 2, 2);
+        waitForId("results_root");
+        waitForText("Solved with assist.");
+        assertEquals(2, new AndroidGameStore(targetContext)
+                .getBest(3, PuzzleDifficulty.CLASSIC).moves);
+
+        clickId(R.id.results_play_again_button);
+        waitForId("game_root");
+        waitForStatusContaining("0 moves");
+        waitForStatusContaining("Hint used. This run will not update player best.");
     }
 
     @Test

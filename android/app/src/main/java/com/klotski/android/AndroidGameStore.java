@@ -40,6 +40,7 @@ final class AndroidGameStore {
     private static final String KEY_ACTIVE = "active";
     private static final String KEY_SOLVED = "solved";
     private static final String KEY_DIFFICULTY = "difficulty";
+    private static final String KEY_ASSISTED = "assisted";
     private static final String KEY_SAVE_PREFIX = "save_";
     private static final String KEY_DAILY_SAVE_PREFIX = "daily_save_";
     private static final String KEY_DAILY_SAVE_DATE = "daily_save_date";
@@ -126,6 +127,10 @@ final class AndroidGameStore {
     }
 
     void saveGame(GameModel model, long elapsedMs) {
+        saveGame(model, elapsedMs, false);
+    }
+
+    void saveGame(GameModel model, long elapsedMs, boolean assisted) {
         if (model == null || !isSupportedSize(model.getSize())) {
             return;
         }
@@ -134,10 +139,15 @@ final class AndroidGameStore {
         putSave(editor, prefix, model.getSize(), model.getGridCopy(), model.getInitialGridCopy(),
                 model.getMoveCount(), Math.max(0, elapsedMs), System.currentTimeMillis(),
                 model.isGameRunning(), model.isSolved(), model.getDifficulty());
-        editor.putInt(KEY_LAST_SIZE, model.getSize()).apply();
+        editor.putBoolean(prefix + KEY_ASSISTED, assisted)
+                .putInt(KEY_LAST_SIZE, model.getSize()).apply();
     }
 
     void saveDailyGame(String dateId, GameModel model, long elapsedMs) {
+        saveDailyGame(dateId, model, elapsedMs, false);
+    }
+
+    void saveDailyGame(String dateId, GameModel model, long elapsedMs, boolean assisted) {
         DailyChallenge challenge = parseDailyChallenge(dateId);
         if (challenge == null || model == null
                 || model.getSize() != challenge.getSize()
@@ -151,7 +161,8 @@ final class AndroidGameStore {
                 model.getInitialGridCopy(), model.getMoveCount(), Math.max(0, elapsedMs),
                 System.currentTimeMillis(), model.isGameRunning(), model.isSolved(),
                 model.getDifficulty());
-        editor.putString(KEY_DAILY_SAVE_DATE, challenge.getDateId()).apply();
+        editor.putBoolean(KEY_DAILY_SAVE_PREFIX + KEY_ASSISTED, assisted)
+                .putString(KEY_DAILY_SAVE_DATE, challenge.getDateId()).apply();
     }
 
     SaveManager.SaveData loadDailyGame(String dateId) {
@@ -176,6 +187,11 @@ final class AndroidGameStore {
         }
         return new SaveMetadata(data.updatedAt, data.size, data.moveCount,
                 data.elapsedTime, data.active, data.solved, data.difficulty);
+    }
+
+    boolean isDailyGameAssisted(String dateId) {
+        return loadDailyGame(dateId) != null
+                && prefs.getBoolean(KEY_DAILY_SAVE_PREFIX + KEY_ASSISTED, false);
     }
 
     boolean recordDailyCompletion(String dateId) {
@@ -255,6 +271,11 @@ final class AndroidGameStore {
         }
         migrateLegacySaveIfNeeded();
         return readSavedGame(savePrefix(size), size);
+    }
+
+    boolean isSavedGameAssisted(int size) {
+        return loadSavedGame(size) != null
+                && prefs.getBoolean(savePrefix(size) + KEY_ASSISTED, false);
     }
 
     SaveMetadata getSaveMetadata() {
@@ -557,7 +578,8 @@ final class AndroidGameStore {
                 .remove(prefix + KEY_UPDATED_AT)
                 .remove(prefix + KEY_ACTIVE)
                 .remove(prefix + KEY_SOLVED)
-                .remove(prefix + KEY_DIFFICULTY);
+                .remove(prefix + KEY_DIFFICULTY)
+                .remove(prefix + KEY_ASSISTED);
     }
 
     private static String difficultyBestPrefix(int size, PuzzleDifficulty difficulty) {

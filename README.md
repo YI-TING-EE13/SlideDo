@@ -7,7 +7,7 @@
 
 **SlideDo** is a polished number Klotski / sliding puzzle game written in Java. It includes a desktop Swing edition and a native Android edition that share the same core puzzle model, move rules, save format, and solver interfaces.
 
-The design goal is simple: make sliding numbered tiles feel fast, clear, and satisfying. The desktop version now opens on Home and supports mouse, keyboard, undo, restart, save/load, local records, a Records dialog, Preferences, Android-style Results, solver playback, How to Play, Practice Tutorial copy, and movable-tile assist hints. The Android edition now opens as a touch-first mobile app with onboarding, an interactive practice tutorial, mode selection, settings, results, records, and compact in-game controls. Both editions explain that player records prefer fewer moves, break ties by faster time, and exclude solver-assisted completions.
+The design goal is simple: make sliding numbered tiles feel fast, clear, and satisfying. The desktop version now opens on Home and supports mouse, keyboard, undo, restart, save/load, local records, a Records dialog, Preferences, Android-style Results, solver playback, How to Play, Practice Tutorial copy, and movable-tile assist hints. The Android edition adds a deterministic strategic next-move hint to its touch-first onboarding, tutorial, modes, settings, results, records, and compact game controls. Both editions explain that player records prefer fewer moves, break ties by faster time, and exclude assisted completions.
 
 ---
 
@@ -48,7 +48,9 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
     the background, then resumes when the Game screen becomes interactive.
   - Results offers Replay Puzzle, which restores the exact starting board and
     resets moves and active-play time without generating a new scramble.
-  - Assist keeps Show Movable Tiles at the first level; BFS, A*, and IDA* are grouped under advanced Solver Tools with player-record protection explained before use.
+  - Assist offers a strategic next-move hint and non-assisted Show Movable Tiles;
+    BFS, A*, and IDA* remain under advanced Solver Tools. Strategic and solver
+    assistance persist with the run and cannot replace player best records.
   - Android exposes board state, empty-cell position, highlighted movable tiles, and primary controls through accessibility descriptions.
 - **Quality-of-Life Gameplay**:
   - Undo.
@@ -227,10 +229,11 @@ play until the player skips it, starts 3x3, or opens Practice Tutorial. Practice
 Tutorial uses a small guided 3x3 puzzle to teach the first move, highlight
 movable aligned tiles, and demonstrate a whole-line slide. During gameplay, Undo
 and Restart stay visible while Save/Load, Quick Reminder, and Settings live in
-Menu. Assist starts with Show Movable Tiles, a hint that highlights legal
-same-row or same-column choices without moving the board. BFS, A*, and IDA* are
-one level deeper under Solver Tools. Solver-assisted wins show Results but do not
-overwrite player best records.
+Menu. Assist offers Strategic Hint, a non-assisted Show Movable Tiles option,
+and Solver Tools. The strategic hint recommends one adjacent tile without
+moving the board and marks the run assisted; that state survives save, rotation,
+Restart, and replay so assisted wins cannot overwrite player best records. BFS,
+A*, and IDA* remain one level deeper under Solver Tools.
 
 English is the Android default even when the device uses another language. Open
 Settings, choose **App language**, and select **English**, **繁體中文**, or
@@ -508,9 +511,8 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
 - The active Personal Play roadmap proceeds through eight independently tested
   and committed stages: active-play timer pausing, difficulty selection,
   replaying the same puzzle, per-size saves, local history/statistics, an
-  offline daily challenge, strategic hints, and sound/themes. Stages 1 through 6
-  are complete; the strategic next-move hint with assisted-record protection is
-  next.
+  offline daily challenge, strategic hints, and sound/themes. Stages 1 through 7
+  are complete; optional sound feedback and persistent visual themes are next.
   `DEVELOPMENT.md` owns the detailed acceptance criteria and status.
 - Desktop/mobile player-facing parity MVP is complete for Home/start, Records, Preferences, Results, How to Play, Practice Tutorial, and Assist hints.
 - Save files now include release-readiness metadata and desktop saves now live in the user-data directory.
