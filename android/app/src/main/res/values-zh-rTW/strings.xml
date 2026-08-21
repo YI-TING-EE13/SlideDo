@@ -116,8 +116,15 @@
     <string name="language_japanese">日文</string>
     <string name="settings_section_preferences">偏好設定</string>
     <string name="settings_section_local_data">本機資料</string>
+    <string name="settings_theme_button">視覺主題：%1$s</string>
+    <string name="settings_theme_accessibility">選擇視覺主題。目前主題：%1$s。</string>
+    <string name="dialog_theme_title">選擇視覺主題</string>
+    <string name="theme_midnight">午夜</string>
+    <string name="theme_ocean">海洋</string>
     <string name="settings_haptic_title">觸覺回饋</string>
     <string name="settings_haptic_body">移動方塊與執行主要操作時，提供短暫震動回饋。</string>
+    <string name="settings_sound_title">音效回饋</string>
+    <string name="settings_sound_body">移動方塊與完成拼圖時播放短促的本機音效。</string>
     <string name="settings_reduced_motion_title">減少動態效果</string>
     <string name="settings_reduced_motion_body">略過方塊移動與畫面轉場動畫。</string>
     <string name="settings_reset_save">重設所有遊戲存檔</string>

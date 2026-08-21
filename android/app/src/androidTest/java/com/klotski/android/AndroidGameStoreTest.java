@@ -454,6 +454,19 @@ public class AndroidGameStoreTest {
     }
 
     @Test
+    public void soundAndVisualThemeUseAccessibleDefaultsAndPersist() {
+        assertFalse(store.isSoundEnabled());
+        assertEquals(AndroidVisualTheme.MIDNIGHT, store.getVisualTheme());
+
+        store.setSoundEnabled(true);
+        store.setVisualTheme(AndroidVisualTheme.OCEAN);
+
+        AndroidGameStore reopened = new AndroidGameStore(targetContext);
+        assertTrue(reopened.isSoundEnabled());
+        assertEquals(AndroidVisualTheme.OCEAN, reopened.getVisualTheme());
+    }
+
+    @Test
     public void unsupportedStoredLanguageFallsBackToEnglish() {
         prefs.edit().putString("language_tag", "fr-FR").commit();
 

@@ -95,7 +95,7 @@ final class AndroidTutorialScreen {
     private LinearLayout createRoot() {
         LinearLayout root = new LinearLayout(activity);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(AndroidUi.COLOR_BACKGROUND);
+        root.setBackgroundColor(ui.resolveColor(AndroidUi.COLOR_BACKGROUND));
         root.setPadding(ui.dp(12), ui.systemBarHeight("status_bar_height") + ui.dp(12),
                 ui.dp(12), ui.systemBarHeight("navigation_bar_height") + ui.dp(12));
         return root;

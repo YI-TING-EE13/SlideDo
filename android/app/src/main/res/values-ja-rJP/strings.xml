@@ -117,8 +117,15 @@
     <string name="language_japanese">日本語</string>
     <string name="settings_section_preferences">プレイ設定</string>
     <string name="settings_section_local_data">ローカルデータ</string>
+    <string name="settings_theme_button">表示テーマ：%1$s</string>
+    <string name="settings_theme_accessibility">表示テーマを選択します。現在のテーマ：%1$s。</string>
+    <string name="dialog_theme_title">表示テーマを選ぶ</string>
+    <string name="theme_midnight">ミッドナイト</string>
+    <string name="theme_ocean">オーシャン</string>
     <string name="settings_haptic_title">触覚フィードバック</string>
     <string name="settings_haptic_body">タイル移動や主な操作で短く振動します。</string>
+    <string name="settings_sound_title">効果音</string>
+    <string name="settings_sound_body">タイル移動とクリア時に短いローカル音を鳴らします。</string>
     <string name="settings_reduced_motion_title">動きを減らす</string>
     <string name="settings_reduced_motion_body">タイル移動と画面切り替えの動きを省略します。</string>
     <string name="settings_reset_save">すべてのセーブをリセット</string>

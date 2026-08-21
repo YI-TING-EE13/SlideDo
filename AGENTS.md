@@ -16,8 +16,8 @@ The shared `GameModel` is the canonical source for puzzle rules. Desktop is the 
 
 ## Current Product Direction
 
-The active goal is an eight-stage Personal Play program for offline, owner-only
-use. Public store submission is not a prerequisite.
+The eight-stage Personal Play program for offline, owner-only use is complete.
+Public store submission is not a prerequisite.
 
 Prioritize:
 
@@ -26,11 +26,12 @@ Prioritize:
 - Replay of the same puzzle (completed).
 - Independent saves by board size (completed).
 - Local history and personal statistics (completed).
-- Offline daily challenge and streak state (current stage).
-- Strategic hints with assisted-record protection.
-- Optional sound and themes.
+- Offline daily challenge and streak state (completed).
+- Strategic hints with assisted-record protection (completed).
+- Optional sound and themes (completed).
 
-Complete, verify, document, and commit each stage before starting the next one.
+Preserve the completed program and use the same implement, verify, document,
+and commit gate for future feature stages.
 Defer store signing, store assets, accounts, cloud sync, ads, analytics, and
 other public-distribution work unless the owner changes direction.
 

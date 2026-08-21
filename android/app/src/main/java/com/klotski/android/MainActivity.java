@@ -86,6 +86,7 @@ public class MainActivity extends Activity implements GameObserver {
     private AndroidTutorialScreen tutorialScreen;
     private AndroidGameScreen gameScreen;
     private AndroidGameStore store;
+    private AndroidSoundFeedback soundFeedback;
     private GameModel model;
     private KlotskiView boardView;
     private TextView statusText;
@@ -150,7 +151,9 @@ public class MainActivity extends Activity implements GameObserver {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        ui = new AndroidUi(this, commandButtons);
+        store = new AndroidGameStore(this);
+        ui = new AndroidUi(this, commandButtons, store.getVisualTheme());
+        soundFeedback = new AndroidSoundFeedback(store.isSoundEnabled());
         motion = new AndroidMotion(this);
         learningContent = new AndroidLearningContent(this, ui);
         homeScreen = new AndroidHomeScreen(this, ui);
@@ -162,7 +165,6 @@ public class MainActivity extends Activity implements GameObserver {
         gameScreen = new AndroidGameScreen(this, ui, commandButtons);
         applyLegacySystemBarColors();
 
-        store = new AndroidGameStore(this);
         int lastSize = store.getLastSize(4);
         attachModel(new GameModel(lastSize));
         registerBackHandler();
@@ -215,9 +217,12 @@ public class MainActivity extends Activity implements GameObserver {
      */
     @Override
     protected void onDestroy() {
-        super.onDestroy();
         unregisterBackHandler();
         handler.removeCallbacks(ticker);
+        if (soundFeedback != null) {
+            soundFeedback.release();
+        }
+        super.onDestroy();
     }
 
     @SuppressLint("GestureBackNavigation")
@@ -257,8 +262,9 @@ public class MainActivity extends Activity implements GameObserver {
     private void applyLegacySystemBarColors() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
             // Android 15+ deprecates explicit system bar colors for edge-to-edge windows.
-            getWindow().setStatusBarColor(COLOR_BACKGROUND);
-            getWindow().setNavigationBarColor(COLOR_BACKGROUND);
+            int backgroundColor = ui.resolveColor(COLOR_BACKGROUND);
+            getWindow().setStatusBarColor(backgroundColor);
+            getWindow().setNavigationBarColor(backgroundColor);
         }
     }
 
@@ -659,8 +665,8 @@ public class MainActivity extends Activity implements GameObserver {
         gameTitleText = null;
         commandButtons.clear();
 
-        ScreenLayout screen = settingsScreen.build(isHapticEnabled(), isReducedMotionEnabled(),
-                store.getLanguageTag(),
+        ScreenLayout screen = settingsScreen.build(isHapticEnabled(), store.isSoundEnabled(),
+                isReducedMotionEnabled(), store.getLanguageTag(), store.getVisualTheme(),
                 new AndroidSettingsScreen.SettingsActions() {
                     @Override
                     public void onLanguageRequested() {
@@ -668,9 +674,20 @@ public class MainActivity extends Activity implements GameObserver {
                     }
 
                     @Override
+                    public void onThemeRequested() {
+                        showThemeDialog();
+                    }
+
+                    @Override
                     public void onHapticChanged(boolean checked) {
                         store.setHapticEnabled(checked);
                         applySettingsToBoard();
+                    }
+
+                    @Override
+                    public void onSoundChanged(boolean checked) {
+                        store.setSoundEnabled(checked);
+                        soundFeedback.setEnabled(checked);
                     }
 
                     @Override
@@ -1142,6 +1159,35 @@ public class MainActivity extends Activity implements GameObserver {
         }
         saveGame();
         store.setLanguageTag(selectedTag);
+        recreate();
+    }
+
+    private void showThemeDialog() {
+        AndroidVisualTheme[] themes = AndroidVisualTheme.values();
+        String[] labels = new String[themes.length];
+        for (int index = 0; index < themes.length; index++) {
+            labels[index] = getString(themes[index] == AndroidVisualTheme.OCEAN
+                    ? R.string.theme_ocean : R.string.theme_midnight);
+        }
+
+        int selectedIndex = store.getVisualTheme().ordinal();
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.dialog_theme_title)
+                .setSingleChoiceItems(labels, selectedIndex, (dialog, which) -> {
+                    AndroidVisualTheme selectedTheme = themes[which];
+                    dialog.dismiss();
+                    applyVisualTheme(selectedTheme);
+                })
+                .setNegativeButton(R.string.dialog_cancel, null)
+                .show();
+    }
+
+    private void applyVisualTheme(AndroidVisualTheme visualTheme) {
+        if (visualTheme == store.getVisualTheme()) {
+            return;
+        }
+        saveGame();
+        store.setVisualTheme(visualTheme);
         recreate();
     }
 
@@ -1696,6 +1742,7 @@ public class MainActivity extends Activity implements GameObserver {
         if (boardView != null) {
             boardView.setHapticFeedbackEnabled(isHapticEnabled());
             boardView.setReducedMotionEnabled(isReducedMotionEnabled());
+            boardView.setVisualTheme(store.getVisualTheme());
         }
     }
 
@@ -1719,6 +1766,9 @@ public class MainActivity extends Activity implements GameObserver {
      */
     @Override
     public void onMove(Direction dir) {
+        if (!solverRunning && !model.isSolved()) {
+            soundFeedback.playMove();
+        }
         if (currentScreen == Screen.TUTORIAL) {
             updateTutorialStatus();
         } else {
@@ -1735,6 +1785,9 @@ public class MainActivity extends Activity implements GameObserver {
      */
     @Override
     public void onLineMove(Direction dir, int steps) {
+        if (!solverRunning && !model.isSolved()) {
+            soundFeedback.playMove();
+        }
         if (currentScreen == Screen.TUTORIAL) {
             handleTutorialLineMove(steps);
         } else {
@@ -1751,6 +1804,7 @@ public class MainActivity extends Activity implements GameObserver {
      */
     @Override
     public void onGameWon(int moves, long timeMs) {
+        soundFeedback.playCompletion();
         if (currentScreen == Screen.TUTORIAL) {
             handleTutorialWin();
             return;

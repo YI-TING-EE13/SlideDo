@@ -38,12 +38,13 @@ Current handoff status:
 - The latest local verification pass was warning-clean for the previously noisy
   Gradle DSL deprecation, Java native-access warning, and Android Java
   deprecation note.
-- The latest dual-AVD acceptance covered all 72 Android tests on each of
+- The latest dual-AVD acceptance covered all 74 Android tests on each of
   Pixel_7 (Android 15, 1080x2400) and `small_phone` (Android 16 / API 36.1,
   720x1280), with final pass evidence and no skipped tests. The compact AVD ran
   the full suite; five Pixel_7 shards avoided emulator contention, and one
   transient focus failure passed on immediate isolated rerun. Coverage
-  includes strategic-hint assistance persistence and player-best protection,
+  includes persistent sound/theme preferences, active-game preservation across
+  theme recreation, strategic-hint assistance persistence and player-best protection,
   the deterministic offline daily challenge and streak state,
   exact-puzzle replay before and after Results recreation, difficulty
   selection, independent per-size saves, legacy-save migration, scoped records,
@@ -65,10 +66,10 @@ verify.bat
 verify-connected.bat
 ```
 
-The active product program is now the eight-stage Personal Play roadmap in
-`Roadmap And Planning`. It prioritizes offline replay value and personal
-convenience over public distribution. Stages 1 through 7 are implemented and
-verified. Stage 8, optional sound feedback and persistent visual themes, is next.
+The eight-stage Personal Play roadmap in `Roadmap And Planning` is implemented
+and verified. It prioritizes offline replay value and personal convenience over
+public distribution. Future work is optional refinement rather than an
+unfinished stage in this program.
 
 Real Play upload signing is intentionally deferred until store submission. It
 is not required for a local push-ready commit, and no Git remote or push is part
@@ -441,8 +442,9 @@ planning layer above implementation tickets.
   Save payloads include
   explicit updated-at, size, moves, elapsed, active, and solved metadata for
   Continue and release diagnostics.
-- The app does not yet have audio, themes, reviewed store screenshots, or a
-  published privacy policy URL. First beta analytics, crash reporting,
+- The app now has optional local audio and persistent Midnight/Ocean themes, but
+  does not yet have reviewed store screenshots or a published privacy policy
+  URL. First beta analytics, crash reporting,
   telemetry, ads SDKs, accounts, cloud save, and third-party tracking are
   intentionally deferred so the Android beta remains local-only. Release
   signing injection, versioning, release notes, adaptive launcher icons,
@@ -457,13 +459,12 @@ planning layer above implementation tickets.
 - First-run guided path is MVP-level: the new Practice Tutorial covers a first
   move and whole-line slide, but it is still not a full multi-step coached
   first game.
-- Settings cover language, haptic feedback, board/screen Reduced motion, reset
-  save, and reset records, but sound and theme controls still wait on those
-  systems.
+- Settings cover language, Midnight/Ocean themes, optional sound and haptic
+  feedback, board/screen Reduced motion, reset save, and reset records.
 - Results now uses a completion mark, grouped score summary, record status, and
   clear next actions. A bespoke celebration, sharing, and progression hook do
   not exist.
-- The feedback system still lacks sound, a bespoke win celebration, progression
+- The feedback system still lacks a bespoke win celebration, progression
   feedback, and visual treatment beyond Results copy for assisted completion.
 - Strategic hints use deterministic fixed-depth lookahead and Manhattan
   distance. They provide useful local guidance but do not claim an optimal or
@@ -510,7 +511,7 @@ Every stage uses the same delivery gate:
 | 5 | History and personal stats | Store bounded local completion history and show meaningful per-size and per-difficulty summaries. | Completed and verified on 2026-08-21. |
 | 6 | Offline daily challenge | Generate one deterministic local puzzle per date and record completion/streak state without a server. | Completed and verified on 2026-08-22. |
 | 7 | Strategic hint | Suggest a useful next move, mark the game assisted, and preserve player-record protection. | Completed and verified on 2026-08-22. |
-| 8 | Sound and themes | Add optional local sound feedback and selectable visual themes with persistent settings and accessibility-safe defaults. | Next. |
+| 8 | Sound and themes | Add optional local sound feedback and selectable visual themes with persistent settings and accessibility-safe defaults. | Completed and verified on 2026-08-22. |
 
 Shared puzzle rules, deterministic puzzle identity, elapsed milliseconds, save
 compatibility, and assisted-record protection remain core contracts. Android
@@ -613,7 +614,7 @@ Parity conclusion for current beta:
 
 Priority: High
 
-Status: Completed on 2026-05-25.
+Status: Completed on 2026-05-25; sound and theme additions completed on 2026-08-22.
 
 - [x] Launch default Home screen.
 - [x] Navigate Home -> Mode Select -> Game.
@@ -748,18 +749,20 @@ Priority: High
 Status: Completed on 2026-05-25.
 
 - [x] Add haptic feedback toggle.
-- Add sound effects toggle after audio exists.
-- Add theme selection after at least one alternate theme exists.
+- [x] Add sound effects toggle after audio exists.
+- [x] Add theme selection after at least one alternate theme exists.
 - [x] Add reduced-motion preference before adding heavier animations.
 - [x] Add reset local data actions for save and records, behind confirmation.
 
 Recommended MVP scope:
 
 - [x] Add Settings entry from Home and in-game Menu.
-- [x] Store haptic feedback and reduced-motion preferences in `SharedPreferences`.
+- [x] Store haptic, sound, visual-theme, and reduced-motion preferences in
+  `SharedPreferences`.
 - [x] Apply haptic toggle to existing board/control feedback.
 - [x] Add reset save and reset records actions behind confirmation dialogs.
-- Defer sound and theme controls until those systems exist.
+- [x] Keep sound off by default and apply the persisted visual palette without
+  changing gameplay state, saves, or records.
 
 ### 7. Add Results Screen
 
@@ -974,6 +977,25 @@ Priority: Low to Medium
 ## Development Log
 
 ### 2026-08-22
+
+- Completed Stage 8 sound and themes. Android Settings now offers optional local
+  move/completion tones, off by default, and persistent Midnight/Ocean palettes.
+  `AndroidSoundFeedback` lazily owns the platform tone generator and suppresses
+  per-step solver playback; no network, media asset, or permission is required.
+- Theme colors are presentation-only roles in `AndroidUi` and `KlotskiView`.
+  Changing themes recreates the Activity after saving, preserving the active
+  board, initial board, moves, timer, difficulty, assistance, saves, and records.
+- Added one persistence test and one end-to-end Settings/theme flow. The Android
+  suite now contains 74 tests. Pixel_7 passed all 74 in five isolated shards
+  after a no-snapshot cold boot recovered an AVD system crash. `small_phone`
+  covered all 74: its full run passed 73 and one transient Home-window-focus
+  timeout passed immediately when rerun alone.
+- Manual review confirmed Midnight and Ocean Settings, the Ocean Home/game
+  palette, checked sound state, and the 720x1280 scrollable Settings flow remain
+  readable, non-overlapping, and reachable. Root Gradle 8/9 tests also pass after
+  declaring the JUnit Platform launcher explicitly. The final warning-clean
+  `verify.bat` pass completed, and the debug APK SHA-256 is
+  `3B64AC1323E5B2B6195829633730EF4731C3283FBB4C922672DDD3D719573ABA`.
 
 - Completed Stage 7 strategic hints. The shared `StrategicHint` service uses a
   deterministic four-ply search with Manhattan-distance evaluation to select

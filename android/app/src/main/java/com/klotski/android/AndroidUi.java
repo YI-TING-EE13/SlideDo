@@ -32,17 +32,23 @@ final class AndroidUi {
 
     private final Activity activity;
     private final List<Button> commandButtons;
+    private final AndroidVisualTheme theme;
 
     AndroidUi(Activity activity, List<Button> commandButtons) {
+        this(activity, commandButtons, AndroidVisualTheme.MIDNIGHT);
+    }
+
+    AndroidUi(Activity activity, List<Button> commandButtons, AndroidVisualTheme theme) {
         this.activity = activity;
         this.commandButtons = commandButtons;
+        this.theme = theme == null ? AndroidVisualTheme.MIDNIGHT : theme;
     }
 
     ScreenLayout createScreenLayout() {
         ScrollView root = new ScrollView(activity);
         root.setFillViewport(true);
         root.setVerticalScrollBarEnabled(false);
-        root.setBackgroundColor(COLOR_BACKGROUND);
+        root.setBackgroundColor(resolveColor(COLOR_BACKGROUND));
 
         LinearLayout content = new LinearLayout(activity);
         content.setOrientation(LinearLayout.VERTICAL);
@@ -163,7 +169,7 @@ final class AndroidUi {
         TextView textView = new TextView(activity);
         textView.setText(text);
         textView.setTextSize(sp);
-        textView.setTextColor(color);
+        textView.setTextColor(resolveColor(color));
         textView.setTypeface(Typeface.DEFAULT, style);
         return textView;
     }
@@ -190,7 +196,7 @@ final class AndroidUi {
 
     GradientDrawable makePanelBackground(int color) {
         GradientDrawable drawable = new GradientDrawable();
-        drawable.setColor(color);
+        drawable.setColor(resolveColor(color));
         drawable.setCornerRadius(dp(14));
         drawable.setStroke(dp(1), Color.argb(48, 255, 255, 255));
         return drawable;
@@ -206,17 +212,48 @@ final class AndroidUi {
     GradientDrawable makeCircleBackground(int color, int strokeColor) {
         GradientDrawable drawable = new GradientDrawable();
         drawable.setShape(GradientDrawable.OVAL);
-        drawable.setColor(color);
-        drawable.setStroke(dp(1), strokeColor);
+        drawable.setColor(resolveColor(color));
+        drawable.setStroke(dp(1), resolveColor(strokeColor));
         return drawable;
     }
 
     GradientDrawable makeCellBackground(int color, int strokeColor) {
         GradientDrawable drawable = new GradientDrawable();
-        drawable.setColor(color);
+        drawable.setColor(resolveColor(color));
         drawable.setCornerRadius(dp(9));
-        drawable.setStroke(dp(1), strokeColor);
+        drawable.setStroke(dp(1), resolveColor(strokeColor));
         return drawable;
+    }
+
+    int resolveColor(int color) {
+        if (color == COLOR_BACKGROUND) {
+            return theme.background;
+        }
+        if (color == COLOR_PANEL) {
+            return theme.panel;
+        }
+        if (color == COLOR_PANEL_LIGHT) {
+            return theme.panelLight;
+        }
+        if (color == COLOR_PANEL_HIGHLIGHT) {
+            return theme.panelHighlight;
+        }
+        if (color == COLOR_PRIMARY) {
+            return theme.primary;
+        }
+        if (color == COLOR_ACCENT) {
+            return theme.accent;
+        }
+        if (color == COLOR_MUTED_TEXT) {
+            return theme.mutedText;
+        }
+        if (color == COLOR_POSITIVE_TEXT) {
+            return theme.positiveText;
+        }
+        if (color == COLOR_DANGER_PANEL) {
+            return theme.dangerPanel;
+        }
+        return color;
     }
 
     int dp(int value) {

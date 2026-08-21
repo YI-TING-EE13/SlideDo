@@ -36,6 +36,8 @@ an emulator or connected Android device.
 - Deterministic Strategic Hint that highlights one recommended adjacent tile
   without moving the board, plus a non-assisted movable-tile hint; BFS, A*, and
   IDA* are grouped one level deeper under Solver Tools
+- Optional short local tones for tile moves and puzzle completion, disabled by
+  default, plus persistent Midnight and Ocean visual themes
 - Board, highlighted movable tiles, primary game controls, and settings switches
   expose accessibility descriptions for screen readers
 - Manual Save and Load controls in the in-game menu
@@ -67,9 +69,9 @@ an emulator or connected Android device.
   file
 - Signed release APK/AAB builds are available through `build-release.bat`
 - Rotation restore for the active game screen
-- Settings for persistent English, Traditional Chinese, and Japanese language selection,
-  haptic feedback, reduced board/screen motion, reset all saved games, and
-  reset records
+- Settings for persistent English, Traditional Chinese, and Japanese language
+  selection, Midnight/Ocean visual themes, optional sound and haptic feedback,
+  reduced board/screen motion, reset all saved games, and reset records
 - Per-size and per-difficulty best records plus local lifetime completion
   totals, player averages, and newest-first recent history; assisted
   completions are counted separately and cannot replace player bests
@@ -151,9 +153,12 @@ This runs `verify.bat` and `verify-release.bat`. CI release artifacts are
 verification outputs and use the temporary signing key unless real Play upload
 signing is explicitly configured.
 
-Latest 2026-08-22 validation status: all 72 Android tests passed in
-instrumentation batches on both the Pixel_7 AVD running Android 15 at 1080x2400
-and the `small_phone` AVD running Android 16 / API 36.1 at 720x1280. The suite covers the
+Latest 2026-08-22 validation status: all 74 Android tests have passing evidence
+on both the Pixel_7 AVD running Android 15 at 1080x2400 and the `small_phone`
+AVD running Android 16 / API 36.1 at 720x1280. Pixel_7 passed 74/74 in five
+isolated shards after a cold boot recovered an AVD system crash. The compact AVD
+full run passed 73/74; its one transient Home-window-focus timeout passed on an
+immediate isolated rerun. The suite covers the
 normal animated transition path, the Reduced motion bypass, English-default
 locale isolation, persistent English, Traditional Chinese, and Japanese switching,
 explicit Traditional Chinese and Japanese major-screen/dialog/result flows,
@@ -164,6 +169,10 @@ checked before and after Results rotation, including board identity and zeroed
 run state. The suite also verifies bounded completion history, lifetime
 statistics, player/assisted separation, localized Records summaries, full
 record reset, and duplicate prevention during Results recreation.
+Stage 8 adds a sound preference that defaults off, asset-free move/completion
+tones, persistent Midnight/Ocean palettes, and active-game preservation when a
+theme recreates the Activity. Automated checks cover defaults, persistence,
+settings accessibility text, enabled-sound gameplay, and unchanged board state.
 Stage 7 adds deterministic strategic guidance, persisted assisted state for
 normal and daily saves, and player-best protection across rotation, Restart,
 Load, and Results replay. Stage 6 adds a deterministic offline 4x4 Classic
@@ -199,6 +208,11 @@ without clipping. Pixel_7 and `small_phone` generated the same dated board, and
 the Daily game title, HUD, board, and controls fit both profiles.
 The Stage 6 final debug APK SHA-256 is
 `EF92467A66D3F453FF95DE00122C68B5B092A63CADAE59B10ED73EBCCB050499`.
+Stage 8 manual review covered both Settings palettes and the Ocean game board at
+1080x2400, plus the complete scrollable Midnight Settings flow at 720x1280. All
+theme, sound, Reduced motion, local-data, and Back controls remained readable
+and reachable without overlap. The Stage 8 final debug APK SHA-256 is
+`3B64AC1323E5B2B6195829633730EF4731C3283FBB4C922672DDD3D719573ABA`.
 
 For Android build and lint only:
 
@@ -320,6 +334,12 @@ check-screenshot-set.bat ..\screenshots\android\0.2.0-beta.1
   persists; switch back to English and repeat the same major flow.
 - Toggle haptics and Reduced motion, then return to gameplay. Reduced motion
   should skip both screen transitions and board movement animation.
+- Confirm Sound feedback starts off, enable it, and verify a short tone for a
+  player tile move and puzzle completion. Solver playback should not emit a tone
+  for every automated step.
+- Switch Visual theme between Midnight and Ocean. Confirm Home, Settings, and
+  the board update, then relaunch and verify the selected theme, active board,
+  move count, timer, saves, and records are unchanged.
 - Use Settings reset actions only after confirming the dialogs.
 - Open Assist, choose Show Movable Tiles, and confirm the status explains the
   highlighted legal moves while the move count stays unchanged.

@@ -25,8 +25,9 @@ final class AndroidSettingsScreen {
         this.ui = ui;
     }
 
-    ScreenLayout build(boolean hapticEnabled, boolean reducedMotionEnabled, String languageTag,
-            SettingsActions actions) {
+    ScreenLayout build(boolean hapticEnabled, boolean soundEnabled,
+            boolean reducedMotionEnabled, String languageTag,
+            AndroidVisualTheme visualTheme, SettingsActions actions) {
         ScreenLayout screen = ui.createScreenLayout();
         screen.root.setId(R.id.settings_root);
         ui.addScreenHeader(screen.content,
@@ -45,8 +46,22 @@ final class AndroidSettingsScreen {
         screen.content.addView(languageButton, languageParams);
 
         ui.addSectionLabel(screen.content, R.string.settings_section_preferences);
+        String themeName = activity.getString(visualTheme == AndroidVisualTheme.OCEAN
+                ? R.string.theme_ocean : R.string.theme_midnight);
+        Button themeButton = ui.createButton(
+                activity.getString(R.string.settings_theme_button, themeName), COLOR_PANEL);
+        themeButton.setId(R.id.settings_theme_button);
+        themeButton.setContentDescription(activity.getString(
+                R.string.settings_theme_accessibility, themeName));
+        themeButton.setOnClickListener(v -> actions.onThemeRequested());
+        LinearLayout.LayoutParams themeParams = ui.fullWidthParams();
+        themeParams.setMargins(0, 0, 0, ui.dp(10));
+        screen.content.addView(themeButton, themeParams);
+
         addSettingsSwitch(screen.content, R.id.settings_haptic_switch, R.string.settings_haptic_title,
                 R.string.settings_haptic_body, hapticEnabled, actions::onHapticChanged);
+        addSettingsSwitch(screen.content, R.id.settings_sound_switch, R.string.settings_sound_title,
+                R.string.settings_sound_body, soundEnabled, actions::onSoundChanged);
         addSettingsSwitch(screen.content, R.id.settings_reduced_motion_switch,
                 R.string.settings_reduced_motion_title, R.string.settings_reduced_motion_body,
                 reducedMotionEnabled, actions::onReducedMotionChanged);
@@ -102,7 +117,11 @@ final class AndroidSettingsScreen {
     interface SettingsActions {
         void onLanguageRequested();
 
+        void onThemeRequested();
+
         void onHapticChanged(boolean checked);
+
+        void onSoundChanged(boolean checked);
 
         void onReducedMotionChanged(boolean checked);
 

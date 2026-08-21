@@ -61,6 +61,8 @@ final class AndroidGameStore {
     private static final String KEY_ONBOARDING_SEEN = "onboarding_seen";
     private static final String KEY_HAPTIC_ENABLED = "haptic_enabled";
     private static final String KEY_REDUCED_MOTION = "reduced_motion";
+    private static final String KEY_SOUND_ENABLED = "sound_enabled";
+    private static final String KEY_VISUAL_THEME = "visual_theme";
     static final String KEY_LANGUAGE_TAG = "language_tag";
 
     private final SharedPreferences prefs;
@@ -114,6 +116,24 @@ final class AndroidGameStore {
 
     void setReducedMotionEnabled(boolean enabled) {
         prefs.edit().putBoolean(KEY_REDUCED_MOTION, enabled).apply();
+    }
+
+    boolean isSoundEnabled() {
+        return prefs.getBoolean(KEY_SOUND_ENABLED, false);
+    }
+
+    void setSoundEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_SOUND_ENABLED, enabled).apply();
+    }
+
+    AndroidVisualTheme getVisualTheme() {
+        return AndroidVisualTheme.fromId(prefs.getString(
+                KEY_VISUAL_THEME, AndroidVisualTheme.MIDNIGHT.id));
+    }
+
+    void setVisualTheme(AndroidVisualTheme theme) {
+        AndroidVisualTheme selected = theme == null ? AndroidVisualTheme.MIDNIGHT : theme;
+        prefs.edit().putString(KEY_VISUAL_THEME, selected.id).apply();
     }
 
     String getLanguageTag() {

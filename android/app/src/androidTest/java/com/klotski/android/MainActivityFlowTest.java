@@ -12,6 +12,7 @@ import android.app.Instrumentation;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.drawable.ColorDrawable;
 import android.os.SystemClock;
 import android.view.View;
 import android.view.ViewGroup;
@@ -431,21 +432,69 @@ public class MainActivityFlowTest {
 
         clickId(R.id.home_settings_button);
         waitForId("settings_root");
+        waitForText("Visual theme: Midnight");
         waitForText("Haptic feedback");
+        scrollToText("Sound feedback");
         scrollToText("Reduced motion");
-        assertNotNull(findById("settings_haptic_switch"));
-        assertNotNull(findById("settings_reduced_motion_switch"));
-        waitForContentDescriptionContaining("settings_haptic_switch",
+        assertActivityHasView(R.id.settings_theme_button);
+        assertActivityHasView(R.id.settings_haptic_switch);
+        assertActivityHasView(R.id.settings_sound_switch);
+        assertActivityHasView(R.id.settings_reduced_motion_switch);
+        assertActivityContentDescriptionContains(R.id.settings_haptic_switch,
                 "Haptic feedback. Use short vibration feedback");
-        waitForContentDescriptionContaining("settings_reduced_motion_switch",
+        assertActivityContentDescriptionContains(R.id.settings_sound_switch,
+                "Sound feedback. Play short local tones");
+        assertActivityContentDescriptionContains(R.id.settings_reduced_motion_switch,
                 "Reduced motion. Skip board movement and screen transition animations");
 
         toggleSwitch(R.id.settings_haptic_switch);
+        toggleSwitch(R.id.settings_sound_switch);
         toggleSwitch(R.id.settings_reduced_motion_switch);
 
         SharedPreferences prefs = targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         assertFalse(prefs.getBoolean("haptic_enabled", true));
+        assertTrue(prefs.getBoolean("sound_enabled", false));
         assertTrue(prefs.getBoolean("reduced_motion", false));
+    }
+
+    @Test
+    public void themeSelectionPersistsAndPreservesActiveGame() throws Exception {
+        writeSavedGame(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 0);
+        assertTrue(targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putBoolean("sound_enabled", true)
+                .commit());
+        launchApp();
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+        tapCell(3, 1, 2);
+        waitForStatusContaining("1 move");
+
+        clickId(R.id.game_menu_button);
+        scrollToText("Settings").click();
+        device.waitForIdle();
+        waitForId("settings_root");
+        waitForText("Visual theme: Midnight").click();
+        waitForText("Choose visual theme");
+        waitForText("Ocean").click();
+        waitForResumedMainActivity();
+
+        waitForId("settings_root");
+        waitForText("Visual theme: Ocean");
+        SharedPreferences prefs = targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        assertEquals("ocean", prefs.getString("visual_theme", null));
+        assertActivityBackgroundColor(R.id.settings_root, AndroidVisualTheme.OCEAN.background);
+
+        scrollToText("Back").click();
+        waitForId("game_root");
+        waitForStatusContaining("1 move");
+        assertActivityBackgroundColor(R.id.game_root, AndroidVisualTheme.OCEAN.background);
+
+        relaunchApp();
+        waitForId("home_root");
+        assertActivityBackgroundColor(R.id.home_root, AndroidVisualTheme.OCEAN.background);
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+        waitForStatusContaining("1 move");
     }
 
     @Test
@@ -1451,6 +1500,17 @@ public class MainActivityFlowTest {
     private void assertActivityHasView(int resourceId) {
         instrumentation.runOnMainSync(() ->
                 assertNotNull("Missing activity view id: " + resourceId, activity.findViewById(resourceId)));
+    }
+
+    private void assertActivityBackgroundColor(int resourceId, int expectedColor) {
+        instrumentation.runOnMainSync(() -> {
+            View view = activity.findViewById(resourceId);
+            assertNotNull("Missing activity view id: " + resourceId, view);
+            assertTrue("View background is not a solid color: " + resourceId,
+                    view.getBackground() instanceof ColorDrawable);
+            assertEquals("Unexpected background color for activity view id: " + resourceId,
+                    expectedColor, ((ColorDrawable) view.getBackground()).getColor());
+        });
     }
 
     private void assertActivityContainsText(String expectedText) {

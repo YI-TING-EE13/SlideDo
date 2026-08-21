@@ -110,12 +110,8 @@ public class KlotskiView extends View implements GameObserver {
         setHapticFeedbackEnabled(true);
 
         gap = dp(9);
-        boardPaint.setColor(AndroidUi.COLOR_PANEL);
-        tilePaint.setColor(AndroidUi.COLOR_PRIMARY);
         tileHighlightPaint.setColor(Color.argb(42, 255, 255, 255));
-        hintFillPaint.setColor(Color.argb(64, 251, 191, 36));
         hintFillPaint.setStyle(Paint.Style.FILL);
-        hintStrokePaint.setColor(Color.argb(230, 251, 191, 36));
         hintStrokePaint.setStyle(Paint.Style.STROKE);
         hintStrokePaint.setStrokeWidth(dp(3));
         targetStrokePaint.setColor(Color.WHITE);
@@ -124,12 +120,31 @@ public class KlotskiView extends View implements GameObserver {
         emptyCellPaint.setColor(Color.argb(78, 255, 255, 255));
         emptyCellPaint.setStyle(Paint.Style.STROKE);
         emptyCellPaint.setStrokeWidth(dp(2));
-        emptyDotPaint.setColor(Color.argb(150, 251, 191, 36));
         emptyDotPaint.setStyle(Paint.Style.FILL);
         textPaint.setColor(Color.WHITE);
         textPaint.setTextAlign(Paint.Align.CENTER);
         textPaint.setFakeBoldText(true);
+        setVisualTheme(AndroidVisualTheme.MIDNIGHT);
         refreshAccessibilityDescription();
+    }
+
+    /**
+     * Applies presentation colors without changing the bound puzzle state.
+     *
+     * @param theme selected Android visual theme
+     */
+    void setVisualTheme(AndroidVisualTheme theme) {
+        AndroidVisualTheme selected = theme == null ? AndroidVisualTheme.MIDNIGHT : theme;
+        boardPaint.setColor(selected.panel);
+        tilePaint.setColor(selected.primary);
+        hintFillPaint.setColor(withAlpha(selected.accent, 64));
+        hintStrokePaint.setColor(withAlpha(selected.accent, 230));
+        emptyDotPaint.setColor(withAlpha(selected.accent, 150));
+        invalidate();
+    }
+
+    private static int withAlpha(int color, int alpha) {
+        return Color.argb(alpha, Color.red(color), Color.green(color), Color.blue(color));
     }
 
     /**

@@ -116,8 +116,15 @@
     <string name="language_japanese">日本語</string>
     <string name="settings_section_preferences">PREFERENCES</string>
     <string name="settings_section_local_data">LOCAL DATA</string>
+    <string name="settings_theme_button">Visual theme: %1$s</string>
+    <string name="settings_theme_accessibility">Choose visual theme. Current theme: %1$s.</string>
+    <string name="dialog_theme_title">Choose visual theme</string>
+    <string name="theme_midnight">Midnight</string>
+    <string name="theme_ocean">Ocean</string>
     <string name="settings_haptic_title">Haptic feedback</string>
     <string name="settings_haptic_body">Use short vibration feedback for board moves and key actions.</string>
+    <string name="settings_sound_title">Sound feedback</string>
+    <string name="settings_sound_body">Play short local tones for tile moves and puzzle completion.</string>
     <string name="settings_reduced_motion_title">Reduced motion</string>
     <string name="settings_reduced_motion_body">Skip board movement and screen transition animations.</string>
     <string name="settings_reset_save">Reset Saved Games</string>

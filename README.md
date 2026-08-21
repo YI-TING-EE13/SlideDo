@@ -43,7 +43,7 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
   - Whole-line tap behavior maps naturally to touch screens.
   - One user gesture counts as one move.
   - Undo restores the entire previous user action.
-  - Android includes icon-plus-text controls, an outlined empty cell with a first-move prompt, menu-based save/load, autosave, persistent English, Traditional Chinese, and Japanese language selection, haptic and reduced-motion settings, local best records, and a short completion-mark settle on Results.
+  - Android includes icon-plus-text controls, an outlined empty cell with a first-move prompt, menu-based save/load, autosave, persistent English, Traditional Chinese, and Japanese language selection, optional local sound feedback, Midnight/Ocean themes, haptic and reduced-motion settings, local best records, and a short completion-mark settle on Results.
   - The play timer excludes time spent in game dialogs, non-game screens, and
     the background, then resumes when the Game screen becomes interactive.
   - Results offers Replay Puzzle, which restores the exact starting board and
@@ -68,7 +68,7 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
 - **Native Android Project**:
   - Gradle wrapper included.
   - Custom Android view.
-  - Home, offline Daily Challenge, onboarding, interactive Practice Tutorial, Mode Select, visual How to Play, Settings, Records, Results, coordinated screen transitions, English, Traditional Chinese, and Japanese localization, icon-plus-text controls, empty-cell guidance, touch controls, synchronized whole-line animation, haptics, autosave, manual save/load, best records, Assist hints, accessibility descriptions, nested solver controls, and instrumentation tests.
+  - Home, offline Daily Challenge, onboarding, interactive Practice Tutorial, Mode Select, visual How to Play, Settings, Records, Results, coordinated screen transitions, English, Traditional Chinese, and Japanese localization, icon-plus-text controls, empty-cell guidance, touch controls, synchronized whole-line animation, optional local tones, persistent Midnight/Ocean themes, haptics, autosave, manual save/load, best records, Assist hints, accessibility descriptions, nested solver controls, and instrumentation tests.
 
 ---
 
@@ -240,6 +240,11 @@ Settings, choose **App language**, and select **English**, **繁體中文**, or
 **日本語**. The selection is saved locally and remains active after the app is
 restarted.
 
+Settings also offers a **Sound feedback** switch, off by default, for short local
+move and completion tones. **Visual theme** switches between the default
+Midnight palette and Ocean. Both choices remain local and persist across app
+relaunches without changing the current puzzle, saved games, or records.
+
 If the emulator does not show SlideDo in the launcher, reinstall and start it
 directly:
 
@@ -365,16 +370,20 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
 - Connected Android instrumentation helpers now wait for the foreground app
   window, wait for activity controls to become interactable, use device-level
   board taps, and fall back to direct swipe scrolling for long content.
-- The latest 2026-08-21 dual-AVD Android acceptance passed all 63 tests in six
-  isolated batches on both the Pixel_7 AVD (Android 15, 1080x2400) and the
-  `small_phone` AVD (Android 16 / API 36.1, 720x1280), with no failures or skips. The suite
+- The latest 2026-08-22 dual-AVD Android acceptance covered all 74 tests on both
+  the Pixel_7 AVD (Android 15, 1080x2400) and the `small_phone` AVD (Android 16 /
+  API 36.1, 720x1280). Pixel_7 passed 74/74 in five isolated shards after a cold
+  boot recovered an AVD system crash. The compact AVD full run passed 73/74 and
+  its one transient Home-window-focus timeout passed immediately in isolation,
+  providing passing evidence for all 74 cases. The suite
   includes English-default isolation from device locale, persistent language
   switching, active-game preservation, and explicit Traditional Chinese and
   Japanese major-screen, difficulty-selection, independent per-size saves,
   legacy-save migration, save/record scoping, solver-warning, exact-puzzle
   replay across Results rotation, Records, active-play timer-pause flows,
   player/assisted completion history, lifetime statistics, bounded retention,
-  localized averages, and full record reset.
+  localized averages, full record reset, persistent sound/theme settings, and
+  active-game preservation across theme recreation.
 - Latest local `ci.bat` run passed the no-device verification and release
   readiness gates.
 - Android emulator smoke testing for install/launch, Home visibility, whole-line movement, undo, restart, save/load, solver warning dialog, rotation, and background resume.
@@ -508,11 +517,11 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
 
 ## Roadmap
 
-- The active Personal Play roadmap proceeds through eight independently tested
+- The Personal Play roadmap completed eight independently tested
   and committed stages: active-play timer pausing, difficulty selection,
   replaying the same puzzle, per-size saves, local history/statistics, an
-  offline daily challenge, strategic hints, and sound/themes. Stages 1 through 7
-  are complete; optional sound feedback and persistent visual themes are next.
+  offline daily challenge, strategic hints, and sound/themes. All eight stages
+  are implemented and verified.
   `DEVELOPMENT.md` owns the detailed acceptance criteria and status.
 - Desktop/mobile player-facing parity MVP is complete for Home/start, Records, Preferences, Results, How to Play, Practice Tutorial, and Assist hints.
 - Save files now include release-readiness metadata and desktop saves now live in the user-data directory.
