@@ -22,17 +22,26 @@ final class AndroidActivityState {
     private static final String STATE_RESULT_NEW_BEST = "result_new_best";
     private static final String STATE_RESULT_PREVIOUS_BEST_MOVES = "result_previous_best_moves";
     private static final String STATE_RESULT_PREVIOUS_BEST_TIME = "result_previous_best_time";
+    private static final String STATE_ACTIVE_DAILY_DATE = "active_daily_date";
+    private static final String STATE_RESULT_DAILY_DATE = "result_daily_date";
 
     private AndroidActivityState() {
     }
 
     static void save(Bundle outState, Screen currentScreen, Screen infoReturnScreen, boolean gameStarted,
             int onboardingPage, int tutorialStep, GameResult currentResult) {
+        save(outState, currentScreen, infoReturnScreen, gameStarted, onboardingPage, tutorialStep,
+                currentResult, null);
+    }
+
+    static void save(Bundle outState, Screen currentScreen, Screen infoReturnScreen, boolean gameStarted,
+            int onboardingPage, int tutorialStep, GameResult currentResult, String activeDailyDateId) {
         outState.putString(STATE_SCREEN, currentScreen.name());
         outState.putString(STATE_INFO_RETURN_SCREEN, infoReturnScreen.name());
         outState.putBoolean(STATE_GAME_STARTED, gameStarted);
         outState.putInt(STATE_ONBOARDING_PAGE, onboardingPage);
         outState.putInt(STATE_TUTORIAL_STEP, tutorialStep);
+        outState.putString(STATE_ACTIVE_DAILY_DATE, activeDailyDateId);
         saveResultState(outState, currentResult);
     }
 
@@ -43,7 +52,8 @@ final class AndroidActivityState {
                 savedInstanceState.getBoolean(STATE_GAME_STARTED, false),
                 savedInstanceState.getInt(STATE_ONBOARDING_PAGE, 0),
                 savedInstanceState.getInt(STATE_TUTORIAL_STEP, fallbackTutorialStep),
-                restoreResultState(savedInstanceState));
+                restoreResultState(savedInstanceState),
+                savedInstanceState.getString(STATE_ACTIVE_DAILY_DATE));
     }
 
     private static Screen readScreen(Bundle bundle, String key, Screen fallback) {
@@ -70,6 +80,7 @@ final class AndroidActivityState {
         outState.putLong(STATE_RESULT_TIME, currentResult.timeMs);
         outState.putBoolean(STATE_RESULT_ASSISTED, currentResult.assisted);
         outState.putBoolean(STATE_RESULT_NEW_BEST, currentResult.newBest);
+        outState.putString(STATE_RESULT_DAILY_DATE, currentResult.dailyDateId);
         if (currentResult.previousBest == null) {
             outState.putInt(STATE_RESULT_PREVIOUS_BEST_MOVES, -1);
             outState.putLong(STATE_RESULT_PREVIOUS_BEST_TIME, -1);
@@ -95,7 +106,8 @@ final class AndroidActivityState {
                 savedInstanceState.getLong(STATE_RESULT_TIME, 0),
                 savedInstanceState.getBoolean(STATE_RESULT_ASSISTED, false),
                 savedInstanceState.getBoolean(STATE_RESULT_NEW_BEST, false),
-                previousBest);
+                previousBest,
+                savedInstanceState.getString(STATE_RESULT_DAILY_DATE));
     }
 
     static final class Snapshot {
@@ -105,15 +117,17 @@ final class AndroidActivityState {
         final int onboardingPage;
         final int tutorialStep;
         final GameResult result;
+        final String activeDailyDateId;
 
         Snapshot(Screen screen, Screen infoReturnScreen, boolean gameStarted, int onboardingPage,
-                int tutorialStep, GameResult result) {
+                int tutorialStep, GameResult result, String activeDailyDateId) {
             this.screen = screen;
             this.infoReturnScreen = infoReturnScreen;
             this.gameStarted = gameStarted;
             this.onboardingPage = onboardingPage;
             this.tutorialStep = tutorialStep;
             this.result = result;
+            this.activeDailyDateId = activeDailyDateId;
         }
     }
 }

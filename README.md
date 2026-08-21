@@ -37,6 +37,9 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
     Reduced motion skips both screen transitions and board movement animation.
   - Home groups play, learning, and personal actions so the main path remains
     visible without giving every action the same visual weight.
+  - Daily Challenge creates one reproducible offline 4x4 Classic puzzle for
+    each device-local date, resumes it independently of normal saves, and tracks
+    current and best streaks without a server.
   - Whole-line tap behavior maps naturally to touch screens.
   - One user gesture counts as one move.
   - Undo restores the entire previous user action.
@@ -63,7 +66,7 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
 - **Native Android Project**:
   - Gradle wrapper included.
   - Custom Android view.
-  - Home, onboarding, interactive Practice Tutorial, Mode Select, visual How to Play, Settings, Records, Results, coordinated screen transitions, English, Traditional Chinese, and Japanese localization, icon-plus-text controls, empty-cell guidance, touch controls, synchronized whole-line animation, haptics, autosave, manual save/load, best records, Assist hints, accessibility descriptions, nested solver controls, and instrumentation tests.
+  - Home, offline Daily Challenge, onboarding, interactive Practice Tutorial, Mode Select, visual How to Play, Settings, Records, Results, coordinated screen transitions, English, Traditional Chinese, and Japanese localization, icon-plus-text controls, empty-cell guidance, touch controls, synchronized whole-line animation, haptics, autosave, manual save/load, best records, Assist hints, accessibility descriptions, nested solver controls, and instrumentation tests.
 
 ---
 
@@ -505,9 +508,9 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
 - The active Personal Play roadmap proceeds through eight independently tested
   and committed stages: active-play timer pausing, difficulty selection,
   replaying the same puzzle, per-size saves, local history/statistics, an
-  offline daily challenge, strategic hints, and sound/themes. Stages 1 through 5
-  are complete; the deterministic offline daily challenge and local streak
-  state are next.
+  offline daily challenge, strategic hints, and sound/themes. Stages 1 through 6
+  are complete; the strategic next-move hint with assisted-record protection is
+  next.
   `DEVELOPMENT.md` owns the detailed acceptance criteria and status.
 - Desktop/mobile player-facing parity MVP is complete for Home/start, Records, Preferences, Results, How to Play, Practice Tutorial, and Assist hints.
 - Save files now include release-readiness metadata and desktop saves now live in the user-data directory.

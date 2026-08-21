@@ -3,12 +3,18 @@ package com.klotski.android;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import com.klotski.core.DailyChallenge;
 import com.klotski.core.GameModel;
 import com.klotski.core.PuzzleDifficulty;
 import com.klotski.core.SaveManager;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * SharedPreferences-backed Android state store for app-level data.
@@ -35,6 +41,12 @@ final class AndroidGameStore {
     private static final String KEY_SOLVED = "solved";
     private static final String KEY_DIFFICULTY = "difficulty";
     private static final String KEY_SAVE_PREFIX = "save_";
+    private static final String KEY_DAILY_SAVE_PREFIX = "daily_save_";
+    private static final String KEY_DAILY_SAVE_DATE = "daily_save_date";
+    private static final String KEY_DAILY_COMPLETED_DATES = "daily_completed_dates_v1";
+    private static final String KEY_DAILY_LAST_COMPLETED_DATE = "daily_last_completed_date";
+    private static final String KEY_DAILY_CURRENT_STREAK = "daily_current_streak";
+    private static final String KEY_DAILY_BEST_STREAK = "daily_best_streak";
     private static final String KEY_LAST_SIZE = "last_size";
     private static final String KEY_LAST_DIFFICULTY = "last_difficulty";
     private static final String KEY_BEST_PREFIX = "best_";
@@ -125,6 +137,101 @@ final class AndroidGameStore {
         editor.putInt(KEY_LAST_SIZE, model.getSize()).apply();
     }
 
+    void saveDailyGame(String dateId, GameModel model, long elapsedMs) {
+        DailyChallenge challenge = parseDailyChallenge(dateId);
+        if (challenge == null || model == null
+                || model.getSize() != challenge.getSize()
+                || model.getDifficulty() != challenge.getDifficulty()
+                || !Arrays.deepEquals(model.getInitialGridCopy(),
+                        challenge.createGame().getInitialGridCopy())) {
+            return;
+        }
+        SharedPreferences.Editor editor = prefs.edit();
+        putSave(editor, KEY_DAILY_SAVE_PREFIX, model.getSize(), model.getGridCopy(),
+                model.getInitialGridCopy(), model.getMoveCount(), Math.max(0, elapsedMs),
+                System.currentTimeMillis(), model.isGameRunning(), model.isSolved(),
+                model.getDifficulty());
+        editor.putString(KEY_DAILY_SAVE_DATE, challenge.getDateId()).apply();
+    }
+
+    SaveManager.SaveData loadDailyGame(String dateId) {
+        DailyChallenge challenge = parseDailyChallenge(dateId);
+        if (challenge == null
+                || !challenge.getDateId().equals(prefs.getString(KEY_DAILY_SAVE_DATE, null))) {
+            return null;
+        }
+        SaveManager.SaveData data = readSavedGame(KEY_DAILY_SAVE_PREFIX, challenge.getSize());
+        if (data == null || data.difficulty != challenge.getDifficulty()
+                || !Arrays.deepEquals(data.initialGrid,
+                        challenge.createGame().getInitialGridCopy())) {
+            return null;
+        }
+        return data;
+    }
+
+    SaveMetadata getDailySaveMetadata(String dateId) {
+        SaveManager.SaveData data = loadDailyGame(dateId);
+        if (data == null) {
+            return null;
+        }
+        return new SaveMetadata(data.updatedAt, data.size, data.moveCount,
+                data.elapsedTime, data.active, data.solved, data.difficulty);
+    }
+
+    boolean recordDailyCompletion(String dateId) {
+        DailyChallenge challenge = parseDailyChallenge(dateId);
+        if (challenge == null) {
+            return false;
+        }
+        String canonicalDateId = challenge.getDateId();
+        Set<String> completedDates = new HashSet<>(prefs.getStringSet(
+                KEY_DAILY_COMPLETED_DATES, Collections.emptySet()));
+        if (!completedDates.add(canonicalDateId)) {
+            return false;
+        }
+
+        LocalDate completedDate = LocalDate.parse(canonicalDateId);
+        String storedLastId = prefs.getString(KEY_DAILY_LAST_COMPLETED_DATE, null);
+        LocalDate storedLast = parseLocalDate(storedLastId);
+        int currentStreak = Math.max(0, prefs.getInt(KEY_DAILY_CURRENT_STREAK, 0));
+        int bestStreak = Math.max(0, prefs.getInt(KEY_DAILY_BEST_STREAK, 0));
+        String lastCompletedDateId = storedLastId;
+        if (storedLast == null || completedDate.isAfter(storedLast)) {
+            currentStreak = storedLast != null && completedDate.equals(storedLast.plusDays(1))
+                    ? currentStreak + 1 : 1;
+            bestStreak = Math.max(bestStreak, currentStreak);
+            lastCompletedDateId = canonicalDateId;
+        }
+
+        prefs.edit()
+                .putStringSet(KEY_DAILY_COMPLETED_DATES, completedDates)
+                .putString(KEY_DAILY_LAST_COMPLETED_DATE, lastCompletedDateId)
+                .putInt(KEY_DAILY_CURRENT_STREAK, currentStreak)
+                .putInt(KEY_DAILY_BEST_STREAK, bestStreak)
+                .commit();
+        return true;
+    }
+
+    DailyProgress getDailyProgress(String dateId) {
+        DailyChallenge challenge = parseDailyChallenge(dateId);
+        if (challenge == null) {
+            return DailyProgress.EMPTY;
+        }
+        String canonicalDateId = challenge.getDateId();
+        LocalDate today = LocalDate.parse(canonicalDateId);
+        Set<String> completedDates = prefs.getStringSet(
+                KEY_DAILY_COMPLETED_DATES, Collections.emptySet());
+        String lastCompletedDateId = prefs.getString(KEY_DAILY_LAST_COMPLETED_DATE, null);
+        LocalDate lastCompleted = parseLocalDate(lastCompletedDateId);
+        int storedCurrent = Math.max(0, prefs.getInt(KEY_DAILY_CURRENT_STREAK, 0));
+        boolean streakIsCurrent = lastCompleted != null
+                && (lastCompleted.equals(today) || lastCompleted.equals(today.minusDays(1)));
+        return new DailyProgress(completedDates.contains(canonicalDateId),
+                streakIsCurrent ? storedCurrent : 0,
+                Math.max(0, prefs.getInt(KEY_DAILY_BEST_STREAK, 0)),
+                lastCompleted == null ? null : lastCompleted.toString());
+    }
+
     SaveManager.SaveData loadSavedGame() {
         migrateLegacySaveIfNeeded();
         int preferredSize = getLastSize(4);
@@ -195,6 +302,8 @@ final class AndroidGameStore {
         for (int size = 3; size <= 5; size++) {
             removeSave(editor, savePrefix(size));
         }
+        removeSave(editor, KEY_DAILY_SAVE_PREFIX);
+        editor.remove(KEY_DAILY_SAVE_DATE);
         editor.commit();
     }
 
@@ -314,7 +423,11 @@ final class AndroidGameStore {
 
     void clearRecords() {
         SharedPreferences.Editor editor = prefs.edit();
-        editor.remove(KEY_COMPLETION_HISTORY);
+        editor.remove(KEY_COMPLETION_HISTORY)
+                .remove(KEY_DAILY_COMPLETED_DATES)
+                .remove(KEY_DAILY_LAST_COMPLETED_DATE)
+                .remove(KEY_DAILY_CURRENT_STREAK)
+                .remove(KEY_DAILY_BEST_STREAK);
         for (int size = 3; size <= 5; size++) {
             editor.remove(KEY_BEST_PREFIX + size + "_moves");
             editor.remove(KEY_BEST_PREFIX + size + "_time");
@@ -343,6 +456,22 @@ final class AndroidGameStore {
 
     private static String savePrefix(int size) {
         return KEY_SAVE_PREFIX + size + "_";
+    }
+
+    private static DailyChallenge parseDailyChallenge(String dateId) {
+        try {
+            return DailyChallenge.fromDateId(dateId);
+        } catch (RuntimeException exception) {
+            return null;
+        }
+    }
+
+    private static LocalDate parseLocalDate(String dateId) {
+        try {
+            return dateId == null ? null : LocalDate.parse(dateId);
+        } catch (RuntimeException exception) {
+            return null;
+        }
     }
 
     private SaveManager.SaveData readSavedGame(String prefix, int expectedSize) {
@@ -540,6 +669,26 @@ final class AndroidGameStore {
             this.active = active;
             this.solved = solved;
             this.difficulty = difficulty == null ? PuzzleDifficulty.CLASSIC : difficulty;
+        }
+    }
+
+    /**
+     * Immutable local progress for the daily challenge shown on a selected date.
+     */
+    static final class DailyProgress {
+        private static final DailyProgress EMPTY = new DailyProgress(false, 0, 0, null);
+
+        final boolean completedToday;
+        final int currentStreak;
+        final int bestStreak;
+        final String lastCompletedDateId;
+
+        DailyProgress(boolean completedToday, int currentStreak, int bestStreak,
+                String lastCompletedDateId) {
+            this.completedToday = completedToday;
+            this.currentStreak = Math.max(0, currentStreak);
+            this.bestStreak = Math.max(0, bestStreak);
+            this.lastCompletedDateId = lastCompletedDateId;
         }
     }
 

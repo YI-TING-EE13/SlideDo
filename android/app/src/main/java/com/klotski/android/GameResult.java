@@ -13,9 +13,15 @@ final class GameResult {
     final boolean assisted;
     final boolean newBest;
     final AndroidGameStore.Best previousBest;
+    final String dailyDateId;
 
     GameResult(int size, PuzzleDifficulty difficulty, int moves, long timeMs, boolean assisted, boolean newBest,
             AndroidGameStore.Best previousBest) {
+        this(size, difficulty, moves, timeMs, assisted, newBest, previousBest, null);
+    }
+
+    GameResult(int size, PuzzleDifficulty difficulty, int moves, long timeMs, boolean assisted,
+            boolean newBest, AndroidGameStore.Best previousBest, String dailyDateId) {
         this.size = size;
         this.difficulty = difficulty;
         this.moves = moves;
@@ -23,5 +29,6 @@ final class GameResult {
         this.assisted = assisted;
         this.newBest = newBest;
         this.previousBest = previousBest;
+        this.dailyDateId = dailyDateId;
     }
 }

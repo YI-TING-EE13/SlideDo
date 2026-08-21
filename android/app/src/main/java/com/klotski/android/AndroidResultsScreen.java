@@ -33,9 +33,11 @@ final class AndroidResultsScreen {
         screen.content.setGravity(Gravity.CENTER_HORIZONTAL);
         ui.addScreenHeader(screen.content,
                 activity.getString(R.string.results_title),
-                activity.getString(result.assisted
-                        ? R.string.results_assisted_subtitle
-                        : R.string.results_player_subtitle));
+                activity.getString(result.dailyDateId != null
+                        ? R.string.results_daily_subtitle
+                        : (result.assisted
+                                ? R.string.results_assisted_subtitle
+                                : R.string.results_player_subtitle)));
 
         TextView completionMark = ui.createText(activity.getString(R.string.results_completion_mark),
                 30, COLOR_POSITIVE_TEXT, Typeface.BOLD);

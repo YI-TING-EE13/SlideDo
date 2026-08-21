@@ -83,4 +83,19 @@ public class AndroidActivityStateTest {
         assertEquals(Screen.HOME, snapshot.screen);
         assertNull(snapshot.result);
     }
+
+    @Test
+    public void activityStateRoundTripPreservesDailyChallengeIdentity() {
+        Bundle bundle = new Bundle();
+        GameResult result = new GameResult(4, PuzzleDifficulty.CLASSIC,
+                30, 60_000, false, false, null, "2026-08-21");
+
+        AndroidActivityState.save(bundle, Screen.RESULTS, Screen.HOME, true,
+                0, 0, result, "2026-08-21");
+        AndroidActivityState.Snapshot snapshot = AndroidActivityState.restore(bundle, 0);
+
+        assertEquals("2026-08-21", snapshot.activeDailyDateId);
+        assertNotNull(snapshot.result);
+        assertEquals("2026-08-21", snapshot.result.dailyDateId);
+    }
 }

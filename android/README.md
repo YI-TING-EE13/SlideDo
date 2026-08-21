@@ -150,7 +150,7 @@ This runs `verify.bat` and `verify-release.bat`. CI release artifacts are
 verification outputs and use the temporary signing key unless real Play upload
 signing is explicitly configured.
 
-Latest 2026-08-21 validation status: all 63 Android tests passed in six isolated
+Latest 2026-08-22 validation status: all 70 Android tests passed in
 instrumentation batches on both the Pixel_7 AVD running Android 15 at 1080x2400
 and the `small_phone` AVD running Android 16 / API 36.1 at 720x1280. The suite covers the
 normal animated transition path, the Reduced motion bypass, English-default
@@ -163,6 +163,11 @@ checked before and after Results rotation, including board identity and zeroed
 run state. The suite also verifies bounded completion history, lifetime
 statistics, player/assisted separation, localized Records summaries, full
 record reset, and duplicate prevention during Results recreation.
+Stage 6 adds a deterministic offline 4x4 Classic puzzle for each device-local
+date, a daily save isolated from the three normal size slots, idempotent
+completion tracking, and current/best streaks. Reset Saved Games clears the
+daily board but preserves streak records; Reset Records clears daily completion
+and streak state but preserves the daily board.
 CLI-captured manual review covered English onboarding, Traditional Chinese
 Home/Settings/Mode Select/Game, and Japanese Home/Settings/Mode Select/How to
 Play/Game on the compact AVD. The compact controls remained single-line after
@@ -185,6 +190,12 @@ The newest 50 entries remain in local storage, Records displays the newest 10,
 and lifetime statistics continue beyond the history limit. The Stage 5 final
 APK SHA-256 is
 `C8D78B4CE1E295D20DA80D366BF2940106D9F1C0B9849918519865F435AB2180`.
+The Stage 6 compact-phone pass confirmed that Daily Challenge, Play, Beginner
+Guide, Practice Tutorial, How to Play, Settings, and Records remain reachable
+without clipping. Pixel_7 and `small_phone` generated the same dated board, and
+the Daily game title, HUD, board, and controls fit both profiles.
+The Stage 6 final debug APK SHA-256 is
+`EF92467A66D3F453FF95DE00122C68B5B092A63CADAE59B10ED73EBCCB050499`.
 
 For Android build and lint only:
 
@@ -328,6 +339,13 @@ check-screenshot-set.bat ..\screenshots\android\0.2.0-beta.1
 - Background and return to the app; autosave should preserve the current board
   and the away interval must not increase elapsed play time.
 - Rotate and return to portrait; the current game state should remain intact.
+- From Home, open Daily Challenge on both emulator profiles and confirm the date,
+  4x4 Classic board, and starting layout match.
+- Make a daily move, return Home, and reopen Daily Challenge; confirm the daily
+  board resumes without replacing the normal 4x4 save.
+- Complete the daily puzzle and confirm Results shows the daily completion and
+  streak. Replay it and confirm the streak does not increment twice for the same
+  date.
 
 `build-debug.bat` uses Android Studio's bundled JBR when available, which avoids
 Gradle compatibility issues with newer system Java versions.

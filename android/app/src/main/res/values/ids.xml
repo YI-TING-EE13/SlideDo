@@ -1,5 +1,7 @@
 <resources>
     <item name="home_root" type="id" />
+    <item name="home_daily_button" type="id" />
+    <item name="home_daily_summary_text" type="id" />
     <item name="home_continue_button" type="id" />
     <item name="home_continue_summary_text" type="id" />
     <item name="home_new_game_button" type="id" />

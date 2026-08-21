@@ -31,6 +31,8 @@ import androidx.test.uiautomator.UiScrollable;
 import androidx.test.uiautomator.UiSelector;
 import androidx.test.uiautomator.Until;
 
+import com.klotski.core.DailyChallenge;
+import com.klotski.core.GameModel;
 import com.klotski.core.PuzzleDifficulty;
 import com.klotski.core.SaveManager;
 
@@ -41,6 +43,7 @@ import org.junit.runner.RunWith;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.time.LocalDate;
 import java.util.Collection;
 
 /**
@@ -53,6 +56,12 @@ public class MainActivityFlowTest {
     private static final long TIMEOUT_MS = 15000;
     private static final String LINE_SLIDE_GRID = "1,2,3,0,4,5,7,8,6";
     private static final String ONE_MOVE_WIN_GRID = "1,2,3,4,5,0,7,8,6";
+    private static final int[][] ONE_MOVE_WIN_GRID_4 = {
+            {1, 2, 3, 4},
+            {5, 6, 7, 8},
+            {9, 10, 11, 12},
+            {13, 14, 0, 15}
+    };
 
     private Instrumentation instrumentation;
     private Activity activity;
@@ -827,13 +836,15 @@ public class MainActivityFlowTest {
 
         clickId(R.id.game_menu_button);
         waitForText("Resume");
+        invokeActivityMethod("saveGame");
+        long elapsedAtMenu = savedElapsedForSize(3);
         SystemClock.sleep(2_200L);
         waitForText("Save").click();
         device.waitForIdle();
 
         long savedElapsed = savedElapsedForSize(3);
         assertTrue("Menu time should not be added to elapsed play time: " + savedElapsed,
-                savedElapsed >= 5_000L && savedElapsed < 6_500L);
+                savedElapsed >= elapsedAtMenu && savedElapsed - elapsedAtMenu < 1_200L);
     }
 
     @Test
@@ -846,13 +857,15 @@ public class MainActivityFlowTest {
         clickId(R.id.game_menu_button);
         scrollToText("Quick Reminder").click();
         waitForText("Move reminder");
+        invokeActivityMethod("saveGame");
+        long elapsedAtReminder = savedElapsedForSize(3);
         SystemClock.sleep(2_200L);
         device.pressHome();
         device.waitForIdle();
 
         long savedElapsed = savedElapsedForSize(3);
         assertTrue("Nested reminder time should not be added to elapsed play time: " + savedElapsed,
-                savedElapsed >= 5_000L && savedElapsed < 6_500L);
+                savedElapsed >= elapsedAtReminder && savedElapsed - elapsedAtReminder < 1_200L);
     }
 
     @Test
@@ -896,13 +909,16 @@ public class MainActivityFlowTest {
 
         clickId(R.id.game_assist_button);
         waitForText("Show Movable Tiles");
+        invokeActivityMethod("saveGame");
+        long elapsedAtAssistMenu = savedElapsedForSize(3);
         SystemClock.sleep(2_200L);
         device.pressHome();
         device.waitForIdle();
 
         long savedElapsed = savedElapsedForSize(3);
         assertTrue("Assist-menu time should not be added to elapsed play time: " + savedElapsed,
-                savedElapsed >= 5_000L && savedElapsed < 6_500L);
+                savedElapsed >= elapsedAtAssistMenu
+                        && savedElapsed - elapsedAtAssistMenu < 1_200L);
     }
 
     @Test
@@ -939,17 +955,18 @@ public class MainActivityFlowTest {
         clickId(R.id.game_menu_button);
         waitForText("Save").click();
         device.waitForIdle();
-        long elapsedBeforeSettings = savedElapsedForSize(3);
         clickId(R.id.game_menu_button);
         scrollToText("Settings").click();
         waitForId("settings_root");
+        invokeActivityMethod("saveGame");
+        long elapsedAtSettings = savedElapsedForSize(3);
         SystemClock.sleep(2_200L);
         device.pressHome();
         device.waitForIdle();
 
         long savedElapsed = savedElapsedForSize(3);
         assertTrue("Settings time should not be added to elapsed play time: " + savedElapsed,
-                savedElapsed >= elapsedBeforeSettings && savedElapsed - elapsedBeforeSettings < 1_200L);
+                savedElapsed >= elapsedAtSettings && savedElapsed - elapsedAtSettings < 1_200L);
     }
 
     @Test
@@ -981,6 +998,43 @@ public class MainActivityFlowTest {
         assertNotNull(findById("records_explanation_text"));
         waitForTextContaining("Player solves only.");
         assertActivityContainsText("1 move");
+    }
+
+    @Test
+    public void dailyChallengeRunsFromHomeThroughResultsAndUpdatesStreak() throws Exception {
+        markOnboardingSeen();
+        DailyChallenge challenge = DailyChallenge.forDate(LocalDate.now());
+        GameModel original = challenge.createGame();
+        SaveManager.SaveData nearWin = new SaveManager.SaveData();
+        nearWin.size = 4;
+        nearWin.grid = ONE_MOVE_WIN_GRID_4;
+        nearWin.initialGrid = original.getInitialGridCopy();
+        nearWin.difficulty = PuzzleDifficulty.CLASSIC;
+        nearWin.active = true;
+        GameModel daily = new GameModel(4);
+        daily.loadState(nearWin);
+        AndroidGameStore store = new AndroidGameStore(targetContext);
+        store.saveDailyGame(challenge.getDateId(), daily, 2_000L);
+
+        launchApp();
+        waitForId("home_root");
+        assertActivityTextContains(R.id.home_daily_summary_text, challenge.getDateId());
+        clickId(R.id.home_daily_button);
+        waitForId("game_root");
+        assertActivityTextContains(R.id.game_title_text, "Daily · 4x4 · Classic");
+
+        tapCell(4, 3, 3);
+
+        waitForId("results_root");
+        waitForText("Daily challenge complete.");
+        assertActivityTextContains(R.id.results_record_text, "Daily streak: 1 · Best: 1");
+        AndroidGameStore.DailyProgress progress = store.getDailyProgress(challenge.getDateId());
+        assertTrue(progress.completedToday);
+        assertEquals(1, progress.currentStreak);
+
+        clickId(R.id.results_home_button);
+        waitForId("home_root");
+        assertActivityTextContains(R.id.home_daily_summary_text, "Completed");
     }
 
     @Test

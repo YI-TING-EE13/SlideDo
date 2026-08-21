@@ -1,6 +1,7 @@
 package com.klotski.android;
 
 import static com.klotski.android.AndroidUi.COLOR_MUTED_TEXT;
+import static com.klotski.android.AndroidUi.COLOR_ACCENT;
 import static com.klotski.android.AndroidUi.COLOR_PANEL;
 import static com.klotski.android.AndroidUi.COLOR_PANEL_LIGHT;
 import static com.klotski.android.AndroidUi.COLOR_PRIMARY;
@@ -24,7 +25,8 @@ final class AndroidHomeScreen {
         this.ui = ui;
     }
 
-    ScreenLayout build(AndroidGameStore.SaveMetadata[] saves, HomeActions actions) {
+    ScreenLayout build(AndroidGameStore.SaveMetadata[] saves, DailyStatus dailyStatus,
+            HomeActions actions) {
         AndroidGameStore.SaveMetadata[] availableSaves = saves == null
                 ? new AndroidGameStore.SaveMetadata[0]
                 : saves;
@@ -36,13 +38,18 @@ final class AndroidHomeScreen {
                 activity.getString(R.string.app_name),
                 activity.getString(R.string.home_tagline));
 
-        TextView summary = ui.createText(activity.getString(R.string.home_summary),
-                16, COLOR_MUTED_TEXT, Typeface.NORMAL);
-        summary.setGravity(Gravity.CENTER);
-        summary.setLineSpacing(0, 1.12f);
-        LinearLayout.LayoutParams summaryParams = ui.fullWidthParams();
-        summaryParams.setMargins(0, 0, 0, ui.dp(20));
-        screen.content.addView(summary, summaryParams);
+        Button dailyButton = ui.addWideButton(screen.content,
+                R.string.home_daily_challenge, R.drawable.ic_action_play, COLOR_ACCENT,
+                v -> actions.onDailyChallenge());
+        dailyButton.setId(R.id.home_daily_button);
+        TextView dailySummary = ui.createText(formatDailySummary(dailyStatus),
+                14, COLOR_MUTED_TEXT, Typeface.NORMAL);
+        dailySummary.setId(R.id.home_daily_summary_text);
+        dailySummary.setGravity(Gravity.CENTER);
+        dailySummary.setLineSpacing(0, 1.12f);
+        LinearLayout.LayoutParams dailySummaryParams = ui.fullWidthParams();
+        dailySummaryParams.setMargins(0, 0, 0, ui.dp(14));
+        screen.content.addView(dailySummary, dailySummaryParams);
 
         if (hasSave) {
             Button continueButton = ui.addWideButton(screen.content, R.string.home_continue,
@@ -163,7 +170,40 @@ final class AndroidHomeScreen {
         return activity.getResources().getQuantityString(R.plurals.moves_count, moves, moves);
     }
 
+    private String formatDailySummary(DailyStatus dailyStatus) {
+        DailyStatus status = dailyStatus == null ? DailyStatus.EMPTY : dailyStatus;
+        int stateString = status.completed
+                ? R.string.home_daily_completed
+                : (status.inProgress ? R.string.home_daily_in_progress : R.string.home_daily_ready);
+        return activity.getString(R.string.home_daily_summary,
+                status.dateId,
+                activity.getString(stateString),
+                status.currentStreak,
+                status.bestStreak);
+    }
+
+    static final class DailyStatus {
+        private static final DailyStatus EMPTY = new DailyStatus("", false, false, 0, 0);
+
+        final String dateId;
+        final boolean inProgress;
+        final boolean completed;
+        final int currentStreak;
+        final int bestStreak;
+
+        DailyStatus(String dateId, boolean inProgress, boolean completed,
+                int currentStreak, int bestStreak) {
+            this.dateId = dateId == null ? "" : dateId;
+            this.inProgress = inProgress;
+            this.completed = completed;
+            this.currentStreak = Math.max(0, currentStreak);
+            this.bestStreak = Math.max(0, bestStreak);
+        }
+    }
+
     interface HomeActions {
+        void onDailyChallenge();
+
         void onContinue();
 
         void onPlay();

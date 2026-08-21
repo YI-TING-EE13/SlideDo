@@ -3,6 +3,11 @@
     <string name="app_name">SlideDo</string>
     <string name="home_tagline">すき間時間に気持ちよく解ける、落ち着いた数字パズル。</string>
     <string name="home_summary">タイルを順番に並べ、空きマスを右下に置きましょう。</string>
+    <string name="home_daily_challenge">デイリーチャレンジ</string>
+    <string name="home_daily_summary">%1$s · %2$s · 連続 %3$d · 最高 %4$d</string>
+    <string name="home_daily_ready">未開始</string>
+    <string name="home_daily_in_progress">進行中</string>
+    <string name="home_daily_completed">完了</string>
     <string name="home_continue">続きから</string>
     <string name="home_continue_summary">%1$s：%2$dx%3$d · %4$s、%5$s、%6$d秒、%7$s</string>
     <string name="home_multiple_saves_summary">セーブデータが%1$d件あります。続けるサイズを選んでください。</string>
@@ -121,6 +126,7 @@
     <string name="results_title">結果</string>
     <string name="results_player_subtitle">パズルをクリアしました。</string>
     <string name="results_assisted_subtitle">アシストを使ってクリアしました。</string>
+    <string name="results_daily_subtitle">今日のチャレンジをクリアしました。</string>
     <string name="results_completion_mark">✓</string>
     <string name="results_completion_description">パズルクリア</string>
     <string name="results_size_format">%1$dx%2$d パズル · %3$s</string>
@@ -129,9 +135,11 @@
     <string name="results_new_best">新記録です。これまでの最高：%1$s</string>
     <string name="results_no_new_best">最高記録：%1$s</string>
     <string name="results_assisted_record">アシスト結果は保存されません。プレイヤー最高：%1$s</string>
+    <string name="results_daily_progress">連続記録：%1$d 日 · 最高：%2$d 日</string>
     <string name="results_play_again">同じ問題を再挑戦</string>
     <string name="results_new_size">サイズ変更</string>
     <string name="game_title_format">%1$dx%2$d · %3$s</string>
+    <string name="game_daily_title_format">デイリー · %1$dx%2$d · %3$s</string>
     <string name="game_menu">メニュー</string>
     <string name="game_assist">ヒント</string>
     <string name="accessibility_game_home">現在のパズルを保存してホームへ戻ります</string>

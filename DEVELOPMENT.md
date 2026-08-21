@@ -38,11 +38,12 @@ Current handoff status:
 - The latest local verification pass was warning-clean for the previously noisy
   Gradle DSL deprecation, Java native-access warning, and Android Java
   deprecation note.
-- The latest dual-AVD acceptance covered all 63 Android tests on each of
+- The latest dual-AVD acceptance covered all 70 Android tests on each of
   Pixel_7 (Android 15, 1080x2400) and `small_phone` (Android 16 / API 36.1,
   720x1280), with no failures or skips. Six isolated instrumentation batches
   avoid cross-device emulator contention while retaining every test. Coverage
-  includes exact-puzzle replay before and after Results recreation, difficulty
+  includes the deterministic offline daily challenge and streak state,
+  exact-puzzle replay before and after Results recreation, difficulty
   selection, independent per-size saves, legacy-save migration, scoped records,
   active-play timing, bounded completion history, lifetime statistics, and
   player/solver-assisted separation.
@@ -64,9 +65,9 @@ verify-connected.bat
 
 The active product program is now the eight-stage Personal Play roadmap in
 `Roadmap And Planning`. It prioritizes offline replay value and personal
-convenience over public distribution. Stages 1 through 5 are implemented and
-verified. Stage 6, the deterministic offline daily challenge and local streak
-state, is next.
+convenience over public distribution. Stages 1 through 6 are implemented and
+verified. Stage 7, a strategic next-move hint with assisted-record protection,
+is next.
 
 Real Play upload signing is intentionally deferred until store submission. It
 is not required for a local push-ready commit, and no Git remote or push is part
@@ -99,6 +100,9 @@ Desktop currently supports:
 Android currently supports:
 
 - Home screen launch instead of opening directly into the board.
+- One deterministic offline 4x4 Classic daily challenge per device-local date,
+  with an independent resumable save, idempotent completion, and current/best
+  streak state.
 - First-run onboarding before normal play, with Skip and Start 3x3 actions.
 - Interactive Practice Tutorial entry from Home and onboarding, using a guided
   first move plus a whole-line slide lesson.
@@ -461,8 +465,8 @@ planning layer above implementation tickets.
 - Hint system is MVP-level: Assist can now highlight movable tiles without
   moving the board, but it does not yet suggest strategic progress toward a
   solve.
-- Missing progression loops: no daily puzzle, streak, recent games,
-  achievements, or session goals.
+- Progression remains lightweight: daily puzzles, streaks, and recent games now
+  exist, while achievements and session goals do not.
 - Accessibility is MVP-level: board summaries, settings switch descriptions,
   primary game-control descriptions, 48dp action targets, and automated Reduced
   motion navigation coverage exist. The app still needs a manual TalkBack pass,
@@ -501,8 +505,8 @@ Every stage uses the same delivery gate:
 | 3 | Replay the same puzzle | Let Results restart the exact starting board without generating another scramble. | Completed and verified on 2026-08-20. |
 | 4 | Per-size saves | Preserve independent 3x3, 4x4, and 5x5 active games and expose the correct Continue choices. | Completed and verified on 2026-08-20. |
 | 5 | History and personal stats | Store bounded local completion history and show meaningful per-size and per-difficulty summaries. | Completed and verified on 2026-08-21. |
-| 6 | Offline daily challenge | Generate one deterministic local puzzle per date and record completion/streak state without a server. | Next. |
-| 7 | Strategic hint | Suggest a useful next move, mark the game assisted, and preserve player-record protection. | Planned. |
+| 6 | Offline daily challenge | Generate one deterministic local puzzle per date and record completion/streak state without a server. | Completed and verified on 2026-08-22. |
+| 7 | Strategic hint | Suggest a useful next move, mark the game assisted, and preserve player-record protection. | Next. |
 | 8 | Sound and themes | Add optional local sound feedback and selectable visual themes with persistent settings and accessibility-safe defaults. | Planned. |
 
 Shared puzzle rules, deterministic puzzle identity, elapsed milliseconds, save
@@ -597,8 +601,8 @@ Parity conclusion for current beta:
   Android needs real Play upload signing, final store assets, privacy-policy URL,
   and manual accessibility/pre-launch passes; desktop needs signed installer
   planning only if the beta moves beyond ZIP / app-image distribution.
-- Future repeat-play systems such as daily puzzle, achievements, progression,
-  and richer stats should be scoped for both front ends before implementation.
+- Future repeat-play systems such as achievements and session goals should be
+  scoped deliberately; the current owner-only daily flow is Android-first.
 
 ### Completed 2026-05-25 MVP Items
 
@@ -965,6 +969,37 @@ Priority: Low to Medium
 - Run the final desktop accessibility review.
 
 ## Development Log
+
+### 2026-08-22
+
+- Completed Stage 6 offline Daily Challenge. `DailyChallenge` maps a local
+  ISO-8601 calendar date to a versioned deterministic seed and creates one 4x4
+  Classic puzzle entirely through shared `GameModel` scramble rules.
+- Android Home now shows the date, Ready/In progress/Completed state, and current
+  and best streaks. Daily games use an independent resumable save; a solved daily
+  game replays its original board, while normal 3x3/4x4/5x5 saves remain intact.
+- Daily completion is idempotent by date. Consecutive dates extend the streak, a
+  gap resets the current streak, and the best is preserved. Daily completions
+  still feed ordinary history/statistics, while solver-assisted wins retain the
+  existing player-best protection.
+- Reset Saved Games clears the daily board without erasing streak records. Reset
+  Records clears daily completion/streak state without erasing the daily board.
+  Activity and Results state retain the daily date across recreation.
+- Added two shared-core tests, four daily persistence/reset tests, one daily
+  Activity-state test, and a visible Home-to-Daily-to-Results flow. The Android
+  connected suite now contains 70 tests.
+- Compact-screen regression exposed that the new Home content pushed localized
+  primary actions below the first viewport. Removing the redundant goal summary
+  and shortening daily status copy kept all primary Home actions visible at
+  720x1280. Timing tests now sample after dialogs are visible, so they measure
+  paused dialog time rather than active navigation latency.
+- `verify.bat` passed. The final `small_phone` suite passed 70/70; the Pixel_7
+  full run passed 69/70 before the timing-test synchronization correction, and
+  all three corrected dialog-timing tests then passed on both AVDs. Manual review
+  confirmed identical dated boards and unclipped Home/Game layouts on 1080x2400
+  and 720x1280. Both cold launches resumed `MainActivity` with empty crash
+  buffers. The final debug APK SHA-256 is
+  `EF92467A66D3F453FF95DE00122C68B5B092A63CADAE59B10ED73EBCCB050499`.
 
 ### 2026-08-21
 

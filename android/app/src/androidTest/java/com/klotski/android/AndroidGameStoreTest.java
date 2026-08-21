@@ -14,6 +14,7 @@ import android.os.LocaleList;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
+import com.klotski.core.DailyChallenge;
 import com.klotski.core.GameModel;
 import com.klotski.core.PuzzleDifficulty;
 import com.klotski.core.SaveManager;
@@ -45,7 +46,9 @@ public class AndroidGameStoreTest {
 
     @After
     public void tearDown() {
-        prefs.edit().clear().commit();
+        if (prefs != null) {
+            prefs.edit().clear().commit();
+        }
     }
 
     @Test
@@ -200,6 +203,97 @@ public class AndroidGameStoreTest {
         assertFalse(prefs.contains("save_4_grid"));
         assertFalse(prefs.contains("save_5_grid"));
         assertFalse(prefs.contains("grid"));
+    }
+
+    @Test
+    public void dailySaveRemainsIndependentFromRegularSizeSlots() {
+        GameModel regular = createSavedModel(4, PuzzleDifficulty.CHALLENGE, 7);
+        store.saveGame(regular, 7_000L);
+        DailyChallenge challenge = DailyChallenge.fromDateId("2026-08-21");
+        GameModel daily = challenge.createGame();
+
+        store.saveDailyGame(challenge.getDateId(), daily, 1_234L);
+
+        SaveManager.SaveData regularLoaded = store.loadSavedGame(4);
+        SaveManager.SaveData dailyLoaded = store.loadDailyGame("2026-08-21");
+        assertNotNull(regularLoaded);
+        assertNotNull(dailyLoaded);
+        assertEquals(7, regularLoaded.moveCount);
+        assertEquals(PuzzleDifficulty.CHALLENGE, regularLoaded.difficulty);
+        assertEquals(0, dailyLoaded.moveCount);
+        assertEquals(1_234L, dailyLoaded.elapsedTime);
+        assertEquals(PuzzleDifficulty.CLASSIC, dailyLoaded.difficulty);
+        assertTrue(Arrays.deepEquals(daily.getInitialGridCopy(), dailyLoaded.initialGrid));
+        assertNull(store.loadDailyGame("2026-08-22"));
+    }
+
+    @Test
+    public void dailyCompletionsAreIdempotentAndAdvanceConsecutiveStreak() {
+        assertTrue(store.recordDailyCompletion("2026-08-20"));
+        assertFalse(store.recordDailyCompletion("2026-08-20"));
+
+        AndroidGameStore.DailyProgress first = store.getDailyProgress("2026-08-20");
+        assertTrue(first.completedToday);
+        assertEquals(1, first.currentStreak);
+        assertEquals(1, first.bestStreak);
+
+        assertTrue(store.recordDailyCompletion("2026-08-21"));
+        AndroidGameStore.DailyProgress second = store.getDailyProgress("2026-08-21");
+        assertTrue(second.completedToday);
+        assertEquals(2, second.currentStreak);
+        assertEquals(2, second.bestStreak);
+        assertEquals("2026-08-21", second.lastCompletedDateId);
+    }
+
+    @Test
+    public void dailyStreakResetsAfterAGapButPreservesTheBest() {
+        store.recordDailyCompletion("2026-08-20");
+        store.recordDailyCompletion("2026-08-21");
+        store.recordDailyCompletion("2026-08-23");
+
+        AndroidGameStore.DailyProgress onGapDay = store.getDailyProgress("2026-08-23");
+        assertEquals(1, onGapDay.currentStreak);
+        assertEquals(2, onGapDay.bestStreak);
+
+        AndroidGameStore.DailyProgress nextDay = store.getDailyProgress("2026-08-24");
+        assertFalse(nextDay.completedToday);
+        assertEquals(1, nextDay.currentStreak);
+
+        AndroidGameStore.DailyProgress afterAnotherGap = store.getDailyProgress("2026-08-25");
+        assertEquals(0, afterAnotherGap.currentStreak);
+        assertEquals(2, afterAnotherGap.bestStreak);
+    }
+
+    @Test
+    public void saveAndRecordResetsKeepDailyDataInTheirOwnDomains() {
+        DailyChallenge challenge = DailyChallenge.fromDateId("2026-08-21");
+        store.saveDailyGame(challenge.getDateId(), challenge.createGame(), 2_000L);
+        store.recordDailyCompletion(challenge.getDateId());
+
+        store.clearSavedGame();
+        assertNull(store.loadDailyGame(challenge.getDateId()));
+        assertTrue(store.getDailyProgress(challenge.getDateId()).completedToday);
+
+        store.saveDailyGame(challenge.getDateId(), challenge.createGame(), 3_000L);
+        store.clearRecords();
+        assertNotNull(store.loadDailyGame(challenge.getDateId()));
+        AndroidGameStore.DailyProgress cleared = store.getDailyProgress(challenge.getDateId());
+        assertFalse(cleared.completedToday);
+        assertEquals(0, cleared.currentStreak);
+        assertEquals(0, cleared.bestStreak);
+    }
+
+    @Test
+    public void malformedDailyDateIdsAreIgnored() {
+        GameModel model = new GameModel(4);
+        store.saveDailyGame("not-a-date", model, 1_000L);
+
+        assertNull(store.loadDailyGame("not-a-date"));
+        assertFalse(store.recordDailyCompletion("not-a-date"));
+        AndroidGameStore.DailyProgress progress = store.getDailyProgress("not-a-date");
+        assertFalse(progress.completedToday);
+        assertEquals(0, progress.currentStreak);
+        assertEquals(0, progress.bestStreak);
     }
 
     @Test

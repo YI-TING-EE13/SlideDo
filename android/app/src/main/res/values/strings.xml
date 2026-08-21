@@ -2,6 +2,11 @@
     <string name="app_name">SlideDo</string>
     <string name="home_tagline">A calm number puzzle for quick, satisfying solves.</string>
     <string name="home_summary">Order the tiles. Leave the empty cell in the bottom-right.</string>
+    <string name="home_daily_challenge">Daily Challenge</string>
+    <string name="home_daily_summary">%1$s · %2$s · Streak %3$d · Best %4$d</string>
+    <string name="home_daily_ready">Ready</string>
+    <string name="home_daily_in_progress">In progress</string>
+    <string name="home_daily_completed">Completed</string>
     <string name="home_continue">Continue</string>
     <string name="home_continue_summary">%1$s: %2$dx%3$d · %4$s, %5$s, %6$ds, %7$s</string>
     <string name="home_multiple_saves_summary">%1$d saved games. Choose a size to continue.</string>
@@ -120,6 +125,7 @@
     <string name="results_title">Results</string>
     <string name="results_player_subtitle">Puzzle solved.</string>
     <string name="results_assisted_subtitle">Solved with assist.</string>
+    <string name="results_daily_subtitle">Daily challenge complete.</string>
     <string name="results_completion_mark">✓</string>
     <string name="results_completion_description">Puzzle complete</string>
     <string name="results_size_format">%1$dx%2$d Puzzle · %3$s</string>
@@ -128,9 +134,11 @@
     <string name="results_new_best">New best. Previous best: %1$s</string>
     <string name="results_no_new_best">Best remains: %1$s</string>
     <string name="results_assisted_record">Assist result not saved. Player best: %1$s</string>
+    <string name="results_daily_progress">Daily streak: %1$d · Best: %2$d</string>
     <string name="results_play_again">Replay Puzzle</string>
     <string name="results_new_size">New Size</string>
     <string name="game_title_format">%1$dx%2$d · %3$s</string>
+    <string name="game_daily_title_format">Daily · %1$dx%2$d · %3$s</string>
     <string name="game_menu">Menu</string>
     <string name="game_assist">Assist</string>
     <string name="accessibility_game_home">Save the current puzzle and return Home</string>

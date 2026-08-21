@@ -27,6 +27,7 @@ import android.window.OnBackInvokedDispatcher;
 
 import com.klotski.core.AStarSolver;
 import com.klotski.core.BfsSolver;
+import com.klotski.core.DailyChallenge;
 import com.klotski.core.Direction;
 import com.klotski.core.GameModel;
 import com.klotski.core.GameObserver;
@@ -35,6 +36,7 @@ import com.klotski.core.PuzzleDifficulty;
 import com.klotski.core.SaveManager;
 import com.klotski.core.Solver;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -92,6 +94,7 @@ public class MainActivity extends Activity implements GameObserver {
     private TextView tutorialStatusText;
     private PendingWin pendingWin;
     private GameResult currentResult;
+    private String activeDailyDateId;
     private OnBackInvokedCallback backCallback;
     private Screen currentScreen = Screen.HOME;
     private Screen infoReturnScreen = Screen.HOME;
@@ -180,7 +183,7 @@ public class MainActivity extends Activity implements GameObserver {
     protected void onSaveInstanceState(Bundle outState) {
         saveGame();
         AndroidActivityState.save(outState, currentScreen, infoReturnScreen, gameStarted,
-                onboardingPage, tutorialStep, currentResult);
+                onboardingPage, tutorialStep, currentResult, activeDailyDateId);
         super.onSaveInstanceState(outState);
     }
 
@@ -352,6 +355,7 @@ public class MainActivity extends Activity implements GameObserver {
         Screen savedReturnScreen = savedState.infoReturnScreen;
         boolean savedGameStarted = savedState.gameStarted;
         currentResult = savedState.result;
+        activeDailyDateId = savedState.activeDailyDateId;
 
         if (savedScreen == Screen.GAME) {
             if (savedGameStarted && loadGame()) {
@@ -364,7 +368,11 @@ public class MainActivity extends Activity implements GameObserver {
 
         if (savedScreen == Screen.RESULTS) {
             GameResult restoredResult = currentResult;
-            if (restoredResult != null && savedGameStarted && loadGame(restoredResult.size)) {
+            boolean loaded = restoredResult != null && savedGameStarted
+                    && (restoredResult.dailyDateId != null
+                            ? loadDailyGame(restoredResult.dailyDateId)
+                            : loadGame(restoredResult.size));
+            if (loaded) {
                 currentResult = restoredResult;
                 showResultsScreen();
                 return true;
@@ -410,7 +418,19 @@ public class MainActivity extends Activity implements GameObserver {
         tutorialStatusText = null;
         commandButtons.clear();
 
-        ScreenLayout screen = homeScreen.build(store.getAllSaveMetadata(), new AndroidHomeScreen.HomeActions() {
+        DailyChallenge today = DailyChallenge.forDate(LocalDate.now());
+        AndroidGameStore.DailyProgress dailyProgress = store.getDailyProgress(today.getDateId());
+        AndroidGameStore.SaveMetadata dailySave = store.getDailySaveMetadata(today.getDateId());
+        AndroidHomeScreen.DailyStatus dailyStatus = new AndroidHomeScreen.DailyStatus(
+                today.getDateId(), dailySave != null && !dailySave.solved,
+                dailyProgress.completedToday, dailyProgress.currentStreak, dailyProgress.bestStreak);
+        ScreenLayout screen = homeScreen.build(store.getAllSaveMetadata(), dailyStatus,
+                new AndroidHomeScreen.HomeActions() {
+            @Override
+            public void onDailyChallenge() {
+                startDailyChallenge();
+            }
+
             @Override
             public void onContinue() {
                 continueSavedGameFromHome();
@@ -1269,6 +1289,7 @@ public class MainActivity extends Activity implements GameObserver {
         }
         attachModel(new GameModel(size));
         model.scramble(difficulty);
+        activeDailyDateId = null;
         gameStarted = true;
         pendingWin = null;
         currentResult = null;
@@ -1315,6 +1336,33 @@ public class MainActivity extends Activity implements GameObserver {
         showGameScreen();
     }
 
+    private void startDailyChallenge() {
+        if (solverRunning) {
+            return;
+        }
+        DailyChallenge challenge = DailyChallenge.forDate(LocalDate.now());
+        SaveManager.SaveData saved = store.loadDailyGame(challenge.getDateId());
+        if (saved == null) {
+            attachModel(challenge.createGame());
+        } else {
+            attachModel(new GameModel(saved.size));
+            model.loadState(saved);
+            if (model.isSolved()) {
+                model.restartCurrentGame();
+            }
+        }
+        activeDailyDateId = challenge.getDateId();
+        gameStarted = true;
+        pendingWin = null;
+        currentResult = null;
+        assistedSolveActive = false;
+        hintActive = false;
+        lastWinTimeMs = -1;
+        syncGameTimerState();
+        performBoardHaptic(HapticFeedbackConstants.VIRTUAL_KEY);
+        showGameScreen();
+    }
+
     private boolean canAcceptCommand() {
         return currentScreen == Screen.GAME && boardView != null && !solverRunning && !boardView.isBusy();
     }
@@ -1325,7 +1373,9 @@ public class MainActivity extends Activity implements GameObserver {
         }
 
         if (gameTitleText != null) {
-            gameTitleText.setText(getString(R.string.game_title_format,
+            gameTitleText.setText(getString(activeDailyDateId == null
+                            ? R.string.game_title_format
+                            : R.string.game_daily_title_format,
                     model.getSize(), model.getSize(), difficultyName(model.getDifficulty())));
         }
 
@@ -1393,10 +1443,17 @@ public class MainActivity extends Activity implements GameObserver {
         long elapsed = model.isSolved() && lastWinTimeMs >= 0
                 ? lastWinTimeMs
                 : model.getElapsedTime();
-        store.saveGame(model, elapsed);
+        if (activeDailyDateId == null) {
+            store.saveGame(model, elapsed);
+        } else {
+            store.saveDailyGame(activeDailyDateId, model, elapsed);
+        }
     }
 
     private boolean loadGame() {
+        if (activeDailyDateId != null) {
+            return loadDailyGame(activeDailyDateId);
+        }
         int size = model == null ? store.getLastSize(4) : model.getSize();
         return loadGame(size);
     }
@@ -1412,9 +1469,27 @@ public class MainActivity extends Activity implements GameObserver {
         lastWinTimeMs = model.isSolved() ? data.elapsedTime : -1;
         assistedSolveActive = false;
         currentResult = null;
+        activeDailyDateId = null;
         hintActive = false;
         gameStarted = true;
         store.setLastSize(data.size);
+        syncGameTimerState();
+        return true;
+    }
+
+    private boolean loadDailyGame(String dateId) {
+        SaveManager.SaveData data = store.loadDailyGame(dateId);
+        if (data == null) {
+            return false;
+        }
+        attachModel(new GameModel(data.size));
+        model.loadState(data);
+        lastWinTimeMs = model.isSolved() ? data.elapsedTime : -1;
+        assistedSolveActive = false;
+        currentResult = null;
+        activeDailyDateId = dateId;
+        hintActive = false;
+        gameStarted = true;
         syncGameTimerState();
         return true;
     }
@@ -1538,25 +1613,31 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private String resultRecordText(GameResult result) {
+        String dailyPrefix = "";
+        if (result.dailyDateId != null) {
+            AndroidGameStore.DailyProgress progress = store.getDailyProgress(result.dailyDateId);
+            dailyPrefix = getString(R.string.results_daily_progress,
+                    progress.currentStreak, progress.bestStreak) + "\n";
+        }
         if (result.assisted) {
             String previous = result.previousBest == null
                     ? getString(R.string.records_empty)
                     : getString(R.string.best_format, formatMoves(result.previousBest.moves),
                             result.previousBest.timeMs / 1000);
-            return getString(R.string.results_assisted_record, previous);
+            return dailyPrefix + getString(R.string.results_assisted_record, previous);
         }
         if (result.newBest) {
-            return result.previousBest == null
+            return dailyPrefix + (result.previousBest == null
                     ? getString(R.string.results_first_record)
                     : getString(R.string.results_new_best,
                             getString(R.string.best_format, formatMoves(result.previousBest.moves),
-                                    result.previousBest.timeMs / 1000));
+                                    result.previousBest.timeMs / 1000)));
         }
         AndroidGameStore.Best best = getBest(result.size, result.difficulty);
         String bestText = best == null
                 ? getString(R.string.records_empty)
                 : getString(R.string.best_format, formatMoves(best.moves), best.timeMs / 1000);
-        return getString(R.string.results_no_new_best, bestText);
+        return dailyPrefix + getString(R.string.results_no_new_best, bestText);
     }
 
     private void performBoardHaptic(int feedbackConstant) {
@@ -1637,7 +1718,8 @@ public class MainActivity extends Activity implements GameObserver {
             return;
         }
         lastWinTimeMs = timeMs;
-        pendingWin = new PendingWin(model.getSize(), model.getDifficulty(), moves, timeMs, assistedSolveActive);
+        pendingWin = new PendingWin(model.getSize(), model.getDifficulty(), moves, timeMs,
+                assistedSolveActive, activeDailyDateId);
         handler.postDelayed(this::showWinWhenReady, 180);
     }
 
@@ -1653,13 +1735,16 @@ public class MainActivity extends Activity implements GameObserver {
         PendingWin win = pendingWin;
         pendingWin = null;
         store.recordCompletion(win.size, win.difficulty, win.moves, win.timeMs, win.assisted);
+        if (win.dailyDateId != null) {
+            store.recordDailyCompletion(win.dailyDateId);
+        }
         AndroidGameStore.Best previousBest = getBest(win.size, win.difficulty);
         boolean newBest = !win.assisted && AndroidGameStore.isBetterRecord(previousBest, win.moves, win.timeMs);
         if (newBest) {
             recordBest(win.size, win.difficulty, win.moves, win.timeMs);
         }
         currentResult = new GameResult(win.size, win.difficulty, win.moves,
-                win.timeMs, win.assisted, newBest, previousBest);
+                win.timeMs, win.assisted, newBest, previousBest, win.dailyDateId);
         assistedSolveActive = false;
         performBoardHaptic(HapticFeedbackConstants.LONG_PRESS);
         updateStatus();
