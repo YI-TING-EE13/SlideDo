@@ -978,6 +978,14 @@ Priority: Low to Medium
 
 ### 2026-08-22
 
+- Repaired the Windows CI gate after the first GitHub-hosted run exposed two
+  environment assumptions. `verify.bat` now locates Android API 36 through a
+  valid `ANDROID_HOME`, `ANDROID_SDK_ROOT`, or local SDK fallback and reports a
+  direct setup error when none contains `android.jar`. The release manifest
+  writer now computes SHA-256 through the .NET cryptography API instead of
+  depending on PowerShell module autoloading. Focused failure/recovery checks,
+  an independent `certutil` hash comparison, and the full `ci.bat` gate passed.
+
 - Completed Stage 8 sound and themes. Android Settings now offers optional local
   move/completion tones, off by default, and persistent Midnight/Ocean palettes.
   `AndroidSoundFeedback` lazily owns the platform tone generator and suppresses

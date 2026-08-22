@@ -8,8 +8,19 @@ set "DESKTOP_BIN=%TEMP_ROOT%\desktop-bin"
 set "SOURCES=%TEMP_ROOT%\sources.txt"
 set "JAVADOC_BIN=C:\Program Files\Java\jdk-25\bin\javadoc.exe"
 set "JAVADOC_CMD=javadoc"
+set "ANDROID_PLATFORM_JAR="
 
 if exist "%JAVADOC_BIN%" set "JAVADOC_CMD=%JAVADOC_BIN%"
+if defined ANDROID_HOME if exist "%ANDROID_HOME%\platforms\android-36\android.jar" set "ANDROID_PLATFORM_JAR=%ANDROID_HOME%\platforms\android-36\android.jar"
+if not defined ANDROID_PLATFORM_JAR if defined ANDROID_SDK_ROOT if exist "%ANDROID_SDK_ROOT%\platforms\android-36\android.jar" set "ANDROID_PLATFORM_JAR=%ANDROID_SDK_ROOT%\platforms\android-36\android.jar"
+if not defined ANDROID_PLATFORM_JAR if exist "%LOCALAPPDATA%\Android\Sdk\platforms\android-36\android.jar" set "ANDROID_PLATFORM_JAR=%LOCALAPPDATA%\Android\Sdk\platforms\android-36\android.jar"
+
+if not defined ANDROID_PLATFORM_JAR (
+    echo Android API 36 platform jar not found.
+    echo Checked ANDROID_HOME, ANDROID_SDK_ROOT, and %%LOCALAPPDATA%%\Android\Sdk.
+    echo Install platforms;android-36 or point an Android SDK environment variable to the SDK directory.
+    exit /b 1
+)
 
 echo [1/5] Shared core tests
 call :clean_dir "%ROOT%\build\test-results\test"
@@ -43,7 +54,7 @@ popd
 if not "%ANDROID_RESULT%"=="0" exit /b %ANDROID_RESULT%
 
 echo [5/5] Android API Javadocs
-"%JAVADOC_CMD%" -quiet -public -Xdoclint:all -encoding UTF-8 -charset UTF-8 -classpath "%LOCALAPPDATA%\Android\Sdk\platforms\android-36\android.jar;%ROOT%\src" -sourcepath "%ROOT%\android\app\src\main\java;%ROOT%\src" -d "%TEMP_ROOT%\android-javadocs" com.klotski.android
+"%JAVADOC_CMD%" -quiet -public -Xdoclint:all -encoding UTF-8 -charset UTF-8 -classpath "%ANDROID_PLATFORM_JAR%;%ROOT%\src" -sourcepath "%ROOT%\android\app\src\main\java;%ROOT%\src" -d "%TEMP_ROOT%\android-javadocs" com.klotski.android
 if errorlevel 1 exit /b 1
 
 echo Verification completed successfully.

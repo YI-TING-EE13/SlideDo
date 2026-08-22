@@ -29,8 +29,22 @@ function Add-ArtifactLine {
     }
 
     $item = Get-Item -LiteralPath $fullPath
-    $hash = Get-FileHash -LiteralPath $fullPath -Algorithm SHA256
-    "{0}`t{1}`t{2}`t{3}" -f $Label, $RelativePath.Replace("\", "/"), $item.Length, $hash.Hash.ToLowerInvariant()
+    $stream = [System.IO.File]::OpenRead($fullPath)
+    try {
+        $sha256 = [System.Security.Cryptography.SHA256]::Create()
+        try {
+            $hashBytes = $sha256.ComputeHash($stream)
+        }
+        finally {
+            $sha256.Dispose()
+        }
+    }
+    finally {
+        $stream.Dispose()
+    }
+
+    $hash = [System.BitConverter]::ToString($hashBytes).Replace("-", "").ToLowerInvariant()
+    "{0}`t{1}`t{2}`t{3}" -f $Label, $RelativePath.Replace("\", "/"), $item.Length, $hash
 }
 
 $outputDirectory = Split-Path -Parent $OutputPath
