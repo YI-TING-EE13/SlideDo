@@ -116,6 +116,8 @@
     <string name="language_japanese">日本語</string>
     <string name="settings_section_preferences">PREFERENCES</string>
     <string name="settings_section_local_data">LOCAL DATA</string>
+    <string name="settings_export_backup">Export backup</string>
+    <string name="settings_import_backup">Import backup</string>
     <string name="settings_theme_button">Visual theme: %1$s</string>
     <string name="settings_theme_accessibility">Choose visual theme. Current theme: %1$s.</string>
     <string name="dialog_theme_title">Choose visual theme</string>
@@ -189,6 +191,13 @@
     <string name="toast_game_loaded">Game loaded!</string>
     <string name="toast_no_save">No save file found.</string>
     <string name="toast_save_reset">Saved games reset.</string>
+    <string name="toast_backup_exported">Backup exported.</string>
+    <string name="toast_backup_restored">Backup restored.</string>
+    <string name="dialog_restore_backup_title">Restore backup?</string>
+    <string name="dialog_restore_backup_message">This replaces all current saves, records, statistics, and settings with the selected backup.</string>
+    <string name="dialog_restore">RESTORE</string>
+    <string name="dialog_backup_error_title">Backup unavailable</string>
+    <string name="dialog_backup_error_message">SlideDo could not complete this backup operation. Review the selected file and try again.</string>
     <string name="toast_records_reset">Records reset.</string>
     <string name="dialog_close">Close</string>
     <string name="dialog_continue">Continue</string>

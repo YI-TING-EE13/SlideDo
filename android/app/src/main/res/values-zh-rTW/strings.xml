@@ -116,6 +116,8 @@
     <string name="language_japanese">日文</string>
     <string name="settings_section_preferences">偏好設定</string>
     <string name="settings_section_local_data">本機資料</string>
+    <string name="settings_export_backup">匯出備份</string>
+    <string name="settings_import_backup">匯入備份</string>
     <string name="settings_theme_button">視覺主題：%1$s</string>
     <string name="settings_theme_accessibility">選擇視覺主題。目前主題：%1$s。</string>
     <string name="dialog_theme_title">選擇視覺主題</string>
@@ -189,6 +191,13 @@
     <string name="toast_game_loaded">遊戲已載入！</string>
     <string name="toast_no_save">找不到遊戲存檔。</string>
     <string name="toast_save_reset">所有遊戲存檔已重設。</string>
+    <string name="toast_backup_exported">備份已匯出。</string>
+    <string name="toast_backup_restored">備份已還原。</string>
+    <string name="dialog_restore_backup_title">要還原備份嗎？</string>
+    <string name="dialog_restore_backup_message">這會以所選備份取代目前所有存檔、紀錄、統計與設定。</string>
+    <string name="dialog_restore">還原</string>
+    <string name="dialog_backup_error_title">無法使用備份</string>
+    <string name="dialog_backup_error_message">SlideDo 無法完成這次備份操作。請檢查所選檔案後再試一次。</string>
     <string name="toast_records_reset">紀錄已重設。</string>
     <string name="dialog_close">關閉</string>
     <string name="dialog_continue">繼續</string>

@@ -9,7 +9,9 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Typeface;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -37,7 +39,14 @@ import com.klotski.core.SaveManager;
 import com.klotski.core.Solver;
 import com.klotski.core.StrategicHint;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -51,6 +60,10 @@ import java.util.List;
  * </p>
  */
 public class MainActivity extends Activity implements GameObserver {
+    private static final int REQUEST_EXPORT_BACKUP = 1401;
+    private static final int REQUEST_IMPORT_BACKUP = 1402;
+    private static final DateTimeFormatter BACKUP_FILE_TIME =
+            DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
     private static final int ONBOARDING_PAGE_COUNT = 4;
     private static final int TUTORIAL_FIRST_MOVE = 0;
     private static final int TUTORIAL_LINE_SLIDE = 1;
@@ -210,6 +223,38 @@ public class MainActivity extends Activity implements GameObserver {
         super.onResume();
         activityResumed = true;
         syncGameTimerState();
+    }
+
+    /**
+     * Completes owner-selected Android document export and import operations.
+     * A selected import is parsed before a confirmation dialog can replace
+     * existing personal data.
+     *
+     * @param requestCode request identifier supplied when opening the picker
+     * @param resultCode Android activity result code
+     * @param data picker result containing the selected document URI
+     */
+    @SuppressWarnings("deprecation")
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode != RESULT_OK || data == null || data.getData() == null) {
+            return;
+        }
+
+        Uri documentUri = data.getData();
+        try {
+            if (requestCode == REQUEST_EXPORT_BACKUP) {
+                writePersonalDataBackup(documentUri);
+                Toast.makeText(this, R.string.toast_backup_exported, Toast.LENGTH_SHORT).show();
+            } else if (requestCode == REQUEST_IMPORT_BACKUP) {
+                String archive = readPersonalDataBackup(documentUri);
+                AndroidPersonalDataArchive.decode(archive);
+                confirmImportPersonalData(archive);
+            }
+        } catch (IOException | IllegalArgumentException | IllegalStateException exception) {
+            showBackupError();
+        }
     }
 
     /**
@@ -697,6 +742,16 @@ public class MainActivity extends Activity implements GameObserver {
                     }
 
                     @Override
+                    public void onExportBackup() {
+                        showExportBackupPicker();
+                    }
+
+                    @Override
+                    public void onImportBackup() {
+                        showImportBackupPicker();
+                    }
+
+                    @Override
                     public void onResetSave() {
                         confirmResetSave();
                     }
@@ -1130,6 +1185,81 @@ public class MainActivity extends Activity implements GameObserver {
                     Toast.makeText(this, R.string.toast_save_reset, Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton(R.string.dialog_cancel, null)
+                .show();
+    }
+
+    @SuppressWarnings("deprecation")
+    private void showExportBackupPicker() {
+        saveGame();
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT)
+                .addCategory(Intent.CATEGORY_OPENABLE)
+                .setType("application/json")
+                .putExtra(Intent.EXTRA_TITLE, "SlideDo-backup-"
+                        + LocalDateTime.now().format(BACKUP_FILE_TIME) + ".json");
+        startActivityForResult(intent, REQUEST_EXPORT_BACKUP);
+    }
+
+    @SuppressWarnings("deprecation")
+    private void showImportBackupPicker() {
+        saveGame();
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT)
+                .addCategory(Intent.CATEGORY_OPENABLE)
+                .setType("application/json");
+        startActivityForResult(intent, REQUEST_IMPORT_BACKUP);
+    }
+
+    private void writePersonalDataBackup(Uri documentUri) throws IOException {
+        byte[] archive = store.exportPersonalData().getBytes(StandardCharsets.UTF_8);
+        try (OutputStream output = getContentResolver().openOutputStream(documentUri, "wt")) {
+            if (output == null) {
+                throw new IOException("Android did not provide a writable backup document.");
+            }
+            output.write(archive);
+        }
+    }
+
+    private String readPersonalDataBackup(Uri documentUri) throws IOException {
+        try (InputStream input = getContentResolver().openInputStream(documentUri);
+                ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            if (input == null) {
+                throw new IOException("Android did not provide a readable backup document.");
+            }
+            byte[] buffer = new byte[8192];
+            int totalBytes = 0;
+            int count;
+            while ((count = input.read(buffer)) != -1) {
+                totalBytes += count;
+                if (totalBytes > AndroidPersonalDataArchive.MAX_ARCHIVE_CHARS * 4) {
+                    throw new IOException("Backup document exceeds the supported size.");
+                }
+                output.write(buffer, 0, count);
+            }
+            return new String(output.toByteArray(), StandardCharsets.UTF_8);
+        }
+    }
+
+    private void confirmImportPersonalData(String archive) {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.dialog_restore_backup_title)
+                .setMessage(R.string.dialog_restore_backup_message)
+                .setPositiveButton(R.string.dialog_restore, (dialog, which) -> {
+                    try {
+                        store.importPersonalData(archive);
+                        Toast.makeText(this, R.string.toast_backup_restored, Toast.LENGTH_SHORT).show();
+                        recreate();
+                    } catch (IllegalArgumentException | IllegalStateException exception) {
+                        showBackupError();
+                    }
+                })
+                .setNegativeButton(R.string.dialog_cancel, null)
+                .show();
+    }
+
+    private void showBackupError() {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.dialog_backup_error_title)
+                .setMessage(R.string.dialog_backup_error_message)
+                .setPositiveButton(android.R.string.ok, null)
                 .show();
     }
 

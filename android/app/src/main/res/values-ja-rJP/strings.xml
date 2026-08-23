@@ -117,6 +117,8 @@
     <string name="language_japanese">日本語</string>
     <string name="settings_section_preferences">プレイ設定</string>
     <string name="settings_section_local_data">ローカルデータ</string>
+    <string name="settings_export_backup">バックアップを書き出す</string>
+    <string name="settings_import_backup">バックアップを読み込む</string>
     <string name="settings_theme_button">表示テーマ：%1$s</string>
     <string name="settings_theme_accessibility">表示テーマを選択します。現在のテーマ：%1$s。</string>
     <string name="dialog_theme_title">表示テーマを選ぶ</string>
@@ -190,6 +192,13 @@
     <string name="toast_game_loaded">ゲームを読み込みました。</string>
     <string name="toast_no_save">セーブデータが見つかりません。</string>
     <string name="toast_save_reset">すべてのセーブデータをリセットしました。</string>
+    <string name="toast_backup_exported">バックアップを書き出しました。</string>
+    <string name="toast_backup_restored">バックアップを復元しました。</string>
+    <string name="dialog_restore_backup_title">バックアップを復元しますか？</string>
+    <string name="dialog_restore_backup_message">現在のセーブ、記録、統計、設定を選択したバックアップで置き換えます。</string>
+    <string name="dialog_restore">復元</string>
+    <string name="dialog_backup_error_title">バックアップを使用できません</string>
+    <string name="dialog_backup_error_message">SlideDo はバックアップ操作を完了できませんでした。選択したファイルを確認して、もう一度お試しください。</string>
     <string name="toast_records_reset">記録をリセットしました。</string>
     <string name="dialog_close">閉じる</string>
     <string name="dialog_continue">続ける</string>

@@ -100,6 +100,15 @@ Run every item in all supported locales.
 ### Settings and Records
 
 - [ ] Haptic and Reduced Motion switches toggle, persist after relaunch, and keep localized accessibility descriptions.
+- [ ] Export backup opens Android's create-document picker with a timestamped
+  `.json` name and writes every current save, record, statistic, daily field,
+  onboarding field, language, and preference.
+- [ ] Import backup validates the entire document before showing the localized
+  replacement dialog; Cancel preserves current data and Restore replaces it.
+- [ ] A malformed, oversized, duplicate-key, or unsupported-version backup is
+  rejected without partially replacing current preferences.
+- [ ] Restored language, theme, sound, haptic, and Reduced Motion settings apply
+  after Activity recreation; restored saves and records remain playable.
 - [ ] Reset Saved Games Cancel preserves every size slot; Reset clears all 3x3,
   4x4, and 5x5 slots while preserving records/settings and shows a localized
   confirmation toast.
@@ -186,6 +195,23 @@ Do not mark the localization work complete until every applicable item above is
 checked in all supported locales, failures are fixed and rerun, and any
 unavailable device coverage is explicitly recorded as a limitation rather than
 reported as passed.
+
+### 2026-08-23 Personal Play 2.0 Stage 1 backup and restore pass
+
+| Evidence | Result |
+| --- | --- |
+| Debug APK SHA-256 | `40FD389B702534A9C5578B4DFDC67D45730356ABFD9E0C8D9BA017FC4ADADE3F` |
+| Local verification | All 37 shared tests passed; `verify.bat` passed desktop compile, Android assemble/test APK/lint, and both Javadoc/doclint gates |
+| Pixel_7 | All 79 Android tests passed on Android 15 at 1080x2400 in one serial run (7m46s); 0 failed, 0 skipped |
+| `small_phone` | All 79 Android tests passed on Android 16 / API 36.1 at 720x1280 in one serial run (7m10s); 0 failed, 0 skipped |
+| Backup contract | Version 1 JSON preserves all SharedPreferences-compatible values, validates before replacement, bounds archive size/count/key length, rejects duplicate keys and unsupported types or versions, and restores missing preferences to app defaults |
+| Android flow | Settings exposes Export and Import; system document pickers require no storage permission; Restore requires confirmation and recreates the Activity so imported language/theme/settings apply |
+| UI and runtime review | Pixel_7 created and inspected a real exported JSON file and reached the import confirmation; compact Settings kept Export, Import, both reset actions, and Back readable and reachable; malformed JSON produced the localized error and did not change preferences; the automated Restore flow applied the archive and recreated the Activity; both crash buffers were empty |
+
+The backup file is owner-controlled and local. Import replaces the complete
+Android preference store after validation; it does not merge selected fields.
+Cloud sync, scheduled backups, encryption, and public-store signing remain out
+of scope for this stage.
 
 ### 2026-08-21 Stage 5 history and personal-statistics pass
 

@@ -64,6 +64,8 @@
     <item name="settings_haptic_switch" type="id" />
     <item name="settings_sound_switch" type="id" />
     <item name="settings_reduced_motion_switch" type="id" />
+    <item name="settings_export_backup_button" type="id" />
+    <item name="settings_import_backup_button" type="id" />
     <item name="settings_reset_save_button" type="id" />
     <item name="settings_reset_records_button" type="id" />
     <item name="settings_back_button" type="id" />

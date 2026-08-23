@@ -458,6 +458,42 @@ public class MainActivityFlowTest {
     }
 
     @Test
+    public void settingsOffersPersonalDataBackupActions() throws Exception {
+        markOnboardingSeen();
+        launchApp();
+
+        clickId(R.id.home_settings_button);
+        waitForId("settings_root");
+        scrollToText("Export backup");
+        assertActivityHasView(R.id.settings_export_backup_button);
+        scrollToText("Import backup");
+        assertActivityHasView(R.id.settings_import_backup_button);
+    }
+
+    @Test
+    public void confirmedPersonalDataImportReplacesSettingsAndRecreatesActivity() throws Exception {
+        assertTrue(targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putBoolean("onboarding_seen", true)
+                .putBoolean("sound_enabled", true)
+                .commit());
+        launchApp();
+
+        String backup = "{\"format\":\"slidedo-personal-data\",\"version\":1,"
+                + "\"createdAt\":123,\"entries\":[{\"key\":\"onboarding_seen\","
+                + "\"type\":\"boolean\",\"value\":true}]}";
+        Activity activityBeforeRestore = activity;
+        invokeActivityMethod("confirmImportPersonalData", new Class<?>[] {String.class}, backup);
+        waitForText("Restore backup?");
+        waitForText("RESTORE").click();
+        waitForRecreatedMainActivity(activityBeforeRestore);
+        waitForId("home_root");
+
+        SharedPreferences restored = targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        assertTrue(restored.getBoolean("onboarding_seen", false));
+        assertFalse(restored.getBoolean("sound_enabled", false));
+    }
+
+    @Test
     public void themeSelectionPersistsAndPreservesActiveGame() throws Exception {
         writeSavedGame(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 0);
         assertTrue(targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
@@ -1615,6 +1651,29 @@ public class MainActivityFlowTest {
             Thread.sleep(100);
         }
         fail("MainActivity did not resume after rotation");
+    }
+
+    private void waitForRecreatedMainActivity(Activity previousActivity) throws InterruptedException {
+        long deadline = System.currentTimeMillis() + TIMEOUT_MS;
+        while (System.currentTimeMillis() < deadline) {
+            Activity[] resumedActivity = new Activity[1];
+            instrumentation.runOnMainSync(() -> {
+                Collection<Activity> resumedActivities = ActivityLifecycleMonitorRegistry.getInstance()
+                        .getActivitiesInStage(Stage.RESUMED);
+                for (Activity candidate : resumedActivities) {
+                    if (candidate instanceof MainActivity && candidate != previousActivity) {
+                        resumedActivity[0] = candidate;
+                        return;
+                    }
+                }
+            });
+            if (resumedActivity[0] != null) {
+                activity = resumedActivity[0];
+                return;
+            }
+            Thread.sleep(100);
+        }
+        fail("MainActivity was not recreated after restoring personal data");
     }
 
     private boolean activityHasView(int resourceId) {

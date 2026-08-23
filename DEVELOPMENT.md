@@ -38,11 +38,13 @@ Current handoff status:
 - The latest local verification pass was warning-clean for the previously noisy
   Gradle DSL deprecation, Java native-access warning, and Android Java
   deprecation note.
-- The latest dual-AVD acceptance covered all 74 Android tests on each of
-  Pixel_7 (Android 15, 1080x2400) and `small_phone` (Android 16 / API 36.1,
-  720x1280), with final pass evidence and no skipped tests. The compact AVD ran
-  the full suite; five Pixel_7 shards avoided emulator contention, and one
-  transient focus failure passed on immediate isolated rerun. Coverage
+- Personal Play 2.0 Stage 1 is complete. Android Settings exports and imports a
+  versioned local JSON backup containing all app preferences, with complete
+  validation and explicit replacement confirmation before restore.
+- The latest dual-AVD acceptance passed all 79 Android tests in one serial run
+  on each profile: Pixel_7 (Android 15, 1080x2400) completed in 7m46s and
+  `small_phone` (Android 16 / API 36.1, 720x1280) completed in 7m10s, with no
+  failed or skipped tests. Coverage
   includes persistent sound/theme preferences, active-game preservation across
   theme recreation, strategic-hint assistance persistence and player-best protection,
   the deterministic offline daily challenge and streak state,
@@ -66,10 +68,9 @@ verify.bat
 verify-connected.bat
 ```
 
-The eight-stage Personal Play roadmap in `Roadmap And Planning` is implemented
-and verified. It prioritizes offline replay value and personal convenience over
-public distribution. Future work is optional refinement rather than an
-unfinished stage in this program.
+The original eight-stage Personal Play roadmap in `Roadmap And Planning` is
+implemented and verified. Personal Play 2.0 is now the active staged program;
+Stage 1 is complete and Stage 2 is the next implementation gate.
 
 Real Play upload signing is intentionally deferred until store submission. It
 is not required for a local push-ready commit, and no Git remote or push is part
@@ -139,11 +140,15 @@ Android currently supports:
 - BFS, A*, and IDA* solver controls behind Assist with expensive-operation warnings.
 - Solver-assisted completion protection so player records are not overwritten.
 - Settings for app language, haptic feedback, reduced motion, reset all saved
-  games, and reset records.
+  games, reset records, and owner-controlled JSON backup/restore through the
+  Android system file picker.
 - Android app-state persistence through `AndroidGameStore` for independent
   3x3, 4x4, and 5x5 saves, difficulty, scoped records, bounded completion
   history, lifetime statistics, settings, app language, onboarding state, and
   the last selected puzzle size/difficulty.
+- Versioned backup validation through `AndroidPersonalDataArchive`, including
+  bounded input, type checks, duplicate-key rejection, and full replacement
+  only after the selected document has passed validation.
 - Results screen with a completion-mark settle animation, player-record status,
   solver-assisted completion wording, and a Reduced motion bypass.
 - Haptic feedback.
@@ -512,6 +517,24 @@ Every stage uses the same delivery gate:
 | 6 | Offline daily challenge | Generate one deterministic local puzzle per date and record completion/streak state without a server. | Completed and verified on 2026-08-22. |
 | 7 | Strategic hint | Suggest a useful next move, mark the game assisted, and preserve player-record protection. | Completed and verified on 2026-08-22. |
 | 8 | Sound and themes | Add optional local sound feedback and selectable visual themes with persistent settings and accessibility-safe defaults. | Completed and verified on 2026-08-22. |
+
+### Personal Play 2.0
+
+The second personal-play program keeps the same test, documentation, and commit
+gate. Each stage must preserve shared puzzle rules, deterministic puzzle
+identity, save compatibility, active-play timing, and assisted-record
+protection before the next stage begins.
+
+| Stage | Goal | Required outcome | Status |
+| ---: | --- | --- | --- |
+| 1 | Android offline backup and restore | Export every Android save, record, statistic, daily field, and setting to a versioned local document; validate and confirm before complete replacement. | Completed and verified on 2026-08-23. |
+| 2 | Daily challenge calendar and history replay | Browse completed and missed local dates and replay any deterministic historical daily puzzle without changing the current-date streak twice. | Planned; next stage. |
+| 3 | Favorite puzzle library | Bookmark exact puzzle identities, label them locally, and replay a favorite without reshuffling or altering normal saves. | Planned. |
+| 4 | Personal trends and custom goals | Show local time/move trends and owner-defined goals without analytics or network services. | Planned. |
+| 5 | Continuous challenge mode | Chain completed puzzles into a local session with clear progress, exit, resume, and record boundaries. | Planned. |
+| 6 | Move history and Redo | Expose the current run's action history and add Redo while preserving whole-line one-action semantics, Restart, Save/Load, and solver input locks. | Planned. |
+| 7 | Adaptive and accessibility reinforcement | Improve compact/large-screen layout behavior, larger-text resilience, focus order, TalkBack descriptions, contrast, and reduced-motion coverage. | Planned. |
+| 8 | Toolchain and CI maintenance | Refresh supported Android/Gradle tooling, keep Windows and GitHub CI reproducible, and document warnings or compatibility migrations. | Planned. |
 
 Shared puzzle rules, deterministic puzzle identity, elapsed milliseconds, save
 compatibility, and assisted-record protection remain core contracts. Android
@@ -975,6 +998,33 @@ Priority: Low to Medium
 - Run the final desktop accessibility review.
 
 ## Development Log
+
+### 2026-08-23
+
+- Completed Personal Play 2.0 Stage 1 Android offline backup and restore.
+  `AndroidPersonalDataArchive` writes version 1 JSON for every
+  SharedPreferences-compatible value and rejects malformed, oversized,
+  duplicate-key, unsupported-type, and unsupported-version documents before
+  `AndroidGameStore` replaces the preference store.
+- Added Settings Export backup and Import backup actions in English,
+  Traditional Chinese, and Japanese. Android's create/open document pickers own
+  file access, so SlideDo adds no network or storage permission. Import shows a
+  complete-replacement warning, applies restored state, then recreates the
+  Activity so language and presentation settings take effect.
+- Added five instrumentation tests for complete saves/records/settings round
+  trip, missing-preference replacement, invalid-version no-mutation behavior,
+  visible Settings actions, and confirmed restore with Activity recreation.
+  `verify.bat` passed all 37 shared tests, desktop compilation, Android
+  assemble/test APK/lint, and both Javadoc/doclint gates.
+- Pixel_7 passed all 79 Android tests in one serial run on Android 15 at
+  1080x2400 in 7m46s. `small_phone` passed the same 79 tests in one serial run
+  on Android 16 / API 36.1 at 720x1280 in 7m10s. Neither run failed or skipped a
+  test.
+- Manual Android CLI review covered real export/import system pickers, the
+  replacement confirmation, compact Settings reachability, malformed JSON
+  rejection without preference mutation, and empty crash buffers on both AVDs.
+  The final debug APK SHA-256 is
+  `40FD389B702534A9C5578B4DFDC67D45730356ABFD9E0C8D9BA017FC4ADADE3F`.
 
 ### 2026-08-22
 

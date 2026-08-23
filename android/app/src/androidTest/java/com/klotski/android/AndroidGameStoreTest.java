@@ -474,6 +474,91 @@ public class AndroidGameStoreTest {
     }
 
     @Test
+    public void personalDataBackupRoundTripRestoresSavesRecordsAndSettings() {
+        store.markOnboardingSeen();
+        store.setLanguageTag(AndroidAppLocale.JAPANESE_LANGUAGE_TAG);
+        store.setSoundEnabled(true);
+        store.setVisualTheme(AndroidVisualTheme.OCEAN);
+        store.saveGame(createSavedModel(4, PuzzleDifficulty.CHALLENGE, 12), 34_000L);
+        store.recordBestIfBetter(4, PuzzleDifficulty.CHALLENGE, 12, 34_000L);
+        store.recordCompletion(4, PuzzleDifficulty.CHALLENGE, 12, 34_000L, false, 123L);
+        store.recordDailyCompletion("2026-08-22");
+
+        String backup = store.exportPersonalData();
+        assertTrue(prefs.edit().clear().commit());
+        store.setSoundEnabled(false);
+
+        store.importPersonalData(backup);
+
+        AndroidGameStore restored = new AndroidGameStore(targetContext);
+        assertTrue(restored.isOnboardingSeen());
+        assertEquals(AndroidAppLocale.JAPANESE_LANGUAGE_TAG, restored.getLanguageTag());
+        assertTrue(restored.isSoundEnabled());
+        assertEquals(AndroidVisualTheme.OCEAN, restored.getVisualTheme());
+        SaveManager.SaveData savedGame = restored.loadSavedGame(4);
+        assertNotNull(savedGame);
+        assertEquals(12, savedGame.moveCount);
+        assertEquals(34_000L, savedGame.elapsedTime);
+        assertEquals(PuzzleDifficulty.CHALLENGE, savedGame.difficulty);
+        AndroidGameStore.Best best = restored.getBest(4, PuzzleDifficulty.CHALLENGE);
+        assertNotNull(best);
+        assertEquals(12, best.moves);
+        assertEquals(34_000L, best.timeMs);
+        AndroidGameStore.CompletionRecord[] history = restored.getCompletionHistory();
+        assertEquals(1, history.length);
+        assertEquals(123L, history[0].completedAt);
+        assertTrue(restored.getDailyProgress("2026-08-22").completedToday);
+    }
+
+    @Test
+    public void invalidPersonalDataBackupsDoNotReplaceExistingData() {
+        store.setLanguageTag(AndroidAppLocale.TRADITIONAL_CHINESE_LANGUAGE_TAG);
+        store.setSoundEnabled(true);
+
+        String duplicateKey = "{\"format\":\"slidedo-personal-data\",\"version\":1,"
+                + "\"createdAt\":1,\"entries\":[{\"key\":\"duplicate\",\"type\":\"int\","
+                + "\"value\":1},{\"key\":\"duplicate\",\"type\":\"int\",\"value\":2}]}";
+        String unsupportedType = "{\"format\":\"slidedo-personal-data\",\"version\":1,"
+                + "\"createdAt\":1,\"entries\":[{\"key\":\"value\",\"type\":\"bytes\","
+                + "\"value\":\"AA==\"}]}";
+        String[] invalidBackups = {
+                "{}",
+                "{\"format\":\"slidedo-personal-data\",\"version\":99,\"entries\":[]}",
+                duplicateKey,
+                unsupportedType,
+                "x".repeat(AndroidPersonalDataArchive.MAX_ARCHIVE_CHARS + 1)
+        };
+
+        for (int index = 0; index < invalidBackups.length; index++) {
+            boolean rejected = false;
+            try {
+                store.importPersonalData(invalidBackups[index]);
+            } catch (IllegalArgumentException expected) {
+                rejected = true;
+            }
+
+            assertTrue("Invalid backup was accepted at index " + index, rejected);
+            AndroidGameStore unchanged = new AndroidGameStore(targetContext);
+            assertEquals(AndroidAppLocale.TRADITIONAL_CHINESE_LANGUAGE_TAG,
+                    unchanged.getLanguageTag());
+            assertTrue(unchanged.isSoundEnabled());
+        }
+    }
+
+    @Test
+    public void personalDataBackupClearsPreferencesMissingFromArchive() {
+        store.setSoundEnabled(true);
+
+        store.importPersonalData("{\"format\":\"slidedo-personal-data\",\"version\":1,"
+                + "\"createdAt\":123,\"entries\":[{\"key\":\"onboarding_seen\","
+                + "\"type\":\"boolean\",\"value\":true}]}");
+
+        AndroidGameStore restored = new AndroidGameStore(targetContext);
+        assertTrue(restored.isOnboardingSeen());
+        assertFalse(restored.isSoundEnabled());
+    }
+
+    @Test
     public void appLanguageOverridesDeviceContextLanguage() {
         Configuration deviceConfiguration = new Configuration(targetContext.getResources().getConfiguration());
         deviceConfiguration.setLocales(new LocaleList(Locale.forLanguageTag("zh-TW")));

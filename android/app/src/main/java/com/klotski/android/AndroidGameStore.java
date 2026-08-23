@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -144,6 +145,35 @@ final class AndroidGameStore {
     void setLanguageTag(String languageTag) {
         prefs.edit().putString(KEY_LANGUAGE_TAG,
                 AndroidAppLocale.normalizeLanguageTag(languageTag)).apply();
+    }
+
+    /**
+     * Exports every Android save, record, statistic, and setting to a versioned
+     * owner-controlled JSON document.
+     *
+     * @return complete personal-data backup
+     */
+    String exportPersonalData() {
+        return AndroidPersonalDataArchive.encode(prefs.getAll(), System.currentTimeMillis());
+    }
+
+    /**
+     * Replaces Android personal data with a fully validated backup document.
+     * Invalid documents are rejected before existing preferences are changed.
+     *
+     * @param archive versioned backup JSON
+     * @throws IllegalArgumentException when the document is malformed or unsupported
+     * @throws IllegalStateException when Android cannot persist the restored state
+     */
+    void importPersonalData(String archive) {
+        Map<String, Object> values = AndroidPersonalDataArchive.decode(archive);
+        SharedPreferences.Editor editor = prefs.edit().clear();
+        for (Map.Entry<String, Object> entry : values.entrySet()) {
+            putPreference(editor, entry.getKey(), entry.getValue());
+        }
+        if (!editor.commit()) {
+            throw new IllegalStateException("Android could not persist the restored SlideDo data.");
+        }
     }
 
     void saveGame(GameModel model, long elapsedMs) {
@@ -600,6 +630,25 @@ final class AndroidGameStore {
                 .remove(prefix + KEY_SOLVED)
                 .remove(prefix + KEY_DIFFICULTY)
                 .remove(prefix + KEY_ASSISTED);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void putPreference(SharedPreferences.Editor editor, String key, Object value) {
+        if (value instanceof String stringValue) {
+            editor.putString(key, stringValue);
+        } else if (value instanceof Integer integerValue) {
+            editor.putInt(key, integerValue);
+        } else if (value instanceof Long longValue) {
+            editor.putLong(key, longValue);
+        } else if (value instanceof Float floatValue) {
+            editor.putFloat(key, floatValue);
+        } else if (value instanceof Boolean booleanValue) {
+            editor.putBoolean(key, booleanValue);
+        } else if (value instanceof Set<?>) {
+            editor.putStringSet(key, new HashSet<>((Set<String>) value));
+        } else {
+            throw new IllegalArgumentException("Unsupported restored preference type.");
+        }
     }
 
     private static String difficultyBestPrefix(int size, PuzzleDifficulty difficulty) {

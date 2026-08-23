@@ -67,6 +67,14 @@ final class AndroidSettingsScreen {
                 reducedMotionEnabled, actions::onReducedMotionChanged);
 
         ui.addSectionLabel(screen.content, R.string.settings_section_local_data);
+        Button exportBackupButton = ui.addWideButton(screen.content,
+                R.string.settings_export_backup, COLOR_PANEL,
+                v -> actions.onExportBackup());
+        exportBackupButton.setId(R.id.settings_export_backup_button);
+        Button importBackupButton = ui.addWideButton(screen.content,
+                R.string.settings_import_backup, COLOR_PANEL,
+                v -> actions.onImportBackup());
+        importBackupButton.setId(R.id.settings_import_backup_button);
         Button resetSaveButton = ui.addWideButton(screen.content, R.string.settings_reset_save, COLOR_DANGER_PANEL,
                 v -> actions.onResetSave());
         resetSaveButton.setId(R.id.settings_reset_save_button);
@@ -124,6 +132,10 @@ final class AndroidSettingsScreen {
         void onSoundChanged(boolean checked);
 
         void onReducedMotionChanged(boolean checked);
+
+        void onExportBackup();
+
+        void onImportBackup();
 
         void onResetSave();
 

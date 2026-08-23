@@ -38,6 +38,9 @@ an emulator or connected Android device.
   IDA* are grouped one level deeper under Solver Tools
 - Optional short local tones for tile moves and puzzle completion, disabled by
   default, plus persistent Midnight and Ocean visual themes
+- Versioned offline JSON export/import for all Android saves, records,
+  statistics, daily state, onboarding, language, and preferences through the
+  Android system file picker
 - Board, highlighted movable tiles, primary game controls, and settings switches
   expose accessibility descriptions for screen readers
 - Manual Save and Load controls in the in-game menu
@@ -47,6 +50,9 @@ an emulator or connected Android device.
 - App-state persistence is isolated in `AndroidGameStore` for saves, settings,
   best records, completion history, personal statistics, onboarding, app
   language, and last selected size/difficulty
+- `AndroidPersonalDataArchive` validates the complete versioned backup before
+  `AndroidGameStore` replaces any preferences; malformed or unsupported files
+  are rejected without partial import
 - Activity state restoration, back-navigation decisions, shared UI primitives,
   and learning-content builders are split out of `MainActivity` for maintainable
   Android iteration
@@ -71,7 +77,8 @@ an emulator or connected Android device.
 - Rotation restore for the active game screen
 - Settings for persistent English, Traditional Chinese, and Japanese language
   selection, Midnight/Ocean visual themes, optional sound and haptic feedback,
-  reduced board/screen motion, reset all saved games, and reset records
+  reduced board/screen motion, offline backup/restore, reset all saved games,
+  and reset records
 - Per-size and per-difficulty best records plus local lifetime completion
   totals, player averages, and newest-first recent history; assisted
   completions are counted separately and cannot replace player bests
@@ -153,12 +160,10 @@ This runs `verify.bat` and `verify-release.bat`. CI release artifacts are
 verification outputs and use the temporary signing key unless real Play upload
 signing is explicitly configured.
 
-Latest 2026-08-22 validation status: all 74 Android tests have passing evidence
-on both the Pixel_7 AVD running Android 15 at 1080x2400 and the `small_phone`
-AVD running Android 16 / API 36.1 at 720x1280. Pixel_7 passed 74/74 in five
-isolated shards after a cold boot recovered an AVD system crash. The compact AVD
-full run passed 73/74; its one transient Home-window-focus timeout passed on an
-immediate isolated rerun. The suite covers the
+Latest 2026-08-23 validation status: all 79 Android tests passed in one serial
+run on each emulator profile. Pixel_7 passed 79/79 on Android 15 at 1080x2400
+in 7m46s; `small_phone` passed 79/79 on Android 16 / API 36.1 at 720x1280 in
+7m10s. Neither run reported a failed or skipped test. The suite covers the
 normal animated transition path, the Reduced motion bypass, English-default
 locale isolation, persistent English, Traditional Chinese, and Japanese switching,
 explicit Traditional Chinese and Japanese major-screen/dialog/result flows,
@@ -180,6 +185,14 @@ puzzle for each device-local date, a daily save isolated from the three normal
 size slots, idempotent completion tracking, and current/best streaks. Reset
 Saved Games clears the daily board but preserves streak records; Reset Records
 clears daily completion and streak state but preserves the daily board.
+Personal Play 2.0 Stage 1 adds versioned owner-controlled JSON backup and
+restore without a network dependency or storage permission. Five automated
+tests cover full persistence round trip, removal of preferences absent from the
+archive, invalid-version no-mutation behavior, visible Settings actions, and a
+confirmed restore followed by Activity recreation. Manual review verified both
+system file pickers, the replacement dialog, malformed-file error handling, and
+the complete compact Settings data section. The Stage 1 debug APK SHA-256 is
+`40FD389B702534A9C5578B4DFDC67D45730356ABFD9E0C8D9BA017FC4ADADE3F`.
 CLI-captured manual review covered English onboarding, Traditional Chinese
 Home/Settings/Mode Select/Game, and Japanese Home/Settings/Mode Select/How to
 Play/Game on the compact AVD. The compact controls remained single-line after
@@ -340,6 +353,13 @@ check-screenshot-set.bat ..\screenshots\android\0.2.0-beta.1
 - Switch Visual theme between Midnight and Ocean. Confirm Home, Settings, and
   the board update, then relaunch and verify the selected theme, active board,
   move count, timer, saves, and records are unchanged.
+- In Settings, export a backup through the system file picker. Change at least
+  one setting or save, import the backup, review the replacement warning, and
+  confirm the exported state returns after Restore.
+- Cancel an import from both the system picker and the replacement dialog;
+  confirm the current saves and settings remain unchanged.
+- Select a malformed or unsupported JSON document and confirm SlideDo rejects
+  it with a localized error without replacing existing preferences.
 - Use Settings reset actions only after confirming the dialogs.
 - Open Assist, choose Show Movable Tiles, and confirm the status explains the
   highlighted legal moves while the move count stays unchanged.
