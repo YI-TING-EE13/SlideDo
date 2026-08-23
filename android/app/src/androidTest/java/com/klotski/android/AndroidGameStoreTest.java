@@ -228,6 +228,60 @@ public class AndroidGameStoreTest {
     }
 
     @Test
+    public void dailySavesRemainIndependentByCalendarDate() {
+        DailyChallenge firstChallenge = DailyChallenge.fromDateId("2026-07-31");
+        DailyChallenge secondChallenge = DailyChallenge.fromDateId("2026-08-01");
+
+        store.saveDailyGame(firstChallenge.getDateId(), firstChallenge.createGame(), 1_000L, true);
+        store.saveDailyGame(secondChallenge.getDateId(), secondChallenge.createGame(), 2_000L, false);
+
+        SaveManager.SaveData first = store.loadDailyGame(firstChallenge.getDateId());
+        SaveManager.SaveData second = store.loadDailyGame(secondChallenge.getDateId());
+        assertNotNull(first);
+        assertNotNull(second);
+        assertEquals(1_000L, first.elapsedTime);
+        assertEquals(2_000L, second.elapsedTime);
+        assertTrue(Arrays.deepEquals(firstChallenge.createGame().getInitialGridCopy(),
+                first.initialGrid));
+        assertTrue(Arrays.deepEquals(secondChallenge.createGame().getInitialGridCopy(),
+                second.initialGrid));
+        assertTrue(store.isDailyGameAssisted(firstChallenge.getDateId()));
+        assertFalse(store.isDailyGameAssisted(secondChallenge.getDateId()));
+
+        store.clearSavedGame();
+        assertNull(store.loadDailyGame(firstChallenge.getDateId()));
+        assertNull(store.loadDailyGame(secondChallenge.getDateId()));
+    }
+
+    @Test
+    public void legacySingleDailySaveMigratesIntoItsDateSlot() {
+        DailyChallenge challenge = DailyChallenge.fromDateId("2026-08-21");
+        int[][] initialGrid = challenge.createGame().getInitialGridCopy();
+        assertTrue(prefs.edit()
+                .putString("daily_save_date", challenge.getDateId())
+                .putInt("daily_save_size", 4)
+                .putString("daily_save_grid", flattenGrid(initialGrid))
+                .putString("daily_save_initial_grid", flattenGrid(initialGrid))
+                .putInt("daily_save_moves", 0)
+                .putLong("daily_save_elapsed", 4_321L)
+                .putLong("daily_save_updated_at", 123L)
+                .putBoolean("daily_save_active", true)
+                .putBoolean("daily_save_solved", false)
+                .putString("daily_save_difficulty", PuzzleDifficulty.CLASSIC.getId())
+                .putBoolean("daily_save_assisted", true)
+                .commit());
+
+        SaveManager.SaveData migrated = store.loadDailyGame(challenge.getDateId());
+
+        assertNotNull(migrated);
+        assertEquals(4_321L, migrated.elapsedTime);
+        assertTrue(store.isDailyGameAssisted(challenge.getDateId()));
+        assertTrue(prefs.contains("daily_save_v2_2026-08-21_grid"));
+        assertFalse(prefs.contains("daily_save_grid"));
+        assertFalse(prefs.contains("daily_save_date"));
+    }
+
+    @Test
     public void assistedStateRoundTripsWithRegularAndDailySaves() {
         GameModel regular = createSavedModel(3, PuzzleDifficulty.CLASSIC, 2);
         DailyChallenge challenge = DailyChallenge.fromDateId("2026-08-21");
@@ -280,6 +334,20 @@ public class AndroidGameStoreTest {
         AndroidGameStore.DailyProgress afterAnotherGap = store.getDailyProgress("2026-08-25");
         assertEquals(0, afterAnotherGap.currentStreak);
         assertEquals(2, afterAnotherGap.bestStreak);
+    }
+
+    @Test
+    public void completingHistoricalDateDoesNotRewriteCurrentStreak() {
+        store.recordDailyCompletion("2026-08-22");
+        store.recordDailyCompletion("2026-08-23");
+
+        assertTrue(store.recordDailyCompletion("2026-07-10"));
+
+        AndroidGameStore.DailyProgress current = store.getDailyProgress("2026-08-23");
+        assertEquals(2, current.currentStreak);
+        assertEquals(2, current.bestStreak);
+        assertEquals("2026-08-23", current.lastCompletedDateId);
+        assertTrue(store.getDailyProgress("2026-07-10").completedToday);
     }
 
     @Test
@@ -597,5 +665,18 @@ public class AndroidGameStoreTest {
         GameModel model = new GameModel(size);
         model.loadState(data);
         return model;
+    }
+
+    private static String flattenGrid(int[][] grid) {
+        StringBuilder flattened = new StringBuilder();
+        for (int[] row : grid) {
+            for (int value : row) {
+                if (flattened.length() > 0) {
+                    flattened.append(',');
+                }
+                flattened.append(value);
+            }
+        }
+        return flattened.toString();
     }
 }

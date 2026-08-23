@@ -3,11 +3,35 @@
     <string name="app_name">SlideDo</string>
     <string name="home_tagline">すき間時間に気持ちよく解ける、落ち着いた数字パズル。</string>
     <string name="home_summary">タイルを順番に並べ、空きマスを右下に置きましょう。</string>
-    <string name="home_daily_challenge">デイリーチャレンジ</string>
+    <string name="home_daily_challenge">デイリーカレンダー</string>
     <string name="home_daily_summary">%1$s · %2$s · 連続 %3$d · 最高 %4$d</string>
     <string name="home_daily_ready">未開始</string>
     <string name="home_daily_in_progress">進行中</string>
     <string name="home_daily_completed">完了</string>
+    <string name="daily_calendar_title">デイリーカレンダー</string>
+    <string name="daily_calendar_subtitle">今日を選ぶか、過去のオフライン問題をもう一度遊べます。</string>
+    <string name="daily_calendar_previous">前の月</string>
+    <string name="daily_calendar_next">次の月</string>
+    <string name="daily_calendar_month_format">%2$d年%1$s</string>
+    <string name="daily_calendar_legend">+ 完了   ~ 進行中   ! 未完了</string>
+    <string name="daily_calendar_status_ready">プレイ可能</string>
+    <string name="daily_calendar_status_completed">完了</string>
+    <string name="daily_calendar_status_in_progress">進行中</string>
+    <string name="daily_calendar_status_missed">未完了</string>
+    <string name="daily_calendar_status_future">未来の日付</string>
+    <string name="daily_calendar_action_play">デイリーチャレンジを開始</string>
+    <string name="daily_calendar_action_replay">デイリーチャレンジを再プレイ</string>
+    <string name="daily_calendar_action_unavailable">まだプレイできません</string>
+    <string name="daily_calendar_day_accessibility">%1$s。%2$s。%3$s。</string>
+    <string-array name="daily_calendar_weekdays">
+        <item>日</item>
+        <item>月</item>
+        <item>火</item>
+        <item>水</item>
+        <item>木</item>
+        <item>金</item>
+        <item>土</item>
+    </string-array>
     <string name="home_continue">続きから</string>
     <string name="home_continue_summary">%1$s：%2$dx%3$d · %4$s、%5$s、%6$d秒、%7$s</string>
     <string name="home_multiple_saves_summary">セーブデータが%1$d件あります。続けるサイズを選んでください。</string>
@@ -148,7 +172,7 @@
     <string name="results_play_again">同じ問題を再挑戦</string>
     <string name="results_new_size">サイズ変更</string>
     <string name="game_title_format">%1$dx%2$d · %3$s</string>
-    <string name="game_daily_title_format">デイリー · %1$dx%2$d · %3$s</string>
+    <string name="game_daily_title_format">デイリー %1$s · %2$dx%3$d · %4$s</string>
     <string name="game_menu">メニュー</string>
     <string name="game_assist">ヒント</string>
     <string name="accessibility_game_home">現在のパズルを保存してホームへ戻ります</string>

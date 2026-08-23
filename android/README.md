@@ -11,6 +11,9 @@ an emulator or connected Android device.
 
 - Native Android `Activity` and custom game board `View`
 - Home screen on launch instead of opening directly into the board
+- Localized Daily Calendar for today and earlier deterministic puzzles, with
+  completed/in-progress/missed status, future-date blocking, historical replay,
+  and an independently resumable save for every date
 - First-run onboarding with Skip and Start 3x3 actions
 - Interactive Practice Tutorial for the first move, movable aligned-tile
   highlights, and whole-line slide practice
@@ -160,10 +163,10 @@ This runs `verify.bat` and `verify-release.bat`. CI release artifacts are
 verification outputs and use the temporary signing key unless real Play upload
 signing is explicitly configured.
 
-Latest 2026-08-23 validation status: all 79 Android tests passed in one serial
-run on each emulator profile. Pixel_7 passed 79/79 on Android 15 at 1080x2400
-in 7m46s; `small_phone` passed 79/79 on Android 16 / API 36.1 at 720x1280 in
-7m10s. Neither run reported a failed or skipped test. The suite covers the
+Latest 2026-08-23 validation status: all 84 Android tests passed in one serial
+run on each emulator profile: Pixel_7 passed 84/84 on Android 15 at 1080x2400
+in 7m36s and `small_phone` passed 84/84 on Android 16 / API 36.1 at 720x1280
+in 7m31s. Neither run reported a failed or skipped test. The suite covers the
 normal animated transition path, the Reduced motion bypass, English-default
 locale isolation, persistent English, Traditional Chinese, and Japanese switching,
 explicit Traditional Chinese and Japanese major-screen/dialog/result flows,
@@ -193,6 +196,14 @@ confirmed restore followed by Activity recreation. Manual review verified both
 system file pickers, the replacement dialog, malformed-file error handling, and
 the complete compact Settings data section. The Stage 1 debug APK SHA-256 is
 `40FD389B702534A9C5578B4DFDC67D45730356ABFD9E0C8D9BA017FC4ADADE3F`.
+Personal Play 2.0 Stage 2 adds the month calendar and per-date daily save slots.
+The calendar retains completed dates, distinguishes active and missed dates,
+disables future dates, preserves its selected month through rotation, and opens
+the deterministic puzzle for the chosen date. Completing an older date records
+that completion without replacing the current/latest streak boundary. Valid
+legacy single-date daily saves migrate automatically.
+The Stage 2 final debug APK SHA-256 is
+`F10B1C056903576C5942F63DBD66AFAC7CA88857979E459F486DADD68706E1AB`.
 CLI-captured manual review covered English onboarding, Traditional Chinese
 Home/Settings/Mode Select/Game, and Japanese Home/Settings/Mode Select/How to
 Play/Game on the compact AVD. The compact controls remained single-line after
@@ -386,10 +397,13 @@ check-screenshot-set.bat ..\screenshots\android\0.2.0-beta.1
 - Background and return to the app; autosave should preserve the current board
   and the away interval must not increase elapsed play time.
 - Rotate and return to portrait; the current game state should remain intact.
-- From Home, open Daily Challenge on both emulator profiles and confirm the date,
-  4x4 Classic board, and starting layout match.
-- Make a daily move, return Home, and reopen Daily Challenge; confirm the daily
+- From Home, open Daily Calendar on both emulator profiles, select today, and
+  confirm the date, 4x4 Classic board, and starting layout match.
+- Make a daily move, return Home, and select today again; confirm the dated
   board resumes without replacing the normal 4x4 save.
+- Navigate to an earlier month, rotate, and confirm the month remains selected.
+  Open an earlier date, then return and verify that today's dated save is still
+  intact. Future dates and Next on the current month must remain unavailable.
 - Complete the daily puzzle and confirm Results shows the daily completion and
   streak. Replay it and confirm the streak does not increment twice for the same
   date.

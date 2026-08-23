@@ -29,6 +29,7 @@ import android.window.OnBackInvokedDispatcher;
 
 import com.klotski.core.AStarSolver;
 import com.klotski.core.BfsSolver;
+import com.klotski.core.DailyCalendarMonth;
 import com.klotski.core.DailyChallenge;
 import com.klotski.core.Direction;
 import com.klotski.core.GameModel;
@@ -46,6 +47,7 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -92,6 +94,7 @@ public class MainActivity extends Activity implements GameObserver {
     private AndroidMotion motion;
     private AndroidLearningContent learningContent;
     private AndroidHomeScreen homeScreen;
+    private AndroidDailyCalendarScreen dailyCalendarScreen;
     private AndroidModeSelectScreen modeSelectScreen;
     private AndroidRecordsScreen recordsScreen;
     private AndroidSettingsScreen settingsScreen;
@@ -110,6 +113,7 @@ public class MainActivity extends Activity implements GameObserver {
     private PendingWin pendingWin;
     private GameResult currentResult;
     private String activeDailyDateId;
+    private DailyCalendarMonth dailyCalendarMonth;
     private OnBackInvokedCallback backCallback;
     private Screen currentScreen = Screen.HOME;
     private Screen infoReturnScreen = Screen.HOME;
@@ -170,6 +174,7 @@ public class MainActivity extends Activity implements GameObserver {
         motion = new AndroidMotion(this);
         learningContent = new AndroidLearningContent(this, ui);
         homeScreen = new AndroidHomeScreen(this, ui);
+        dailyCalendarScreen = new AndroidDailyCalendarScreen(this, ui);
         modeSelectScreen = new AndroidModeSelectScreen(this, ui);
         recordsScreen = new AndroidRecordsScreen(this, ui);
         settingsScreen = new AndroidSettingsScreen(this, ui);
@@ -200,7 +205,8 @@ public class MainActivity extends Activity implements GameObserver {
     protected void onSaveInstanceState(Bundle outState) {
         saveGame();
         AndroidActivityState.save(outState, currentScreen, infoReturnScreen, gameStarted,
-                onboardingPage, tutorialStep, currentResult, activeDailyDateId);
+                onboardingPage, tutorialStep, currentResult, activeDailyDateId,
+                dailyCalendarMonth == null ? null : dailyCalendarMonth.getMonthId());
         super.onSaveInstanceState(outState);
     }
 
@@ -409,6 +415,7 @@ public class MainActivity extends Activity implements GameObserver {
         boolean savedGameStarted = savedState.gameStarted;
         currentResult = savedState.result;
         activeDailyDateId = savedState.activeDailyDateId;
+        dailyCalendarMonth = restoreDailyCalendarMonth(savedState.dailyCalendarMonthId);
 
         if (savedScreen == Screen.GAME) {
             if (savedGameStarted && loadGame()) {
@@ -443,6 +450,7 @@ public class MainActivity extends Activity implements GameObserver {
         switch (savedScreen) {
             case ONBOARDING -> showOnboardingScreen(savedState.onboardingPage);
             case TUTORIAL -> showTutorialScreen(savedState.tutorialStep);
+            case DAILY_CALENDAR -> showDailyCalendarScreen();
             case MODE_SELECT -> showModeSelectScreen();
             case HOW_TO_PLAY -> showHowToScreen(savedReturnScreen);
             case RECORDS -> showRecordsScreen(savedReturnScreen);
@@ -482,7 +490,9 @@ public class MainActivity extends Activity implements GameObserver {
                 new AndroidHomeScreen.HomeActions() {
             @Override
             public void onDailyChallenge() {
-                startDailyChallenge();
+                LocalDate today = LocalDate.now();
+                dailyCalendarMonth = DailyCalendarMonth.showing(YearMonth.from(today), today);
+                showDailyCalendarScreen();
             }
 
             @Override
@@ -526,6 +536,81 @@ public class MainActivity extends Activity implements GameObserver {
         });
 
         presentContentView(screen.root);
+    }
+
+    private DailyCalendarMonth restoreDailyCalendarMonth(String monthId) {
+        LocalDate today = LocalDate.now();
+        if (monthId != null) {
+            try {
+                return DailyCalendarMonth.fromMonthId(monthId, today);
+            } catch (RuntimeException ignored) {
+                // A malformed or obsolete Activity-state value falls back safely.
+            }
+        }
+        return DailyCalendarMonth.showing(YearMonth.from(today), today);
+    }
+
+    private void showDailyCalendarScreen() {
+        pauseGameForNavigation();
+        if (deferScreenChange(this::showDailyCalendarScreen)) {
+            return;
+        }
+        LocalDate today = LocalDate.now();
+        YearMonth selectedMonth = dailyCalendarMonth == null
+                ? YearMonth.from(today) : dailyCalendarMonth.getMonth();
+        dailyCalendarMonth = DailyCalendarMonth.showing(selectedMonth, today);
+        currentScreen = Screen.DAILY_CALENDAR;
+        infoReturnScreen = Screen.HOME;
+        statusText = null;
+        gameTitleText = null;
+        commandButtons.clear();
+
+        ScreenLayout screen = dailyCalendarScreen.build(dailyCalendarMonth,
+                date -> dailyCalendarDayState(date, today),
+                new AndroidDailyCalendarScreen.CalendarActions() {
+                    @Override
+                    public void onPreviousMonth() {
+                        dailyCalendarMonth = dailyCalendarMonth.previous();
+                        showDailyCalendarScreen();
+                    }
+
+                    @Override
+                    public void onNextMonth() {
+                        dailyCalendarMonth = dailyCalendarMonth.next();
+                        showDailyCalendarScreen();
+                    }
+
+                    @Override
+                    public void onDateSelected(LocalDate date) {
+                        if (dailyCalendarMonth.isPlayable(date)) {
+                            startDailyChallenge(date);
+                        }
+                    }
+
+                    @Override
+                    public void onBack() {
+                        showHomeScreen();
+                    }
+                });
+        presentContentView(screen.root);
+    }
+
+    private AndroidDailyCalendarScreen.DayState dailyCalendarDayState(LocalDate date,
+            LocalDate today) {
+        if (date.isAfter(today)) {
+            return AndroidDailyCalendarScreen.DayState.FUTURE;
+        }
+        AndroidGameStore.DailyProgress progress = store.getDailyProgress(date.toString());
+        AndroidGameStore.SaveMetadata metadata = store.getDailySaveMetadata(date.toString());
+        if (progress.completedToday || (metadata != null && metadata.solved)) {
+            return AndroidDailyCalendarScreen.DayState.COMPLETED;
+        }
+        if (metadata != null) {
+            return AndroidDailyCalendarScreen.DayState.IN_PROGRESS;
+        }
+        return date.equals(today)
+                ? AndroidDailyCalendarScreen.DayState.READY
+                : AndroidDailyCalendarScreen.DayState.MISSED;
     }
 
     private void showDifficultyDialog(int size) {
@@ -1519,11 +1604,11 @@ public class MainActivity extends Activity implements GameObserver {
         showGameScreen();
     }
 
-    private void startDailyChallenge() {
-        if (solverRunning) {
+    private void startDailyChallenge(LocalDate date) {
+        if (solverRunning || date == null || date.isAfter(LocalDate.now())) {
             return;
         }
-        DailyChallenge challenge = DailyChallenge.forDate(LocalDate.now());
+        DailyChallenge challenge = DailyChallenge.forDate(date);
         SaveManager.SaveData saved = store.loadDailyGame(challenge.getDateId());
         boolean savedAssisted = saved != null
                 && store.isDailyGameAssisted(challenge.getDateId());
@@ -1559,10 +1644,14 @@ public class MainActivity extends Activity implements GameObserver {
         }
 
         if (gameTitleText != null) {
-            gameTitleText.setText(getString(activeDailyDateId == null
-                            ? R.string.game_title_format
-                            : R.string.game_daily_title_format,
-                    model.getSize(), model.getSize(), difficultyName(model.getDifficulty())));
+            if (activeDailyDateId == null) {
+                gameTitleText.setText(getString(R.string.game_title_format,
+                        model.getSize(), model.getSize(), difficultyName(model.getDifficulty())));
+            } else {
+                gameTitleText.setText(getString(R.string.game_daily_title_format,
+                        activeDailyDateId, model.getSize(), model.getSize(),
+                        difficultyName(model.getDifficulty())));
+            }
         }
 
         AndroidGameStore.Best best = getBest(model.getSize(), model.getDifficulty());
@@ -1829,7 +1918,7 @@ public class MainActivity extends Activity implements GameObserver {
     private String resultRecordText(GameResult result) {
         String dailyPrefix = "";
         if (result.dailyDateId != null) {
-            AndroidGameStore.DailyProgress progress = store.getDailyProgress(result.dailyDateId);
+            AndroidGameStore.DailyProgress progress = store.getDailyProgress(LocalDate.now().toString());
             dailyPrefix = getString(R.string.results_daily_progress,
                     progress.currentStreak, progress.bestStreak) + "\n";
         }

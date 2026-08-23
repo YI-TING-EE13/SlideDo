@@ -45,7 +45,10 @@ import org.junit.runner.RunWith;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.util.Collection;
+import java.util.Locale;
 
 /**
  * End-to-end Android smoke coverage for the app-level SlideDo flow.
@@ -520,7 +523,7 @@ public class MainActivityFlowTest {
         assertEquals("ocean", prefs.getString("visual_theme", null));
         assertActivityBackgroundColor(R.id.settings_root, AndroidVisualTheme.OCEAN.background);
 
-        scrollToText("Back").click();
+        clickId(R.id.settings_back_button);
         waitForId("game_root");
         waitForStatusContaining("1 move");
         assertActivityBackgroundColor(R.id.game_root, AndroidVisualTheme.OCEAN.background);
@@ -619,6 +622,14 @@ public class MainActivityFlowTest {
         waitForId("home_root");
         waitForText("開始遊戲");
         waitForText("新手指南");
+
+        clickId(R.id.home_daily_button);
+        waitForId("daily_calendar_root");
+        waitForText("每日月曆");
+        assertActivityTextContains(R.id.daily_calendar_month_text, "年");
+        waitForText("上個月");
+        clickId(R.id.daily_calendar_back_button);
+        waitForId("home_root");
 
         clickId(R.id.home_tutorial_button);
         waitForId("tutorial_root");
@@ -727,6 +738,14 @@ public class MainActivityFlowTest {
         waitForId("home_root");
         waitForText("プレイ");
         waitForText("初心者ガイド");
+
+        clickId(R.id.home_daily_button);
+        waitForId("daily_calendar_root");
+        waitForText("デイリーカレンダー");
+        assertActivityTextContains(R.id.daily_calendar_month_text, "年");
+        waitForText("前の月");
+        clickId(R.id.daily_calendar_back_button);
+        waitForId("home_root");
 
         clickId(R.id.home_tutorial_button);
         waitForId("tutorial_root");
@@ -1149,8 +1168,10 @@ public class MainActivityFlowTest {
         waitForId("home_root");
         assertActivityTextContains(R.id.home_daily_summary_text, challenge.getDateId());
         clickId(R.id.home_daily_button);
+        waitForId("daily_calendar_root");
+        clickActivityContentDescriptionContaining(challenge.getDateId());
         waitForId("game_root");
-        assertActivityTextContains(R.id.game_title_text, "Daily · 4x4 · Classic");
+        assertActivityTextContains(R.id.game_title_text, challenge.getDateId());
 
         tapCell(4, 3, 3);
 
@@ -1164,6 +1185,42 @@ public class MainActivityFlowTest {
         clickId(R.id.results_home_button);
         waitForId("home_root");
         assertActivityTextContains(R.id.home_daily_summary_text, "Completed");
+    }
+
+    @Test
+    public void dailyCalendarReplaysHistoricalPuzzleAndPreservesMonthAcrossRotation() throws Exception {
+        markOnboardingSeen();
+        LocalDate today = LocalDate.now();
+        LocalDate historicalDate = today.minusMonths(1).withDayOfMonth(15);
+        DailyChallenge todayChallenge = DailyChallenge.forDate(today);
+        DailyChallenge historicalChallenge = DailyChallenge.forDate(historicalDate);
+        AndroidGameStore store = new AndroidGameStore(targetContext);
+        store.saveDailyGame(todayChallenge.getDateId(), todayChallenge.createGame(), 1_111L);
+        store.saveDailyGame(historicalChallenge.getDateId(),
+                historicalChallenge.createGame(), 2_222L);
+        store.recordDailyCompletion(historicalChallenge.getDateId());
+        String previousMonthLabel = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ENGLISH)
+                .format(YearMonth.from(historicalDate));
+
+        launchApp();
+        clickId(R.id.home_daily_button);
+        waitForId("daily_calendar_root");
+        clickId(R.id.daily_calendar_previous_button);
+        waitForActivityTextContaining(R.id.daily_calendar_month_text, previousMonthLabel);
+        waitForActivityContentDescriptionContaining(historicalChallenge.getDateId());
+
+        device.setOrientationLeft();
+        waitForForegroundApp();
+        instrumentation.waitForIdleSync();
+        waitForResumedMainActivity();
+        waitForId("daily_calendar_root");
+        assertActivityTextContains(R.id.daily_calendar_month_text, previousMonthLabel);
+
+        clickActivityContentDescriptionContaining(historicalChallenge.getDateId());
+        waitForId("game_root");
+        assertActivityTextContains(R.id.game_title_text, historicalChallenge.getDateId());
+        assertEquals(1_111L, store.loadDailyGame(todayChallenge.getDateId()).elapsedTime);
+        assertEquals(2_222L, store.loadDailyGame(historicalChallenge.getDateId()).elapsedTime);
     }
 
     @Test
@@ -1693,6 +1750,24 @@ public class MainActivityFlowTest {
         });
     }
 
+    private void waitForActivityTextContaining(int resourceId, String expectedText)
+            throws InterruptedException {
+        long deadline = System.currentTimeMillis() + TIMEOUT_MS;
+        while (System.currentTimeMillis() < deadline) {
+            boolean[] found = new boolean[1];
+            instrumentation.runOnMainSync(() -> {
+                View view = activity.findViewById(resourceId);
+                found[0] = view instanceof TextView
+                        && ((TextView) view).getText().toString().contains(expectedText);
+            });
+            if (found[0]) {
+                return;
+            }
+            Thread.sleep(50);
+        }
+        assertActivityTextContains(resourceId, expectedText);
+    }
+
     private void assertActivityContentDescriptionContains(int resourceId, String expectedText) {
         instrumentation.runOnMainSync(() -> {
             View view = activity.findViewById(resourceId);
@@ -1726,6 +1801,51 @@ public class MainActivityFlowTest {
         UiObject2 object = device.wait(Until.findObject(By.textContains(text)), TIMEOUT_MS);
         assertNotNull("Missing text containing: " + text, object);
         return object;
+    }
+
+    private void waitForActivityContentDescriptionContaining(String text) throws InterruptedException {
+        long deadline = System.currentTimeMillis() + TIMEOUT_MS;
+        while (System.currentTimeMillis() < deadline) {
+            View[] match = new View[1];
+            instrumentation.runOnMainSync(() -> match[0] = findViewWithContentDescription(
+                    activity.findViewById(android.R.id.content), text));
+            if (match[0] != null && match[0].isShown()) {
+                return;
+            }
+            Thread.sleep(50);
+        }
+        fail("Missing activity content description containing: " + text);
+    }
+
+    private void clickActivityContentDescriptionContaining(String text) throws InterruptedException {
+        waitForActivityContentDescriptionContaining(text);
+        instrumentation.runOnMainSync(() -> {
+            View match = findViewWithContentDescription(
+                    activity.findViewById(android.R.id.content), text);
+            assertNotNull("Missing activity content description containing: " + text, match);
+            assertTrue("Content-description click was not handled: " + text, match.performClick());
+        });
+        instrumentation.waitForIdleSync();
+    }
+
+    private View findViewWithContentDescription(View root, String text) {
+        if (root == null) {
+            return null;
+        }
+        CharSequence description = root.getContentDescription();
+        if (description != null && description.toString().contains(text)) {
+            return root;
+        }
+        if (root instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) root;
+            for (int index = 0; index < group.getChildCount(); index++) {
+                View match = findViewWithContentDescription(group.getChildAt(index), text);
+                if (match != null) {
+                    return match;
+                }
+            }
+        }
+        return null;
     }
 
     private void waitForContentDescriptionContaining(String resourceName, String text) throws InterruptedException {

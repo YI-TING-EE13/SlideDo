@@ -40,7 +40,8 @@ Capture `adb devices -l`, the APK SHA-256, and the final test summary.
 - [ ] Shared core tests pass without changes to puzzle behavior.
 - [ ] Debug APK assembles and Android lint reports no new errors.
 - [ ] Public core/desktop Javadocs and Android API comments pass doclint.
-- [ ] English, `values-zh-rTW`, and `values-ja-rJP` resources have matching string and plural keys.
+- [ ] English, `values-zh-rTW`, and `values-ja-rJP` resources have matching
+  string, plural, and string-array keys.
 - [ ] Every format string keeps compatible argument indexes and types in all supported locales.
 - [ ] No locale-specific user-visible text is hard-coded in Android Java sources.
 - [ ] The locale registry declares `en`, `zh-TW`, and `ja-JP`; adding another locale requires one registry entry and translated resources.
@@ -80,6 +81,25 @@ Run every item in all supported locales.
 - [ ] With one save, Home Continue shows its state, size, difficulty, moves,
   time, and age; with multiple saves, it shows the count and opens a localized
   chooser containing each saved size, difficulty, state, moves, and time.
+
+### Daily Calendar
+
+- [ ] Home opens the current Daily Calendar rather than starting a board
+  immediately; today and earlier dates are playable and future dates are
+  disabled.
+- [ ] Previous/Next month navigation uses the active locale, never advances
+  beyond the current month, and preserves the selected month across rotation.
+- [ ] Ready, completed, in-progress, missed, and future dates have readable
+  visual states plus localized screen-reader status and action descriptions.
+- [ ] Every date has an independent resumable board and assisted flag; opening
+  or saving one date does not replace another daily date or a normal size slot.
+- [ ] A valid legacy single-date daily save migrates once into its ISO-date slot
+  without overwriting a newer dated save.
+- [ ] Historical replay opens the deterministic puzzle for the selected date.
+  Recompletion is idempotent, and completing an older date does not move the
+  latest/current streak backward or replace a player best with assisted data.
+- [ ] The full grid, legend, and Back action remain readable and reachable by
+  scrolling at 720x1280 in English, Traditional Chinese, and Japanese.
 
 ### How to Play and tutorial
 
@@ -195,6 +215,22 @@ Do not mark the localization work complete until every applicable item above is
 checked in all supported locales, failures are fixed and rerun, and any
 unavailable device coverage is explicitly recorded as a limitation rather than
 reported as passed.
+
+### 2026-08-23 Personal Play 2.0 Stage 2 Daily Calendar pass
+
+| Evidence | Result |
+| --- | --- |
+| Debug APK SHA-256 | `F10B1C056903576C5942F63DBD66AFAC7CA88857979E459F486DADD68706E1AB` |
+| Local verification | All 39 shared tests passed; Android debug/test APK assembly and lint passed |
+| Pixel_7 | All 84 Android tests passed on Android 15 at 1080x2400 in one serial run (7m36s); 0 failed, 0 skipped |
+| `small_phone` | All 84 Android tests passed on Android 16 / API 36.1 at 720x1280 in one serial run (7m31s); 0 failed, 0 skipped |
+| Persistence contract | Daily saves and assisted flags are isolated by ISO date; a valid legacy single-date slot migrates safely; completed-date history remains independent from latest-date streak calculation |
+| Android flow | Home opens the calendar; current and historical dates open their deterministic board; future dates and future-month navigation are unavailable; selected month survives rotation |
+| UI and runtime review | Pixel_7 and compact 720x1280 month grids kept readable touch targets, localized state descriptions, a scrollable legend/Back action, and no crash-buffer entries |
+
+Historical completion is retained for calendar display, but only a completion
+newer than the stored latest date may advance or reset the current streak.
+Normal size saves, player-best rules, and shared movement behavior are unchanged.
 
 ### 2026-08-23 Personal Play 2.0 Stage 1 backup and restore pass
 

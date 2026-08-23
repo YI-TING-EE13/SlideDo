@@ -98,4 +98,16 @@ public class AndroidActivityStateTest {
         assertNotNull(snapshot.result);
         assertEquals("2026-08-21", snapshot.result.dailyDateId);
     }
+
+    @Test
+    public void activityStateRoundTripPreservesDailyCalendarMonth() {
+        Bundle bundle = new Bundle();
+
+        AndroidActivityState.save(bundle, Screen.DAILY_CALENDAR, Screen.HOME, false,
+                0, 0, null, null, "2026-07");
+        AndroidActivityState.Snapshot snapshot = AndroidActivityState.restore(bundle, 0);
+
+        assertEquals(Screen.DAILY_CALENDAR, snapshot.screen);
+        assertEquals("2026-07", snapshot.dailyCalendarMonthId);
+    }
 }

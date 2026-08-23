@@ -23,6 +23,7 @@ final class AndroidActivityState {
     private static final String STATE_RESULT_PREVIOUS_BEST_MOVES = "result_previous_best_moves";
     private static final String STATE_RESULT_PREVIOUS_BEST_TIME = "result_previous_best_time";
     private static final String STATE_ACTIVE_DAILY_DATE = "active_daily_date";
+    private static final String STATE_DAILY_CALENDAR_MONTH = "daily_calendar_month";
     private static final String STATE_RESULT_DAILY_DATE = "result_daily_date";
 
     private AndroidActivityState() {
@@ -31,17 +32,25 @@ final class AndroidActivityState {
     static void save(Bundle outState, Screen currentScreen, Screen infoReturnScreen, boolean gameStarted,
             int onboardingPage, int tutorialStep, GameResult currentResult) {
         save(outState, currentScreen, infoReturnScreen, gameStarted, onboardingPage, tutorialStep,
-                currentResult, null);
+                currentResult, null, null);
     }
 
     static void save(Bundle outState, Screen currentScreen, Screen infoReturnScreen, boolean gameStarted,
             int onboardingPage, int tutorialStep, GameResult currentResult, String activeDailyDateId) {
+        save(outState, currentScreen, infoReturnScreen, gameStarted, onboardingPage, tutorialStep,
+                currentResult, activeDailyDateId, null);
+    }
+
+    static void save(Bundle outState, Screen currentScreen, Screen infoReturnScreen, boolean gameStarted,
+            int onboardingPage, int tutorialStep, GameResult currentResult, String activeDailyDateId,
+            String dailyCalendarMonthId) {
         outState.putString(STATE_SCREEN, currentScreen.name());
         outState.putString(STATE_INFO_RETURN_SCREEN, infoReturnScreen.name());
         outState.putBoolean(STATE_GAME_STARTED, gameStarted);
         outState.putInt(STATE_ONBOARDING_PAGE, onboardingPage);
         outState.putInt(STATE_TUTORIAL_STEP, tutorialStep);
         outState.putString(STATE_ACTIVE_DAILY_DATE, activeDailyDateId);
+        outState.putString(STATE_DAILY_CALENDAR_MONTH, dailyCalendarMonthId);
         saveResultState(outState, currentResult);
     }
 
@@ -53,7 +62,8 @@ final class AndroidActivityState {
                 savedInstanceState.getInt(STATE_ONBOARDING_PAGE, 0),
                 savedInstanceState.getInt(STATE_TUTORIAL_STEP, fallbackTutorialStep),
                 restoreResultState(savedInstanceState),
-                savedInstanceState.getString(STATE_ACTIVE_DAILY_DATE));
+                savedInstanceState.getString(STATE_ACTIVE_DAILY_DATE),
+                savedInstanceState.getString(STATE_DAILY_CALENDAR_MONTH));
     }
 
     private static Screen readScreen(Bundle bundle, String key, Screen fallback) {
@@ -118,9 +128,11 @@ final class AndroidActivityState {
         final int tutorialStep;
         final GameResult result;
         final String activeDailyDateId;
+        final String dailyCalendarMonthId;
 
         Snapshot(Screen screen, Screen infoReturnScreen, boolean gameStarted, int onboardingPage,
-                int tutorialStep, GameResult result, String activeDailyDateId) {
+                int tutorialStep, GameResult result, String activeDailyDateId,
+                String dailyCalendarMonthId) {
             this.screen = screen;
             this.infoReturnScreen = infoReturnScreen;
             this.gameStarted = gameStarted;
@@ -128,6 +140,7 @@ final class AndroidActivityState {
             this.tutorialStep = tutorialStep;
             this.result = result;
             this.activeDailyDateId = activeDailyDateId;
+            this.dailyCalendarMonthId = dailyCalendarMonthId;
         }
     }
 }

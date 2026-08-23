@@ -5,6 +5,7 @@ package com.klotski.android;
  */
 enum Screen {
     HOME,
+    DAILY_CALENDAR,
     ONBOARDING,
     TUTORIAL,
     MODE_SELECT,

@@ -2,11 +2,35 @@
     <string name="app_name">SlideDo</string>
     <string name="home_tagline">一款沉靜的數字拼圖，隨時享受解題成就感。</string>
     <string name="home_summary">將數字方塊依序排列，並把空格留在右下角。</string>
-    <string name="home_daily_challenge">每日挑戰</string>
+    <string name="home_daily_challenge">每日月曆</string>
     <string name="home_daily_summary">%1$s · %2$s · 連勝 %3$d · 最佳 %4$d</string>
     <string name="home_daily_ready">尚未開始</string>
     <string name="home_daily_in_progress">進行中</string>
     <string name="home_daily_completed">已完成</string>
+    <string name="daily_calendar_title">每日月曆</string>
+    <string name="daily_calendar_subtitle">選擇今天，或重玩過去的離線題目。</string>
+    <string name="daily_calendar_previous">上個月</string>
+    <string name="daily_calendar_next">下個月</string>
+    <string name="daily_calendar_month_format">%2$d 年 %1$s</string>
+    <string name="daily_calendar_legend">+ 已完成   ~ 進行中   ! 未完成</string>
+    <string name="daily_calendar_status_ready">可開始</string>
+    <string name="daily_calendar_status_completed">已完成</string>
+    <string name="daily_calendar_status_in_progress">進行中</string>
+    <string name="daily_calendar_status_missed">未完成</string>
+    <string name="daily_calendar_status_future">未來日期</string>
+    <string name="daily_calendar_action_play">開始每日挑戰</string>
+    <string name="daily_calendar_action_replay">重玩每日挑戰</string>
+    <string name="daily_calendar_action_unavailable">尚未開放</string>
+    <string name="daily_calendar_day_accessibility">%1$s。%2$s。%3$s。</string>
+    <string-array name="daily_calendar_weekdays">
+        <item>日</item>
+        <item>一</item>
+        <item>二</item>
+        <item>三</item>
+        <item>四</item>
+        <item>五</item>
+        <item>六</item>
+    </string-array>
     <string name="home_continue">繼續遊戲</string>
     <string name="home_continue_summary">%1$s：%2$dx%3$d · %4$s，%5$s，%6$d 秒，%7$s</string>
     <string name="home_multiple_saves_summary">共有 %1$d 個存檔。請選擇要繼續的尺寸。</string>
@@ -147,7 +171,7 @@
     <string name="results_play_again">重玩本盤</string>
     <string name="results_new_size">其他尺寸</string>
     <string name="game_title_format">%1$dx%2$d · %3$s</string>
-    <string name="game_daily_title_format">每日挑戰 · %1$dx%2$d · %3$s</string>
+    <string name="game_daily_title_format">每日 %1$s · %2$dx%3$d · %4$s</string>
     <string name="game_menu">選單</string>
     <string name="game_assist">輔助</string>
     <string name="accessibility_game_home">儲存目前拼圖並返回首頁</string>

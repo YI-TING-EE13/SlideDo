@@ -38,12 +38,12 @@ Current handoff status:
 - The latest local verification pass was warning-clean for the previously noisy
   Gradle DSL deprecation, Java native-access warning, and Android Java
   deprecation note.
-- Personal Play 2.0 Stage 1 is complete. Android Settings exports and imports a
-  versioned local JSON backup containing all app preferences, with complete
-  validation and explicit replacement confirmation before restore.
-- The latest dual-AVD acceptance passed all 79 Android tests in one serial run
-  on each profile: Pixel_7 (Android 15, 1080x2400) completed in 7m46s and
-  `small_phone` (Android 16 / API 36.1, 720x1280) completed in 7m10s, with no
+- Personal Play 2.0 Stages 1 and 2 are complete. Android Settings owns
+  versioned local backup/restore, while the Daily Calendar browses today and
+  earlier deterministic puzzles with per-date saves and completion markers.
+- The latest dual-AVD acceptance covers all 84 Android tests in one serial run
+  on each profile: Pixel_7 (Android 15, 1080x2400) and `small_phone` (Android
+  16 / API 36.1, 720x1280) completed in 7m36s and 7m31s respectively, with no
   failed or skipped tests. Coverage
   includes persistent sound/theme preferences, active-game preservation across
   theme recreation, strategic-hint assistance persistence and player-best protection,
@@ -70,7 +70,7 @@ verify-connected.bat
 
 The original eight-stage Personal Play roadmap in `Roadmap And Planning` is
 implemented and verified. Personal Play 2.0 is now the active staged program;
-Stage 1 is complete and Stage 2 is the next implementation gate.
+Stages 1 and 2 are complete and Stage 3 is the next implementation gate.
 
 Real Play upload signing is intentionally deferred until store submission. It
 is not required for a local push-ready commit, and no Git remote or push is part
@@ -104,8 +104,9 @@ Android currently supports:
 
 - Home screen launch instead of opening directly into the board.
 - One deterministic offline 4x4 Classic daily challenge per device-local date,
-  with an independent resumable save, idempotent completion, and current/best
-  streak state.
+  with a localized month calendar, independent resumable saves by date,
+  historical replay, persistent completion markers, idempotent completion, and
+  current/best streak state. Future dates cannot be opened.
 - First-run onboarding before normal play, with Skip and Start 3x3 actions.
 - Interactive Practice Tutorial entry from Home and onboarding, using a guided
   first move plus a whole-line slide lesson.
@@ -528,8 +529,8 @@ protection before the next stage begins.
 | Stage | Goal | Required outcome | Status |
 | ---: | --- | --- | --- |
 | 1 | Android offline backup and restore | Export every Android save, record, statistic, daily field, and setting to a versioned local document; validate and confirm before complete replacement. | Completed and verified on 2026-08-23. |
-| 2 | Daily challenge calendar and history replay | Browse completed and missed local dates and replay any deterministic historical daily puzzle without changing the current-date streak twice. | Planned; next stage. |
-| 3 | Favorite puzzle library | Bookmark exact puzzle identities, label them locally, and replay a favorite without reshuffling or altering normal saves. | Planned. |
+| 2 | Daily challenge calendar and history replay | Browse completed and missed local dates and replay any deterministic historical daily puzzle without changing the current-date streak twice. | Completed and verified on 2026-08-23. |
+| 3 | Favorite puzzle library | Bookmark exact puzzle identities, label them locally, and replay a favorite without reshuffling or altering normal saves. | Planned; next stage. |
 | 4 | Personal trends and custom goals | Show local time/move trends and owner-defined goals without analytics or network services. | Planned. |
 | 5 | Continuous challenge mode | Chain completed puzzles into a local session with clear progress, exit, resume, and record boundaries. | Planned. |
 | 6 | Move history and Redo | Expose the current run's action history and add Redo while preserving whole-line one-action semantics, Restart, Save/Load, and solver input locks. | Planned. |
@@ -1000,6 +1001,25 @@ Priority: Low to Medium
 ## Development Log
 
 ### 2026-08-23
+
+- Completed Personal Play 2.0 Stage 2 Daily Calendar and history replay.
+  `DailyCalendarMonth` supplies a Sunday-first, future-bounded month model, and
+  Android renders localized previous/next navigation, date status, and
+  screen-reader actions for ready, completed, in-progress, missed, and future
+  dates. The selected month survives Activity recreation.
+- Daily boards now use independent versioned preference slots by ISO date. A
+  valid legacy single-date daily save migrates into its dated slot without
+  overwriting newer data. Historical completion remains visible but cannot
+  move the latest-date streak backward; completing the same date stays
+  idempotent and assisted completions remain excluded from player bests.
+- Added two shared month-model tests, three daily-store tests, one Activity-state
+  test, and one end-to-end calendar replay flow. The full Android suite now
+  contains 84 tests. Manual Android CLI review confirmed the complete month
+  grid and scrollable Back action at 720x1280, disabled future navigation, and
+  readable status colors and symbols. Pixel_7 passed 84/84 in 7m36s and
+  `small_phone` passed 84/84 in 7m31s; both crash buffers were empty. The final
+  debug APK SHA-256 is
+  `F10B1C056903576C5942F63DBD66AFAC7CA88857979E459F486DADD68706E1AB`.
 
 - Completed Personal Play 2.0 Stage 1 Android offline backup and restore.
   `AndroidPersonalDataArchive` writes version 1 JSON for every

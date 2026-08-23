@@ -32,6 +32,8 @@ Prioritize:
 
 Preserve the completed program and use the same implement, verify, document,
 and commit gate for future feature stages.
+Personal Play 2.0 backup/restore and Daily Calendar/history replay are complete;
+the favorite puzzle library is the next planned stage.
 Defer store signing, store assets, accounts, cloud sync, ads, analytics, and
 other public-distribution work unless the owner changes direction.
 
@@ -56,6 +58,9 @@ Keep `GameModel` platform-independent. Navigation and presentation changes belon
 - Every player and solver-assisted completion updates local history and lifetime
   statistics; only player completions can update best records.
 - Solver-assisted wins must not overwrite player best records.
+- Daily saves are independent by ISO date. Historical daily completion remains
+  visible but must not move the latest-date streak backward; future dates are
+  not playable.
 
 ## Working Style
 

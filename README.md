@@ -38,8 +38,10 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
   - Home groups play, learning, and personal actions so the main path remains
     visible without giving every action the same visual weight.
   - Daily Challenge creates one reproducible offline 4x4 Classic puzzle for
-    each device-local date, resumes it independently of normal saves, and tracks
-    current and best streaks without a server.
+    each device-local date. Its localized month calendar can resume or replay
+    any earlier date from an independent slot, marks completion/progress/missed
+    dates, blocks future dates, and tracks current and best streaks without a
+    server.
   - Whole-line tap behavior maps naturally to touch screens.
   - One user gesture counts as one move.
   - Undo restores the entire previous user action.
@@ -380,10 +382,10 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
 - Connected Android instrumentation helpers now wait for the foreground app
   window, wait for activity controls to become interactable, use device-level
   board taps, and fall back to direct swipe scrolling for long content.
-- The latest 2026-08-23 dual-AVD Android acceptance passed all 79 tests in one
-  serial run on each profile: Pixel_7 (Android 15, 1080x2400) passed 79/79 in
-  7m46s, and `small_phone` (Android 16 / API 36.1, 720x1280) passed 79/79 in
-  7m10s, with no failed or skipped tests. The suite
+- The latest 2026-08-23 dual-AVD Android acceptance covers all 84 tests in one
+  serial run on each profile: Pixel_7 (Android 15, 1080x2400) passed 84/84 in
+  7m36s and `small_phone` (Android 16 / API 36.1, 720x1280) passed 84/84 in
+  7m31s, with no failed or skipped tests. The suite
   includes English-default isolation from device locale, persistent language
   switching, active-game preservation, and explicit Traditional Chinese and
   Japanese major-screen, difficulty-selection, independent per-size saves,
@@ -394,7 +396,10 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
   active-game preservation across theme recreation. The five backup tests cover
   complete data round trips, replacement of missing preferences with defaults,
   unsupported-version rejection without mutation, visible Settings actions,
-  and confirmed restore followed by Activity recreation.
+  and confirmed restore followed by Activity recreation. Daily-calendar tests
+  cover deterministic month boundaries, independent dated saves, legacy daily
+  save migration, historical streak protection, month restoration across
+  rotation, and opening the exact historical puzzle.
 - Latest local `ci.bat` run passed the no-device verification and release
   readiness gates.
 - Android emulator smoke testing for install/launch, Home visibility, whole-line movement, undo, restart, save/load, solver warning dialog, rotation, and background resume.
@@ -534,11 +539,11 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
   offline daily challenge, strategic hints, and sound/themes. All eight stages
   are implemented and verified.
   `DEVELOPMENT.md` owns the detailed acceptance criteria and status.
-- Personal Play 2.0 is active. Stage 1 offline backup/restore completed its
-  two-AVD acceptance on 2026-08-23. Daily history replay, favorites, trends and
-  goals, continuous challenge, move history/Redo, adaptive accessibility, and
-  toolchain maintenance remain future stages until their own verification and
-  commit gates pass.
+- Personal Play 2.0 is active. Stage 1 offline backup/restore and Stage 2 daily
+  calendar/history replay completed their two-AVD acceptance on 2026-08-23.
+  Favorites, trends and goals, continuous challenge, move history/Redo,
+  adaptive accessibility, and toolchain maintenance remain future stages until
+  their own verification and commit gates pass.
 - Desktop/mobile player-facing parity MVP is complete for Home/start, Records, Preferences, Results, How to Play, Practice Tutorial, and Assist hints.
 - Save files now include release-readiness metadata and desktop saves now live in the user-data directory.
 - Signed Android release APK/AAB and desktop ZIP/app-image packaging scripts are available.

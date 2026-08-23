@@ -2,6 +2,11 @@
     <item name="home_root" type="id" />
     <item name="home_daily_button" type="id" />
     <item name="home_daily_summary_text" type="id" />
+    <item name="daily_calendar_root" type="id" />
+    <item name="daily_calendar_month_text" type="id" />
+    <item name="daily_calendar_previous_button" type="id" />
+    <item name="daily_calendar_next_button" type="id" />
+    <item name="daily_calendar_back_button" type="id" />
     <item name="home_continue_button" type="id" />
     <item name="home_continue_summary_text" type="id" />
     <item name="home_new_game_button" type="id" />
