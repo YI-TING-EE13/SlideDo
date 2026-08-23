@@ -21,9 +21,12 @@ import android.view.HapticFeedbackConstants;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.text.InputFilter;
+import android.text.InputType;
 import android.window.OnBackInvokedCallback;
 import android.window.OnBackInvokedDispatcher;
 
@@ -35,6 +38,7 @@ import com.klotski.core.Direction;
 import com.klotski.core.GameModel;
 import com.klotski.core.GameObserver;
 import com.klotski.core.IdaStarSolver;
+import com.klotski.core.PuzzleIdentity;
 import com.klotski.core.PuzzleDifficulty;
 import com.klotski.core.SaveManager;
 import com.klotski.core.Solver;
@@ -95,6 +99,7 @@ public class MainActivity extends Activity implements GameObserver {
     private AndroidLearningContent learningContent;
     private AndroidHomeScreen homeScreen;
     private AndroidDailyCalendarScreen dailyCalendarScreen;
+    private AndroidFavoritesScreen favoritesScreen;
     private AndroidModeSelectScreen modeSelectScreen;
     private AndroidRecordsScreen recordsScreen;
     private AndroidSettingsScreen settingsScreen;
@@ -113,6 +118,7 @@ public class MainActivity extends Activity implements GameObserver {
     private PendingWin pendingWin;
     private GameResult currentResult;
     private String activeDailyDateId;
+    private String activeFavoriteId;
     private DailyCalendarMonth dailyCalendarMonth;
     private OnBackInvokedCallback backCallback;
     private Screen currentScreen = Screen.HOME;
@@ -175,6 +181,7 @@ public class MainActivity extends Activity implements GameObserver {
         learningContent = new AndroidLearningContent(this, ui);
         homeScreen = new AndroidHomeScreen(this, ui);
         dailyCalendarScreen = new AndroidDailyCalendarScreen(this, ui);
+        favoritesScreen = new AndroidFavoritesScreen(this, ui);
         modeSelectScreen = new AndroidModeSelectScreen(this, ui);
         recordsScreen = new AndroidRecordsScreen(this, ui);
         settingsScreen = new AndroidSettingsScreen(this, ui);
@@ -206,6 +213,7 @@ public class MainActivity extends Activity implements GameObserver {
         saveGame();
         AndroidActivityState.save(outState, currentScreen, infoReturnScreen, gameStarted,
                 onboardingPage, tutorialStep, currentResult, activeDailyDateId,
+                activeFavoriteId,
                 dailyCalendarMonth == null ? null : dailyCalendarMonth.getMonthId());
         super.onSaveInstanceState(outState);
     }
@@ -415,6 +423,7 @@ public class MainActivity extends Activity implements GameObserver {
         boolean savedGameStarted = savedState.gameStarted;
         currentResult = savedState.result;
         activeDailyDateId = savedState.activeDailyDateId;
+        activeFavoriteId = savedState.activeFavoriteId;
         dailyCalendarMonth = restoreDailyCalendarMonth(savedState.dailyCalendarMonthId);
 
         if (savedScreen == Screen.GAME) {
@@ -429,7 +438,9 @@ public class MainActivity extends Activity implements GameObserver {
         if (savedScreen == Screen.RESULTS) {
             GameResult restoredResult = currentResult;
             boolean loaded = restoredResult != null && savedGameStarted
-                    && (restoredResult.dailyDateId != null
+                    && (restoredResult.favoriteId != null
+                            ? loadFavoriteGame(restoredResult.favoriteId)
+                            : restoredResult.dailyDateId != null
                             ? loadDailyGame(restoredResult.dailyDateId)
                             : loadGame(restoredResult.size));
             if (loaded) {
@@ -451,6 +462,7 @@ public class MainActivity extends Activity implements GameObserver {
             case ONBOARDING -> showOnboardingScreen(savedState.onboardingPage);
             case TUTORIAL -> showTutorialScreen(savedState.tutorialStep);
             case DAILY_CALENDAR -> showDailyCalendarScreen();
+            case FAVORITES -> showFavoritesScreen();
             case MODE_SELECT -> showModeSelectScreen();
             case HOW_TO_PLAY -> showHowToScreen(savedReturnScreen);
             case RECORDS -> showRecordsScreen(savedReturnScreen);
@@ -487,6 +499,7 @@ public class MainActivity extends Activity implements GameObserver {
                 today.getDateId(), dailySave != null && !dailySave.solved,
                 dailyProgress.completedToday, dailyProgress.currentStreak, dailyProgress.bestStreak);
         ScreenLayout screen = homeScreen.build(store.getAllSaveMetadata(), dailyStatus,
+                store.getFavoritePuzzles().length,
                 new AndroidHomeScreen.HomeActions() {
             @Override
             public void onDailyChallenge() {
@@ -525,6 +538,11 @@ public class MainActivity extends Activity implements GameObserver {
             }
 
             @Override
+            public void onFavorites() {
+                showFavoritesScreen();
+            }
+
+            @Override
             public void onSettings() {
                 showSettingsScreen(Screen.HOME);
             }
@@ -548,6 +566,106 @@ public class MainActivity extends Activity implements GameObserver {
             }
         }
         return DailyCalendarMonth.showing(YearMonth.from(today), today);
+    }
+
+    private void showFavoritesScreen() {
+        pauseGameForNavigation();
+        if (deferScreenChange(this::showFavoritesScreen)) {
+            return;
+        }
+        currentScreen = Screen.FAVORITES;
+        infoReturnScreen = Screen.HOME;
+        statusText = null;
+        gameTitleText = null;
+        commandButtons.clear();
+
+        ScreenLayout screen = favoritesScreen.build(store.getFavoritePuzzles(),
+                new AndroidFavoritesScreen.FavoriteActions() {
+                    @Override
+                    public void onReplay(AndroidGameStore.FavoritePuzzle favorite) {
+                        startFavoritePuzzle(favorite);
+                    }
+
+                    @Override
+                    public void onRename(AndroidGameStore.FavoritePuzzle favorite) {
+                        showFavoriteNameDialog(favorite);
+                    }
+
+                    @Override
+                    public void onRemove(AndroidGameStore.FavoritePuzzle favorite) {
+                        confirmRemoveFavorite(favorite);
+                    }
+
+                    @Override
+                    public void onBack() {
+                        showHomeScreen();
+                    }
+                });
+        presentContentView(screen.root);
+    }
+
+    private void showFavoriteNameDialog(AndroidGameStore.FavoritePuzzle existing) {
+        if (model == null && existing == null) {
+            return;
+        }
+        EditText input = new EditText(this);
+        input.setSingleLine(true);
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        input.setFilters(new InputFilter[] {new InputFilter.LengthFilter(40)});
+        input.setHint(R.string.favorite_name_hint);
+        String defaultLabel = existing == null
+                ? getString(R.string.favorite_default_name, model.getSize(), model.getSize(),
+                        difficultyName(model.getDifficulty()))
+                : existing.label;
+        input.setText(defaultLabel);
+        input.selectAll();
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(existing == null
+                        ? R.string.favorite_dialog_title : R.string.favorite_rename_title)
+                .setMessage(R.string.favorite_dialog_message)
+                .setView(input)
+                .setPositiveButton(R.string.favorite_save_action, (selectedDialog, which) -> {
+                    AndroidGameStore.FavoritePuzzle saved = existing == null
+                            ? store.saveFavorite(model, input.getText().toString(),
+                                    System.currentTimeMillis())
+                            : renameFavorite(existing, input.getText().toString());
+                    if (saved == null) {
+                        Toast.makeText(this, R.string.toast_favorite_name_required,
+                                Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(this, R.string.toast_favorite_saved,
+                                Toast.LENGTH_SHORT).show();
+                        if (currentScreen == Screen.FAVORITES) {
+                            showFavoritesScreen();
+                        }
+                    }
+                })
+                .setNegativeButton(R.string.dialog_cancel, null)
+                .create();
+        showTimerPausingDialog(dialog);
+    }
+
+    private AndroidGameStore.FavoritePuzzle renameFavorite(
+            AndroidGameStore.FavoritePuzzle favorite, String label) {
+        GameModel favoriteModel = favorite.createGame();
+        return store.saveFavorite(favoriteModel, label, favorite.createdAt);
+    }
+
+    private void confirmRemoveFavorite(AndroidGameStore.FavoritePuzzle favorite) {
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.favorite_remove_title)
+                .setMessage(getString(R.string.favorite_remove_message, favorite.label))
+                .setPositiveButton(R.string.favorites_remove, (selectedDialog, which) -> {
+                    if (store.removeFavorite(favorite.id)) {
+                        Toast.makeText(this, R.string.toast_favorite_removed,
+                                Toast.LENGTH_SHORT).show();
+                    }
+                    showFavoritesScreen();
+                })
+                .setNegativeButton(R.string.dialog_cancel, null)
+                .create();
+        showTimerPausingDialog(dialog);
     }
 
     private void showDailyCalendarScreen() {
@@ -885,6 +1003,11 @@ public class MainActivity extends Activity implements GameObserver {
                     }
 
                     @Override
+                    public void onFavorite() {
+                        showFavoriteNameDialog(currentFavoriteForModel());
+                    }
+
+                    @Override
                     public void onHome() {
                         saveGame();
                         showHomeScreen();
@@ -1079,6 +1202,7 @@ public class MainActivity extends Activity implements GameObserver {
                 getString(R.string.button_save),
                 getString(R.string.button_load),
                 getString(R.string.button_restart),
+                getString(R.string.favorite_save_action),
                 getString(R.string.menu_new_size),
                 getString(R.string.menu_quick_reminder),
                 getString(R.string.home_how_to_play),
@@ -1096,7 +1220,7 @@ public class MainActivity extends Activity implements GameObserver {
                             Toast.makeText(this, R.string.toast_game_saved, Toast.LENGTH_SHORT).show();
                         }
                         case 2 -> {
-                            if (loadGame(model.getSize())) {
+                            if (loadGame()) {
                                 pendingWin = null;
                                 showGameScreen();
                                 Toast.makeText(this, R.string.toast_game_loaded, Toast.LENGTH_SHORT).show();
@@ -1106,14 +1230,17 @@ public class MainActivity extends Activity implements GameObserver {
                         }
                         case 3 -> restartCurrentGame();
                         case 4 -> {
+                            showFavoriteNameDialog(currentFavoriteForModel());
+                        }
+                        case 5 -> {
                             saveGame();
                             showModeSelectScreen();
                         }
-                        case 5 -> showQuickReminder();
-                        case 6 -> showHowToScreen(Screen.GAME);
-                        case 7 -> showSettingsScreen(Screen.GAME);
-                        case 8 -> showRecordsScreen(Screen.GAME);
-                        case 9 -> {
+                        case 6 -> showQuickReminder();
+                        case 7 -> showHowToScreen(Screen.GAME);
+                        case 8 -> showSettingsScreen(Screen.GAME);
+                        case 9 -> showRecordsScreen(Screen.GAME);
+                        case 10 -> {
                             saveGame();
                             showHomeScreen();
                         }
@@ -1557,6 +1684,7 @@ public class MainActivity extends Activity implements GameObserver {
         attachModel(new GameModel(size));
         model.scramble(difficulty);
         activeDailyDateId = null;
+        activeFavoriteId = null;
         gameStarted = true;
         pendingWin = null;
         currentResult = null;
@@ -1622,6 +1750,7 @@ public class MainActivity extends Activity implements GameObserver {
             }
         }
         activeDailyDateId = challenge.getDateId();
+        activeFavoriteId = null;
         gameStarted = true;
         pendingWin = null;
         currentResult = null;
@@ -1634,6 +1763,36 @@ public class MainActivity extends Activity implements GameObserver {
         showGameScreen();
     }
 
+    private void startFavoritePuzzle(AndroidGameStore.FavoritePuzzle favorite) {
+        if (solverRunning || favorite == null) {
+            return;
+        }
+        attachModel(favorite.createGame());
+        activeDailyDateId = null;
+        activeFavoriteId = favorite.id;
+        gameStarted = true;
+        pendingWin = null;
+        currentResult = null;
+        assistedSolveActive = false;
+        hintActive = false;
+        strategicHintTile = -1;
+        lastWinTimeMs = -1;
+        syncGameTimerState();
+        performBoardHaptic(HapticFeedbackConstants.VIRTUAL_KEY);
+        showGameScreen();
+    }
+
+    private AndroidGameStore.FavoritePuzzle currentFavoriteForModel() {
+        if (model == null) {
+            return null;
+        }
+        try {
+            return store.getFavoritePuzzle(PuzzleIdentity.from(model).getId());
+        } catch (RuntimeException exception) {
+            return null;
+        }
+    }
+
     private boolean canAcceptCommand() {
         return currentScreen == Screen.GAME && boardView != null && !solverRunning && !boardView.isBusy();
     }
@@ -1644,7 +1803,15 @@ public class MainActivity extends Activity implements GameObserver {
         }
 
         if (gameTitleText != null) {
-            if (activeDailyDateId == null) {
+            if (activeFavoriteId != null) {
+                AndroidGameStore.FavoritePuzzle favorite =
+                        store.getFavoritePuzzle(activeFavoriteId);
+                String label = favorite == null
+                        ? getString(R.string.favorites_title) : favorite.label;
+                gameTitleText.setText(getString(R.string.game_favorite_title_format,
+                        label, model.getSize(), model.getSize(),
+                        difficultyName(model.getDifficulty())));
+            } else if (activeDailyDateId == null) {
                 gameTitleText.setText(getString(R.string.game_title_format,
                         model.getSize(), model.getSize(), difficultyName(model.getDifficulty())));
             } else {
@@ -1678,6 +1845,9 @@ public class MainActivity extends Activity implements GameObserver {
         }
         if (assistedSolveActive) {
             status += "\n" + getString(R.string.status_assisted_run);
+        }
+        if (activeFavoriteId != null) {
+            status += "\n" + getString(R.string.status_favorite_practice);
         }
         statusText.setText(status);
         updateControlsEnabled();
@@ -1744,7 +1914,9 @@ public class MainActivity extends Activity implements GameObserver {
         long elapsed = model.isSolved() && lastWinTimeMs >= 0
                 ? lastWinTimeMs
                 : model.getElapsedTime();
-        if (activeDailyDateId == null) {
+        if (activeFavoriteId != null) {
+            store.saveFavoriteRun(activeFavoriteId, model, elapsed);
+        } else if (activeDailyDateId == null) {
             store.saveGame(model, elapsed, assistedSolveActive);
         } else {
             store.saveDailyGame(activeDailyDateId, model, elapsed, assistedSolveActive);
@@ -1752,6 +1924,9 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private boolean loadGame() {
+        if (activeFavoriteId != null) {
+            return loadFavoriteGame(activeFavoriteId);
+        }
         if (activeDailyDateId != null) {
             return loadDailyGame(activeDailyDateId);
         }
@@ -1771,6 +1946,7 @@ public class MainActivity extends Activity implements GameObserver {
         assistedSolveActive = store.isSavedGameAssisted(data.size);
         currentResult = null;
         activeDailyDateId = null;
+        activeFavoriteId = null;
         hintActive = false;
         strategicHintTile = -1;
         gameStarted = true;
@@ -1790,6 +1966,26 @@ public class MainActivity extends Activity implements GameObserver {
         assistedSolveActive = store.isDailyGameAssisted(dateId);
         currentResult = null;
         activeDailyDateId = dateId;
+        activeFavoriteId = null;
+        hintActive = false;
+        strategicHintTile = -1;
+        gameStarted = true;
+        syncGameTimerState();
+        return true;
+    }
+
+    private boolean loadFavoriteGame(String favoriteId) {
+        SaveManager.SaveData data = store.loadFavoriteRun(favoriteId);
+        if (data == null) {
+            return false;
+        }
+        attachModel(new GameModel(data.size));
+        model.loadState(data);
+        lastWinTimeMs = model.isSolved() ? data.elapsedTime : -1;
+        assistedSolveActive = false;
+        currentResult = null;
+        activeDailyDateId = null;
+        activeFavoriteId = favoriteId;
         hintActive = false;
         strategicHintTile = -1;
         gameStarted = true;
@@ -1916,6 +2112,9 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private String resultRecordText(GameResult result) {
+        if (result.favoriteId != null) {
+            return getString(R.string.results_favorite_record);
+        }
         String dailyPrefix = "";
         if (result.dailyDateId != null) {
             AndroidGameStore.DailyProgress progress = store.getDailyProgress(LocalDate.now().toString());
@@ -2030,7 +2229,7 @@ public class MainActivity extends Activity implements GameObserver {
         }
         lastWinTimeMs = timeMs;
         pendingWin = new PendingWin(model.getSize(), model.getDifficulty(), moves, timeMs,
-                assistedSolveActive, activeDailyDateId);
+                assistedSolveActive, activeDailyDateId, activeFavoriteId);
         handler.postDelayed(this::showWinWhenReady, 180);
     }
 
@@ -2045,17 +2244,22 @@ public class MainActivity extends Activity implements GameObserver {
 
         PendingWin win = pendingWin;
         pendingWin = null;
-        store.recordCompletion(win.size, win.difficulty, win.moves, win.timeMs, win.assisted);
-        if (win.dailyDateId != null) {
-            store.recordDailyCompletion(win.dailyDateId);
-        }
         AndroidGameStore.Best previousBest = getBest(win.size, win.difficulty);
-        boolean newBest = !win.assisted && AndroidGameStore.isBetterRecord(previousBest, win.moves, win.timeMs);
+        boolean recordEligible = win.favoriteId == null;
+        if (recordEligible) {
+            store.recordCompletion(win.size, win.difficulty, win.moves, win.timeMs, win.assisted);
+            if (win.dailyDateId != null) {
+                store.recordDailyCompletion(win.dailyDateId);
+            }
+        }
+        boolean newBest = recordEligible && !win.assisted
+                && AndroidGameStore.isBetterRecord(previousBest, win.moves, win.timeMs);
         if (newBest) {
             recordBest(win.size, win.difficulty, win.moves, win.timeMs);
         }
         currentResult = new GameResult(win.size, win.difficulty, win.moves,
-                win.timeMs, win.assisted, newBest, previousBest, win.dailyDateId);
+                win.timeMs, win.assisted, newBest, previousBest,
+                win.dailyDateId, win.favoriteId);
         assistedSolveActive = win.assisted;
         saveGame();
         performBoardHaptic(HapticFeedbackConstants.LONG_PRESS);

@@ -5,12 +5,15 @@ import android.content.SharedPreferences;
 
 import com.klotski.core.DailyChallenge;
 import com.klotski.core.GameModel;
+import com.klotski.core.PuzzleIdentity;
 import com.klotski.core.PuzzleDifficulty;
 import com.klotski.core.SaveManager;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -21,7 +24,8 @@ import java.util.Set;
  * SharedPreferences-backed Android state store for app-level data.
  * <p>
  * This class owns the Android persistence schema for independent per-size
- * saves, records, completion history, personal statistics, settings,
+ * saves, favorite puzzles and their isolated practice progress, records,
+ * completion history, personal statistics, settings,
  * onboarding, and the last selected puzzle size and difficulty. A legacy
  * single-save payload is migrated into its matching size slot without
  * overwriting a newer slot. Puzzle rules and validation still belong to
@@ -55,11 +59,15 @@ final class AndroidGameStore {
     private static final String KEY_BEST_PREFIX = "best_";
     private static final String KEY_STATS_PREFIX = "stats_";
     private static final String KEY_COMPLETION_HISTORY = "completion_history_v1";
+    private static final String KEY_FAVORITE_PUZZLES = "favorite_puzzles_v1";
+    private static final String KEY_FAVORITE_RUN_PREFIX = "favorite_run_v1_";
     private static final String KEY_PLAYER_COMPLETIONS = "player_completions";
     private static final String KEY_ASSISTED_COMPLETIONS = "assisted_completions";
     private static final String KEY_PLAYER_MOVES = "player_moves";
     private static final String KEY_PLAYER_TIME = "player_time";
     private static final int MAX_COMPLETION_HISTORY = 50;
+    private static final int MAX_FAVORITE_PUZZLES = 50;
+    private static final int MAX_FAVORITE_LABEL_LENGTH = 40;
     private static final String KEY_ONBOARDING_SEEN = "onboarding_seen";
     private static final String KEY_HAPTIC_ENABLED = "haptic_enabled";
     private static final String KEY_REDUCED_MOTION = "reduced_motion";
@@ -192,6 +200,149 @@ final class AndroidGameStore {
                 model.isGameRunning(), model.isSolved(), model.getDifficulty());
         editor.putBoolean(prefix + KEY_ASSISTED, assisted)
                 .putInt(KEY_LAST_SIZE, model.getSize()).apply();
+    }
+
+    /**
+     * Adds or renames one exact starting puzzle in the local favorite library.
+     * Saving the same identity never creates a duplicate.
+     *
+     * @param model puzzle whose immutable starting board should be retained
+     * @param label owner-provided local label
+     * @param createdAt creation timestamp used for stable newest-first ordering
+     * @return persisted favorite, or {@code null} for invalid input
+     */
+    FavoritePuzzle saveFavorite(GameModel model, String label, long createdAt) {
+        String normalizedLabel = normalizeFavoriteLabel(label);
+        if (model == null || !isSupportedSize(model.getSize())
+                || normalizedLabel == null || createdAt < 0) {
+            return null;
+        }
+
+        final PuzzleIdentity identity;
+        try {
+            identity = PuzzleIdentity.from(model);
+        } catch (RuntimeException exception) {
+            return null;
+        }
+
+        FavoritePuzzle[] current = getFavoritePuzzles();
+        List<FavoritePuzzle> updated = new ArrayList<>();
+        FavoritePuzzle result = null;
+        for (FavoritePuzzle favorite : current) {
+            if (favorite.id.equals(identity.getId())) {
+                result = new FavoritePuzzle(identity, normalizedLabel, favorite.createdAt);
+                updated.add(result);
+            } else if (updated.size() < MAX_FAVORITE_PUZZLES) {
+                updated.add(favorite);
+            }
+        }
+        if (result == null) {
+            result = new FavoritePuzzle(identity, normalizedLabel, createdAt);
+            updated.add(0, result);
+        }
+        if (updated.size() > MAX_FAVORITE_PUZZLES) {
+            updated = new ArrayList<>(updated.subList(0, MAX_FAVORITE_PUZZLES));
+        }
+        prefs.edit().putString(KEY_FAVORITE_PUZZLES, encodeFavorites(updated)).apply();
+        return result;
+    }
+
+    /** @return valid local favorites in newest-first creation order */
+    FavoritePuzzle[] getFavoritePuzzles() {
+        String encoded = prefs.getString(KEY_FAVORITE_PUZZLES, "");
+        if (encoded == null || encoded.isEmpty()) {
+            return new FavoritePuzzle[0];
+        }
+        List<FavoritePuzzle> favorites = new ArrayList<>();
+        Set<String> seenIds = new HashSet<>();
+        for (String row : encoded.split("\\n")) {
+            FavoritePuzzle favorite = parseFavorite(row);
+            if (favorite != null && seenIds.add(favorite.id)) {
+                favorites.add(favorite);
+            }
+            if (favorites.size() == MAX_FAVORITE_PUZZLES) {
+                break;
+            }
+        }
+        return favorites.toArray(new FavoritePuzzle[0]);
+    }
+
+    FavoritePuzzle getFavoritePuzzle(String favoriteId) {
+        return findFavorite(favoriteId);
+    }
+
+    /**
+     * Removes one favorite and its isolated practice progress.
+     *
+     * @param favoriteId stable exact-puzzle identity
+     * @return {@code true} when a favorite was removed
+     */
+    boolean removeFavorite(String favoriteId) {
+        if (favoriteId == null || favoriteId.isEmpty()) {
+            return false;
+        }
+        List<FavoritePuzzle> retained = new ArrayList<>();
+        boolean removed = false;
+        for (FavoritePuzzle favorite : getFavoritePuzzles()) {
+            if (favorite.id.equals(favoriteId)) {
+                removed = true;
+            } else {
+                retained.add(favorite);
+            }
+        }
+        if (!removed) {
+            return false;
+        }
+        SharedPreferences.Editor editor = prefs.edit()
+                .putString(KEY_FAVORITE_PUZZLES, encodeFavorites(retained));
+        removeSave(editor, favoriteRunPrefix(favoriteId));
+        return editor.commit();
+    }
+
+    /**
+     * Saves progress for a favorite practice run without touching normal or
+     * daily save slots.
+     */
+    void saveFavoriteRun(String favoriteId, GameModel model, long elapsedMs) {
+        FavoritePuzzle favorite = findFavorite(favoriteId);
+        if (favorite == null || model == null) {
+            return;
+        }
+        PuzzleIdentity current;
+        try {
+            current = PuzzleIdentity.from(model);
+        } catch (RuntimeException exception) {
+            return;
+        }
+        if (!favorite.id.equals(current.getId())) {
+            return;
+        }
+        SharedPreferences.Editor editor = prefs.edit();
+        putSave(editor, favoriteRunPrefix(favorite.id), model.getSize(), model.getGridCopy(),
+                model.getInitialGridCopy(), model.getMoveCount(), Math.max(0, elapsedMs),
+                System.currentTimeMillis(), model.isGameRunning(), model.isSolved(),
+                model.getDifficulty());
+        editor.apply();
+    }
+
+    /** @return isolated favorite practice progress, or {@code null} when invalid */
+    SaveManager.SaveData loadFavoriteRun(String favoriteId) {
+        FavoritePuzzle favorite = findFavorite(favoriteId);
+        if (favorite == null) {
+            return null;
+        }
+        SaveManager.SaveData data = readSavedGame(
+                favoriteRunPrefix(favorite.id), favorite.size);
+        if (data == null || data.difficulty != favorite.difficulty
+                || !Arrays.deepEquals(data.initialGrid, favorite.initialGrid)) {
+            return null;
+        }
+        try {
+            new PuzzleIdentity(data.size, data.difficulty, data.grid);
+        } catch (RuntimeException exception) {
+            return null;
+        }
+        return data;
     }
 
     void saveDailyGame(String dateId, GameModel model, long elapsedMs) {
@@ -381,6 +532,8 @@ final class AndroidGameStore {
         editor.remove(KEY_DAILY_SAVE_DATE);
         for (String key : prefs.getAll().keySet()) {
             if (key.startsWith(KEY_DAILY_SAVE_BY_DATE_PREFIX)) {
+                editor.remove(key);
+            } else if (key.startsWith(KEY_FAVORITE_RUN_PREFIX)) {
                 editor.remove(key);
             }
         }
@@ -696,6 +849,10 @@ final class AndroidGameStore {
         return KEY_DAILY_SAVE_BY_DATE_PREFIX + dateId + "_";
     }
 
+    private static String favoriteRunPrefix(String favoriteId) {
+        return KEY_FAVORITE_RUN_PREFIX + favoriteId + "_";
+    }
+
     private static String completionStatsPrefix(int size, PuzzleDifficulty difficulty) {
         PuzzleDifficulty selected = difficulty == null ? PuzzleDifficulty.CLASSIC : difficulty;
         return KEY_STATS_PREFIX + size + "_" + selected.getId() + "_";
@@ -704,6 +861,89 @@ final class AndroidGameStore {
     private static String encodeCompletion(CompletionRecord record) {
         return record.completedAt + "," + record.size + "," + record.difficulty.getId()
                 + "," + record.moves + "," + record.timeMs + "," + (record.assisted ? 1 : 0);
+    }
+
+    private FavoritePuzzle findFavorite(String favoriteId) {
+        if (favoriteId != null) {
+            for (FavoritePuzzle favorite : getFavoritePuzzles()) {
+                if (favorite.id.equals(favoriteId)) {
+                    return favorite;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static String encodeFavorites(List<FavoritePuzzle> favorites) {
+        StringBuilder encoded = new StringBuilder();
+        for (FavoritePuzzle favorite : favorites) {
+            if (encoded.length() > 0) {
+                encoded.append('\n');
+            }
+            String label = Base64.getUrlEncoder().withoutPadding().encodeToString(
+                    favorite.label.getBytes(StandardCharsets.UTF_8));
+            encoded.append(favorite.id).append('|')
+                    .append(favorite.createdAt).append('|')
+                    .append(favorite.size).append('|')
+                    .append(favorite.difficulty.getId()).append('|')
+                    .append(label).append('|')
+                    .append(flatten(favorite.initialGrid));
+        }
+        return encoded.toString();
+    }
+
+    private static FavoritePuzzle parseFavorite(String encoded) {
+        if (encoded == null || encoded.isEmpty()) {
+            return null;
+        }
+        String[] fields = encoded.split("\\|", -1);
+        if (fields.length != 6 || fields[0].length() != 64) {
+            return null;
+        }
+        try {
+            long createdAt = Long.parseLong(fields[1]);
+            int size = Integer.parseInt(fields[2]);
+            PuzzleDifficulty difficulty = strictDifficulty(fields[3]);
+            String label = new String(Base64.getUrlDecoder().decode(fields[4]),
+                    StandardCharsets.UTF_8);
+            int[][] grid = parseGrid(fields[5], size);
+            if (createdAt < 0 || !isSupportedSize(size) || difficulty == null
+                    || grid == null || normalizeFavoriteLabel(label) == null) {
+                return null;
+            }
+            PuzzleIdentity identity = new PuzzleIdentity(size, difficulty, grid);
+            if (!identity.getId().equals(fields[0])) {
+                return null;
+            }
+            return new FavoritePuzzle(identity, normalizeFavoriteLabel(label), createdAt);
+        } catch (RuntimeException exception) {
+            return null;
+        }
+    }
+
+    private static String normalizeFavoriteLabel(String label) {
+        if (label == null) {
+            return null;
+        }
+        String normalized = label.trim();
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        if (normalized.length() > MAX_FAVORITE_LABEL_LENGTH) {
+            normalized = normalized.substring(0, MAX_FAVORITE_LABEL_LENGTH).trim();
+        }
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private static PuzzleDifficulty strictDifficulty(String id) {
+        if (id != null) {
+            for (PuzzleDifficulty difficulty : PuzzleDifficulty.values()) {
+                if (difficulty.getId().equals(id)) {
+                    return difficulty;
+                }
+            }
+        }
+        return null;
     }
 
     private static CompletionRecord parseCompletion(String encoded) {
@@ -800,6 +1040,35 @@ final class AndroidGameStore {
             this.active = active;
             this.solved = solved;
             this.difficulty = difficulty == null ? PuzzleDifficulty.CLASSIC : difficulty;
+        }
+    }
+
+    /**
+     * Immutable owner-labeled entry in the local favorite puzzle library.
+     */
+    static final class FavoritePuzzle {
+        final String id;
+        final String label;
+        final long createdAt;
+        final int size;
+        final PuzzleDifficulty difficulty;
+        private final int[][] initialGrid;
+
+        FavoritePuzzle(PuzzleIdentity identity, String label, long createdAt) {
+            this.id = identity.getId();
+            this.label = label;
+            this.createdAt = createdAt;
+            this.size = identity.getSize();
+            this.difficulty = identity.getDifficulty();
+            this.initialGrid = identity.getInitialGridCopy();
+        }
+
+        int[][] getInitialGridCopy() {
+            return copyGrid(initialGrid);
+        }
+
+        GameModel createGame() {
+            return new PuzzleIdentity(size, difficulty, initialGrid).createGame();
         }
     }
 

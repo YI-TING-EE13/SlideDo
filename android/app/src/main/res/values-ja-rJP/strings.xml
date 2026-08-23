@@ -52,6 +52,10 @@
     <string name="home_how_to_play">遊び方</string>
     <string name="home_settings">設定</string>
     <string name="home_records">記録</string>
+    <string name="home_favorites">お気に入り問題</string>
+    <plurals name="home_favorites_count">
+        <item quantity="other">お気に入りは%1$d件です。ローカル練習ライブラリを開きます。</item>
+    </plurals>
     <string name="home_section_learn">遊び方を学ぶ</string>
     <string name="home_section_your_game">あなたのゲーム</string>
     <string name="nav_home">ホーム</string>
@@ -160,6 +164,7 @@
     <string name="results_player_subtitle">パズルをクリアしました。</string>
     <string name="results_assisted_subtitle">アシストを使ってクリアしました。</string>
     <string name="results_daily_subtitle">今日のチャレンジをクリアしました。</string>
+    <string name="results_favorite_subtitle">お気に入りの練習をクリアしました。</string>
     <string name="results_completion_mark">✓</string>
     <string name="results_completion_description">パズルクリア</string>
     <string name="results_size_format">%1$dx%2$d パズル · %3$s</string>
@@ -169,10 +174,12 @@
     <string name="results_no_new_best">最高記録：%1$s</string>
     <string name="results_assisted_record">アシスト結果は保存されません。プレイヤー最高：%1$s</string>
     <string name="results_daily_progress">連続記録：%1$d 日 · 最高：%2$d 日</string>
+    <string name="results_favorite_record">練習結果のみです。個人記録と統計は変更されていません。</string>
     <string name="results_play_again">同じ問題を再挑戦</string>
     <string name="results_new_size">サイズ変更</string>
     <string name="game_title_format">%1$dx%2$d · %3$s</string>
     <string name="game_daily_title_format">デイリー %1$s · %2$dx%3$d · %4$s</string>
+    <string name="game_favorite_title_format">%1$s · %2$dx%3$d · %4$s</string>
     <string name="game_menu">メニュー</string>
     <string name="game_assist">ヒント</string>
     <string name="accessibility_game_home">現在のパズルを保存してホームへ戻ります</string>
@@ -198,6 +205,7 @@
     <string name="status_hint_strategic">戦略ヒント：タイル%1$dを動かしてみましょう。</string>
     <string name="status_hint_movable">ヒント：強調表示されたタイルを空きマスへ動かせます。</string>
     <string name="status_assisted_run">ヒントを使用したため、このプレイは自己ベストを更新しません。</string>
+    <string name="status_favorite_practice">お気に入りの練習は個人記録や通常セーブを変更しません。</string>
     <string name="status_first_move_hint">枠で示された空きマスと同じ行または列のタイルをタップします。</string>
     <string name="status_solving">%1$sで解析中…</string>
     <string name="best_empty">--</string>
@@ -215,6 +223,27 @@
     <string name="toast_game_saved">ゲームを保存しました。</string>
     <string name="toast_game_loaded">ゲームを読み込みました。</string>
     <string name="toast_no_save">セーブデータが見つかりません。</string>
+    <string name="favorites_title">お気に入り問題</string>
+    <string name="favorites_subtitle">名前を付けた正確な開始盤面です。再プレイは個人練習として扱われ、記録や通常セーブを変更しません。</string>
+    <string name="favorites_empty">お気に入りはまだありません。ゲームメニューまたは結果画面から現在の問題を保存できます。</string>
+    <string name="favorites_detail">%1$dx%2$d · %3$s</string>
+    <string name="favorites_replay">再プレイ</string>
+    <string name="favorites_rename">名前変更</string>
+    <string name="favorites_remove">削除</string>
+    <string name="favorites_replay_accessibility">お気に入り「%1$s」を再プレイ</string>
+    <string name="favorites_rename_accessibility">お気に入り「%1$s」の名前を変更</string>
+    <string name="favorites_remove_accessibility">お気に入り「%1$s」を削除</string>
+    <string name="favorite_save_action">お気に入りに保存</string>
+    <string name="favorite_dialog_title">問題をお気に入りに保存</string>
+    <string name="favorite_rename_title">お気に入りの名前を変更</string>
+    <string name="favorite_dialog_message">この正確な開始盤面にローカル名を付けます（1～40文字）。</string>
+    <string name="favorite_name_hint">問題名</string>
+    <string name="favorite_default_name">%1$dx%2$d %3$s</string>
+    <string name="favorite_remove_title">お気に入りを削除しますか？</string>
+    <string name="favorite_remove_message">「%1$s」とその練習進捗を削除しますか？他のセーブや記録は変更されません。</string>
+    <string name="toast_favorite_saved">お気に入りに保存しました。</string>
+    <string name="toast_favorite_removed">お気に入りを削除しました。</string>
+    <string name="toast_favorite_name_required">問題名を入力してください。</string>
     <string name="toast_save_reset">すべてのセーブデータをリセットしました。</string>
     <string name="toast_backup_exported">バックアップを書き出しました。</string>
     <string name="toast_backup_restored">バックアップを復元しました。</string>

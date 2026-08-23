@@ -110,4 +110,19 @@ public class AndroidActivityStateTest {
         assertEquals(Screen.DAILY_CALENDAR, snapshot.screen);
         assertEquals("2026-07", snapshot.dailyCalendarMonthId);
     }
+
+    @Test
+    public void activityStateRoundTripPreservesFavoritePracticeIdentity() {
+        Bundle bundle = new Bundle();
+        GameResult result = new GameResult(3, PuzzleDifficulty.RELAXED,
+                4, 8_000L, false, false, null, null, "favorite-id");
+
+        AndroidActivityState.save(bundle, Screen.RESULTS, Screen.HOME, true,
+                0, 0, result, null, "favorite-id", null);
+        AndroidActivityState.Snapshot snapshot = AndroidActivityState.restore(bundle, 0);
+
+        assertEquals("favorite-id", snapshot.activeFavoriteId);
+        assertNotNull(snapshot.result);
+        assertEquals("favorite-id", snapshot.result.favoriteId);
+    }
 }

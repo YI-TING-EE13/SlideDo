@@ -15,6 +15,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
 import com.klotski.core.DailyChallenge;
+import com.klotski.core.Direction;
 import com.klotski.core.GameModel;
 import com.klotski.core.PuzzleDifficulty;
 import com.klotski.core.SaveManager;
@@ -225,6 +226,103 @@ public class AndroidGameStoreTest {
         assertEquals(PuzzleDifficulty.CLASSIC, dailyLoaded.difficulty);
         assertTrue(Arrays.deepEquals(daily.getInitialGridCopy(), dailyLoaded.initialGrid));
         assertNull(store.loadDailyGame("2026-08-22"));
+    }
+
+    @Test
+    public void favoritesUseExactIdentityAndRenameInsteadOfDuplicating() {
+        GameModel model = createSavedModel(3, PuzzleDifficulty.CHALLENGE, 7);
+
+        AndroidGameStore.FavoritePuzzle first =
+                store.saveFavorite(model, "  Train the last row  ", 100L);
+        AndroidGameStore.FavoritePuzzle renamed =
+                store.saveFavorite(model, "Last row rematch", 200L);
+
+        assertNotNull(first);
+        assertNotNull(renamed);
+        assertEquals(first.id, renamed.id);
+        assertEquals(1, store.getFavoritePuzzles().length);
+        assertEquals("Last row rematch", store.getFavoritePuzzles()[0].label);
+        assertEquals(100L, store.getFavoritePuzzles()[0].createdAt);
+
+        int[][] exported = renamed.getInitialGridCopy();
+        exported[0][0] = 99;
+        GameModel replay = renamed.createGame();
+        assertTrue(Arrays.deepEquals(model.getInitialGridCopy(), replay.getGridCopy()));
+        assertEquals(PuzzleDifficulty.CHALLENGE, replay.getDifficulty());
+        assertEquals(0, replay.getMoveCount());
+    }
+
+    @Test
+    public void favoritePracticeProgressNeverReplacesNormalOrDailySaves() {
+        GameModel regular = createSavedModel(3, PuzzleDifficulty.CLASSIC, 8);
+        store.saveGame(regular, 8_000L);
+        DailyChallenge daily = DailyChallenge.fromDateId("2026-08-21");
+        store.saveDailyGame(daily.getDateId(), daily.createGame(), 2_000L);
+
+        GameModel favoriteModel = createSavedModel(4, PuzzleDifficulty.CHALLENGE, 0);
+        AndroidGameStore.FavoritePuzzle favorite =
+                store.saveFavorite(favoriteModel, "Four by four", 123L);
+        GameModel practice = favorite.createGame();
+        assertTrue(practice.move(Direction.LEFT));
+        store.saveFavoriteRun(favorite.id, practice, 3_000L);
+
+        SaveManager.SaveData restoredPractice = store.loadFavoriteRun(favorite.id);
+        assertNotNull(restoredPractice);
+        assertEquals(1, restoredPractice.moveCount);
+        assertEquals(3_000L, restoredPractice.elapsedTime);
+        assertEquals(8, store.loadSavedGame(3).moveCount);
+        assertEquals(2_000L, store.loadDailyGame(daily.getDateId()).elapsedTime);
+
+        store.clearSavedGame();
+        assertNull(store.loadSavedGame(3));
+        assertNull(store.loadDailyGame(daily.getDateId()));
+        assertNull(store.loadFavoriteRun(favorite.id));
+        assertEquals(1, store.getFavoritePuzzles().length);
+
+        store.clearRecords();
+        assertEquals(1, store.getFavoritePuzzles().length);
+    }
+
+    @Test
+    public void removingFavoriteAlsoRemovesOnlyItsPracticeProgress() {
+        GameModel model = createSavedModel(3, PuzzleDifficulty.RELAXED, 0);
+        AndroidGameStore.FavoritePuzzle favorite = store.saveFavorite(model, "Warm-up", 10L);
+        store.saveFavoriteRun(favorite.id, favorite.createGame(), 500L);
+
+        assertTrue(store.removeFavorite(favorite.id));
+
+        assertEquals(0, store.getFavoritePuzzles().length);
+        assertNull(store.loadFavoriteRun(favorite.id));
+        assertFalse(store.removeFavorite(favorite.id));
+    }
+
+    @Test
+    public void malformedFavoriteRowsAreIgnoredWithoutLosingValidRows() {
+        GameModel model = createSavedModel(3, PuzzleDifficulty.CLASSIC, 0);
+        AndroidGameStore.FavoritePuzzle favorite = store.saveFavorite(model, "Valid", 10L);
+        String validEncoding = prefs.getString("favorite_puzzles_v1", "");
+        prefs.edit().putString("favorite_puzzles_v1",
+                "broken-row\n" + validEncoding + "\nnot,a,valid,favorite").commit();
+
+        AndroidGameStore.FavoritePuzzle[] favorites = store.getFavoritePuzzles();
+
+        assertEquals(1, favorites.length);
+        assertEquals(favorite.id, favorites[0].id);
+    }
+
+    @Test
+    public void favoriteLibraryKeepsNewestFiftyExactPuzzles() {
+        for (int index = 0; index < 55; index++) {
+            GameModel model = new GameModel(5);
+            model.scramble(PuzzleDifficulty.CHALLENGE, index);
+            assertNotNull(store.saveFavorite(model, "Puzzle " + index, index));
+        }
+
+        AndroidGameStore.FavoritePuzzle[] favorites = store.getFavoritePuzzles();
+
+        assertEquals(50, favorites.length);
+        assertEquals("Puzzle 54", favorites[0].label);
+        assertEquals("Puzzle 5", favorites[49].label);
     }
 
     @Test
@@ -551,6 +649,8 @@ public class AndroidGameStoreTest {
         store.recordBestIfBetter(4, PuzzleDifficulty.CHALLENGE, 12, 34_000L);
         store.recordCompletion(4, PuzzleDifficulty.CHALLENGE, 12, 34_000L, false, 123L);
         store.recordDailyCompletion("2026-08-22");
+        AndroidGameStore.FavoritePuzzle favorite = store.saveFavorite(
+                createSavedModel(3, PuzzleDifficulty.RELAXED, 0), "Backup favorite", 456L);
 
         String backup = store.exportPersonalData();
         assertTrue(prefs.edit().clear().commit());
@@ -576,6 +676,8 @@ public class AndroidGameStoreTest {
         assertEquals(1, history.length);
         assertEquals(123L, history[0].completedAt);
         assertTrue(restored.getDailyProgress("2026-08-22").completedToday);
+        assertEquals(1, restored.getFavoritePuzzles().length);
+        assertEquals(favorite.id, restored.getFavoritePuzzles()[0].id);
     }
 
     @Test

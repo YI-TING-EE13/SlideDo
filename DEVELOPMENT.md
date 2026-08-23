@@ -38,12 +38,14 @@ Current handoff status:
 - The latest local verification pass was warning-clean for the previously noisy
   Gradle DSL deprecation, Java native-access warning, and Android Java
   deprecation note.
-- Personal Play 2.0 Stages 1 and 2 are complete. Android Settings owns
+- Personal Play 2.0 Stages 1 through 3 are complete. Android Settings owns
   versioned local backup/restore, while the Daily Calendar browses today and
   earlier deterministic puzzles with per-date saves and completion markers.
-- The latest dual-AVD acceptance covers all 84 Android tests in one serial run
+  Favorite Puzzles stores up to 50 owner-labeled exact starting boards and
+  replays them as isolated practice without changing normal saves or records.
+- The latest dual-AVD acceptance covers all 91 Android tests in one serial run
   on each profile: Pixel_7 (Android 15, 1080x2400) and `small_phone` (Android
-  16 / API 36.1, 720x1280) completed in 7m36s and 7m31s respectively, with no
+  16 / API 36.1, 720x1280) completed in 8m52s and 9m55s respectively, with no
   failed or skipped tests. Coverage
   includes persistent sound/theme preferences, active-game preservation across
   theme recreation, strategic-hint assistance persistence and player-best protection,
@@ -70,7 +72,7 @@ verify-connected.bat
 
 The original eight-stage Personal Play roadmap in `Roadmap And Planning` is
 implemented and verified. Personal Play 2.0 is now the active staged program;
-Stages 1 and 2 are complete and Stage 3 is the next implementation gate.
+Stages 1 through 3 are complete and Stage 4 is the next implementation gate.
 
 Real Play upload signing is intentionally deferred until store submission. It
 is not required for a local push-ready commit, and no Git remote or push is part
@@ -107,6 +109,9 @@ Android currently supports:
   with a localized month calendar, independent resumable saves by date,
   historical replay, persistent completion markers, idempotent completion, and
   current/best streak state. Future dates cannot be opened.
+- A local Favorite Puzzles library for up to 50 named exact starting boards.
+  Replays use isolated practice progress, survive Activity recreation, and do
+  not replace normal/daily saves or update personal records and statistics.
 - First-run onboarding before normal play, with Skip and Start 3x3 actions.
 - Interactive Practice Tutorial entry from Home and onboarding, using a guided
   first move plus a whole-line slide lesson.
@@ -147,6 +152,8 @@ Android currently supports:
   3x3, 4x4, and 5x5 saves, difficulty, scoped records, bounded completion
   history, lifetime statistics, settings, app language, onboarding state, and
   the last selected puzzle size/difficulty.
+- Stable cross-platform favorite identity through `PuzzleIdentity`, whose ID
+  includes size, difficulty, and every starting-grid value.
 - Versioned backup validation through `AndroidPersonalDataArchive`, including
   bounded input, type checks, duplicate-key rejection, and full replacement
   only after the selected document has passed validation.
@@ -530,8 +537,8 @@ protection before the next stage begins.
 | ---: | --- | --- | --- |
 | 1 | Android offline backup and restore | Export every Android save, record, statistic, daily field, and setting to a versioned local document; validate and confirm before complete replacement. | Completed and verified on 2026-08-23. |
 | 2 | Daily challenge calendar and history replay | Browse completed and missed local dates and replay any deterministic historical daily puzzle without changing the current-date streak twice. | Completed and verified on 2026-08-23. |
-| 3 | Favorite puzzle library | Bookmark exact puzzle identities, label them locally, and replay a favorite without reshuffling or altering normal saves. | Planned; next stage. |
-| 4 | Personal trends and custom goals | Show local time/move trends and owner-defined goals without analytics or network services. | Planned. |
+| 3 | Favorite puzzle library | Bookmark exact puzzle identities, label them locally, and replay a favorite without reshuffling or altering normal saves. | Completed and verified on 2026-08-23. |
+| 4 | Personal trends and custom goals | Show local time/move trends and owner-defined goals without analytics or network services. | Planned; next stage. |
 | 5 | Continuous challenge mode | Chain completed puzzles into a local session with clear progress, exit, resume, and record boundaries. | Planned. |
 | 6 | Move history and Redo | Expose the current run's action history and add Redo while preserving whole-line one-action semantics, Restart, Save/Load, and solver input locks. | Planned. |
 | 7 | Adaptive and accessibility reinforcement | Improve compact/large-screen layout behavior, larger-text resilience, focus order, TalkBack descriptions, contrast, and reduced-motion coverage. | Planned. |
@@ -1001,6 +1008,27 @@ Priority: Low to Medium
 ## Development Log
 
 ### 2026-08-23
+
+- Completed Personal Play 2.0 Stage 3 Favorite Puzzles. The shared
+  `PuzzleIdentity` derives a stable SHA-256 identity from board size,
+  difficulty, and the exact defensive-copy starting grid. Android stores up to
+  50 owner-named favorites, renames duplicate identities instead of adding a
+  second row, ignores malformed entries, includes the library in offline
+  backup/restore, and removes a deleted favorite's isolated practice state.
+- Home opens the localized favorite library; Game Menu and Results can save or
+  rename the current exact puzzle. Library cards support Replay, Rename, and
+  Remove with localized accessibility descriptions. Favorite replay uses an
+  isolated save namespace for rotation/background continuity, never replaces a
+  normal or daily save, and intentionally skips completion history, lifetime
+  statistics, daily streaks, and best-record updates. Reset Saved Games clears
+  practice progress but preserves the named library; Reset Records also leaves
+  favorites intact.
+- Added two shared identity tests, five favorite-store tests plus backup
+  coverage, one Activity-state test, and one full UI flow from naming through
+  exact replay and practice-only Results. All 40 shared tests passed. Pixel_7
+  passed 91/91 Android tests in 8m52s and `small_phone` passed 91/91 in 9m55s,
+  with no failures or skips; both crash buffers were empty. The final debug APK
+  SHA-256 is `D35B3CBA33E1C8A13B1BC35E165D7852C21EA0F5E5F466C8E3BCC3734FD04F83`.
 
 - Completed Personal Play 2.0 Stage 2 Daily Calendar and history replay.
   `DailyCalendarMonth` supplies a Sunday-first, future-bounded month model, and

@@ -240,6 +240,13 @@ moving the board and marks the run assisted; that state survives save, rotation,
 Restart, and replay so assisted wins cannot overwrite player best records. BFS,
 A*, and IDA* remain one level deeper under Solver Tools.
 
+Home also opens **Favorite Puzzles**. Save the current exact starting board from
+Game Menu or Results, give it a local name, then Replay, Rename, or Remove it in
+the library. Favorite replay is an isolated practice run: rotation and
+background saves remain available, but normal/daily saves, best records,
+completion history, statistics, and streaks are not changed. The library keeps
+the newest 50 identities and is included in offline backup/restore.
+
 English is the Android default even when the device uses another language. Open
 Settings, choose **App language**, and select **English**, **繁體中文**, or
 **日本語**. The selection is saved locally and remains active after the app is
@@ -382,10 +389,10 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
 - Connected Android instrumentation helpers now wait for the foreground app
   window, wait for activity controls to become interactable, use device-level
   board taps, and fall back to direct swipe scrolling for long content.
-- The latest 2026-08-23 dual-AVD Android acceptance covers all 84 tests in one
-  serial run on each profile: Pixel_7 (Android 15, 1080x2400) passed 84/84 in
-  7m36s and `small_phone` (Android 16 / API 36.1, 720x1280) passed 84/84 in
-  7m31s, with no failed or skipped tests. The suite
+- The latest 2026-08-23 dual-AVD Android acceptance covers all 91 tests in one
+  serial run on each profile: Pixel_7 (Android 15, 1080x2400) passed 91/91 in
+  8m52s and `small_phone` (Android 16 / API 36.1, 720x1280) passed 91/91 in
+  9m55s, with no failed or skipped tests. The suite
   includes English-default isolation from device locale, persistent language
   switching, active-game preservation, and explicit Traditional Chinese and
   Japanese major-screen, difficulty-selection, independent per-size saves,
@@ -399,7 +406,11 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
   and confirmed restore followed by Activity recreation. Daily-calendar tests
   cover deterministic month boundaries, independent dated saves, legacy daily
   save migration, historical streak protection, month restoration across
-  rotation, and opening the exact historical puzzle.
+  rotation, and opening the exact historical puzzle. Favorite tests cover
+  stable exact-board identity, labels and duplicate renaming, 50-entry
+  retention, malformed-row recovery, backup inclusion, isolated practice
+  saves, reset/delete boundaries, Activity state, and a complete save/replay/
+  practice-only Results flow.
 - Latest local `ci.bat` run passed the no-device verification and release
   readiness gates.
 - Android emulator smoke testing for install/launch, Home visibility, whole-line movement, undo, restart, save/load, solver warning dialog, rotation, and background resume.
@@ -539,9 +550,10 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
   offline daily challenge, strategic hints, and sound/themes. All eight stages
   are implemented and verified.
   `DEVELOPMENT.md` owns the detailed acceptance criteria and status.
-- Personal Play 2.0 is active. Stage 1 offline backup/restore and Stage 2 daily
-  calendar/history replay completed their two-AVD acceptance on 2026-08-23.
-  Favorites, trends and goals, continuous challenge, move history/Redo,
+- Personal Play 2.0 is active. Stage 1 offline backup/restore, Stage 2 daily
+  calendar/history replay, and Stage 3 Favorite Puzzles completed their
+  two-AVD acceptance on 2026-08-23. Trends and goals, continuous challenge,
+  move history/Redo,
   adaptive accessibility, and toolchain maintenance remain future stages until
   their own verification and commit gates pass.
 - Desktop/mobile player-facing parity MVP is complete for Home/start, Records, Preferences, Results, How to Play, Practice Tutorial, and Assist hints.

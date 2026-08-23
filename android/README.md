@@ -14,6 +14,9 @@ an emulator or connected Android device.
 - Localized Daily Calendar for today and earlier deterministic puzzles, with
   completed/in-progress/missed status, future-date blocking, historical replay,
   and an independently resumable save for every date
+- Local Favorite Puzzles library for up to 50 owner-named exact starting
+  boards, with Replay, Rename, Remove, backup inclusion, and isolated practice
+  progress that never replaces normal/daily saves or personal records
 - First-run onboarding with Skip and Start 3x3 actions
 - Interactive Practice Tutorial for the first move, movable aligned-tile
   highlights, and whole-line slide practice
@@ -66,7 +69,7 @@ an emulator or connected Android device.
 - Game and Practice Tutorial screen construction is split into
   `AndroidGameScreen` and `AndroidTutorialScreen`; `MainActivity` still owns
   model state, command gates, and navigation callbacks
-- Mode Select, Records, Settings, and Results construction is split into
+- Mode Select, Favorite Puzzles, Records, Settings, and Results construction is split into
   package-private builders while `MainActivity` owns navigation, persistence,
   settings application, and record-result text
 - Independent 3x3, 4x4, and 5x5 save slots include updated time, puzzle size,
@@ -163,10 +166,10 @@ This runs `verify.bat` and `verify-release.bat`. CI release artifacts are
 verification outputs and use the temporary signing key unless real Play upload
 signing is explicitly configured.
 
-Latest 2026-08-23 validation status: all 84 Android tests passed in one serial
-run on each emulator profile: Pixel_7 passed 84/84 on Android 15 at 1080x2400
-in 7m36s and `small_phone` passed 84/84 on Android 16 / API 36.1 at 720x1280
-in 7m31s. Neither run reported a failed or skipped test. The suite covers the
+Latest 2026-08-23 validation status: all 91 Android tests passed in one serial
+run on each emulator profile: Pixel_7 passed 91/91 on Android 15 at 1080x2400
+in 8m52s and `small_phone` passed 91/91 on Android 16 / API 36.1 at 720x1280
+in 9m55s. Neither run reported a failed or skipped test. The suite covers the
 normal animated transition path, the Reduced motion bypass, English-default
 locale isolation, persistent English, Traditional Chinese, and Japanese switching,
 explicit Traditional Chinese and Japanese major-screen/dialog/result flows,
@@ -204,6 +207,16 @@ that completion without replacing the current/latest streak boundary. Valid
 legacy single-date daily saves migrate automatically.
 The Stage 2 final debug APK SHA-256 is
 `F10B1C056903576C5942F63DBD66AFAC7CA88857979E459F486DADD68706E1AB`.
+Personal Play 2.0 Stage 3 adds Favorite Puzzles to Home, Game Menu, and Results.
+`PuzzleIdentity` includes size, difficulty, and every starting-grid value, so
+the same exact puzzle renames one existing favorite instead of duplicating it.
+The newest 50 named entries are kept locally and included in backup/restore.
+Favorite replay persists its own current run for rotation and background
+continuity, while normal/daily saves, best records, completion history,
+statistics, and streaks remain unchanged. Reset Saved Games clears favorite
+practice progress but keeps the named library; deleting a favorite removes
+only that entry and its practice progress. The Stage 3 final debug APK SHA-256
+is `D35B3CBA33E1C8A13B1BC35E165D7852C21EA0F5E5F466C8E3BCC3734FD04F83`.
 CLI-captured manual review covered English onboarding, Traditional Chinese
 Home/Settings/Mode Select/Game, and Japanese Home/Settings/Mode Select/How to
 Play/Game on the compact AVD. The compact controls remained single-line after

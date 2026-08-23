@@ -15,6 +15,10 @@
     <item name="home_how_to_play_button" type="id" />
     <item name="home_settings_button" type="id" />
     <item name="home_records_button" type="id" />
+    <item name="home_favorites_button" type="id" />
+    <item name="favorites_root" type="id" />
+    <item name="favorites_empty_text" type="id" />
+    <item name="favorites_back_button" type="id" />
     <item name="onboarding_root" type="id" />
     <item name="onboarding_progress_text" type="id" />
     <item name="onboarding_next_button" type="id" />
@@ -80,6 +84,7 @@
     <item name="results_stats_text" type="id" />
     <item name="results_record_text" type="id" />
     <item name="results_play_again_button" type="id" />
+    <item name="results_favorite_button" type="id" />
     <item name="results_new_size_button" type="id" />
     <item name="results_home_button" type="id" />
     <item name="game_root" type="id" />

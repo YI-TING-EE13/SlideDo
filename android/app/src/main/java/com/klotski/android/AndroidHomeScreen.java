@@ -26,6 +26,7 @@ final class AndroidHomeScreen {
     }
 
     ScreenLayout build(AndroidGameStore.SaveMetadata[] saves, DailyStatus dailyStatus,
+            int favoriteCount,
             HomeActions actions) {
         AndroidGameStore.SaveMetadata[] availableSaves = saves == null
                 ? new AndroidGameStore.SaveMetadata[0]
@@ -95,6 +96,12 @@ final class AndroidHomeScreen {
         howToButton.setId(R.id.home_how_to_play_button);
 
         ui.addSectionLabel(screen.content, R.string.home_section_your_game);
+        Button favoritesButton = ui.addWideButton(screen.content,
+                R.string.home_favorites, R.drawable.ic_action_records,
+                COLOR_PANEL_LIGHT, v -> actions.onFavorites());
+        favoritesButton.setId(R.id.home_favorites_button);
+        favoritesButton.setContentDescription(activity.getResources().getQuantityString(
+                R.plurals.home_favorites_count, favoriteCount, favoriteCount));
         LinearLayout personalRow = createActionRow(screen.content);
         Button settingsButton = ui.addRowButton(personalRow,
                 R.string.home_settings, R.drawable.ic_action_settings,
@@ -213,6 +220,8 @@ final class AndroidHomeScreen {
         void onPracticeTutorial();
 
         void onHowToPlay();
+
+        void onFavorites();
 
         void onSettings();
 

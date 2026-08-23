@@ -865,6 +865,46 @@ public class MainActivityFlowTest {
     }
 
     @Test
+    public void favoriteLibraryReplaysExactPuzzleWithoutChangingSavesOrRecords() throws Exception {
+        markOnboardingSeen();
+        writeSavedGame(ONE_MOVE_WIN_GRID, ONE_MOVE_WIN_GRID, 4);
+        AndroidGameStore store = new AndroidGameStore(targetContext);
+        launchApp();
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+
+        clickId(R.id.game_menu_button);
+        scrollToText("Save Favorite").click();
+        waitForText("Save favorite puzzle");
+        UiObject2 name = device.wait(Until.findObject(By.clazz("android.widget.EditText")), TIMEOUT_MS);
+        assertNotNull("Missing favorite name input", name);
+        name.setText("One move finish");
+        waitForText("SAVE FAVORITE").click();
+        device.waitForIdle();
+        instrumentation.waitForIdleSync();
+        assertEquals(1, store.getFavoritePuzzles().length);
+
+        clickId(R.id.game_home_button);
+        waitForId("home_root");
+        scrollToText("Favorite Puzzles").click();
+        waitForId("favorites_root");
+        waitForText("One move finish");
+        clickActivityContentDescriptionContaining("Replay favorite One move finish");
+
+        waitForId("game_root");
+        waitForStatusContaining("Favorite practice does not change personal records or regular saves.");
+        tapCell(3, 2, 2);
+        waitForId("results_root");
+        waitForText("Favorite practice complete.");
+        waitForText("Practice result only. Personal records and statistics were not changed.");
+        assertActivityHasView(R.id.results_favorite_button);
+
+        assertEquals(4, store.loadSavedGame(3).moveCount);
+        assertEquals(0, store.getCompletionHistory().length);
+        assertEquals(0, store.getOverallCompletionStats().playerCompletions);
+    }
+
+    @Test
     public void settingsCanResetRecords() throws Exception {
         markOnboardingSeen();
         writeBestRecords();

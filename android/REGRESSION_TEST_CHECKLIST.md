@@ -74,7 +74,8 @@ Run every item in all supported locales.
 
 ### Home and onboarding
 
-- [ ] Home shows title, summary, Play/New Game, learning entries, Settings, Records, and Continue only when a valid save exists.
+- [ ] Home shows title, summary, Play/New Game, learning entries, Favorite
+  Puzzles, Settings, Records, and Continue only when a valid normal save exists.
 - [ ] New Game opens Mode Select; Back/Home returns to Home without creating a game.
 - [ ] First-launch onboarding pages show correct progress and support Next, Back, Skip, Practice Tutorial, and Start 3x3.
 - [ ] Beginner Guide can be reopened from Home after onboarding is complete.
@@ -101,6 +102,25 @@ Run every item in all supported locales.
 - [ ] The full grid, legend, and Back action remain readable and reachable by
   scrolling at 720x1280 in English, Traditional Chinese, and Japanese.
 
+### Favorite Puzzles
+
+- [ ] Game Menu and Results can save the current exact starting board with a
+  trimmed 1–40 character local name; saving the same size, difficulty, and
+  `initialGrid` renames one identity instead of creating a duplicate.
+- [ ] Home opens the library empty state or newest-first cards with localized
+  size/difficulty detail and meaningful Replay, Rename, and Remove descriptions.
+- [ ] Replay restores the byte-for-byte starting grid with zero moves and time,
+  and isolated practice progress survives rotation and background/resume.
+- [ ] Favorite practice never replaces any normal or daily save and never
+  updates best records, completion history, lifetime statistics, or streaks.
+- [ ] The library retains at most 50 valid identities, ignores malformed rows,
+  and round-trips through owner-controlled backup/restore.
+- [ ] Rename preserves identity and creation order. Remove deletes only that
+  favorite and its practice progress. Reset Saved Games clears practice
+  progress but keeps labels; Reset Records leaves both untouched.
+- [ ] Empty and populated libraries, three-button cards, naming/removal dialogs,
+  and Back remain readable and reachable at 720x1280 in all supported locales.
+
 ### How to Play and tutorial
 
 - [ ] How to Play shows Goal, Tap, Whole-line slide, Swipe, Tools, Records, example boards, and Back.
@@ -121,7 +141,7 @@ Run every item in all supported locales.
 
 - [ ] Haptic and Reduced Motion switches toggle, persist after relaunch, and keep localized accessibility descriptions.
 - [ ] Export backup opens Android's create-document picker with a timestamped
-  `.json` name and writes every current save, record, statistic, daily field,
+  `.json` name and writes every current save, favorite, record, statistic, daily field,
   onboarding field, language, and preference.
 - [ ] Import backup validates the entire document before showing the localized
   replacement dialog; Cancel preserves current data and Restore replaces it.
@@ -130,8 +150,8 @@ Run every item in all supported locales.
 - [ ] Restored language, theme, sound, haptic, and Reduced Motion settings apply
   after Activity recreation; restored saves and records remain playable.
 - [ ] Reset Saved Games Cancel preserves every size slot; Reset clears all 3x3,
-  4x4, and 5x5 slots while preserving records/settings and shows a localized
-  confirmation toast.
+  4x4, and 5x5 slots plus dated/favorite practice progress while preserving
+  favorite labels, records, and settings, then shows a localized confirmation toast.
 - [ ] Reset Records Cancel preserves all data; Reset clears every
   size/difficulty best, lifetime statistic, and recent-history entry while
   preserving saves/settings, then shows a localized toast.
@@ -200,7 +220,9 @@ result is required.
 
 Inspect every major screen in all supported locales on both AVD sizes.
 
-- [ ] Home, onboarding, tutorial, Mode Select, How to Play, game, menus/dialogs, Settings, Records, and Results have no clipped, overlapping, ellipsized, or off-screen required controls.
+- [ ] Home, onboarding, tutorial, Mode Select, Daily Calendar, Favorite Puzzles,
+  How to Play, game, menus/dialogs, Settings, Records, and Results have no
+  clipped, overlapping, ellipsized, or off-screen required controls.
 - [ ] Text wraps naturally; fixed button rows remain tappable and readable in Traditional Chinese and Japanese.
 - [ ] Scrolling reaches all content and Back/Home controls on the compact AVD.
 - [ ] Screen and board animations follow Reduced Motion; language changes do not alter motion behavior.
@@ -215,6 +237,22 @@ Do not mark the localization work complete until every applicable item above is
 checked in all supported locales, failures are fixed and rerun, and any
 unavailable device coverage is explicitly recorded as a limitation rather than
 reported as passed.
+
+### 2026-08-23 Personal Play 2.0 Stage 3 Favorite Puzzles pass
+
+| Evidence | Result |
+| --- | --- |
+| Debug APK SHA-256 | `D35B3CBA33E1C8A13B1BC35E165D7852C21EA0F5E5F466C8E3BCC3734FD04F83` |
+| Local verification | All 40 shared tests passed; Android debug/test APK assembly, lint, desktop compile, and both Javadoc/doclint gates passed |
+| Pixel_7 | All 91 Android tests passed on Android 15 at 1080x2400 in one serial run (8m52s); 0 failed, 0 skipped |
+| `small_phone` | All 91 Android tests passed on Android 16 / API 36.1 at 720x1280 in one serial run (9m55s); 0 failed, 0 skipped |
+| Identity and persistence | SHA-256 identity covers size, difficulty, and exact starting grid; duplicate saves rename; newest 50 valid entries survive backup; practice uses an isolated save namespace |
+| Android flow | Game Menu/Results save a name; Home library supports Replay/Rename/Remove; exact replay reaches practice-only Results without changing normal/daily saves, records, statistics, or streaks |
+| UI and runtime review | The complete library flow passed on both phone sizes; localized resources remained key/format compatible; both crash buffers were empty |
+
+Favorite labels are local metadata and do not participate in puzzle identity.
+Reset Saved Games removes active favorite practice progress while retaining the
+library, and Reset Records never removes either favorite labels or progress.
 
 ### 2026-08-23 Personal Play 2.0 Stage 2 Daily Calendar pass
 

@@ -25,6 +25,8 @@ final class AndroidActivityState {
     private static final String STATE_ACTIVE_DAILY_DATE = "active_daily_date";
     private static final String STATE_DAILY_CALENDAR_MONTH = "daily_calendar_month";
     private static final String STATE_RESULT_DAILY_DATE = "result_daily_date";
+    private static final String STATE_ACTIVE_FAVORITE_ID = "active_favorite_id";
+    private static final String STATE_RESULT_FAVORITE_ID = "result_favorite_id";
 
     private AndroidActivityState() {
     }
@@ -32,24 +34,32 @@ final class AndroidActivityState {
     static void save(Bundle outState, Screen currentScreen, Screen infoReturnScreen, boolean gameStarted,
             int onboardingPage, int tutorialStep, GameResult currentResult) {
         save(outState, currentScreen, infoReturnScreen, gameStarted, onboardingPage, tutorialStep,
-                currentResult, null, null);
+                currentResult, null, null, null);
     }
 
     static void save(Bundle outState, Screen currentScreen, Screen infoReturnScreen, boolean gameStarted,
             int onboardingPage, int tutorialStep, GameResult currentResult, String activeDailyDateId) {
         save(outState, currentScreen, infoReturnScreen, gameStarted, onboardingPage, tutorialStep,
-                currentResult, activeDailyDateId, null);
+                currentResult, activeDailyDateId, null, null);
     }
 
     static void save(Bundle outState, Screen currentScreen, Screen infoReturnScreen, boolean gameStarted,
             int onboardingPage, int tutorialStep, GameResult currentResult, String activeDailyDateId,
             String dailyCalendarMonthId) {
+        save(outState, currentScreen, infoReturnScreen, gameStarted, onboardingPage, tutorialStep,
+                currentResult, activeDailyDateId, null, dailyCalendarMonthId);
+    }
+
+    static void save(Bundle outState, Screen currentScreen, Screen infoReturnScreen,
+            boolean gameStarted, int onboardingPage, int tutorialStep, GameResult currentResult,
+            String activeDailyDateId, String activeFavoriteId, String dailyCalendarMonthId) {
         outState.putString(STATE_SCREEN, currentScreen.name());
         outState.putString(STATE_INFO_RETURN_SCREEN, infoReturnScreen.name());
         outState.putBoolean(STATE_GAME_STARTED, gameStarted);
         outState.putInt(STATE_ONBOARDING_PAGE, onboardingPage);
         outState.putInt(STATE_TUTORIAL_STEP, tutorialStep);
         outState.putString(STATE_ACTIVE_DAILY_DATE, activeDailyDateId);
+        outState.putString(STATE_ACTIVE_FAVORITE_ID, activeFavoriteId);
         outState.putString(STATE_DAILY_CALENDAR_MONTH, dailyCalendarMonthId);
         saveResultState(outState, currentResult);
     }
@@ -63,6 +73,7 @@ final class AndroidActivityState {
                 savedInstanceState.getInt(STATE_TUTORIAL_STEP, fallbackTutorialStep),
                 restoreResultState(savedInstanceState),
                 savedInstanceState.getString(STATE_ACTIVE_DAILY_DATE),
+                savedInstanceState.getString(STATE_ACTIVE_FAVORITE_ID),
                 savedInstanceState.getString(STATE_DAILY_CALENDAR_MONTH));
     }
 
@@ -91,6 +102,7 @@ final class AndroidActivityState {
         outState.putBoolean(STATE_RESULT_ASSISTED, currentResult.assisted);
         outState.putBoolean(STATE_RESULT_NEW_BEST, currentResult.newBest);
         outState.putString(STATE_RESULT_DAILY_DATE, currentResult.dailyDateId);
+        outState.putString(STATE_RESULT_FAVORITE_ID, currentResult.favoriteId);
         if (currentResult.previousBest == null) {
             outState.putInt(STATE_RESULT_PREVIOUS_BEST_MOVES, -1);
             outState.putLong(STATE_RESULT_PREVIOUS_BEST_TIME, -1);
@@ -117,7 +129,8 @@ final class AndroidActivityState {
                 savedInstanceState.getBoolean(STATE_RESULT_ASSISTED, false),
                 savedInstanceState.getBoolean(STATE_RESULT_NEW_BEST, false),
                 previousBest,
-                savedInstanceState.getString(STATE_RESULT_DAILY_DATE));
+                savedInstanceState.getString(STATE_RESULT_DAILY_DATE),
+                savedInstanceState.getString(STATE_RESULT_FAVORITE_ID));
     }
 
     static final class Snapshot {
@@ -128,10 +141,12 @@ final class AndroidActivityState {
         final int tutorialStep;
         final GameResult result;
         final String activeDailyDateId;
+        final String activeFavoriteId;
         final String dailyCalendarMonthId;
 
         Snapshot(Screen screen, Screen infoReturnScreen, boolean gameStarted, int onboardingPage,
                 int tutorialStep, GameResult result, String activeDailyDateId,
+                String activeFavoriteId,
                 String dailyCalendarMonthId) {
             this.screen = screen;
             this.infoReturnScreen = infoReturnScreen;
@@ -140,6 +155,7 @@ final class AndroidActivityState {
             this.tutorialStep = tutorialStep;
             this.result = result;
             this.activeDailyDateId = activeDailyDateId;
+            this.activeFavoriteId = activeFavoriteId;
             this.dailyCalendarMonthId = dailyCalendarMonthId;
         }
     }

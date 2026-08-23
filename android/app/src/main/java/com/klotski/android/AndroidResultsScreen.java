@@ -35,7 +35,9 @@ final class AndroidResultsScreen {
                 activity.getString(R.string.results_title),
                 activity.getString(result.dailyDateId != null
                         ? R.string.results_daily_subtitle
-                        : (result.assisted
+                        : (result.favoriteId != null
+                                ? R.string.results_favorite_subtitle
+                                : result.assisted
                                 ? R.string.results_assisted_subtitle
                                 : R.string.results_player_subtitle)));
 
@@ -90,6 +92,10 @@ final class AndroidResultsScreen {
                 R.drawable.ic_action_play, COLOR_PRIMARY,
                 v -> actions.onPlayAgain());
         playAgainButton.setId(R.id.results_play_again_button);
+        Button favoriteButton = ui.addWideButton(screen.content, R.string.favorite_save_action,
+                R.drawable.ic_action_records, COLOR_PANEL_HIGHLIGHT,
+                v -> actions.onFavorite());
+        favoriteButton.setId(R.id.results_favorite_button);
         Button newSizeButton = ui.addWideButton(screen.content, R.string.results_new_size,
                 R.drawable.ic_action_restart, COLOR_PANEL,
                 v -> actions.onNewSize());
@@ -113,6 +119,8 @@ final class AndroidResultsScreen {
         void onPlayAgain();
 
         void onNewSize();
+
+        void onFavorite();
 
         void onHome();
     }
