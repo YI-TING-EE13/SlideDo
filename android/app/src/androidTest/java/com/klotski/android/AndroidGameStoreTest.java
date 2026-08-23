@@ -18,7 +18,9 @@ import com.klotski.core.DailyChallenge;
 import com.klotski.core.Direction;
 import com.klotski.core.GameModel;
 import com.klotski.core.PuzzleDifficulty;
+import com.klotski.core.PersonalTrend;
 import com.klotski.core.SaveManager;
+import com.klotski.core.WeeklyGoalProgress;
 
 import org.junit.After;
 import org.junit.Before;
@@ -27,6 +29,8 @@ import org.junit.runner.RunWith;
 
 import java.util.Arrays;
 import java.util.Locale;
+import java.time.LocalDate;
+import java.time.ZoneId;
 
 /**
  * Focused instrumentation coverage for Android app-state persistence.
@@ -514,6 +518,54 @@ public class AndroidGameStoreTest {
         assertEquals(1, overall.assistedCompletions);
         assertEquals(70L, overall.playerMoves);
         assertEquals(12_000L, overall.playerTimeMs);
+    }
+
+    @Test
+    public void personalTrendUsesOnlyPlayerCompletionsInOneScope() {
+        int[] oldestToNewestMoves = {34, 32, 30, 22, 20, 18};
+        for (int index = 0; index < oldestToNewestMoves.length; index++) {
+            int moves = oldestToNewestMoves[index];
+            store.recordCompletion(3, PuzzleDifficulty.CLASSIC,
+                    moves, moves * 1_000L, false, 100L + index);
+        }
+        store.recordCompletion(3, PuzzleDifficulty.CLASSIC, 1, 1L, true, 1_000L);
+        store.recordCompletion(4, PuzzleDifficulty.CLASSIC, 1, 1L, false, 2_000L);
+
+        PersonalTrend trend = store.getPersonalTrend(3, PuzzleDifficulty.CLASSIC);
+
+        assertEquals(20L, trend.getRecentAverageMoves());
+        assertEquals(32L, trend.getPreviousAverageMoves());
+        assertEquals(PersonalTrend.Direction.IMPROVING, trend.getMoveDirection());
+    }
+
+    @Test
+    public void weeklyGoalIsOwnerConfigurableAndCountsOnlyPlayerSolves() {
+        ZoneId utc = ZoneId.of("UTC");
+        assertEquals(5, store.getWeeklyGoalTarget());
+        store.setWeeklyGoalTarget(3);
+        store.setWeeklyGoalTarget(99);
+        assertEquals(3, store.getWeeklyGoalTarget());
+        store.setTrendSize(5);
+        store.setTrendSize(9);
+        store.setTrendDifficulty(PuzzleDifficulty.CHALLENGE);
+        assertEquals(5, store.getTrendSize());
+        assertEquals(PuzzleDifficulty.CHALLENGE, store.getTrendDifficulty());
+
+        store.recordCompletion(3, PuzzleDifficulty.CLASSIC, 10, 1_000L, false,
+                LocalDate.of(2026, 8, 17).atStartOfDay(utc).toInstant().toEpochMilli());
+        store.recordCompletion(4, PuzzleDifficulty.CHALLENGE, 20, 2_000L, false,
+                LocalDate.of(2026, 8, 19).atStartOfDay(utc).toInstant().toEpochMilli());
+        store.recordCompletion(5, PuzzleDifficulty.RELAXED, 30, 3_000L, true,
+                LocalDate.of(2026, 8, 20).atStartOfDay(utc).toInstant().toEpochMilli());
+        store.recordCompletion(3, PuzzleDifficulty.CLASSIC, 40, 4_000L, false,
+                LocalDate.of(2026, 8, 16).atStartOfDay(utc).toInstant().toEpochMilli());
+
+        WeeklyGoalProgress progress = store.getWeeklyGoalProgress(
+                LocalDate.of(2026, 8, 23), utc);
+
+        assertEquals(2, progress.getCompleted());
+        assertEquals(3, progress.getTarget());
+        assertEquals(1, progress.getRemaining());
     }
 
     @Test

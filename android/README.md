@@ -166,10 +166,10 @@ This runs `verify.bat` and `verify-release.bat`. CI release artifacts are
 verification outputs and use the temporary signing key unless real Play upload
 signing is explicitly configured.
 
-Latest 2026-08-23 validation status: all 91 Android tests passed in one serial
-run on each emulator profile: Pixel_7 passed 91/91 on Android 15 at 1080x2400
-in 8m52s and `small_phone` passed 91/91 on Android 16 / API 36.1 at 720x1280
-in 9m55s. Neither run reported a failed or skipped test. The suite covers the
+Latest 2026-08-24 validation status: all 94 Android tests passed in one serial
+run on each emulator profile: Pixel_7 passed 94/94 on Android 15 at 1080x2400
+in 603.426s and `small_phone` passed 94/94 on Android 16 / API 36.1 at 720x1280
+in 629.539s. Neither run reported a failed or skipped test. The suite covers the
 normal animated transition path, the Reduced motion bypass, English-default
 locale isolation, persistent English, Traditional Chinese, and Japanese switching,
 explicit Traditional Chinese and Japanese major-screen/dialog/result flows,
@@ -217,6 +217,14 @@ statistics, and streaks remain unchanged. Reset Saved Games clears favorite
 practice progress but keeps the named library; deleting a favorite removes
 only that entry and its practice progress. The Stage 3 final debug APK SHA-256
 is `D35B3CBA33E1C8A13B1BC35E165D7852C21EA0F5E5F466C8E3BCC3734FD04F83`.
+Personal Play 2.0 Stage 4 adds Trends & Weekly Goal to Home. Weekly progress
+counts player completions from local Monday through today against a validated
+owner target from 1 to 50. Trend scope is one of the nine size/difficulty
+combinations and compares equal recent and previous windows only after six
+player results; assisted and favorite-practice completions are excluded. The
+target and selected scope remain local, survive backup/restore, and stay
+separate from record reset. The Stage 4 final debug APK SHA-256 is
+`C5D3691C58C6A356C2E7BD18D9589E436DA4A995C7372CC3C7FEAF8FEEF7C0AF`.
 CLI-captured manual review covered English onboarding, Traditional Chinese
 Home/Settings/Mode Select/Game, and Japanese Home/Settings/Mode Select/How to
 Play/Game on the compact AVD. The compact controls remained single-line after

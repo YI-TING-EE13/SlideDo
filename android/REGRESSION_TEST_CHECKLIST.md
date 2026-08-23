@@ -75,7 +75,8 @@ Run every item in all supported locales.
 ### Home and onboarding
 
 - [ ] Home shows title, summary, Play/New Game, learning entries, Favorite
-  Puzzles, Settings, Records, and Continue only when a valid normal save exists.
+  Puzzles, Trends & Weekly Goal, Settings, Records, and Continue only when a
+  valid normal save exists.
 - [ ] New Game opens Mode Select; Back/Home returns to Home without creating a game.
 - [ ] First-launch onboarding pages show correct progress and support Next, Back, Skip, Practice Tutorial, and Start 3x3.
 - [ ] Beginner Guide can be reopened from Home after onboarding is complete.
@@ -120,6 +121,26 @@ Run every item in all supported locales.
   progress but keeps labels; Reset Records leaves both untouched.
 - [ ] Empty and populated libraries, three-button cards, naming/removal dialogs,
   and Back remain readable and reachable at 720x1280 in all supported locales.
+
+### Trends and Weekly Goal
+
+- [ ] Home opens Trends & Weekly Goal and Back returns to Home without changing
+  the active normal, daily, or favorite-practice game.
+- [ ] Weekly progress counts only player completions from local Monday through
+  today; assisted, stale, and future-dated entries are excluded.
+- [ ] The owner can enter any target from 1 to 50. Blank, zero, negative, and
+  greater-than-50 values show validation and do not replace the stored target.
+- [ ] All nine size/difficulty scopes are selectable and persist independently
+  from the last New Game selection.
+- [ ] Trend input includes only player completions from the selected scope.
+  Fewer than six results shows a recent average plus the remaining requirement;
+  six or more compare equal recent and immediately preceding windows.
+- [ ] Improving, steady, and declining move/time wording is localized and uses
+  the five-percent steady threshold. Reset Records clears the source history
+  while preserving the weekly target and selected scope.
+- [ ] Goal and scope preferences round-trip through offline backup/restore.
+  Goal, scope, comparison, empty state, dialogs, and Back remain reachable by
+  scrolling at 720x1280 in all supported locales.
 
 ### How to Play and tutorial
 
@@ -221,7 +242,7 @@ result is required.
 Inspect every major screen in all supported locales on both AVD sizes.
 
 - [ ] Home, onboarding, tutorial, Mode Select, Daily Calendar, Favorite Puzzles,
-  How to Play, game, menus/dialogs, Settings, Records, and Results have no
+  Trends & Weekly Goal, How to Play, game, menus/dialogs, Settings, Records, and Results have no
   clipped, overlapping, ellipsized, or off-screen required controls.
 - [ ] Text wraps naturally; fixed button rows remain tappable and readable in Traditional Chinese and Japanese.
 - [ ] Scrolling reaches all content and Back/Home controls on the compact AVD.

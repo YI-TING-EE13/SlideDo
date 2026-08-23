@@ -18,6 +18,7 @@ final class AndroidNavigation {
             return BackTarget.FINISH;
         }
         if ((currentScreen == Screen.HOW_TO_PLAY || currentScreen == Screen.RECORDS
+                || currentScreen == Screen.TRENDS
                 || currentScreen == Screen.SETTINGS)
                 && infoReturnScreen == Screen.GAME && gameStarted) {
             return BackTarget.GAME;

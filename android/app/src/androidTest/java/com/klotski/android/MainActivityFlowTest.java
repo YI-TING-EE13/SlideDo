@@ -1189,6 +1189,49 @@ public class MainActivityFlowTest {
     }
 
     @Test
+    public void trendsCompareOneScopeAndWeeklyGoalCanBeChanged() throws Exception {
+        markOnboardingSeen();
+        AndroidGameStore store = new AndroidGameStore(targetContext);
+        store.setWeeklyGoalTarget(3);
+        long oldCompletion = System.currentTimeMillis() - 14L * 24L * 60L * 60L * 1000L;
+        int[] moves = {34, 32, 30, 22, 20, 18};
+        for (int index = 0; index < moves.length; index++) {
+            long completedAt = index < 4 ? oldCompletion + index : System.currentTimeMillis();
+            store.recordCompletion(3, PuzzleDifficulty.CLASSIC,
+                    moves[index], moves[index] * 1_000L, false, completedAt);
+        }
+        store.setTrendSize(3);
+        store.setTrendDifficulty(PuzzleDifficulty.CLASSIC);
+
+        launchApp();
+        scrollToText("Trends & Weekly Goal").click();
+        waitForId("trends_root");
+        waitForText("2 / 3 player solves");
+        scrollToText("3x3 · Classic");
+        scrollToText("Moves · 20 recent / 32 previous · 38% better");
+
+        scrollToText("Set Weekly Goal");
+        clickId(R.id.trends_set_goal_button);
+        UiObject2 input = device.wait(
+                Until.findObject(By.clazz("android.widget.EditText")), TIMEOUT_MS);
+        assertNotNull(input);
+        input.setText("7");
+        UiObject2 confirm = device.wait(Until.findObject(By.text("OK")), TIMEOUT_MS);
+        assertNotNull(confirm);
+        confirm.click();
+        waitForText("2 / 7 player solves");
+
+        scrollToText("Choose Size & Difficulty");
+        clickId(R.id.trends_choose_scope_button);
+        scrollToText("4x4 · Challenge").click();
+        scrollToText("4x4 · Challenge");
+        scrollToText("No player solves in this scope yet.");
+        scrollToText("Back");
+        clickId(R.id.trends_back_button);
+        waitForId("home_root");
+    }
+
+    @Test
     public void dailyChallengeRunsFromHomeThroughResultsAndUpdatesStreak() throws Exception {
         markOnboardingSeen();
         DailyChallenge challenge = DailyChallenge.forDate(LocalDate.now());

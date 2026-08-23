@@ -12,6 +12,7 @@ enum Screen {
     MODE_SELECT,
     HOW_TO_PLAY,
     RECORDS,
+    TRENDS,
     SETTINGS,
     RESULTS,
     GAME

@@ -52,6 +52,7 @@
     <string name="home_settings">設定</string>
     <string name="home_records">紀錄</string>
     <string name="home_favorites">收藏題庫</string>
+    <string name="home_trends">趨勢與每週目標</string>
     <plurals name="home_favorites_count">
         <item quantity="other">共有 %1$d 個收藏題目。開啟本機練習題庫。</item>
     </plurals>
@@ -134,6 +135,35 @@
     <string name="records_history_player">玩家</string>
     <string name="records_history_assisted">輔助</string>
     <string name="records_history_metrics">%1$s · %2$s · %3$d 秒</string>
+    <string name="trends_title">趨勢與每週目標</string>
+    <string name="trends_subtitle">比較相同尺寸與難度的玩家成績，並設定完全離線的個人目標。</string>
+    <string name="trends_goal_section">本週進度</string>
+    <string name="trends_goal_week">%1$s 至 %2$s</string>
+    <string name="trends_goal_summary">玩家完成 %1$d / %2$d 題</string>
+    <string name="trends_goal_reached">已達成本週目標</string>
+    <plurals name="trends_goal_remaining">
+        <item quantity="other">再由玩家完成 %1$d 題即可達成目標</item>
+    </plurals>
+    <string name="trends_set_goal">設定每週目標</string>
+    <string name="trends_scope_section">比較範圍</string>
+    <string name="trends_scope">%1$dx%2$d · %3$s</string>
+    <string name="trends_choose_scope">選擇尺寸與難度</string>
+    <string name="trends_comparison_section">近期與前期比較</string>
+    <string name="trends_empty">此範圍尚無玩家完成紀錄。</string>
+    <string name="trends_metric_moves">移動次數</string>
+    <string name="trends_metric_time">時間（秒）</string>
+    <string name="trends_metric_recent">%1$s · 近期平均 %2$d</string>
+    <string name="trends_metric_compare">%1$s · 近期 %2$d / 前期 %3$d · %4$s</string>
+    <string name="trends_improving">進步 %1$d%%</string>
+    <string name="trends_declining">增加 %1$d%%</string>
+    <string name="trends_steady">變化 %1$d%%</string>
+    <plurals name="trends_more_needed">
+        <item quantity="other">此範圍再由玩家完成 %1$d 題，即可比較趨勢。</item>
+    </plurals>
+    <string name="dialog_weekly_goal_title">設定每週玩家目標</string>
+    <string name="dialog_weekly_goal_hint">1 至 50 題</string>
+    <string name="dialog_weekly_goal_invalid">請輸入 1 至 50 的數字。</string>
+    <string name="dialog_trend_scope_title">選擇比較範圍</string>
     <string name="settings_title">設定</string>
     <string name="settings_subtitle">調整操作回饋並管理本機遊戲資料。</string>
     <string name="settings_section_language">語言</string>

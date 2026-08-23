@@ -96,6 +96,10 @@ final class AndroidHomeScreen {
         howToButton.setId(R.id.home_how_to_play_button);
 
         ui.addSectionLabel(screen.content, R.string.home_section_your_game);
+        Button trendsButton = ui.addWideButton(screen.content,
+                R.string.home_trends, R.drawable.ic_action_records,
+                COLOR_PANEL, v -> actions.onTrends());
+        trendsButton.setId(R.id.home_trends_button);
         Button favoritesButton = ui.addWideButton(screen.content,
                 R.string.home_favorites, R.drawable.ic_action_records,
                 COLOR_PANEL_LIGHT, v -> actions.onFavorites());
@@ -222,6 +226,8 @@ final class AndroidHomeScreen {
         void onHowToPlay();
 
         void onFavorites();
+
+        void onTrends();
 
         void onSettings();
 

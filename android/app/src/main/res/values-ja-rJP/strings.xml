@@ -53,6 +53,7 @@
     <string name="home_settings">設定</string>
     <string name="home_records">記録</string>
     <string name="home_favorites">お気に入り問題</string>
+    <string name="home_trends">傾向と週間目標</string>
     <plurals name="home_favorites_count">
         <item quantity="other">お気に入りは%1$d件です。ローカル練習ライブラリを開きます。</item>
     </plurals>
@@ -135,6 +136,35 @@
     <string name="records_history_player">自力</string>
     <string name="records_history_assisted">アシスト</string>
     <string name="records_history_metrics">%1$s・%2$s・%3$d秒</string>
+    <string name="trends_title">傾向と週間目標</string>
+    <string name="trends_subtitle">同じサイズと難易度の自力クリアを比較し、オフラインの個人目標を設定します。</string>
+    <string name="trends_goal_section">今週</string>
+    <string name="trends_goal_week">%1$s～%2$s</string>
+    <string name="trends_goal_summary">自力クリア %1$d / %2$d 問</string>
+    <string name="trends_goal_reached">週間目標を達成しました</string>
+    <plurals name="trends_goal_remaining">
+        <item quantity="other">目標まであと %1$d 問の自力クリア</item>
+    </plurals>
+    <string name="trends_set_goal">週間目標を設定</string>
+    <string name="trends_scope_section">比較範囲</string>
+    <string name="trends_scope">%1$dx%2$d · %3$s</string>
+    <string name="trends_choose_scope">サイズと難易度を選択</string>
+    <string name="trends_comparison_section">直近とその前を比較</string>
+    <string name="trends_empty">この範囲には自力クリアの記録がありません。</string>
+    <string name="trends_metric_moves">手数</string>
+    <string name="trends_metric_time">時間（秒）</string>
+    <string name="trends_metric_recent">%1$s · 直近平均 %2$d</string>
+    <string name="trends_metric_compare">%1$s · 直近 %2$d / 前回 %3$d · %4$s</string>
+    <string name="trends_improving">%1$d%% 改善</string>
+    <string name="trends_declining">%1$d%% 増加</string>
+    <string name="trends_steady">%1$d%% の変化</string>
+    <plurals name="trends_more_needed">
+        <item quantity="other">この範囲であと %1$d 問を自力クリアすると傾向を比較できます。</item>
+    </plurals>
+    <string name="dialog_weekly_goal_title">週間自力クリア目標</string>
+    <string name="dialog_weekly_goal_hint">1～50問</string>
+    <string name="dialog_weekly_goal_invalid">1から50までの数字を入力してください。</string>
+    <string name="dialog_trend_scope_title">比較範囲を選択</string>
     <string name="settings_title">設定</string>
     <string name="settings_subtitle">操作のフィードバックとローカルのゲームデータを管理します。</string>
     <string name="settings_section_language">言語</string>

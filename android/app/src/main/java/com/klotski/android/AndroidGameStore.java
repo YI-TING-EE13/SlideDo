@@ -5,12 +5,16 @@ import android.content.SharedPreferences;
 
 import com.klotski.core.DailyChallenge;
 import com.klotski.core.GameModel;
+import com.klotski.core.PersonalTrend;
 import com.klotski.core.PuzzleIdentity;
 import com.klotski.core.PuzzleDifficulty;
 import com.klotski.core.SaveManager;
+import com.klotski.core.WeeklyGoalProgress;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -25,7 +29,7 @@ import java.util.Set;
  * <p>
  * This class owns the Android persistence schema for independent per-size
  * saves, favorite puzzles and their isolated practice progress, records,
- * completion history, personal statistics, settings,
+ * completion history, personal statistics, trend scope, weekly goal, settings,
  * onboarding, and the last selected puzzle size and difficulty. A legacy
  * single-save payload is migrated into its matching size slot without
  * overwriting a newer slot. Puzzle rules and validation still belong to
@@ -59,6 +63,9 @@ final class AndroidGameStore {
     private static final String KEY_BEST_PREFIX = "best_";
     private static final String KEY_STATS_PREFIX = "stats_";
     private static final String KEY_COMPLETION_HISTORY = "completion_history_v1";
+    private static final String KEY_WEEKLY_GOAL_TARGET = "weekly_goal_target_v1";
+    private static final String KEY_TREND_SIZE = "trend_size_v1";
+    private static final String KEY_TREND_DIFFICULTY = "trend_difficulty_v1";
     private static final String KEY_FAVORITE_PUZZLES = "favorite_puzzles_v1";
     private static final String KEY_FAVORITE_RUN_PREFIX = "favorite_run_v1_";
     private static final String KEY_PLAYER_COMPLETIONS = "player_completions";
@@ -66,6 +73,7 @@ final class AndroidGameStore {
     private static final String KEY_PLAYER_MOVES = "player_moves";
     private static final String KEY_PLAYER_TIME = "player_time";
     private static final int MAX_COMPLETION_HISTORY = 50;
+    private static final int DEFAULT_WEEKLY_GOAL_TARGET = 5;
     private static final int MAX_FAVORITE_PUZZLES = 50;
     private static final int MAX_FAVORITE_LABEL_LENGTH = 40;
     private static final String KEY_ONBOARDING_SEEN = "onboarding_seen";
@@ -630,6 +638,68 @@ final class AndroidGameStore {
             }
         }
         return history.toArray(new CompletionRecord[0]);
+    }
+
+    PersonalTrend getPersonalTrend(int size, PuzzleDifficulty difficulty) {
+        PuzzleDifficulty selected = difficulty == null
+                ? PuzzleDifficulty.CLASSIC : difficulty;
+        List<PersonalTrend.Sample> samples = new ArrayList<>();
+        for (CompletionRecord record : getCompletionHistory()) {
+            if (!record.assisted && record.size == size && record.difficulty == selected) {
+                samples.add(new PersonalTrend.Sample(record.moves, record.timeMs));
+            }
+        }
+        return PersonalTrend.summarize(samples);
+    }
+
+    int getWeeklyGoalTarget() {
+        int target = prefs.getInt(KEY_WEEKLY_GOAL_TARGET, DEFAULT_WEEKLY_GOAL_TARGET);
+        return WeeklyGoalProgress.isValidTarget(target)
+                ? target : DEFAULT_WEEKLY_GOAL_TARGET;
+    }
+
+    void setWeeklyGoalTarget(int target) {
+        if (WeeklyGoalProgress.isValidTarget(target)) {
+            prefs.edit().putInt(KEY_WEEKLY_GOAL_TARGET, target).apply();
+        }
+    }
+
+    int getTrendSize() {
+        return getSupportedInt(KEY_TREND_SIZE, getLastSize(4));
+    }
+
+    void setTrendSize(int size) {
+        if (isSupportedSize(size)) {
+            prefs.edit().putInt(KEY_TREND_SIZE, size).apply();
+        }
+    }
+
+    PuzzleDifficulty getTrendDifficulty() {
+        return PuzzleDifficulty.fromId(prefs.getString(
+                KEY_TREND_DIFFICULTY, getLastDifficulty().getId()));
+    }
+
+    void setTrendDifficulty(PuzzleDifficulty difficulty) {
+        if (difficulty != null) {
+            prefs.edit().putString(KEY_TREND_DIFFICULTY, difficulty.getId()).apply();
+        }
+    }
+
+    WeeklyGoalProgress getWeeklyGoalProgress(LocalDate today, ZoneId zoneId) {
+        List<LocalDate> playerCompletionDates = new ArrayList<>();
+        for (CompletionRecord record : getCompletionHistory()) {
+            if (!record.assisted) {
+                playerCompletionDates.add(Instant.ofEpochMilli(record.completedAt)
+                        .atZone(zoneId).toLocalDate());
+            }
+        }
+        return WeeklyGoalProgress.calculate(
+                today, getWeeklyGoalTarget(), playerCompletionDates);
+    }
+
+    private int getSupportedInt(String key, int fallback) {
+        int value = prefs.getInt(key, fallback);
+        return isSupportedSize(value) ? value : fallback;
     }
 
     CompletionStats getCompletionStats(int size, PuzzleDifficulty difficulty) {

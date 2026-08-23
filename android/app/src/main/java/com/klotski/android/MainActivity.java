@@ -52,6 +52,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -61,8 +62,9 @@ import java.util.List;
  * <p>
  * The activity owns the mobile app flow and wires the shared {@link GameModel}
  * to Android screens, local persistence, best-record tracking, solver actions,
- * and completion results. Gameplay rules remain in the shared core so Android
- * behavior stays aligned with the desktop Swing reference.
+ * completion results, and offline personal progress. Gameplay rules remain in
+ * the shared core so Android behavior stays aligned with the desktop Swing
+ * reference.
  * </p>
  */
 public class MainActivity extends Activity implements GameObserver {
@@ -102,6 +104,7 @@ public class MainActivity extends Activity implements GameObserver {
     private AndroidFavoritesScreen favoritesScreen;
     private AndroidModeSelectScreen modeSelectScreen;
     private AndroidRecordsScreen recordsScreen;
+    private AndroidTrendsScreen trendsScreen;
     private AndroidSettingsScreen settingsScreen;
     private AndroidResultsScreen resultsScreen;
     private AndroidTutorialScreen tutorialScreen;
@@ -184,6 +187,7 @@ public class MainActivity extends Activity implements GameObserver {
         favoritesScreen = new AndroidFavoritesScreen(this, ui);
         modeSelectScreen = new AndroidModeSelectScreen(this, ui);
         recordsScreen = new AndroidRecordsScreen(this, ui);
+        trendsScreen = new AndroidTrendsScreen(this, ui);
         settingsScreen = new AndroidSettingsScreen(this, ui);
         resultsScreen = new AndroidResultsScreen(this, ui);
         tutorialScreen = new AndroidTutorialScreen(this, ui);
@@ -452,6 +456,7 @@ public class MainActivity extends Activity implements GameObserver {
         }
 
         if ((savedScreen == Screen.HOW_TO_PLAY || savedScreen == Screen.RECORDS
+                || savedScreen == Screen.TRENDS
                 || savedScreen == Screen.SETTINGS)
                 && savedReturnScreen == Screen.GAME && savedGameStarted && !loadGame()) {
             savedReturnScreen = Screen.HOME;
@@ -466,6 +471,7 @@ public class MainActivity extends Activity implements GameObserver {
             case MODE_SELECT -> showModeSelectScreen();
             case HOW_TO_PLAY -> showHowToScreen(savedReturnScreen);
             case RECORDS -> showRecordsScreen(savedReturnScreen);
+            case TRENDS -> showTrendsScreen();
             case SETTINGS -> showSettingsScreen(savedReturnScreen);
             case HOME -> showHomeScreen();
             default -> {
@@ -540,6 +546,11 @@ public class MainActivity extends Activity implements GameObserver {
             @Override
             public void onFavorites() {
                 showFavoritesScreen();
+            }
+
+            @Override
+            public void onTrends() {
+                showTrendsScreen();
             }
 
             @Override
@@ -900,6 +911,100 @@ public class MainActivity extends Activity implements GameObserver {
                 });
 
         presentContentView(screen.root);
+    }
+
+    private void showTrendsScreen() {
+        pauseGameForNavigation();
+        if (deferScreenChange(this::showTrendsScreen)) {
+            return;
+        }
+        currentScreen = Screen.TRENDS;
+        infoReturnScreen = Screen.HOME;
+        statusText = null;
+        gameTitleText = null;
+        commandButtons.clear();
+
+        int size = store.getTrendSize();
+        PuzzleDifficulty difficulty = store.getTrendDifficulty();
+        ScreenLayout screen = trendsScreen.build(
+                store.getWeeklyGoalProgress(LocalDate.now(), ZoneId.systemDefault()),
+                size, difficulty, store.getPersonalTrend(size, difficulty),
+                new AndroidTrendsScreen.TrendsActions() {
+                    @Override
+                    public void onSetGoal() {
+                        showWeeklyGoalDialog();
+                    }
+
+                    @Override
+                    public void onChooseScope() {
+                        showTrendScopeDialog();
+                    }
+
+                    @Override
+                    public void onBack() {
+                        showHomeScreen();
+                    }
+                });
+        presentContentView(screen.root);
+    }
+
+    private void showWeeklyGoalDialog() {
+        EditText input = new EditText(this);
+        input.setSingleLine(true);
+        input.setInputType(InputType.TYPE_CLASS_NUMBER);
+        input.setFilters(new InputFilter[] {new InputFilter.LengthFilter(2)});
+        input.setHint(R.string.dialog_weekly_goal_hint);
+        input.setText(String.valueOf(store.getWeeklyGoalTarget()));
+        input.selectAll();
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.dialog_weekly_goal_title)
+                .setView(input)
+                .setPositiveButton(android.R.string.ok, null)
+                .setNegativeButton(R.string.dialog_cancel, null)
+                .create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(view -> {
+                    int target;
+                    try {
+                        target = Integer.parseInt(input.getText().toString());
+                    } catch (NumberFormatException exception) {
+                        target = 0;
+                    }
+                    if (target < 1 || target > 50) {
+                        input.setError(getString(R.string.dialog_weekly_goal_invalid));
+                        return;
+                    }
+                    store.setWeeklyGoalTarget(target);
+                    dialog.dismiss();
+                    showTrendsScreen();
+                }));
+        showTimerPausingDialog(dialog);
+    }
+
+    private void showTrendScopeDialog() {
+        PuzzleDifficulty[] difficulties = PuzzleDifficulty.values();
+        String[] labels = new String[9];
+        for (int size = 3; size <= 5; size++) {
+            for (PuzzleDifficulty difficulty : difficulties) {
+                int index = (size - 3) * difficulties.length + difficulty.ordinal();
+                labels[index] = getString(R.string.trends_scope,
+                        size, size, difficultyName(difficulty));
+            }
+        }
+        int selected = (store.getTrendSize() - 3) * difficulties.length
+                + store.getTrendDifficulty().ordinal();
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.dialog_trend_scope_title)
+                .setSingleChoiceItems(labels, selected, (selectedDialog, which) -> {
+                    store.setTrendSize(3 + which / difficulties.length);
+                    store.setTrendDifficulty(difficulties[which % difficulties.length]);
+                    selectedDialog.dismiss();
+                    showTrendsScreen();
+                })
+                .setNegativeButton(R.string.dialog_cancel, null)
+                .create();
+        showTimerPausingDialog(dialog);
     }
 
     private void showSettingsScreen(Screen returnScreen) {

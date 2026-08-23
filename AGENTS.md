@@ -32,9 +32,9 @@ Prioritize:
 
 Preserve the completed program and use the same implement, verify, document,
 and commit gate for future feature stages.
-Personal Play 2.0 backup/restore, Daily Calendar/history replay, and Favorite
-Puzzles are complete; personal trends and custom goals are the next planned
-stage.
+Personal Play 2.0 backup/restore, Daily Calendar/history replay, Favorite
+Puzzles, and personal trends/custom weekly goals are complete. Continuous
+challenge mode is the next planned stage.
 Defer store signing, store assets, accounts, cloud sync, ads, analytics, and
 other public-distribution work unless the owner changes direction.
 
