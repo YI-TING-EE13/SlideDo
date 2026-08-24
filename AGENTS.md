@@ -34,8 +34,8 @@ Preserve the completed program and use the same implement, verify, document,
 and commit gate for future feature stages.
 Personal Play 2.0 backup/restore, Daily Calendar/history replay, Favorite
 Puzzles, personal trends/custom weekly goals, Continuous Challenge, and Move
-History/Redo are complete. Adaptive and Accessibility Reinforcement is the next
-planned stage.
+History/Redo, and Adaptive and Accessibility Reinforcement are complete.
+Toolchain and CI Maintenance is the next planned stage.
 Defer store signing, store assets, accounts, cloud sync, ads, analytics, and
 other public-distribution work unless the owner changes direction.
 
@@ -166,6 +166,12 @@ Use the emulator when Android gameplay or UI changes.
 - Save after a move, Restart, then Load; state should restore.
 - Open BFS on 4x4; warning dialog should appear.
 - Rotate, switch portrait/landscape, and background/resume when relevant.
+- At 1.5x system font size, verify dense Home/favorite rows stack, game actions
+  remain complete, and the board remains playable on the compact AVD.
+- Verify the screen title is an accessibility heading, game focus order is
+  Home/Menu/status/board/Undo/Redo/Restart/Assist, and every movable board tile
+  is an actionable virtual accessibility child.
+- Keep button text/icon contrast at or above 4.5:1 in both visual themes.
 
 ## Files To Keep In Mind
 
@@ -183,4 +189,6 @@ Use the emulator when Android gameplay or UI changes.
 - Do not let solver-assisted wins update best records.
 - Do not let Save/Load lose `initialGrid`; Restart depends on it.
 - Do not accept input while the board is animating or solver playback is queued.
+- Do not replace `KlotskiView`'s per-cell virtual accessibility nodes with one
+  non-actionable whole-board node; screen-reader users must be able to play.
 - Do not commit `bin/`, `build/`, `android/app/build/`, `android/local.properties`, or local save files.

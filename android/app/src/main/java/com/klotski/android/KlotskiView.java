@@ -5,12 +5,19 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Rect;
 import android.graphics.RectF;
+import android.os.Bundle;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.HapticFeedbackConstants;
+import android.view.accessibility.AccessibilityEvent;
+import android.view.accessibility.AccessibilityManager;
+import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.accessibility.AccessibilityNodeProvider;
 import android.view.animation.PathInterpolator;
+import android.widget.Button;
 
 import com.klotski.core.Direction;
 import com.klotski.core.GameModel;
@@ -43,6 +50,8 @@ public class KlotskiView extends View implements GameObserver {
     private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Deque<Direction> moveQueue = new ArrayDeque<>();
     private final RectF rect = new RectF();
+    private final BoardAccessibilityProvider accessibilityProvider =
+            new BoardAccessibilityProvider();
 
     private GameModel model;
     private float gap;
@@ -164,6 +173,7 @@ public class KlotskiView extends View implements GameObserver {
         animatedTiles.clear();
         inputLocked = false;
         trackingTouch = false;
+        accessibilityProvider.clearAccessibilityFocus();
         this.model = model;
         this.model.addObserver(this);
         refreshAccessibilityDescription();
@@ -451,6 +461,21 @@ public class KlotskiView extends View implements GameObserver {
         return true;
     }
 
+    /**
+     * Exposes each board cell as a virtual accessibility child so a screen-reader
+     * user can inspect the grid and activate every currently movable tile.
+     *
+     * @return provider for the host board and its virtual cells
+     */
+    @Override
+    public AccessibilityNodeProvider getAccessibilityNodeProvider() {
+        return accessibilityProvider;
+    }
+
+    static int virtualIdForCell(int row, int col, int size) {
+        return row * size + col + 1;
+    }
+
     private void clearTouchState() {
         trackingTouch = false;
         downRow = -1;
@@ -725,6 +750,9 @@ public class KlotskiView extends View implements GameObserver {
             description += " " + getResources().getString(R.string.board_accessibility_busy);
         }
         setContentDescription(description);
+        if (isAttachedToWindow()) {
+            sendAccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED);
+        }
     }
 
     private String buildRowsDescription() {
@@ -768,6 +796,183 @@ public class KlotskiView extends View implements GameObserver {
 
     private boolean isValidCell(int row, int col) {
         return row >= 0 && row < model.getSize() && col >= 0 && col < model.getSize();
+    }
+
+    private boolean isAccessibilityMovableCell(int row, int col) {
+        return model != null && isEnabled() && model.isGameRunning() && !model.isSolved()
+                && !isBusy() && model.getTile(row, col) != 0
+                && (row == model.getEmptyRow() || col == model.getEmptyCol());
+    }
+
+    private Rect accessibilityCellBounds(int row, int col) {
+        int size = model.getSize();
+        float available = Math.min(getWidth(), getHeight());
+        float cellSize = (available - (size + 1) * gap) / size;
+        float renderedBoardSize = size * cellSize + (size + 1) * gap;
+        float left = (getWidth() - renderedBoardSize) / 2f + gap
+                + col * (cellSize + gap);
+        float top = (getHeight() - renderedBoardSize) / 2f + gap
+                + row * (cellSize + gap);
+        return new Rect(Math.round(left), Math.round(top),
+                Math.round(left + cellSize), Math.round(top + cellSize));
+    }
+
+    private final class BoardAccessibilityProvider extends AccessibilityNodeProvider {
+        private int accessibilityFocusedId = View.NO_ID;
+
+        @SuppressWarnings("deprecation")
+        @Override
+        public AccessibilityNodeInfo createAccessibilityNodeInfo(int virtualViewId) {
+            if (virtualViewId == HOST_VIEW_ID) {
+                AccessibilityNodeInfo host = AccessibilityNodeInfo.obtain(KlotskiView.this);
+                KlotskiView.this.onInitializeAccessibilityNodeInfo(host);
+                if (model != null) {
+                    int size = model.getSize();
+                    for (int row = 0; row < size; row++) {
+                        for (int col = 0; col < size; col++) {
+                            host.addChild(KlotskiView.this,
+                                    virtualIdForCell(row, col, size));
+                        }
+                    }
+                }
+                return host;
+            }
+            if (model == null) {
+                return null;
+            }
+            int size = model.getSize();
+            int zeroBased = virtualViewId - 1;
+            int row = zeroBased / size;
+            int col = zeroBased % size;
+            if (zeroBased < 0 || !isValidCell(row, col)) {
+                return null;
+            }
+
+            AccessibilityNodeInfo cell = AccessibilityNodeInfo.obtain();
+            cell.setSource(KlotskiView.this, virtualViewId);
+            cell.setParent(KlotskiView.this);
+            cell.setPackageName(getContext().getPackageName());
+            cell.setClassName(Button.class.getName());
+            cell.setFocusable(true);
+            cell.setVisibleToUser(isShown());
+            cell.setEnabled(isEnabled() && !isBusy());
+            cell.setAccessibilityFocused(accessibilityFocusedId == virtualViewId);
+
+            Rect bounds = accessibilityCellBounds(row, col);
+            cell.setBoundsInParent(bounds);
+            int[] location = new int[2];
+            getLocationOnScreen(location);
+            Rect screenBounds = new Rect(bounds);
+            screenBounds.offset(location[0], location[1]);
+            cell.setBoundsInScreen(screenBounds);
+
+            int value = model.getTile(row, col);
+            String cellName = value == 0
+                    ? getResources().getString(R.string.board_empty_cell_description)
+                    : getResources().getString(isHighlightedCell(row, col)
+                            ? R.string.board_highlighted_tile_description
+                            : R.string.board_tile_description, value);
+            boolean movable = isAccessibilityMovableCell(row, col);
+            int actionText = isBusy()
+                    ? R.string.board_cell_action_busy
+                    : (movable
+                            ? R.string.board_cell_action_available
+                            : R.string.board_cell_action_unavailable);
+            cell.setContentDescription(getResources().getString(
+                    R.string.board_cell_accessibility,
+                    cellName, row + 1, col + 1, getResources().getString(actionText)));
+            cell.setClickable(movable);
+            if (movable) {
+                cell.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_CLICK);
+            }
+            cell.addAction(accessibilityFocusedId == virtualViewId
+                    ? AccessibilityNodeInfo.AccessibilityAction.ACTION_CLEAR_ACCESSIBILITY_FOCUS
+                    : AccessibilityNodeInfo.AccessibilityAction.ACTION_ACCESSIBILITY_FOCUS);
+            return cell;
+        }
+
+        @Override
+        public boolean performAction(int virtualViewId, int action, Bundle arguments) {
+            if (virtualViewId == HOST_VIEW_ID) {
+                return KlotskiView.this.performAccessibilityAction(action, arguments);
+            }
+            if (model == null) {
+                return false;
+            }
+            int size = model.getSize();
+            int zeroBased = virtualViewId - 1;
+            int row = zeroBased / size;
+            int col = zeroBased % size;
+            if (zeroBased < 0 || !isValidCell(row, col)) {
+                return false;
+            }
+            if (action == AccessibilityNodeInfo.ACTION_CLICK
+                    && isAccessibilityMovableCell(row, col)) {
+                slideLineToTile(row, col);
+                sendVirtualEvent(virtualViewId, AccessibilityEvent.TYPE_VIEW_CLICKED);
+                return true;
+            }
+            if (action == AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS) {
+                if (accessibilityFocusedId == virtualViewId) {
+                    return false;
+                }
+                if (accessibilityFocusedId != View.NO_ID) {
+                    sendVirtualEvent(accessibilityFocusedId,
+                            AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUS_CLEARED);
+                }
+                accessibilityFocusedId = virtualViewId;
+                invalidate();
+                sendVirtualEvent(virtualViewId,
+                        AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUSED);
+                return true;
+            }
+            if (action == AccessibilityNodeInfo.ACTION_CLEAR_ACCESSIBILITY_FOCUS
+                    && accessibilityFocusedId == virtualViewId) {
+                accessibilityFocusedId = View.NO_ID;
+                invalidate();
+                sendVirtualEvent(virtualViewId,
+                        AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUS_CLEARED);
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        public AccessibilityNodeInfo findFocus(int focus) {
+            if (focus == AccessibilityNodeInfo.FOCUS_ACCESSIBILITY
+                    && accessibilityFocusedId != View.NO_ID) {
+                return createAccessibilityNodeInfo(accessibilityFocusedId);
+            }
+            return null;
+        }
+
+        @SuppressWarnings("deprecation")
+        private void sendVirtualEvent(int virtualViewId, int eventType) {
+            AccessibilityManager manager = (AccessibilityManager) getContext()
+                    .getSystemService(Context.ACCESSIBILITY_SERVICE);
+            if (manager == null || !manager.isEnabled() || getParent() == null) {
+                return;
+            }
+            AccessibilityEvent event = AccessibilityEvent.obtain(eventType);
+            event.setPackageName(getContext().getPackageName());
+            event.setClassName(Button.class.getName());
+            event.setSource(KlotskiView.this, virtualViewId);
+            AccessibilityNodeInfo node = createAccessibilityNodeInfo(virtualViewId);
+            if (node != null && node.getContentDescription() != null) {
+                event.getText().add(node.getContentDescription());
+            }
+            getParent().requestSendAccessibilityEvent(KlotskiView.this, event);
+        }
+
+        private void clearAccessibilityFocus() {
+            if (accessibilityFocusedId == View.NO_ID) {
+                return;
+            }
+            int previous = accessibilityFocusedId;
+            accessibilityFocusedId = View.NO_ID;
+            sendVirtualEvent(previous,
+                    AccessibilityEvent.TYPE_VIEW_ACCESSIBILITY_FOCUS_CLEARED);
+        }
     }
 
     private float lerp(float start, float end, float progress) {

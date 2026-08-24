@@ -72,6 +72,7 @@ final class AndroidRecordsScreen {
     private void addSectionTitle(LinearLayout parent, int textResId) {
         TextView title = ui.createText(activity.getString(textResId),
                 13, COLOR_MUTED_TEXT, Typeface.BOLD);
+        ui.markAccessibilityHeading(title);
         LinearLayout.LayoutParams params = ui.fullWidthParams();
         params.setMargins(ui.dp(6), ui.dp(4), 0, ui.dp(10));
         parent.addView(title, params);

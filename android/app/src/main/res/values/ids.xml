@@ -1,4 +1,5 @@
 <resources>
+    <item name="screen_header_title" type="id" />
     <item name="home_root" type="id" />
     <item name="home_daily_button" type="id" />
     <item name="home_daily_summary_text" type="id" />

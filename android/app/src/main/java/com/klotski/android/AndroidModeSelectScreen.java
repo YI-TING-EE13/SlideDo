@@ -81,17 +81,23 @@ final class AndroidModeSelectScreen {
 
         LinearLayout metadataRow = new LinearLayout(activity);
         metadataRow.setGravity(Gravity.CENTER_VERTICAL);
-        metadataRow.setOrientation(LinearLayout.HORIZONTAL);
+        metadataRow.setOrientation(ui.shouldStackDenseActions()
+                ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
         TextView difficulty = ui.createText(difficultyText, 15, COLOR_ACCENT, Typeface.BOLD);
         difficulty.setId(ids.difficultyId);
-        metadataRow.addView(difficulty, new LinearLayout.LayoutParams(0,
-                LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        metadataRow.addView(difficulty, ui.shouldStackDenseActions()
+                ? ui.fullWidthParams()
+                : new LinearLayout.LayoutParams(0,
+                        LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         if (size == 3) {
             TextView recommended = ui.createText(activity.getString(R.string.mode_recommended),
                     13, COLOR_POSITIVE_TEXT, Typeface.BOLD);
             recommended.setId(R.id.mode_3_recommended_text);
-            metadataRow.addView(recommended, new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+            metadataRow.addView(recommended, ui.shouldStackDenseActions()
+                    ? ui.fullWidthParams()
+                    : new LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT));
         }
         TextView detail = ui.createText(detailText, 15, COLOR_MUTED_TEXT, Typeface.NORMAL);
         detail.setId(ids.detailId);

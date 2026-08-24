@@ -2,6 +2,7 @@ package com.klotski.android;
 
 import android.app.Activity;
 import android.content.res.ColorStateList;
+import android.os.Build;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
@@ -33,6 +34,7 @@ final class AndroidUi {
     private final Activity activity;
     private final List<Button> commandButtons;
     private final AndroidVisualTheme theme;
+    private final AndroidUiPolicy policy;
 
     AndroidUi(Activity activity, List<Button> commandButtons) {
         this(activity, commandButtons, AndroidVisualTheme.MIDNIGHT);
@@ -42,6 +44,7 @@ final class AndroidUi {
         this.activity = activity;
         this.commandButtons = commandButtons;
         this.theme = theme == null ? AndroidVisualTheme.MIDNIGHT : theme;
+        this.policy = new AndroidUiPolicy(activity.getResources().getConfiguration());
     }
 
     ScreenLayout createScreenLayout() {
@@ -52,11 +55,11 @@ final class AndroidUi {
 
         LinearLayout content = new LinearLayout(activity);
         content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(dp(18), systemBarHeight("status_bar_height") + dp(26),
-                dp(18), systemBarHeight("navigation_bar_height") + dp(18));
-        int availableWidth = activity.getResources().getDisplayMetrics().widthPixels;
-        int contentWidth = availableWidth >= dp(720)
-                ? dp(680)
+        int horizontalPadding = dp(policy.getHorizontalPaddingDp());
+        content.setPadding(horizontalPadding, systemBarHeight("status_bar_height") + dp(26),
+                horizontalPadding, systemBarHeight("navigation_bar_height") + dp(18));
+        int contentWidth = policy.hasBoundedContentWidth()
+                ? dp(policy.getContentMaxWidthDp())
                 : ScrollView.LayoutParams.MATCH_PARENT;
         ScrollView.LayoutParams contentParams = new ScrollView.LayoutParams(
                 contentWidth, ScrollView.LayoutParams.WRAP_CONTENT);
@@ -71,8 +74,10 @@ final class AndroidUi {
         header.setOrientation(LinearLayout.VERTICAL);
 
         TextView titleText = createText(title, 34, Color.WHITE, Typeface.BOLD);
+        titleText.setId(R.id.screen_header_title);
         titleText.setGravity(Gravity.CENTER);
         titleText.setLetterSpacing(-0.01f);
+        markAccessibilityHeading(titleText);
         header.addView(titleText, fullWidthParams());
 
         TextView subtitleText = createText(subtitle, 16, COLOR_MUTED_TEXT, Typeface.NORMAL);
@@ -90,6 +95,7 @@ final class AndroidUi {
     TextView addSectionLabel(LinearLayout parent, int textResId) {
         TextView label = createText(activity.getString(textResId), 12, COLOR_MUTED_TEXT, Typeface.BOLD);
         label.setLetterSpacing(0.12f);
+        markAccessibilityHeading(label);
         LinearLayout.LayoutParams params = fullWidthParams();
         params.setMargins(dp(4), dp(10), 0, dp(10));
         parent.addView(label, params);
@@ -119,8 +125,7 @@ final class AndroidUi {
         Button button = createButton(activity.getString(textResId), iconResId, COLOR_PANEL_LIGHT);
         button.setOnClickListener(listener);
         commandButtons.add(button);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(48), 1f);
-        params.setMargins(dp(4), 0, dp(4), 0);
+        LinearLayout.LayoutParams params = adaptiveActionParams(parent);
         parent.addView(button, params);
         return button;
     }
@@ -132,9 +137,9 @@ final class AndroidUi {
     Button addRowButton(LinearLayout parent, int textResId, int iconResId, int color,
             View.OnClickListener listener) {
         Button button = createButton(activity.getString(textResId), iconResId, color);
+        button.setMinHeight(dp(52));
         button.setOnClickListener(listener);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, dp(52), 1f);
-        params.setMargins(dp(4), 0, dp(4), 0);
+        LinearLayout.LayoutParams params = adaptiveActionParams(parent);
         parent.addView(button, params);
         return button;
     }
@@ -146,19 +151,24 @@ final class AndroidUi {
     Button createButton(String text, int iconResId, int color) {
         Button button = new Button(activity);
         button.setText(text);
-        button.setTextColor(Color.WHITE);
+        int resolvedBackground = resolveColor(color);
+        int contentColor = AndroidColorContrast.readableContentColor(resolvedBackground);
+        button.setTextColor(contentColor);
         button.setAllCaps(false);
         button.setTextSize(14);
         button.setMinHeight(dp(48));
         button.setMinWidth(0);
         button.setMinimumWidth(0);
-        button.setPadding(dp(12), 0, dp(12), 0);
+        button.setPadding(dp(12), dp(8), dp(12), dp(8));
+        button.setGravity(Gravity.CENTER);
+        button.setSingleLine(false);
+        button.setMaxLines(2);
         button.setLetterSpacing(0.01f);
         button.setStateListAnimator(null);
         button.setBackground(makeInteractiveBackground(color));
         if (iconResId != 0) {
             Drawable icon = activity.getDrawable(iconResId).mutate();
-            icon.setTint(Color.WHITE);
+            icon.setTint(contentColor);
             button.setCompoundDrawablesRelativeWithIntrinsicBounds(icon, null, null, null);
             button.setCompoundDrawablePadding(dp(7));
         }
@@ -181,7 +191,8 @@ final class AndroidUi {
     }
 
     LinearLayout.LayoutParams fixedButtonParams(int widthDp) {
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(dp(widthDp), dp(48));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                dp(widthDp), LinearLayout.LayoutParams.WRAP_CONTENT);
         params.setMargins(dp(4), 0, dp(4), 0);
         return params;
     }
@@ -254,6 +265,49 @@ final class AndroidUi {
             return theme.dangerPanel;
         }
         return color;
+    }
+
+    boolean shouldStackDenseActions() {
+        return policy.shouldStackDenseActions();
+    }
+
+    boolean isLargeText() {
+        return policy.isLargeText();
+    }
+
+    int compactNavigationWidthDp() {
+        return policy.getCompactNavigationWidthDp();
+    }
+
+    void setAccessibilityTraversalOrder(View... views) {
+        for (int index = 1; index < views.length; index++) {
+            View previous = views[index - 1];
+            View current = views[index];
+            if (previous != null && current != null
+                    && previous.getId() != View.NO_ID && current.getId() != View.NO_ID) {
+                current.setAccessibilityTraversalAfter(previous.getId());
+            }
+        }
+    }
+
+    void markAccessibilityHeading(TextView textView) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            textView.setAccessibilityHeading(true);
+        }
+    }
+
+    private LinearLayout.LayoutParams adaptiveActionParams(LinearLayout parent) {
+        boolean stacked = parent.getOrientation() == LinearLayout.VERTICAL;
+        LinearLayout.LayoutParams params = stacked
+                ? new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT)
+                : new LinearLayout.LayoutParams(
+                        0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        params.setMargins(stacked ? 0 : dp(4), 0,
+                stacked ? 0 : dp(4), stacked ? dp(8) : 0);
+        params.height = LinearLayout.LayoutParams.WRAP_CONTENT;
+        return params;
     }
 
     int dp(int value) {

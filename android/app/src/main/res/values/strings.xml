@@ -343,6 +343,10 @@
     <string name="board_accessibility_rows_prefix">Rows: </string>
     <string name="board_accessibility_row_prefix">row %1$d: </string>
     <string name="board_accessibility_busy">Board is moving.</string>
+    <string name="board_cell_accessibility">%1$s at row %2$d, column %3$d. %4$s</string>
+    <string name="board_cell_action_available">Double tap to slide it toward the empty cell as one move.</string>
+    <string name="board_cell_action_unavailable">Not currently movable.</string>
+    <string name="board_cell_action_busy">Unavailable while the board is moving.</string>
     <plurals name="moves_count">
         <item quantity="one">%d move</item>
         <item quantity="other">%d moves</item>

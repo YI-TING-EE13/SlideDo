@@ -41,7 +41,7 @@ final class AndroidGameScreen {
         homeButton.setContentDescription(activity.getString(R.string.accessibility_game_home));
         homeButton.setOnClickListener(v -> actions.onHome());
         commandButtons.add(homeButton);
-        topBar.addView(homeButton, ui.fixedButtonParams(78));
+        topBar.addView(homeButton, ui.fixedButtonParams(ui.compactNavigationWidthDp()));
 
         TextView titleText = ui.createText("", 20, Color.WHITE, Typeface.BOLD);
         titleText.setId(R.id.game_title_text);
@@ -56,7 +56,7 @@ final class AndroidGameScreen {
         menuButton.setContentDescription(activity.getString(R.string.accessibility_game_menu));
         menuButton.setOnClickListener(v -> actions.onMenu());
         commandButtons.add(menuButton);
-        topBar.addView(menuButton, ui.fixedButtonParams(78));
+        topBar.addView(menuButton, ui.fixedButtonParams(ui.compactNavigationWidthDp()));
 
         TextView statusText = ui.createText("", 14, COLOR_MUTED_TEXT, Typeface.NORMAL);
         statusText.setId(R.id.game_status_text);
@@ -108,13 +108,17 @@ final class AndroidGameScreen {
         assistButton.setId(R.id.game_assist_button);
         assistButton.setContentDescription(activity.getString(R.string.accessibility_game_assist));
 
+        ui.setAccessibilityTraversalOrder(homeButton, menuButton, statusText, boardView,
+                undoButton, redoButton, restartButton, assistButton);
+
         return new GameViews(root, titleText, statusText);
     }
 
     private void configureCompactNavigationButton(Button button) {
-        button.setSingleLine(true);
+        button.setSingleLine(!ui.isLargeText());
+        button.setMaxLines(ui.isLargeText() ? 2 : 1);
         button.setTextSize(13);
-        button.setPadding(ui.dp(8), 0, ui.dp(8), 0);
+        button.setPadding(ui.dp(8), ui.dp(6), ui.dp(8), ui.dp(6));
     }
 
     private LinearLayout createActionRow(LinearLayout parent, int topMargin) {

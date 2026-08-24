@@ -38,7 +38,7 @@ Current handoff status:
 - The latest local verification pass was warning-clean for the previously noisy
   Gradle DSL deprecation, Java native-access warning, and Android Java
   deprecation note.
-- Personal Play 2.0 Stages 1 through 6 are complete. Android Settings owns
+- Personal Play 2.0 Stages 1 through 7 are complete. Android Settings owns
   versioned local backup/restore, while the Daily Calendar browses today and
   earlier deterministic puzzles with per-date saves and completion markers.
   Favorite Puzzles stores up to 50 owner-labeled exact starting boards and
@@ -49,10 +49,13 @@ Current handoff status:
   difficulty in an isolated resumable session while retaining per-puzzle
   completion, assistance, and player-best boundaries. Move History and Redo are
   shared-model actions: whole-line slides remain one action, saves retain both
-  completed and redo histories, and legacy saves still load safely.
-- The latest dual-AVD acceptance covers all 102 Android tests in one serial run
+  completed and redo histories, and legacy saves still load safely. Adaptive UI
+  policy now handles narrow, large-text, and wide-window layouts; buttons choose
+  WCAG-readable content colors, headings and game traversal are explicit, and
+  every board cell is a screen-reader virtual child with movable-tile actions.
+- The latest dual-AVD acceptance covers all 108 Android tests in one serial run
   on each profile: Pixel_7 (Android 15, 1080x2400) and `small_phone` (Android
-  16 / API 36.1, 720x1280) completed in 779.487s and 529.091s respectively, with no
+  16 / API 36.1, 720x1280) completed in 7m59s and 8m23s respectively, with no
   failed or skipped tests. Coverage
   includes persistent sound/theme preferences, active-game preservation across
   theme recreation, strategic-hint assistance persistence and player-best protection,
@@ -60,7 +63,9 @@ Current handoff status:
   exact-puzzle replay before and after Results recreation, difficulty
   selection, independent per-size saves, legacy-save migration, scoped records,
   active-play timing, bounded completion history, lifetime statistics,
-  player/solver-assisted separation, action-history persistence, and Redo.
+  player/solver-assisted separation, action-history persistence, Redo,
+  adaptive-layout policy, contrast, headings, traversal order, touch targets,
+  and actionable board accessibility nodes.
 
 Start a new implementation session by checking:
 
@@ -79,8 +84,8 @@ verify-connected.bat
 
 The original eight-stage Personal Play roadmap in `Roadmap And Planning` is
 implemented and verified. Personal Play 2.0 is now the active staged program;
-Stages 1 through 6 are complete and Stage 7 Adaptive and Accessibility
-Reinforcement is the next implementation gate.
+Stages 1 through 7 are complete and Stage 8 Toolchain and CI Maintenance is the
+next implementation gate.
 
 Real Play upload signing is intentionally deferred until store submission. It
 is not required for a local push-ready commit, and no Git remote or push is part
@@ -549,8 +554,8 @@ protection before the next stage begins.
 | 4 | Personal trends and custom goals | Show local time/move trends and owner-defined goals without analytics or network services. | Completed and verified on 2026-08-24. |
 | 5 | Continuous challenge mode | Chain completed puzzles into a local session with clear progress, exit, resume, and record boundaries. | Completed and verified on 2026-08-24. |
 | 6 | Move history and Redo | Expose the current run's action history and add Redo while preserving whole-line one-action semantics, Restart, Save/Load, and solver input locks. | Completed and verified on 2026-08-24. |
-| 7 | Adaptive and accessibility reinforcement | Improve compact/large-screen layout behavior, larger-text resilience, focus order, TalkBack descriptions, contrast, and reduced-motion coverage. | Planned; next stage. |
-| 8 | Toolchain and CI maintenance | Refresh supported Android/Gradle tooling, keep Windows and GitHub CI reproducible, and document warnings or compatibility migrations. | Planned. |
+| 7 | Adaptive and accessibility reinforcement | Improve compact/large-screen layout behavior, larger-text resilience, focus order, TalkBack descriptions, contrast, and reduced-motion coverage. | Completed and verified on 2026-08-24. |
+| 8 | Toolchain and CI maintenance | Refresh supported Android/Gradle tooling, keep Windows and GitHub CI reproducible, and document warnings or compatibility migrations. | Planned; next stage. |
 
 Shared puzzle rules, deterministic puzzle identity, elapsed milliseconds, save
 compatibility, and assisted-record protection remain core contracts. Android
@@ -633,7 +638,7 @@ Desktop/Android feature parity matrix:
 | Settings / preferences | Persistent English, Traditional Chinese, and Japanese language selection, haptic feedback, reduced motion, reset all saved games, and reset records. | Reduced motion preference plus desktop records/save flows. | App-language and haptics are Android-only; desktop currently remains English. | Android locale/store/settings instrumentation; desktop preferences copy tests/manual smoke. |
 | Records | Per-size local best records, fewer moves then lower time, solver-assisted protection, and player-facing policy explanation. | Per-size local best records with the same comparison, solver-assisted protection, and policy explanation. | Aligned. | Android records/results instrumentation; desktop result and records tests. |
 | Results | Full Results screen with exact-board Replay Puzzle, New Size, Home, record status, and assisted wording. | Android-style Results dialog with Play Again, New Size, Home, record status, and assisted wording. | Android now replays the same starting board for the Personal Play roadmap; desktop retains its new-puzzle action. | Android replay/results instrumentation; desktop results copy tests. |
-| Accessibility | Board summaries, settings switch descriptions, and primary control descriptions exist. | Basic Swing labels/dialog text exist, but no full assistive-tech audit. | Both platforms still need broader manual accessibility review before public release. | Android accessibility instrumentation plus manual TalkBack/desktop review. |
+| Accessibility | Screen and section headings, explicit game traversal order, 48dp action targets, localized board summaries, and per-cell virtual accessibility nodes with playable movable-tile actions exist. Both themes select button content at 4.5:1 or better. | Basic Swing labels/dialog text exist, but no full assistive-tech audit. | Android automated semantics are substantially reinforced; both platforms still need broader manual assistive-technology review before public release. | Android accessibility/adaptive instrumentation, 1.5x font and wide-window acceptance, plus future manual TalkBack/desktop review. |
 | Packaging / release | Debug build, connected tests, signed APK/AAB, Play readiness file check, screenshot smoke workflow. | Desktop ZIP and optional app-image package with user-data paths plus a desktop beta readiness check. | Android still needs real Play upload key and Play Console external assets; desktop package is not a signed installer. | `verify.bat`, `verify-connected.bat`, `verify-release.bat`, manual screenshot smoke, desktop beta smoke checklist. |
 
 Parity conclusion for current beta:
@@ -1016,6 +1021,40 @@ Priority: Low to Medium
 ## Development Log
 
 ### 2026-08-24
+
+- Completed Personal Play 2.0 Stage 7 Adaptive and Accessibility Reinforcement.
+  New `AndroidUiPolicy` centralizes font-scale and width breakpoints for the
+  programmatic View architecture. Dense Home and Favorite action groups and
+  Mode Select metadata stack at 1.3x or larger text, all buttons use wrap-content
+  height with at least 48dp targets, compact game navigation allows two lines at
+  large text, and scrollable screens receive centered width bounds and larger
+  gutters on 600dp-plus windows.
+- `AndroidColorContrast` now selects black or white button text/icons against
+  each resolved theme surface. Automated WCAG calculations cover every button
+  background in Midnight and Ocean at 4.5:1 or better; muted, positive, and
+  accent text roles also retain 4.5:1 against their documented surfaces.
+  Screen titles and section labels are accessibility headings, and the game
+  declares an explicit Home, Menu, status, board, Undo, Redo, Restart, Assist
+  traversal order.
+- `KlotskiView` now exposes every board cell through an
+  `AccessibilityNodeProvider`. Virtual cells report localized tile/empty state,
+  row and column, highlighted state, busy/unavailable state, and an actionable
+  click only when the shared model allows that tile to slide. Activating a
+  distant aligned tile continues to use `slideLineTo` and counts as one move;
+  changing models clears stale virtual focus.
+- Added two adaptive-policy/contrast tests and four complete UI tests for
+  headings, traversal, 48dp controls, virtual board play, large-text behavior,
+  and wide-window bounds. Final serial connected runs passed 108/108 on Pixel_7
+  (Android 15, 1080x2400) in 7m59s and 108/108 on `small_phone` (Android 16 /
+  API 36.1, 720x1280) in 8m23s, with no failures or skips. Separate host-driven
+  1.5x font runs passed on both profiles, and a 1600x2560 wide-window run passed
+  on Pixel_7. Fresh/default and fresh/1.5x Android CLI screenshots were reviewed
+  on both sizes without clipped required content. All 335 localized resource
+  keys and format signatures match. `verify.bat`, `ci.bat`, and the complete
+  release-readiness checks passed. The final debug APK SHA-256 is
+  `AFD32FC22888D17D02AA104542277516829121A3895737A3E01BB3A61C5C4760`;
+  that exact APK installed and cold-launched with `MainActivity` resumed and an
+  empty `AndroidRuntime:E` buffer on both AVDs.
 
 - Completed Personal Play 2.0 Stage 6 Move History and Redo. The shared
   `GameModel` now owns immutable `MoveAction` histories for completed and undone

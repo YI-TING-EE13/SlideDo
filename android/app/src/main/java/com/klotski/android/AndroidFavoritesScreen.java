@@ -74,34 +74,27 @@ final class AndroidFavoritesScreen {
         card.addView(detail, detailParams);
 
         LinearLayout actionsRow = new LinearLayout(activity);
-        Button replay = ui.createButton(activity.getString(R.string.favorites_replay), COLOR_PRIMARY);
+        actionsRow.setOrientation(ui.shouldStackDenseActions()
+                ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
+        Button replay = ui.addRowButton(actionsRow, R.string.favorites_replay, COLOR_PRIMARY,
+                view -> actions.onReplay(favorite));
         replay.setContentDescription(activity.getString(
                 R.string.favorites_replay_accessibility, favorite.label));
-        replay.setOnClickListener(view -> actions.onReplay(favorite));
-        actionsRow.addView(replay, rowButtonParams());
 
-        Button rename = ui.createButton(activity.getString(R.string.favorites_rename), COLOR_PANEL_LIGHT);
+        Button rename = ui.addRowButton(actionsRow, R.string.favorites_rename, COLOR_PANEL_LIGHT,
+                view -> actions.onRename(favorite));
         rename.setContentDescription(activity.getString(
                 R.string.favorites_rename_accessibility, favorite.label));
-        rename.setOnClickListener(view -> actions.onRename(favorite));
-        actionsRow.addView(rename, rowButtonParams());
 
-        Button remove = ui.createButton(activity.getString(R.string.favorites_remove), COLOR_DANGER_PANEL);
+        Button remove = ui.addRowButton(actionsRow, R.string.favorites_remove, COLOR_DANGER_PANEL,
+                view -> actions.onRemove(favorite));
         remove.setContentDescription(activity.getString(
                 R.string.favorites_remove_accessibility, favorite.label));
-        remove.setOnClickListener(view -> actions.onRemove(favorite));
-        actionsRow.addView(remove, rowButtonParams());
         card.addView(actionsRow, ui.fullWidthParams());
 
         LinearLayout.LayoutParams cardParams = ui.fullWidthParams();
         cardParams.setMargins(0, 0, 0, ui.dp(12));
         parent.addView(card, cardParams);
-    }
-
-    private LinearLayout.LayoutParams rowButtonParams() {
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, ui.dp(48), 1f);
-        params.setMargins(ui.dp(3), 0, ui.dp(3), 0);
-        return params;
     }
 
     private String difficultyName(com.klotski.core.PuzzleDifficulty difficulty) {

@@ -258,6 +258,10 @@ Run every item on 3x3, 4x4, and 5x5 in all supported locales where practical.
 - [ ] Background/resume excludes away time and does not create a duplicate move or result.
 - [ ] Game title, status, first-move hint, movable-tile hint, timer, best record, and button accessibility labels are localized.
 - [ ] Board accessibility description includes size, empty-cell position, highlighted count, row values, and moving state in the active language.
+- [ ] The board exposes one virtual accessibility child per cell. Each child
+  announces tile/empty state plus row and column; only a currently movable tile
+  is clickable, and activating a distant aligned tile performs one whole-line
+  move through the shared model.
 
 ## E. Assist, Solver, Results, and Records
 
@@ -292,10 +296,20 @@ Inspect every major screen in all supported locales on both AVD sizes.
   Move History, Settings, Records, and Results have no clipped, overlapping, ellipsized, or
   off-screen required controls.
 - [ ] Text wraps naturally; fixed button rows remain tappable and readable in Traditional Chinese and Japanese.
+- [ ] At 1.5x system font size, dense Home/Favorite action groups stack,
+  Mode Select metadata remains complete, game actions are not clipped or
+  ellipsized, and the compact 720x1280 board stays playable.
+- [ ] At a 600dp-plus or 1600x2560 test window, scrollable content has a readable
+  centered maximum width and larger gutters instead of stretching edge to edge.
 - [ ] Scrolling reaches all content and Back/Home controls on the compact AVD.
 - [ ] Screen and board animations follow Reduced Motion; language changes do not alter motion behavior.
 - [ ] Touch targets, contrast, selected/highlight states, and focus order remain usable.
+- [ ] All standard action controls measure at least 48dp. Button text and icons
+  select black or white for at least 4.5:1 contrast on every Midnight/Ocean
+  button surface; semantic text roles retain the same minimum on their surfaces.
 - [ ] TalkBack-visible content descriptions are meaningful and localized; decorative visuals do not add noisy labels.
+- [ ] Screen and section titles are accessibility headings. Game traversal is
+  Home, Menu, status, board, Undo, Redo, Restart, then Assist.
 - [ ] Singular/plural move counts render correctly in English and validly in Traditional Chinese and Japanese.
 - [ ] App remains responsive after repeated language switches, rotations, and navigation loops.
 
@@ -305,6 +319,23 @@ Do not mark the localization work complete until every applicable item above is
 checked in all supported locales, failures are fixed and rerun, and any
 unavailable device coverage is explicitly recorded as a limitation rather than
 reported as passed.
+
+### 2026-08-24 Personal Play 2.0 Stage 7 Adaptive and Accessibility pass
+
+| Evidence | Result |
+| --- | --- |
+| Debug APK SHA-256 | `AFD32FC22888D17D02AA104542277516829121A3895737A3E01BB3A61C5C4760` |
+| Local verification | Android debug/test APK assembly and lint passed without new compiler warnings; all 335 English, Traditional Chinese, and Japanese resource keys and format signatures match |
+| Pixel_7 | All 108 Android tests passed on Android 15 at 1080x2400 in one serial run (7m59s); 0 failed, 0 skipped |
+| `small_phone` | All 108 Android tests passed on Android 16 / API 36.1 at 720x1280 in one serial run (8m23s); 0 failed, 0 skipped |
+| Adaptive layout | Central policy stacks dense rows from 1.3x text, keeps actions at wrap-content/48dp minimums, and centers bounded content on 600dp-plus windows; separate 1.5x runs passed on both AVDs and a 1600x2560 wide-window run passed on Pixel_7 |
+| Accessibility semantics | Screen/section headings, explicit game traversal, localized per-cell virtual nodes, focus clearing, busy/unavailable state, and a playable whole-line accessibility click passed automated coverage |
+| Contrast and visual review | Every Midnight/Ocean button surface receives black or white content at 4.5:1 or better; fresh/default and fresh/1.5x Android CLI screenshots on both display sizes showed no clipped required content |
+| Runtime coverage | Existing navigation, gameplay, persistence, localization, rotation, background/resume, reduced-motion, and solver-lock flows remained green; the exact final APK installed and cold-launched with `MainActivity` resumed and an empty `AndroidRuntime:E` buffer on both AVDs |
+
+Automated provider tests validate the semantics used by TalkBack, but a broader
+manual pass with the actual TalkBack service remains a future public-release
+gate rather than a claim of this owner-only stage.
 
 ### 2026-08-24 Personal Play 2.0 Stage 6 Move History and Redo pass
 

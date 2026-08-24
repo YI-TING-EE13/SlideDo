@@ -15,10 +15,14 @@ import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.graphics.drawable.ColorDrawable;
 import android.os.SystemClock;
+import android.text.Layout;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.accessibility.AccessibilityNodeProvider;
 import android.widget.Button;
 import android.widget.CompoundButton;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -1597,6 +1601,116 @@ public class MainActivityFlowTest {
     }
 
     @Test
+    public void gameScreenDeclaresHeadingTouchTargetsAndTraversalOrder() throws Exception {
+        writeSavedGame(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 0);
+        markOnboardingSeen();
+        launchApp();
+
+        assertAccessibilityHeading(R.id.screen_header_title);
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+
+        assertTraversalAfter(R.id.game_menu_button, R.id.game_home_button);
+        assertTraversalAfter(R.id.game_status_text, R.id.game_menu_button);
+        assertTraversalAfter(R.id.game_board, R.id.game_status_text);
+        assertTraversalAfter(R.id.game_undo_button, R.id.game_board);
+        assertTraversalAfter(R.id.game_redo_button, R.id.game_undo_button);
+        assertTraversalAfter(R.id.game_restart_button, R.id.game_redo_button);
+        assertTraversalAfter(R.id.game_assist_button, R.id.game_restart_button);
+        assertMinimumTouchTarget(R.id.game_home_button, 48);
+        assertMinimumTouchTarget(R.id.game_menu_button, 48);
+        assertMinimumTouchTarget(R.id.game_undo_button, 48);
+        assertMinimumTouchTarget(R.id.game_redo_button, 48);
+        assertMinimumTouchTarget(R.id.game_restart_button, 48);
+        assertMinimumTouchTarget(R.id.game_assist_button, 48);
+    }
+
+    @Test
+    public void boardAccessibilityNodesExposeAndActivateWholeLineMoves() throws Exception {
+        writeSavedGame(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 0);
+        markOnboardingSeen();
+        launchApp();
+        clickId(R.id.home_continue_button);
+        waitForBoardReady(R.id.game_board, 3);
+
+        instrumentation.runOnMainSync(() -> {
+            KlotskiView board = activity.findViewById(R.id.game_board);
+            AccessibilityNodeProvider provider = board.getAccessibilityNodeProvider();
+            assertNotNull(provider);
+            AccessibilityNodeInfo host = provider.createAccessibilityNodeInfo(
+                    AccessibilityNodeProvider.HOST_VIEW_ID);
+            assertNotNull(host);
+            assertEquals(9, host.getChildCount());
+
+            int tileId = KlotskiView.virtualIdForCell(1, 2, 3);
+            AccessibilityNodeInfo tile = provider.createAccessibilityNodeInfo(tileId);
+            assertNotNull(tile);
+            assertTrue(tile.isClickable());
+            assertTrue(tile.getContentDescription().toString().contains("Tile 5"));
+            assertTrue(provider.performAction(tileId,
+                    AccessibilityNodeInfo.ACTION_CLICK, null));
+        });
+
+        waitForBoardIdle(R.id.game_board);
+        waitForStatusContaining("1 move");
+    }
+
+    @Test
+    public void largeFontScaleStacksDenseRowsWithoutEllipsizingGameActions() throws Exception {
+        writeSavedGame(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 0);
+        markOnboardingSeen();
+        launchApp();
+
+        float fontScale = activity.getResources().getConfiguration().fontScale;
+        if (fontScale < 1.49f) {
+            assertFalse(new AndroidUiPolicy(
+                    activity.getResources().getConfiguration()).isLargeText());
+            return;
+        }
+
+        assertParentOrientation(R.id.home_onboarding_button, LinearLayout.VERTICAL);
+        assertParentOrientation(R.id.home_settings_button, LinearLayout.VERTICAL);
+        assertNoEllipsis(R.id.home_onboarding_button);
+        assertNoEllipsis(R.id.home_tutorial_button);
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+        assertNoEllipsis(R.id.game_home_button);
+        assertNoEllipsis(R.id.game_menu_button);
+        assertNoEllipsis(R.id.game_undo_button);
+        assertNoEllipsis(R.id.game_redo_button);
+        assertNoEllipsis(R.id.game_restart_button);
+        assertNoEllipsis(R.id.game_assist_button);
+        waitForBoardReady(R.id.game_board, 3);
+    }
+
+    @Test
+    public void wideWindowCentersAndBoundsScrollableScreenContent() throws Exception {
+        markOnboardingSeen();
+        launchApp();
+
+        instrumentation.runOnMainSync(() -> {
+            ViewGroup root = activity.findViewById(R.id.home_root);
+            assertNotNull(root);
+            assertTrue(root.getChildCount() > 0);
+            View content = root.getChildAt(0);
+            AndroidUiPolicy policy = new AndroidUiPolicy(
+                    activity.getResources().getConfiguration());
+            if (!policy.hasBoundedContentWidth()) {
+                assertEquals(root.getWidth(), content.getWidth());
+                return;
+            }
+            int maximumPx = Math.round(policy.getContentMaxWidthDp()
+                    * activity.getResources().getDisplayMetrics().density);
+            assertTrue("Wide-screen content exceeded its adaptive bound",
+                    content.getWidth() <= maximumPx);
+            int leftSpace = content.getLeft();
+            int rightSpace = root.getWidth() - content.getRight();
+            assertTrue("Wide-screen content was not centered",
+                    Math.abs(leftSpace - rightSpace) <= 2);
+        });
+    }
+
+    @Test
     public void saveLoadRestoresMovedStateAfterRestart() throws Exception {
         writeSavedGame(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 0);
         launchApp();
@@ -1915,6 +2029,68 @@ public class MainActivityFlowTest {
             assertTrue("Activity view is not a TextView: " + resourceId, view instanceof TextView);
             assertTrue("Activity text should stay on one line: " + resourceId,
                     ((TextView) view).isSingleLine());
+        });
+    }
+
+    private void assertAccessibilityHeading(int resourceId) {
+        instrumentation.runOnMainSync(() -> {
+            View view = activity.findViewById(resourceId);
+            assertNotNull("Missing accessibility heading: " + resourceId, view);
+            assertTrue("View should be exposed as an accessibility heading: " + resourceId,
+                    view.isAccessibilityHeading());
+        });
+    }
+
+    private void assertTraversalAfter(int resourceId, int expectedPreviousId) {
+        instrumentation.runOnMainSync(() -> {
+            View view = activity.findViewById(resourceId);
+            assertNotNull("Missing traversal view: " + resourceId, view);
+            assertEquals("Unexpected traversal predecessor for: " + resourceId,
+                    expectedPreviousId, view.getAccessibilityTraversalAfter());
+        });
+    }
+
+    private void assertMinimumTouchTarget(int resourceId, int minimumDp) {
+        instrumentation.runOnMainSync(() -> {
+            View view = activity.findViewById(resourceId);
+            assertNotNull("Missing touch target: " + resourceId, view);
+            int minimumPx = Math.round(minimumDp
+                    * activity.getResources().getDisplayMetrics().density);
+            assertTrue("Touch target width below " + minimumDp + "dp: " + resourceId
+                            + " was " + view.getWidth() + "px",
+                    view.getWidth() >= minimumPx);
+            assertTrue("Touch target height below " + minimumDp + "dp: " + resourceId
+                            + " was " + view.getHeight() + "px",
+                    view.getHeight() >= minimumPx);
+        });
+    }
+
+    private void assertParentOrientation(int resourceId, int expectedOrientation) {
+        instrumentation.runOnMainSync(() -> {
+            View view = activity.findViewById(resourceId);
+            assertNotNull("Missing adaptive child: " + resourceId, view);
+            assertTrue("Adaptive parent should be a LinearLayout: " + resourceId,
+                    view.getParent() instanceof LinearLayout);
+            assertEquals("Unexpected adaptive row orientation for: " + resourceId,
+                    expectedOrientation, ((LinearLayout) view.getParent()).getOrientation());
+        });
+    }
+
+    private void assertNoEllipsis(int resourceId) {
+        instrumentation.runOnMainSync(() -> {
+            View view = activity.findViewById(resourceId);
+            assertNotNull("Missing text view: " + resourceId, view);
+            assertTrue("Expected TextView for ellipsis check: " + resourceId,
+                    view instanceof TextView);
+            TextView text = (TextView) view;
+            Layout layout = text.getLayout();
+            assertNotNull("Text has not been laid out: " + resourceId, layout);
+            for (int line = 0; line < layout.getLineCount(); line++) {
+                assertEquals("Ellipsized line for: " + resourceId,
+                        0, layout.getEllipsisCount(line));
+            }
+            assertEquals("Text was clipped after max lines for: " + resourceId,
+                    text.getText().length(), layout.getLineEnd(layout.getLineCount() - 1));
         });
     }
 

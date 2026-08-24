@@ -50,7 +50,11 @@ an emulator or connected Android device.
   statistics, daily state, onboarding, language, and preferences through the
   Android system file picker
 - Board, highlighted movable tiles, primary game controls, and settings switches
-  expose accessibility descriptions for screen readers
+  expose accessibility descriptions for screen readers; every board cell is a
+  virtual child and movable tiles expose a playable click action
+- Screen/section headings, explicit game traversal order, 48dp minimum action
+  targets, 1.3x large-text stacking, centered wide-window bounds, and automatic
+  4.5:1-or-better button content contrast in both themes
 - Manual Save and Load controls in the in-game menu
 - Auto-save through `SharedPreferences`
 - Active-play timing pauses for game dialogs, navigation outside Game, and app
@@ -169,10 +173,10 @@ This runs `verify.bat` and `verify-release.bat`. CI release artifacts are
 verification outputs and use the temporary signing key unless real Play upload
 signing is explicitly configured.
 
-Latest 2026-08-24 validation status: all 102 Android tests passed in one serial
-run on each emulator profile: Pixel_7 passed 102/102 on Android 15 at 1080x2400
-in 779.487s and `small_phone` passed 102/102 on Android 16 / API 36.1 at 720x1280
-in 529.091s. Neither run reported a failed or skipped test. The suite covers the
+Latest 2026-08-24 validation status: all 108 Android tests passed in one serial
+run on each emulator profile: Pixel_7 passed 108/108 on Android 15 at 1080x2400
+in 7m59s and `small_phone` passed 108/108 on Android 16 / API 36.1 at 720x1280
+in 8m23s. Neither run reported a failed or skipped test. The suite covers the
 normal animated transition path, the Reduced motion bypass, English-default
 locale isolation, persistent English, Traditional Chinese, and Japanese switching,
 explicit Traditional Chinese and Japanese major-screen/dialog/result flows,
@@ -186,6 +190,11 @@ statistics, player/assisted separation, localized Records summaries, full
 Personal Play 2.0 Stage 6 additionally covers action-history identity,
 whole-line one-action semantics, Redo ordering and clearing, persistence in all
 game modes and backup, rotation, and compact portrait/landscape control layout.
+Personal Play 2.0 Stage 7 additionally covers adaptive width/font policy,
+large-text stacking, 48dp controls, accessibility headings and traversal,
+theme contrast, and virtual board-cell activation. Separate 1.5x font runs
+passed on both AVDs, a 1600x2560 wide-window run passed on Pixel_7, and fresh
+default/large-text Android CLI screenshots were inspected on both display sizes.
 Stage 8 adds a sound preference that defaults off, asset-free move/completion
 tones, persistent Midnight/Ocean palettes, and active-game preservation when a
 theme recreates the Activity. Automated checks cover defaults, persistence,
@@ -253,6 +262,13 @@ desktop exposes Redo with `Ctrl+Y`. The Stage 6 final debug APK SHA-256 is
 `4875F3D3341C258ACB4651F049D40385139359123D92E43F65F24D0C01045704`.
 That exact APK installed and cold-launched with `MainActivity` resumed and no
 `AndroidRuntime:E` output on either final AVD.
+Personal Play 2.0 Stage 7 adds centralized adaptive layout and contrast policy,
+wrap-content action heights, semantic headings and focus order, and playable
+per-cell accessibility nodes on the custom board. The Stage 7 final debug APK
+SHA-256 is
+`AFD32FC22888D17D02AA104542277516829121A3895737A3E01BB3A61C5C4760`.
+That exact APK installed and cold-launched with `MainActivity` resumed and no
+`AndroidRuntime:E` output on Pixel_7 and `small_phone`.
 CLI-captured manual review covered English onboarding, Traditional Chinese
 Home/Settings/Mode Select/Game, and Japanese Home/Settings/Mode Select/How to
 Play/Game on the compact AVD. The compact controls remained single-line after

@@ -74,7 +74,9 @@ final class AndroidDailyCalendarScreen {
         TextView month = ui.createText(label, 18, android.graphics.Color.WHITE, Typeface.BOLD);
         month.setId(R.id.daily_calendar_month_text);
         month.setGravity(Gravity.CENTER);
-        row.addView(month, new LinearLayout.LayoutParams(0, ui.dp(52), 1.35f));
+        month.setMinHeight(ui.dp(52));
+        row.addView(month, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1.35f));
 
         Button next = ui.addRowButton(row, R.string.daily_calendar_next, COLOR_PANEL_LIGHT,
                 view -> actions.onNextMonth());

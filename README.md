@@ -66,7 +66,14 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
   - Assist offers a strategic next-move hint and non-assisted Show Movable Tiles;
     BFS, A*, and IDA* remain under advanced Solver Tools. Strategic and solver
     assistance persist with the run and cannot replace player best records.
-  - Android exposes board state, empty-cell position, highlighted movable tiles, and primary controls through accessibility descriptions.
+  - Android exposes board state, empty-cell position, highlighted movable tiles,
+    and primary controls through localized accessibility descriptions. Each board
+    cell is also a virtual screen-reader child, and movable tiles can be activated
+    without touch coordinates.
+  - Dense action groups stack for 1.3x-or-larger text, scrollable content is
+    centered and bounded on wide windows, game focus order is explicit, action
+    targets remain at least 48dp, and button text/icons automatically choose a
+    foreground with at least 4.5:1 contrast in both themes.
 - **Quality-of-Life Gameplay**:
   - Undo, Redo, and Move History.
   - Restart current puzzle without reshuffling.
@@ -91,7 +98,8 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
     tones, persistent Midnight/Ocean themes, haptics, autosave, manual
     save/load, action-history persistence, local JSON backup/restore, best
     records, Undo/Redo, Move History, Assist hints,
-    accessibility descriptions, nested solver controls, and instrumentation
+    actionable board accessibility nodes, adaptive large-text/wide-window
+    layout, nested solver controls, and instrumentation
     tests.
 
 ---
@@ -414,10 +422,10 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
 - Connected Android instrumentation helpers now wait for the foreground app
   window, wait for activity controls to become interactable, use device-level
   board taps, and fall back to direct swipe scrolling for long content.
-- The latest 2026-08-24 dual-AVD Android acceptance covers all 102 tests in one
-  serial run on each profile: Pixel_7 (Android 15, 1080x2400) passed 102/102 in
-  779.487s and `small_phone` (Android 16 / API 36.1, 720x1280) passed 102/102 in
-  529.091s, with no failed or skipped tests. The suite
+- The latest 2026-08-24 dual-AVD Android acceptance covers all 108 tests in one
+  serial run on each profile: Pixel_7 (Android 15, 1080x2400) passed 108/108 in
+  7m59s and `small_phone` (Android 16 / API 36.1, 720x1280) passed 108/108 in
+  8m23s, with no failed or skipped tests. The suite
   includes English-default isolation from device locale, persistent language
   switching, active-game preservation, and explicit Traditional Chinese and
   Japanese major-screen, difficulty-selection, independent per-size saves,
@@ -443,7 +451,11 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
   start/resume/next/complete/end flows, and rotation-safe continuation. Move
   History/Redo tests cover adjacent and whole-line action identity, undo/redo
   ordering, new-action and Restart clearing, save/load and backup persistence,
-  rotation, compact portrait controls, and landscape board space.
+  rotation, compact portrait controls, and landscape board space. Adaptive and
+  accessibility tests cover large-text stacking, wide-window bounds, 48dp action
+  targets, headings, explicit traversal, theme contrast, and playable virtual
+  board cells. Separate 1.5x font runs passed on both profiles, and a 1600x2560
+  wide-window run passed on Pixel_7.
 - Latest local `ci.bat` run passed the no-device verification and release
   readiness gates.
 - Android emulator smoke testing for install/launch, Home visibility, whole-line
@@ -588,9 +600,9 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
 - Personal Play 2.0 is active. Stage 1 offline backup/restore, Stage 2 daily
   calendar/history replay, Stage 3 Favorite Puzzles, Stage 4 offline personal
   trends/custom weekly goals, Stage 5 Continuous Challenge, and Stage 6 Move
-  History/Redo completed their two-AVD acceptance. Adaptive accessibility and
-  toolchain maintenance remain future stages until their own verification and
-  commit gates pass.
+  History/Redo, and Stage 7 adaptive accessibility completed their two-AVD
+  acceptance. Toolchain and CI maintenance remains the final future stage until
+  its own verification and commit gate passes.
 - Desktop/mobile player-facing parity MVP is complete for Home/start, Records, Preferences, Results, How to Play, Practice Tutorial, and Assist hints.
 - Save files now include release-readiness metadata and desktop saves now live in the user-data directory.
 - Signed Android release APK/AAB and desktop ZIP/app-image packaging scripts are available.
@@ -612,7 +624,9 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
   acceptance before store submission.
 - Split larger UI/controller code only where it supports a concrete feature or
   verification need.
-- Continue broader accessibility review with TalkBack, touch-target, color-contrast, and reduced-motion validation.
+- Run a broader manual TalkBack service review before any future public release;
+  automated virtual-node play, touch targets, color contrast, headings, focus
+  order, large text, and reduced-motion paths are already covered locally.
 - Replace temporary release signing with a real Play upload key when store
   submission begins; it is intentionally deferred from the current push-ready
   milestone.

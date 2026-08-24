@@ -340,6 +340,10 @@
     <string name="board_accessibility_rows_prefix">各列：</string>
     <string name="board_accessibility_row_prefix">第 %1$d 列：</string>
     <string name="board_accessibility_busy">盤面正在移動。</string>
+    <string name="board_cell_accessibility">%1$s，位於第 %2$d 列、第 %3$d 欄。%4$s</string>
+    <string name="board_cell_action_available">點兩下即可將它滑向空格，並計為一步。</string>
+    <string name="board_cell_action_unavailable">目前無法移動。</string>
+    <string name="board_cell_action_busy">盤面移動時暫時無法操作。</string>
     <plurals name="moves_count">
         <item quantity="one">%d 次移動</item>
         <item quantity="other">%d 次移動</item>

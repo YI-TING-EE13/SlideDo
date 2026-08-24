@@ -145,7 +145,8 @@ final class AndroidHomeScreen {
     private LinearLayout createActionRow(LinearLayout parent) {
         LinearLayout row = new LinearLayout(activity);
         row.setGravity(Gravity.CENTER);
-        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setOrientation(ui.shouldStackDenseActions()
+                ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
         LinearLayout.LayoutParams params = ui.fullWidthParams();
         params.setMargins(-ui.dp(4), 0, -ui.dp(4), ui.dp(10));
         parent.addView(row, params);
