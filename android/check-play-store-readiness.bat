@@ -75,8 +75,8 @@ call :require_file "%MANIFEST%" "AndroidManifest.xml"
 call :require_text "%MANIFEST%" "@mipmap/ic_launcher" "manifest adaptive launcher icon"
 call :require_text "%MANIFEST%" "android:roundIcon" "manifest round launcher icon"
 call :require_file "%ANDROID_ROOT%\app\src\main\res\drawable\ic_launcher_foreground.xml" "adaptive icon foreground"
-call :require_file "%ANDROID_ROOT%\app\src\main\res\mipmap-anydpi-v26\ic_launcher.xml" "adaptive launcher icon"
-call :require_file "%ANDROID_ROOT%\app\src\main\res\mipmap-anydpi-v26\ic_launcher_round.xml" "round adaptive launcher icon"
+call :require_file "%ANDROID_ROOT%\app\src\main\res\mipmap-anydpi\ic_launcher.xml" "adaptive launcher icon"
+call :require_file "%ANDROID_ROOT%\app\src\main\res\mipmap-anydpi\ic_launcher_round.xml" "round adaptive launcher icon"
 call :require_file "%ANDROID_ROOT%\app\src\main\res\values\colors.xml" "launcher icon background color"
 
 echo [4/7] Privacy and Data Safety assumptions

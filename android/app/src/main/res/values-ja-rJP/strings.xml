@@ -2,7 +2,6 @@
 <resources>
     <string name="app_name">SlideDo</string>
     <string name="home_tagline">すき間時間に気持ちよく解ける、落ち着いた数字パズル。</string>
-    <string name="home_summary">タイルを順番に並べ、空きマスを右下に置きましょう。</string>
     <string name="home_daily_challenge">デイリーカレンダー</string>
     <string name="home_daily_summary">%1$s · %2$s · 連続 %3$d · 最高 %4$d</string>
     <string name="home_daily_ready">未開始</string>
@@ -260,9 +259,6 @@
     <string name="status_solving">%1$sで解析中…</string>
     <string name="best_empty">--</string>
     <string name="best_format">%1$s、%2$d秒</string>
-    <string name="button_3x3">3x3</string>
-    <string name="button_4x4">4x4</string>
-    <string name="button_5x5">5x5</string>
     <string name="button_undo">戻す</string>
     <string name="button_redo">やり直す</string>
     <string name="move_history_title">手順履歴</string>
@@ -346,19 +342,15 @@
     <string name="board_cell_action_unavailable">現在は移動できません。</string>
     <string name="board_cell_action_busy">盤面の移動中は操作できません。</string>
     <plurals name="moves_count">
-        <item quantity="one">%d手</item>
         <item quantity="other">%d手</item>
     </plurals>
     <plurals name="records_player_solves">
-        <item quantity="one">%d回の自力クリア</item>
         <item quantity="other">%d回の自力クリア</item>
     </plurals>
     <plurals name="records_assisted_solves">
-        <item quantity="one">%d回のアシストクリア</item>
         <item quantity="other">%d回のアシストクリア</item>
     </plurals>
     <plurals name="board_accessibility_highlight_count">
-        <item quantity="one">%d個の強調表示されたタイルを空きマスへ動かせます。</item>
         <item quantity="other">%d個の強調表示されたタイルを空きマスへ動かせます。</item>
     </plurals>
 </resources>

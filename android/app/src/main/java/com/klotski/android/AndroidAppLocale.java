@@ -28,6 +28,13 @@ final class AndroidAppLocale {
     private AndroidAppLocale() {
     }
 
+    /**
+     * Returns a context configured for one packaged SlideDo language. App
+     * Bundle language splitting is disabled in the module build so every
+     * offline locale remains present; the AGP 8.13 detector does not recognize
+     * that Groovy DSL setting and is suppressed at this verified boundary.
+     */
+    @SuppressWarnings("AppBundleLocaleChanges")
     static Context wrap(Context baseContext, String languageTag) {
         String normalizedTag = normalizeLanguageTag(languageTag);
         Locale locale = Locale.forLanguageTag(normalizedTag);

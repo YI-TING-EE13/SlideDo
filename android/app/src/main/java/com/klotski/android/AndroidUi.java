@@ -10,6 +10,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.view.Gravity;
 import android.view.View;
+import android.view.WindowInsets;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -56,8 +57,8 @@ final class AndroidUi {
         LinearLayout content = new LinearLayout(activity);
         content.setOrientation(LinearLayout.VERTICAL);
         int horizontalPadding = dp(policy.getHorizontalPaddingDp());
-        content.setPadding(horizontalPadding, systemBarHeight("status_bar_height") + dp(26),
-                horizontalPadding, systemBarHeight("navigation_bar_height") + dp(18));
+        applySystemBarPadding(content, horizontalPadding, dp(26),
+                horizontalPadding, dp(18));
         int contentWidth = policy.hasBoundedContentWidth()
                 ? dp(policy.getContentMaxWidthDp())
                 : ScrollView.LayoutParams.MATCH_PARENT;
@@ -314,11 +315,35 @@ final class AndroidUi {
         return Math.round(value * activity.getResources().getDisplayMetrics().density);
     }
 
-    int systemBarHeight(String resourceName) {
-        int resourceId = activity.getResources().getIdentifier(resourceName, "dimen", "android");
-        if (resourceId == 0) {
-            return 0;
-        }
-        return activity.getResources().getDimensionPixelSize(resourceId);
+    /**
+     * Applies stable content padding plus the system-bar insets dispatched for
+     * the current window. The API 26 fallback keeps owner devices supported
+     * while API 30 and newer use typed system-bar insets.
+     */
+    @SuppressWarnings("deprecation")
+    void applySystemBarPadding(View view, int left, int top, int right, int bottom) {
+        view.setPadding(left, top, right, bottom);
+        view.setOnApplyWindowInsetsListener((target, windowInsets) -> {
+            int insetLeft;
+            int insetTop;
+            int insetRight;
+            int insetBottom;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                android.graphics.Insets bars = windowInsets.getInsets(WindowInsets.Type.systemBars());
+                insetLeft = bars.left;
+                insetTop = bars.top;
+                insetRight = bars.right;
+                insetBottom = bars.bottom;
+            } else {
+                insetLeft = windowInsets.getSystemWindowInsetLeft();
+                insetTop = windowInsets.getSystemWindowInsetTop();
+                insetRight = windowInsets.getSystemWindowInsetRight();
+                insetBottom = windowInsets.getSystemWindowInsetBottom();
+            }
+            target.setPadding(left + insetLeft, top + insetTop,
+                    right + insetRight, bottom + insetBottom);
+            return windowInsets;
+        });
+        view.requestApplyInsets();
     }
 }

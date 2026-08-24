@@ -24,6 +24,7 @@ English without crashing.
 Run from the repository root unless noted otherwise.
 
 ```bat
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File verify-toolchain.ps1
 android\gradlew.bat -p . test
 cd android
 build-debug.bat :app:assembleDebug :app:lintDebug :app:connectedDebugAndroidTest
@@ -38,7 +39,10 @@ Capture `adb devices -l`, the APK SHA-256, and the final test summary.
 ## A. Build, Resources, and Static Checks
 
 - [ ] Shared core tests pass without changes to puzzle behavior.
-- [ ] Debug APK assembles and Android lint reports no new errors.
+- [ ] `verify-toolchain.ps1` confirms the supported AGP, Gradle checksum,
+  JDK/SDK, AndroidX test dependency, workflow action, and Dependabot contract.
+- [ ] Debug/test APKs assemble and Android lint reports zero warnings; any new
+  warning fails the gate.
 - [ ] Public core/desktop Javadocs and Android API comments pass doclint.
 - [ ] English, `values-zh-rTW`, and `values-ja-rJP` resources have matching
   string, plural, and string-array keys.
@@ -319,6 +323,23 @@ Do not mark the localization work complete until every applicable item above is
 checked in all supported locales, failures are fixed and rerun, and any
 unavailable device coverage is explicitly recorded as a limitation rather than
 reported as passed.
+
+### 2026-08-24 Personal Play 2.0 Stage 8 Toolchain and CI Maintenance pass
+
+| Evidence | Result |
+| --- | --- |
+| Debug APK SHA-256 | `D19E0B83B34EEA332F05E1BB3CFA85691BA98DE5227A5E87B288DC51C21FAF5F` |
+| Toolchain contract | `verify-toolchain.ps1` passed AGP 8.13.2, Gradle 8.14.5 with official distribution SHA-256, JDK 17, compile/target SDK 36, build-tools 36.0.0, stable AndroidX test dependencies, immutable GitHub Action SHAs, and weekly Dependabot configuration |
+| Local verification | Shared tests, desktop compile, Android debug/test APK assembly, warning-as-error lint, both Javadoc/doclint gates, release readiness, and the complete local CI gate passed; lint was reduced from 41 warnings to zero and all 331 locale keys match |
+| Pixel_7 | All 108 Android tests passed on Android 15 at 1080x2400 in one serial run (9m19s); 0 failed, 0 skipped |
+| `small_phone` | All 108 Android tests passed on Android 16 / API 36.1 at 720x1280 in one serial run (9m28s); 0 failed, 0 skipped |
+| Compatibility cleanup | Typed `WindowInsets` replaced reflected system dimensions, App Bundle language splitting is disabled for in-app locale switching, launcher icons include a monochrome layer, locale quantity/typography issues are valid, and stale text assertions now format production resources |
+| Visual and runtime coverage | A fresh 720x1280 Android CLI screenshot showed correct status/navigation insets and unclipped onboarding; the exact final APK installed and cold-launched with `MainActivity` resumed and empty crash and `AndroidRuntime:E` buffers on both AVDs after the local CI and release-readiness gates passed |
+
+AGP 9.3.1 remains a separate owner-approved major migration because it changes
+the Gradle compatibility baseline and should begin with Android Studio's Upgrade
+Assistant. Dependabot may report it, but Stage 8 does not apply that migration
+silently.
 
 ### 2026-08-24 Personal Play 2.0 Stage 7 Adaptive and Accessibility pass
 

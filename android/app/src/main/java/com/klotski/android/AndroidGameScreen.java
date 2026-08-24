@@ -135,8 +135,7 @@ final class AndroidGameScreen {
         LinearLayout root = new LinearLayout(activity);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(ui.resolveColor(AndroidUi.COLOR_BACKGROUND));
-        root.setPadding(ui.dp(12), ui.systemBarHeight("status_bar_height") + ui.dp(12),
-                ui.dp(12), ui.systemBarHeight("navigation_bar_height") + ui.dp(12));
+        ui.applySystemBarPadding(root, ui.dp(12), ui.dp(12), ui.dp(12), ui.dp(12));
         return root;
     }
 

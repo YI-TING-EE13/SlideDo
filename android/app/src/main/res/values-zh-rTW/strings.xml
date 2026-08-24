@@ -1,7 +1,6 @@
 <resources>
     <string name="app_name">SlideDo</string>
     <string name="home_tagline">一款沉靜的數字拼圖，隨時享受解題成就感。</string>
-    <string name="home_summary">將數字方塊依序排列，並把空格留在右下角。</string>
     <string name="home_daily_challenge">每日月曆</string>
     <string name="home_daily_summary">%1$s · %2$s · 連勝 %3$d · 最佳 %4$d</string>
     <string name="home_daily_ready">尚未開始</string>
@@ -259,9 +258,6 @@
     <string name="status_solving">正在使用 %1$s 解題…</string>
     <string name="best_empty">--</string>
     <string name="best_format">%1$s，%2$d 秒</string>
-    <string name="button_3x3">3x3</string>
-    <string name="button_4x4">4x4</string>
-    <string name="button_5x5">5x5</string>
     <string name="button_undo">復原</string>
     <string name="button_redo">重做</string>
     <string name="move_history_title">移動紀錄</string>
@@ -345,19 +341,15 @@
     <string name="board_cell_action_unavailable">目前無法移動。</string>
     <string name="board_cell_action_busy">盤面移動時暫時無法操作。</string>
     <plurals name="moves_count">
-        <item quantity="one">%d 次移動</item>
         <item quantity="other">%d 次移動</item>
     </plurals>
     <plurals name="records_player_solves">
-        <item quantity="one">%d 次玩家完成</item>
         <item quantity="other">%d 次玩家完成</item>
     </plurals>
     <plurals name="records_assisted_solves">
-        <item quantity="one">%d 次輔助完成</item>
         <item quantity="other">%d 次輔助完成</item>
     </plurals>
     <plurals name="board_accessibility_highlight_count">
-        <item quantity="one">%d 個醒目的方塊可以滑入空格。</item>
         <item quantity="other">%d 個醒目的方塊可以滑入空格。</item>
     </plurals>
 </resources>

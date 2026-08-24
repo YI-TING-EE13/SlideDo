@@ -34,10 +34,17 @@ Preserve the completed program and use the same implement, verify, document,
 and commit gate for future feature stages.
 Personal Play 2.0 backup/restore, Daily Calendar/history replay, Favorite
 Puzzles, personal trends/custom weekly goals, Continuous Challenge, and Move
-History/Redo, and Adaptive and Accessibility Reinforcement are complete.
-Toolchain and CI Maintenance is the next planned stage.
+History/Redo, Adaptive and Accessibility Reinforcement, and Toolchain and CI
+Maintenance are complete. The full Personal Play 2.0 program is complete; new
+feature work should start only from an owner-approved stage.
 Defer store signing, store assets, accounts, cloud sync, ads, analytics, and
 other public-distribution work unless the owner changes direction.
+
+Keep the supported conservative build baseline at AGP 8.13.2, Gradle 8.14.5,
+JDK 17, compile/target SDK 36, and build-tools 36.0.0. Run
+`verify-toolchain.ps1` after changing build or CI files. AGP 9 is a separate
+major migration that requires explicit owner approval and the Android Studio
+Upgrade Assistant preflight.
 
 Keep `GameModel` platform-independent. Navigation and presentation changes belong in Android UI/controller code.
 
@@ -129,6 +136,13 @@ Android build and lint:
 ```bat
 cd android
 build-debug.bat :app:assembleDebug :app:lintDebug
+```
+
+Toolchain and complete no-device CI contract:
+
+```bat
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File verify-toolchain.ps1
+ci.bat
 ```
 
 Android install and launch:

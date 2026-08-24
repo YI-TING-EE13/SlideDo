@@ -35,10 +35,10 @@ Current handoff status:
   locale registry is isolated in `AndroidAppLocale` so another locale requires
   a registry entry and a complete translated resource directory, not navigation
   or gameplay changes.
-- The latest local verification pass was warning-clean for the previously noisy
-  Gradle DSL deprecation, Java native-access warning, and Android Java
-  deprecation note.
-- Personal Play 2.0 Stages 1 through 7 are complete. Android Settings owns
+- Android lint is warning-clean and treats future warnings as errors. The
+  toolchain contract pins the Gradle distribution checksum, CI action commits,
+  JDK/SDK baseline, and stable AndroidX test dependencies.
+- Personal Play 2.0 Stages 1 through 8 are complete. Android Settings owns
   versioned local backup/restore, while the Daily Calendar browses today and
   earlier deterministic puzzles with per-date saves and completion markers.
   Favorite Puzzles stores up to 50 owner-labeled exact starting boards and
@@ -53,9 +53,13 @@ Current handoff status:
   policy now handles narrow, large-text, and wide-window layouts; buttons choose
   WCAG-readable content colors, headings and game traversal are explicit, and
   every board cell is a screen-reader virtual child with movable-tile actions.
+  Toolchain and CI maintenance keeps AGP 8.13.2 / Gradle 8.14.5 / JDK 17 as the
+  supported conservative baseline, makes GitHub Actions inputs reproducible,
+  and monitors dependency updates without silently performing an AGP 9 major
+  migration.
 - The latest dual-AVD acceptance covers all 108 Android tests in one serial run
   on each profile: Pixel_7 (Android 15, 1080x2400) and `small_phone` (Android
-  16 / API 36.1, 720x1280) completed in 7m59s and 8m23s respectively, with no
+  16 / API 36.1, 720x1280) completed in 9m19s and 9m28s respectively, with no
   failed or skipped tests. Coverage
   includes persistent sound/theme preferences, active-game preservation across
   theme recreation, strategic-hint assistance persistence and player-best protection,
@@ -78,14 +82,16 @@ Then run the smallest relevant verification for the planned change. For a broad
 Android or documentation-sensitive change, use:
 
 ```bat
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File verify-toolchain.ps1
 verify.bat
 verify-connected.bat
+ci.bat
 ```
 
-The original eight-stage Personal Play roadmap in `Roadmap And Planning` is
-implemented and verified. Personal Play 2.0 is now the active staged program;
-Stages 1 through 7 are complete and Stage 8 Toolchain and CI Maintenance is the
-next implementation gate.
+The original eight-stage Personal Play roadmap and all eight Personal Play 2.0
+stages in `Roadmap And Planning` are implemented and verified. New work starts
+from an owner-approved stage instead of extending either completed program
+implicitly.
 
 Real Play upload signing is intentionally deferred until store submission. It
 is not required for a local push-ready commit, and no Git remote or push is part
@@ -100,6 +106,8 @@ SlideDo is a Java number Klotski / sliding puzzle game with:
 - Native Android UI in `android/app/src/main/java/com/klotski/android`.
 - Root Gradle/JUnit 5 tests for shared core behavior.
 - Android Gradle wrapper and debug APK build flow.
+- Reproducible toolchain/CI contract through `verify-toolchain.ps1`, pinned
+  wrapper/action checksums, and scheduled Dependabot review.
 - English API comments/Javadocs for public core, desktop, and Android APIs.
 - One-command local verification through `verify.bat`.
 
@@ -555,7 +563,7 @@ protection before the next stage begins.
 | 5 | Continuous challenge mode | Chain completed puzzles into a local session with clear progress, exit, resume, and record boundaries. | Completed and verified on 2026-08-24. |
 | 6 | Move history and Redo | Expose the current run's action history and add Redo while preserving whole-line one-action semantics, Restart, Save/Load, and solver input locks. | Completed and verified on 2026-08-24. |
 | 7 | Adaptive and accessibility reinforcement | Improve compact/large-screen layout behavior, larger-text resilience, focus order, TalkBack descriptions, contrast, and reduced-motion coverage. | Completed and verified on 2026-08-24. |
-| 8 | Toolchain and CI maintenance | Refresh supported Android/Gradle tooling, keep Windows and GitHub CI reproducible, and document warnings or compatibility migrations. | Planned; next stage. |
+| 8 | Toolchain and CI maintenance | Refresh supported Android/Gradle tooling, keep Windows and GitHub CI reproducible, and document warnings or compatibility migrations. | Completed and verified on 2026-08-24. |
 
 Shared puzzle rules, deterministic puzzle identity, elapsed milliseconds, save
 compatibility, and assisted-record protection remain core contracts. Android
@@ -1021,6 +1029,46 @@ Priority: Low to Medium
 ## Development Log
 
 ### 2026-08-24
+
+- Completed Personal Play 2.0 Stage 8 Toolchain and CI Maintenance. The
+  supported conservative Android baseline remains AGP 8.13.2, Gradle 8.14.5,
+  JDK 17, compile/target SDK 36, and build-tools 36.0.0. The Gradle wrapper now
+  verifies the official `all` distribution SHA-256, and
+  `verify-toolchain.ps1` checks every baseline value before `ci.bat` continues.
+- GitHub CI now pins checkout v7, setup-java v5.7.0, setup-android v4.0.1, and
+  upload-artifact v7.0.1 to full immutable commit SHAs. It disables checkout
+  credential persistence, caches Gradle inputs, pins Android command-line tools
+  20.0 (`14742923`), and installs exact API 36/build-tools 36.0.0 packages.
+  Weekly Dependabot review covers GitHub Actions and Android Gradle
+  dependencies.
+- Updated stable test-only dependencies to AndroidX Test Runner 1.7.0, JUnit
+  extension 1.3.0, and UiAutomator 2.4.0. Android lint now treats warnings as
+  errors. The existing report was reduced from 41 warnings to zero by retaining
+  synchronous preference commits only at documented durable-write boundaries,
+  disabling App Bundle language splitting, replacing reflected system-bar
+  dimensions with `WindowInsets`, correcting quantity/typography resources,
+  removing unused resources, and adding a monochrome adaptive launcher icon.
+- The first Pixel_7 full run exposed four stale English text assertions after
+  the resource cleanup. Those tests now format the production resources; all
+  four focused reruns passed, followed by clean complete runs of 108/108 on
+  Pixel_7 (Android 15, 1080x2400) in 9m19s and 108/108 on `small_phone`
+  (Android 16 / API 36.1, 720x1280) in 9m28s, with no failures or skips. A fresh
+  720x1280 Android CLI screenshot confirmed status/navigation insets and all
+  required onboarding content remained visible without overlap. All 331
+  localized resource keys match. The final local CI and release-readiness gates
+  passed after updating the store-readiness checker to the lint-correct
+  `mipmap-anydpi` icon location. Debug APK SHA-256
+  `D19E0B83B34EEA332F05E1BB3CFA85691BA98DE5227A5E87B288DC51C21FAF5F`
+  installed and cold-launched with `MainActivity` resumed and empty crash and
+  `AndroidRuntime:E` buffers on both AVDs. Pixel_7 required one Android CLI
+  restart from its saved snapshot after a no-snapshot emulator/GPU startup
+  exited early; the subsequent app acceptance passed.
+- AGP 9.3.1 is a stable major migration, not a routine patch. Its official
+  compatibility table requires Gradle 9.5.0, and Android recommends the Upgrade
+  Assistant. It remains a separately approved future migration rather than an
+  implicit Stage 8 change: [AGP 9.3 release notes](https://developer.android.com/build/releases/agp-9-3-0-release-notes),
+  [AGP compatibility policy](https://developer.android.com/build/releases/about-agp),
+  and [AGP Upgrade Assistant](https://developer.android.com/build/agp-upgrade-assistant).
 
 - Completed Personal Play 2.0 Stage 7 Adaptive and Accessibility Reinforcement.
   New `AndroidUiPolicy` centralizes font-scale and width breakpoints for the

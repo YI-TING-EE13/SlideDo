@@ -1,5 +1,6 @@
 package com.klotski.android;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 
@@ -37,7 +38,11 @@ import java.util.Set;
  * {@link GameModel}; persisted game data is loaded back into the shared model
  * before any gameplay behavior runs.
  * </p>
+ * Synchronous preference commits are deliberate in this store: backup import,
+ * reset, save, and Activity recreation flows must know whether durable writes
+ * succeeded before reporting success or replacing visible state.
  */
+@SuppressLint("ApplySharedPref")
 final class AndroidGameStore {
     static final String PREFS_NAME = "slidedo";
 

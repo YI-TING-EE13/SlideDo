@@ -130,13 +130,25 @@ project using the installed Android SDK at:
 
 `%LOCALAPPDATA%\Android\Sdk`
 
+The supported conservative command-line baseline is AGP 8.13.2, Gradle 8.14.5,
+JDK 17, compile/target SDK 36, and build-tools 36.0.0. The wrapper verifies the
+official Gradle distribution SHA-256. From the repository root, validate all
+build and CI pins before changing toolchain files:
+
+```bat
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File verify-toolchain.ps1
+```
+
+AGP 9 is a separate owner-approved major migration and should begin with the
+Android Studio Upgrade Assistant, not an unattended dependency update.
+
 If the Google Android CLI is installed, a second small-phone AVD can be created
 and started without Android Studio:
 
 ```bat
-android-cli.exe emulator create small_phone
-android-cli.exe emulator start --cold small_phone
-android-cli.exe emulator list --long
+android emulator create small_phone
+android emulator start --cold small_phone
+android emulator list --long
 ```
 
 The accepted local `small_phone` profile uses Android 16 / API 36.1 at 720x1280
@@ -169,14 +181,16 @@ To run the same no-device gate used by GitHub Actions plus release readiness:
 ..\ci.bat
 ```
 
-This runs `verify.bat` and `verify-release.bat`. CI release artifacts are
-verification outputs and use the temporary signing key unless real Play upload
-signing is explicitly configured.
+This runs `verify-toolchain.ps1`, `verify.bat`, and `verify-release.bat`. CI
+release artifacts are verification outputs and use the temporary signing key
+unless real Play upload signing is explicitly configured. GitHub Actions and
+the Gradle distribution are integrity-pinned; weekly Dependabot PRs expose
+available action and Android Gradle dependency updates for review.
 
 Latest 2026-08-24 validation status: all 108 Android tests passed in one serial
 run on each emulator profile: Pixel_7 passed 108/108 on Android 15 at 1080x2400
-in 7m59s and `small_phone` passed 108/108 on Android 16 / API 36.1 at 720x1280
-in 8m23s. Neither run reported a failed or skipped test. The suite covers the
+in 9m19s and `small_phone` passed 108/108 on Android 16 / API 36.1 at 720x1280
+in 9m28s. Neither run reported a failed or skipped test. The suite covers the
 normal animated transition path, the Reduced motion bypass, English-default
 locale isolation, persistent English, Traditional Chinese, and Japanese switching,
 explicit Traditional Chinese and Japanese major-screen/dialog/result flows,
@@ -195,7 +209,12 @@ large-text stacking, 48dp controls, accessibility headings and traversal,
 theme contrast, and virtual board-cell activation. Separate 1.5x font runs
 passed on both AVDs, a 1600x2560 wide-window run passed on Pixel_7, and fresh
 default/large-text Android CLI screenshots were inspected on both display sizes.
-Stage 8 adds a sound preference that defaults off, asset-free move/completion
+Personal Play 2.0 Stage 8 additionally locks the supported toolchain contract,
+pins CI action commits and the Gradle checksum, updates stable AndroidX test
+dependencies, and enforces warning-free lint. The prior 41 lint warnings were
+resolved; all 331 localized resource keys and format signatures match.
+Original Personal Play Stage 8 adds a sound preference that defaults off,
+asset-free move/completion
 tones, persistent Midnight/Ocean palettes, and active-game preservation when a
 theme recreates the Activity. Automated checks cover defaults, persistence,
 settings accessibility text, enabled-sound gameplay, and unchanged board state.
@@ -269,6 +288,13 @@ SHA-256 is
 `AFD32FC22888D17D02AA104542277516829121A3895737A3E01BB3A61C5C4760`.
 That exact APK installed and cold-launched with `MainActivity` resumed and no
 `AndroidRuntime:E` output on Pixel_7 and `small_phone`.
+Personal Play 2.0 Stage 8 establishes the reproducible build and CI baseline,
+warning-free lint, immutable workflow action inputs, and reviewed dependency
+updates. The Stage 8 final debug APK SHA-256 is
+`D19E0B83B34EEA332F05E1BB3CFA85691BA98DE5227A5E87B288DC51C21FAF5F`.
+That exact APK installed and cold-launched with `MainActivity` resumed and empty
+crash and `AndroidRuntime:E` buffers on Pixel_7 and `small_phone` after the final
+no-device CI and release-readiness gates passed.
 CLI-captured manual review covered English onboarding, Traditional Chinese
 Home/Settings/Mode Select/Game, and Japanese Home/Settings/Mode Select/How to
 Play/Game on the compact AVD. The compact controls remained single-line after

@@ -25,7 +25,7 @@ if not defined ANDROID_PLATFORM_JAR (
 echo [1/5] Shared core tests
 call :clean_dir "%ROOT%\build\test-results\test"
 call :clean_dir "%ROOT%\build\reports\tests\test"
-call "%ROOT%\android\gradlew.bat" -p "%ROOT%" test
+call "%ROOT%\android\gradlew.bat" -p "%ROOT%" test --warning-mode all --console plain
 if errorlevel 1 exit /b 1
 
 echo [2/5] Desktop compile
@@ -48,7 +48,7 @@ echo [4/5] Android assemble, test APK, and lint
 call :clean_dir "%ROOT%\android\app\build\intermediates\incremental\packageDebug\tmp"
 call :clean_dir "%ROOT%\android\app\build\intermediates\incremental\packageRelease\tmp"
 pushd "%ROOT%\android"
-call build-debug.bat :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug
+call build-debug.bat :app:assembleDebug :app:assembleDebugAndroidTest :app:lintDebug --warning-mode all --console plain
 set "ANDROID_RESULT=%ERRORLEVEL%"
 popd
 if not "%ANDROID_RESULT%"=="0" exit /b %ANDROID_RESULT%

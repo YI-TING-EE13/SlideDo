@@ -110,13 +110,15 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
 
 | Requirement | Recommended Version | Notes |
 | :--- | :--- | :--- |
-| Java JDK | 17 or newer | Desktop build uses `javac` directly. |
+| Java JDK | 17 | Supported Android/CI baseline; desktop build uses `javac` directly. |
 | Windows | 10 or newer | `run.bat` is provided for desktop play. |
 | Android Studio | Current stable | Required for emulator/device workflows. |
-| Android SDK | API 36 installed | Android app targets modern SDKs. |
+| Android SDK | API 36 and build-tools 36.0.0 | Compile/target baseline checked by `verify-toolchain.ps1`. |
 | Android device/emulator | API 26+ | Required only for Android testing. |
 
-The Android project includes its own Gradle wrapper under `android/`, so a global Gradle installation is not required.
+The Android project includes Gradle 8.14.5 under `android/`, so a global Gradle
+installation is not required. The supported conservative build baseline is AGP
+8.13.2, JDK 17, compile/target SDK 36, and build-tools 36.0.0.
 
 ---
 
@@ -408,8 +410,7 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
 - Signed Android release APK/AAB generation through `android\build-release.bat`.
 - Desktop ZIP package and optional `jpackage` app-image generation through `package-desktop.bat`.
 - Release notes/version matching through `version.properties` and `release-notes/<version>.md`.
-- Android lint completes without fatal issues; the 2026-08-09 report contains
-  21 pre-existing warnings that remain outside the solver performance scope.
+- Android lint is warning-free and treats future warnings as errors.
 - Android instrumentation tests for onboarding, Home launch, Practice Tutorial,
   Mode Select guidance and accessibility text, Continue metadata, How to Play,
   Settings, persistent English, Traditional Chinese, and Japanese language switching, Results,
@@ -424,8 +425,8 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
   board taps, and fall back to direct swipe scrolling for long content.
 - The latest 2026-08-24 dual-AVD Android acceptance covers all 108 tests in one
   serial run on each profile: Pixel_7 (Android 15, 1080x2400) passed 108/108 in
-  7m59s and `small_phone` (Android 16 / API 36.1, 720x1280) passed 108/108 in
-  8m23s, with no failed or skipped tests. The suite
+  9m19s and `small_phone` (Android 16 / API 36.1, 720x1280) passed 108/108 in
+  9m28s, with no failed or skipped tests. The suite
   includes English-default isolation from device locale, persistent language
   switching, active-game preservation, and explicit Traditional Chinese and
   Japanese major-screen, difficulty-selection, independent per-size saves,
@@ -455,7 +456,10 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
   accessibility tests cover large-text stacking, wide-window bounds, 48dp action
   targets, headings, explicit traversal, theme contrast, and playable virtual
   board cells. Separate 1.5x font runs passed on both profiles, and a 1600x2560
-  wide-window run passed on Pixel_7.
+  wide-window run passed on Pixel_7. Toolchain/CI checks cover the Gradle
+  distribution checksum, exact AGP/JDK/SDK versions, immutable GitHub Actions
+  references, stable AndroidX test dependencies, and scheduled dependency
+  review.
 - Latest local `ci.bat` run passed the no-device verification and release
   readiness gates.
 - Android emulator smoke testing for install/launch, Home visibility, whole-line
@@ -479,10 +483,12 @@ Local CI gate:
 ci.bat
 ```
 
-This runs `verify.bat` and `verify-release.bat`. GitHub Actions uses the same
-gate in `.github/workflows/ci.yml`; release APK/AAB artifacts produced there are
-signed with the temporary verification key unless real signing secrets are
-provided and must not be uploaded to stores.
+This runs `verify-toolchain.ps1`, `verify.bat`, and `verify-release.bat`. GitHub
+Actions uses the same gate in `.github/workflows/ci.yml`; release APK/AAB
+artifacts produced there are signed with the temporary verification key unless
+real signing secrets are provided and must not be uploaded to stores. Workflow
+actions and the Gradle distribution are integrity-pinned, and Dependabot opens
+weekly review PRs without applying updates silently.
 
 Desktop compile:
 
@@ -597,12 +603,15 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
   offline daily challenge, strategic hints, and sound/themes. All eight stages
   are implemented and verified.
   `DEVELOPMENT.md` owns the detailed acceptance criteria and status.
-- Personal Play 2.0 is active. Stage 1 offline backup/restore, Stage 2 daily
+- Personal Play 2.0 completed Stage 1 offline backup/restore, Stage 2 daily
   calendar/history replay, Stage 3 Favorite Puzzles, Stage 4 offline personal
   trends/custom weekly goals, Stage 5 Continuous Challenge, and Stage 6 Move
-  History/Redo, and Stage 7 adaptive accessibility completed their two-AVD
-  acceptance. Toolchain and CI maintenance remains the final future stage until
-  its own verification and commit gate passes.
+  History/Redo, Stage 7 adaptive accessibility, and Stage 8 toolchain/CI
+  maintenance. All eight stages passed their implementation, documentation,
+  full regression, dual-AVD acceptance, and commit gates.
+- AGP 9 is intentionally not folded into routine dependency maintenance. It is
+  a separately approved major migration that begins with Android Studio's
+  Upgrade Assistant and its own compatibility and regression stage.
 - Desktop/mobile player-facing parity MVP is complete for Home/start, Records, Preferences, Results, How to Play, Practice Tutorial, and Assist hints.
 - Save files now include release-readiness metadata and desktop saves now live in the user-data directory.
 - Signed Android release APK/AAB and desktop ZIP/app-image packaging scripts are available.

@@ -235,10 +235,13 @@ public class MainActivityFlowTest {
         waitForActivityView(R.id.mode_3_button);
         assertActivityHasView(R.id.mode_4_button);
         assertActivityHasView(R.id.mode_5_button);
-        assertActivityTextContains(R.id.mode_3_title_text, "3x3 Puzzle");
-        assertActivityTextContains(R.id.mode_3_session_text, "1-3 minutes");
+        assertActivityTextContains(R.id.mode_3_title_text,
+                targetContext.getString(R.string.mode_card_title, 3, 3));
+        assertActivityTextContains(R.id.mode_3_session_text,
+                targetContext.getString(R.string.mode_easy_session));
         assertActivityTextContains(R.id.mode_3_recommended_text, "Recommended");
-        assertActivityTextContains(R.id.mode_4_session_text, "5-10 minutes");
+        assertActivityTextContains(R.id.mode_4_session_text,
+                targetContext.getString(R.string.mode_classic_session));
         assertActivityTextContains(R.id.mode_5_session_text, "longer focused play");
         assertActivityContentDescriptionContains(R.id.mode_3_button, "Recommended first puzzle");
         assertActivityContentDescriptionContains(R.id.mode_4_button, "Classic best: No record yet");
@@ -252,7 +255,7 @@ public class MainActivityFlowTest {
         assertActivityHasView(R.id.game_redo_button);
         assertActivityHasView(R.id.game_restart_button);
         assertActivityHasView(R.id.game_assist_button);
-        assertActivityContentDescriptionContains(R.id.game_board, "4x4 board");
+        assertActivityContentDescriptionContains(R.id.game_board, "Board 4x4");
         assertActivityContentDescriptionContains(R.id.game_board, "Empty cell at row");
         assertActivityContentDescriptionContains(R.id.game_board, "Rows:");
         assertActivityContentDescriptionContains(R.id.game_menu_button, "Open game menu");
@@ -347,7 +350,7 @@ public class MainActivityFlowTest {
         launchApp();
 
         waitForId("home_root");
-        waitForText("2 saved games. Choose a size to continue.");
+        waitForText(targetContext.getString(R.string.home_multiple_saves_summary, 2));
         clickId(R.id.home_continue_button);
         waitForText("Choose saved game");
         waitForTextContaining("3x3 · Classic");
@@ -1218,9 +1221,11 @@ public class MainActivityFlowTest {
         launchApp();
         scrollToText("Trends & Weekly Goal").click();
         waitForId("trends_root");
-        waitForText("2 / 3 player solves");
+        waitForText(targetContext.getString(R.string.trends_goal_summary, 2, 3));
         scrollToText("3x3 · Classic");
-        scrollToText("Moves · 20 recent / 32 previous · 38% better");
+        scrollToText(targetContext.getString(R.string.trends_metric_compare,
+                targetContext.getString(R.string.trends_metric_moves), 20, 32,
+                targetContext.getString(R.string.trends_improving, 38)));
 
         scrollToText("Set Weekly Goal");
         clickId(R.id.trends_set_goal_button);
@@ -1231,7 +1236,7 @@ public class MainActivityFlowTest {
         UiObject2 confirm = device.wait(Until.findObject(By.text("OK")), TIMEOUT_MS);
         assertNotNull(confirm);
         confirm.click();
-        waitForText("2 / 7 player solves");
+        waitForText(targetContext.getString(R.string.trends_goal_summary, 2, 7));
 
         scrollToText("Choose Size & Difficulty");
         clickId(R.id.trends_choose_scope_button);
@@ -1590,7 +1595,7 @@ public class MainActivityFlowTest {
         waitForStatusContaining("1 move");
         clickId(R.id.game_menu_button);
         waitForText("Move History").click();
-        waitForTextContaining("1 completed actions · 0 available to redo");
+        waitForTextContaining(targetContext.getString(R.string.move_history_summary, 1, 0));
         waitForTextContaining("1. Empty right × 2 (one move)");
         waitForText("CLOSE").click();
 

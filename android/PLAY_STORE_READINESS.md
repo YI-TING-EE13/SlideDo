@@ -92,8 +92,10 @@ Suggested tags/categories:
 
 ## Store Assets
 
-- Adaptive launcher icon: present in `app/src/main/res/mipmap-anydpi-v26/`.
-- Round launcher icon: present in `app/src/main/res/mipmap-anydpi-v26/`.
+- Adaptive launcher icon: present in `app/src/main/res/mipmap-anydpi/`, including
+  a monochrome layer for themed icons.
+- Round launcher icon: present in `app/src/main/res/mipmap-anydpi/`, including
+  a monochrome layer for themed icons.
 - Feature graphic source: present in `store-assets/feature-graphic-1024x500.svg`.
   `verify-release.bat` exports the upload PNG to
   `../dist/store-assets/android/<version>/feature-graphic-1024x500.png`.
