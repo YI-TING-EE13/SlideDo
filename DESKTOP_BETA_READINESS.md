@@ -86,7 +86,8 @@ Run this checklist from the final extracted ZIP, not from the development tree.
 
 ## Manual Desktop Accessibility Review
 
-- Keyboard shortcuts work for New Game, Undo, Restart, Save, Load, and Exit.
+- Keyboard shortcuts work for New Game, Undo, Redo, Restart, Save, Load, and
+  Exit; `Game > Move History` shows completed and available Redo actions.
 - Arrow keys move the empty cell one step.
 - Menu labels and dialog titles are readable at default Windows scaling.
 - Reduced motion removes board transition animation without changing rules.

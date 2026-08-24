@@ -67,7 +67,9 @@ explicitly tests the fresh-install default.
 - [ ] Selecting the already-active language does not lose state or create duplicate navigation.
 - [ ] Language choice survives activity recreation, process stop/start, and normal app relaunch.
 - [ ] Language change preserves save data, records, haptic preference, reduced-motion preference, onboarding state, and last puzzle size.
-- [ ] Language change from an active game preserves board, initial grid, move count, elapsed time, and the ability to undo/restart.
+- [ ] Language change from an active game preserves board, initial grid, move
+  count, elapsed time, completed/redo histories, and the ability to
+  Undo/Redo/Restart.
 - [ ] Blank or unsupported stored language falls back safely to English.
 - [ ] App name, dialogs, toasts, content descriptions, and plurals use the active app language.
 - [ ] No major screen contains mixed-language labels after switching.
@@ -239,7 +241,8 @@ Run every item on 3x3, 4x4, and 5x5 in all supported locales where practical.
 - [ ] Board starts from a valid scramble generated from the solved state.
 - [ ] Tapping an adjacent aligned tile performs one legal move and increments moves by one.
 - [ ] Swiping a movable tile toward the empty cell performs the expected move.
-- [ ] Tapping a non-adjacent aligned tile slides the whole line, increments moves by one, and creates one undo snapshot.
+- [ ] Tapping a non-adjacent aligned tile slides the whole line, increments moves
+  by one, and creates one completed action-history entry.
 - [ ] Tapping a non-aligned tile has no effect.
 - [ ] Undo restores the exact previous board and decrements moves by one.
 - [ ] Redo after Undo restores the exact next board and increments moves by one;

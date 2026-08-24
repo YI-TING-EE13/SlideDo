@@ -35,7 +35,8 @@ telemetry, ads SDKs, accounts, cloud save, or third-party tracking.
 
 Rationale:
 
-- Keep the first public Android beta local-only and simple to explain.
+- Keep all gameplay data on the device and the data-handling statement simple
+  to explain if public distribution is approved later.
 - Keep the Data Safety answers and privacy policy draft aligned with actual app
   behavior.
 - Avoid collecting device, diagnostic, or usage data before there is a reviewed

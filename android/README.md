@@ -4,8 +4,8 @@ This Android project reuses the desktop game's core Java logic from:
 
 `../src/com/klotski/core`
 
-Open this `android` folder in Android Studio, then run the `app` configuration on
-an emulator or connected Android device.
+Open this `android` folder in Android Studio and run the `app` configuration, or
+use the repository scripts and Android CLI without opening the IDE.
 
 ## Current Features
 
@@ -17,6 +17,10 @@ an emulator or connected Android device.
 - Local Favorite Puzzles library for up to 50 owner-named exact starting
   boards, with Replay, Rename, Remove, backup inclusion, and isolated practice
   progress that never replaces normal/daily saves or personal records
+- Offline Trends & Weekly Goal comparisons for one selected size/difficulty,
+  using player solves only and a private Monday-to-Sunday target from 1 to 50
+- Resumable Continuous Challenge sessions of 3, 5, or 10 puzzles in one fixed
+  size/difficulty scope, isolated from normal, daily, and favorite saves
 - First-run onboarding with Skip and Start 3x3 actions
 - Interactive Practice Tutorial for the first move, movable aligned-tile
   highlights, and whole-line slide practice
@@ -46,9 +50,9 @@ an emulator or connected Android device.
   IDA* are grouped one level deeper under Solver Tools
 - Optional short local tones for tile moves and puzzle completion, disabled by
   default, plus persistent Midnight and Ocean visual themes
-- Versioned offline JSON export/import for all Android saves, records,
-  statistics, daily state, onboarding, language, and preferences through the
-  Android system file picker
+- Versioned offline JSON export/import for all Android saves, favorite puzzles,
+  continuous sessions, records, statistics, daily state, weekly goals,
+  onboarding, language, and preferences through the Android system file picker
 - Board, highlighted movable tiles, primary game controls, and settings switches
   expose accessibility descriptions for screen readers; every board cell is a
   virtual child and movable tiles expose a playable click action
@@ -59,10 +63,11 @@ an emulator or connected Android device.
 - Auto-save through `SharedPreferences`
 - Active-play timing pauses for game dialogs, navigation outside Game, and app
   background time, then resumes only when the Game screen is interactive
-- App-state persistence is isolated in `AndroidGameStore` for saves and their
-  action/redo histories, settings,
-  best records, completion history, personal statistics, onboarding, app
-  language, and last selected size/difficulty
+- App-state persistence is isolated in `AndroidGameStore` for normal, daily,
+  favorite-practice, and continuous saves and their action/redo histories;
+  favorite labels, settings, best records, completion history, personal
+  statistics, weekly goals, onboarding, app language, and last selected
+  size/difficulty remain local
 - `AndroidPersonalDataArchive` validates the complete versioned backup before
   `AndroidGameStore` replaces any preferences; malformed or unsupported files
   are rejected without partial import
@@ -155,7 +160,7 @@ The accepted local `small_phone` profile uses Android 16 / API 36.1 at 720x1280
 and 320 dpi. Use an explicit device serial for ADB or Gradle when more than one
 emulator is connected.
 
-For command-line builds, run:
+From the `android` directory, run:
 
 ```bat
 build-debug.bat
@@ -178,7 +183,7 @@ locale or navigation/persistence change.
 To run the same no-device gate used by GitHub Actions plus release readiness:
 
 ```bat
-..\ci.bat
+ci.bat
 ```
 
 This runs `verify-toolchain.ps1`, `verify.bat`, and `verify-release.bat`. CI
@@ -323,10 +328,11 @@ without clipping. Pixel_7 and `small_phone` generated the same dated board, and
 the Daily game title, HUD, board, and controls fit both profiles.
 The Stage 6 final debug APK SHA-256 is
 `EF92467A66D3F453FF95DE00122C68B5B092A63CADAE59B10ED73EBCCB050499`.
-Stage 8 manual review covered both Settings palettes and the Ocean game board at
-1080x2400, plus the complete scrollable Midnight Settings flow at 720x1280. All
-theme, sound, Reduced motion, local-data, and Back controls remained readable
-and reachable without overlap. The Stage 8 final debug APK SHA-256 is
+Original Personal Play Stage 8 manual review covered both Settings palettes and
+the Ocean game board at 1080x2400, plus the complete scrollable Midnight
+Settings flow at 720x1280. All theme, sound, Reduced motion, local-data, and Back
+controls remained readable and reachable without overlap. That stage's final
+debug APK SHA-256 is
 `3B64AC1323E5B2B6195829633730EF4731C3283FBB4C922672DDD3D719573ABA`.
 
 For Android build and lint only:
@@ -357,8 +363,9 @@ Play Store listing copy, privacy policy draft, Data Safety draft, asset
 checklist, feature graphic source, screenshot review worksheet, accessibility
 review worksheet, and pre-launch matrix are tracked in
 [`PLAY_STORE_READINESS.md`](PLAY_STORE_READINESS.md).
-The first public Android beta is intentionally local-only: no analytics, crash
-reporting, telemetry, ads SDKs, accounts, cloud save, or third-party tracking.
+The current Android build keeps gameplay data on the device and contains no
+analytics, crash reporting, telemetry, ads SDKs, accounts, cloud save, or
+third-party tracking. Public distribution remains deferred.
 Store asset sources live under [`store-assets`](store-assets/); export and
 review final upload files before Play Console submission.
 
@@ -435,10 +442,18 @@ check-screenshot-set.bat ..\screenshots\android\0.2.0-beta.1
 - Return Home and confirm Continue appears after a game has been saved.
 - Tap adjacent and non-adjacent aligned tiles; a whole-line slide should count as one move.
 - Undo after a whole-line slide; the entire gesture should restore in one step.
+- Redo after Undo; the entire line should return as one action. Open Move
+  History and verify the completed/Redo counts and empty-cell direction labels.
 - Restart; moves and timer should reset without reshuffling.
 - Save after a move from Menu, restart, then Load; board, move count, timer, and restart grid should be restored.
 - Confirm saved-game metadata updates with the saved size, difficulty, move
-  count, elapsed time, and active/solved state.
+  count, elapsed time, active/solved state, and completed/Redo histories.
+- Save, rename, replay, and remove a Favorite Puzzle. Verify its isolated
+  practice never changes normal/daily saves, records, statistics, or streaks.
+- Open Trends & Weekly Goal, change the 1–50 target and scope, and confirm only
+  player completions affect the goal and comparison.
+- Start, exit, resume, and end a 3-puzzle Continuous Challenge. Verify its
+  current puzzle and totals stay isolated from normal, daily, and favorite saves.
 - Open Menu, check Quick Reminder, and open Settings.
 - Leave Menu, Quick Reminder, Assist, and Solver Tools open briefly; returning
   to Game must not add those intervals to the play timer.
@@ -469,8 +484,11 @@ check-screenshot-set.bat ..\screenshots\android\0.2.0-beta.1
   explains the first aligned-tile interaction.
 - With a screen reader or inspection tool, confirm the board describes its size,
   empty-cell position, row-by-row tile state, and highlighted movable-tile count.
-- Confirm Undo, Restart, Assist, Menu, and Settings switches expose descriptive
+- Confirm Undo, Redo, Restart, Assist, Menu, and Settings switches expose descriptive
   accessibility labels.
+- At 1.5x system font size on the compact AVD, confirm dense Home/favorite rows
+  stack, all game actions remain present, and every movable virtual board cell
+  remains actionable with an accessibility inspection tool.
 - Open Assist, confirm solver names are not shown at the first level, then open
   Solver Tools and confirm the record-safety explanation appears before BFS,
   A*, and IDA*.
@@ -499,5 +517,6 @@ check-screenshot-set.bat ..\screenshots\android\0.2.0-beta.1
   streak. Replay it and confirm the streak does not increment twice for the same
   date.
 
-`build-debug.bat` uses Android Studio's bundled JBR when available, which avoids
-Gradle compatibility issues with newer system Java versions.
+`build-debug.bat` uses Android Studio's bundled JBR when available. CI and the
+documented conservative toolchain baseline use JDK 17; set `JAVA_HOME` to JDK 17
+when invoking Gradle manually with an incompatible system Java version.

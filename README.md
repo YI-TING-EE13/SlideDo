@@ -5,7 +5,12 @@
 [![Android](https://img.shields.io/badge/Android-API%2026%2B-green.svg)](https://developer.android.com/)
 [![Gradle](https://img.shields.io/badge/Gradle-8.14.5-02303A.svg)](https://gradle.org/)
 
-**SlideDo** is a polished number Klotski / sliding puzzle game written in Java. It includes a desktop Swing edition and a native Android edition that share the same core puzzle model, move rules, save format, and solver interfaces.
+**SlideDo** is an offline number Klotski / sliding puzzle game written in Java.
+It includes a desktop Swing edition and a native Android edition that share the
+same core puzzle model, movement rules, difficulty definitions, action-history
+contract, and solver interfaces. Each platform owns its persistence container:
+desktop uses JSON files, while Android uses app preferences plus versioned JSON
+backup and restore.
 
 The design goal is simple: make sliding numbered tiles feel fast, clear, and satisfying. The desktop version now opens on Home and supports mouse, keyboard, undo/redo, move history, restart, save/load, local records, a Records dialog, Preferences, Android-style Results, solver playback, How to Play, Practice Tutorial copy, and movable-tile assist hints. The Android edition adds a deterministic strategic next-move hint to its touch-first onboarding, tutorial, modes, settings, results, records, and compact game controls. Both editions explain that player records prefer fewer moves, break ties by faster time, and exclude assisted completions.
 
@@ -13,7 +18,9 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
 
 ## Key Features
 
-- **Shared Java Game Core**: `GameModel`, `Direction`, save data, records, and solvers are independent from Swing and Android.
+- **Shared Java Game Core**: `GameModel`, `Direction`, puzzle identity,
+  difficulty, action history, personal trend calculations, and solvers remain
+  independent from Swing and Android.
 - **Fluid Desktop Controls**:
   - Desktop opens on Home with 3x3, 4x4, 5x5, Continue/Load, How to Play, Practice Tutorial, Records, and Preferences.
   - Click a tile in the same row or column as the empty space.
@@ -112,12 +119,12 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
 | :--- | :--- | :--- |
 | Java JDK | 17 | Supported Android/CI baseline; desktop build uses `javac` directly. |
 | Windows | 10 or newer | `run.bat` is provided for desktop play. |
-| Android Studio | Current stable | Required for emulator/device workflows. |
+| Android Studio | Optional current stable | Provides the IDE and bundled JBR; Android SDK/CLI workflows also work without opening the IDE. |
 | Android SDK | API 36 and build-tools 36.0.0 | Compile/target baseline checked by `verify-toolchain.ps1`. |
 | Android device/emulator | API 26+ | Required only for Android testing. |
 
-The Android project includes Gradle 8.14.5 under `android/`, so a global Gradle
-installation is not required. The supported conservative build baseline is AGP
+The Android Gradle wrapper is configured for Gradle 8.14.5, so a global Gradle
+installation is not required. The supported conservative CI baseline is AGP
 8.13.2, JDK 17, compile/target SDK 36, and build-tools 36.0.0.
 
 ---
@@ -173,6 +180,8 @@ requirements, smoke-test prompts, known limits, and the matching release notes.
 | New 3x3 / 4x4 / 5x5 | `Game` menu |
 | Restart current puzzle | `Ctrl + R` |
 | Undo | `Ctrl + Z` |
+| Redo | `Ctrl + Y` |
+| Review completed and Redo actions | `Game > Move History` |
 | Save | `Ctrl + S` |
 | Load | `Ctrl + O` |
 | Exit | `Ctrl + Q` |
@@ -261,8 +270,8 @@ The Android UI opens on Home, offers Continue when a valid save exists, and
 starts new games through Mode Select. First-run onboarding appears before normal
 play until the player skips it, starts 3x3, or opens Practice Tutorial. Practice
 Tutorial uses a small guided 3x3 puzzle to teach the first move, highlight
-movable aligned tiles, and demonstrate a whole-line slide. During gameplay, Undo
-and Restart stay visible while Save/Load, Quick Reminder, and Settings live in
+movable aligned tiles, and demonstrate a whole-line slide. During gameplay,
+Undo, Redo, and Restart stay visible while Save/Load, Quick Reminder, and Settings live in
 Menu. Assist offers Strategic Hint, a non-assisted Show Movable Tiles option,
 and Solver Tools. The strategic hint recommends one adjacent tile without
 moving the board and marks the run assisted; that state survives save, rotation,
@@ -294,8 +303,9 @@ relaunches without changing the current puzzle, saved games, or records.
 
 Under **Local Data**, **Export backup** creates a versioned JSON document through
 Android's system file picker. **Import backup** validates the selected document,
-shows a replacement warning, and restores all Android saves, records,
-statistics, daily progress, and settings only after confirmation. The backup
+shows a replacement warning, and restores all Android saves, favorite puzzles,
+continuous sessions, records, statistics, daily progress, weekly goals, and
+settings only after confirmation. The backup
 flow remains offline and does not request broad storage permission.
 
 If the emulator does not show SlideDo in the launcher, reinstall and start it
@@ -329,7 +339,13 @@ SlideDo/
       core/
         Direction.java       # Empty-tile movement directions
         GameModel.java       # Shared board state and rules
+        MoveAction.java      # Persisted whole-action history entry
         GameObserver.java    # UI notification contract
+        PuzzleDifficulty.java # Reproducible scramble-depth presets
+        DailyChallenge.java  # Offline dated puzzle identity
+        ContinuousChallenge.java # Multi-puzzle session totals
+        PersonalTrend.java   # Like-for-like personal comparisons
+        WeeklyGoalProgress.java # Offline weekly target progress
         SaveManager.java     # Desktop JSON saves and records
         Solver.java          # Solver strategy interface
         BfsSolver.java       # Breadth-first solver
@@ -357,7 +373,8 @@ SlideDo/
 - Empty tile position.
 - Move count.
 - Active elapsed-time and pause/resume state.
-- Undo snapshots.
+- Completed-action and Redo histories.
+- Difficulty and the exact initial grid used by Restart and replay.
 - Restart state.
 - Win detection.
 
@@ -375,7 +392,7 @@ Whole-line slides are handled by `GameModel.slideLineTo(row, col)`. This method:
 - Requires the selected tile to be aligned with the empty tile.
 - Slides every tile between the selected tile and the empty tile.
 - Counts as one move.
-- Pushes one undo snapshot.
+- Adds one completed action-history entry and clears any pending Redo history.
 - Emits `onLineMove(dir, steps)` so the UI can animate all tiles together.
 
 ---
@@ -388,7 +405,9 @@ Whole-line slides are handled by `GameModel.slideLineTo(row, col)`. This method:
 | A* | Small to medium boards | Uses Manhattan distance to prioritize promising states. |
 | IDA* | Lower-memory experiments | Uses iterative deepening with Manhattan distance and linear conflict. |
 
-Sliding puzzles become expensive very quickly. For a production mobile game, solvers are best treated as assistive or debug features rather than required gameplay.
+Sliding puzzles become expensive very quickly. SlideDo therefore treats the
+solvers as optional assistive or diagnostic features rather than required
+gameplay.
 
 ---
 
@@ -403,9 +422,11 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
 - Swing GUI smoke testing.
 - Mouse click movement.
 - Non-adjacent row/column sliding with synchronized animation.
-- Undo after a whole-line slide.
+- Undo/Redo after adjacent and whole-line actions.
 - Desktop Home, Records, Preferences, Results, Help, and Assist parity text covered by focused JUnit tests.
-- Save metadata round-trip coverage for updated time, size, moves, elapsed time, and active/solved state.
+- Save metadata round-trip coverage for updated time, size, difficulty, current
+  and initial grids, moves, elapsed time, active/solved state, completed actions,
+  and Redo actions.
 - Android debug build with Gradle.
 - Signed Android release APK/AAB generation through `android\build-release.bat`.
 - Desktop ZIP package and optional `jpackage` app-image generation through `package-desktop.bat`.
@@ -548,7 +569,8 @@ android\screenshot-smoke.bat
 
 ### Current Limitations
 
-- Desktop UI tests are still manual/smoke-level.
+- Interactive Swing rendering and input tests are still manual/smoke-level;
+  focused JUnit tests cover desktop content and shared behavior.
 - Connected Android instrumentation tests still require a running emulator or device.
 - Pixel_7 and 720x1280 small-phone layouts have connected and visual acceptance
   evidence; a physical device, tablet/foldable, and lower-refresh profile still
@@ -567,12 +589,27 @@ android\screenshot-smoke.bat
 
 Development planning, Git workflow rules, desktop/Android behavior parity, and the current roadmap are maintained in [DEVELOPMENT.md](DEVELOPMENT.md).
 
+### Documentation Index
+
+- [Android README](android/README.md): Android build, CLI, features, and smoke tests.
+- [Android regression checklist](android/REGRESSION_TEST_CHECKLIST.md): full
+  localization, gameplay, persistence, adaptive UI, and acceptance matrix.
+- [Development record](DEVELOPMENT.md): behavior contracts, staged roadmap, and
+  implementation evidence.
+- [Android store-readiness draft](android/PLAY_STORE_READINESS.md) and
+  [desktop beta-readiness draft](DESKTOP_BETA_READINESS.md): deferred public
+  distribution requirements.
+- [Current release notes](release-notes/0.2.0-beta.1.md): version-specific
+  features, verification commands, and known limits.
+
 ### Java Runtime Notes
 
-If Android Gradle fails because of a Java compatibility issue, use Android Studio's bundled runtime:
+CI runs on JDK 17. `android\build-debug.bat` prefers Android Studio's bundled JBR
+when Android Studio is installed. To reproduce the CI runtime for a manual
+Gradle command, set `JAVA_HOME` to a JDK 17 installation:
 
 ```bat
-set JAVA_HOME=C:\Program Files\Android\Android Studio\jbr
+set JAVA_HOME=C:\Path\To\jdk-17
 set PATH=%JAVA_HOME%\bin;%PATH%
 cd android
 gradlew.bat :app:assembleDebug
@@ -595,7 +632,7 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
 
 ---
 
-## Roadmap
+## Project Status and Deferred Work
 
 - The Personal Play roadmap completed eight independently tested
   and committed stages: active-play timer pausing, difficulty selection,
@@ -621,9 +658,9 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
   source/export workflow, Data Safety notes, privacy policy draft, screenshot
   review worksheet, accessibility review worksheet, and pre-launch matrix are tracked in
   `android/PLAY_STORE_READINESS.md`.
-- First public Android beta is intentionally local-only: no analytics, crash
-  reporting, telemetry, ads SDKs, accounts, cloud save, or third-party
-  tracking.
+- The current Android build keeps gameplay data on the device and contains no
+  analytics, crash reporting, telemetry, ads SDKs, accounts, cloud save, or
+  third-party tracking. Public distribution remains deferred.
 - The desktop/Android feature parity matrix is maintained in
   `DEVELOPMENT.md` under the Desktop/Mobile Parity Pass section.
 - Public beta handoff reviews, store screenshots, the privacy-policy URL,
