@@ -245,6 +245,7 @@ public class MainActivityFlowTest {
         waitForActivityView(R.id.game_board);
         assertActivityTextContains(R.id.game_title_text, "4x4 · Challenge");
         assertActivityHasView(R.id.game_undo_button);
+        assertActivityHasView(R.id.game_redo_button);
         assertActivityHasView(R.id.game_restart_button);
         assertActivityHasView(R.id.game_assist_button);
         assertActivityContentDescriptionContains(R.id.game_board, "4x4 board");
@@ -252,10 +253,12 @@ public class MainActivityFlowTest {
         assertActivityContentDescriptionContains(R.id.game_board, "Rows:");
         assertActivityContentDescriptionContains(R.id.game_menu_button, "Open game menu");
         assertActivityContentDescriptionContains(R.id.game_undo_button, "Undo the previous move");
+        assertActivityContentDescriptionContains(R.id.game_redo_button, "Redo the next undone move");
         assertActivityContentDescriptionContains(R.id.game_restart_button, "Restart this puzzle");
         assertActivityContentDescriptionContains(R.id.game_assist_button, "Solver Tools");
         assertActivityButtonHasStartIcon(R.id.game_menu_button);
         assertActivityButtonHasStartIcon(R.id.game_undo_button);
+        assertActivityButtonHasStartIcon(R.id.game_redo_button);
         assertActivityButtonHasStartIcon(R.id.game_restart_button);
         assertActivityButtonHasStartIcon(R.id.game_assist_button);
         assertActivityTextIsSingleLine(R.id.game_home_button);
@@ -1121,17 +1124,21 @@ public class MainActivityFlowTest {
         device.waitForIdle();
         long elapsedBeforeAway = savedElapsedForSize(3);
         SystemClock.sleep(5_000L);
+        long resumeRequestedAt = SystemClock.elapsedRealtime();
         device.executeShellCommand("am start -n " + PACKAGE_NAME + "/.MainActivity");
         waitForForegroundApp();
         SystemClock.sleep(300L);
         device.pressHome();
         device.waitForIdle();
+        long foregroundDuration = SystemClock.elapsedRealtime() - resumeRequestedAt;
 
         long savedElapsed = savedElapsedForSize(3);
         long foregroundIncrease = savedElapsed - elapsedBeforeAway;
         assertTrue("Background time should not be added after resume; foreground increase was "
-                        + foregroundIncrease + "ms",
-                foregroundIncrease >= 0L && foregroundIncrease < 3_500L);
+                        + foregroundIncrease + "ms for " + foregroundDuration
+                        + "ms of foreground time",
+                foregroundIncrease >= 0L
+                        && foregroundIncrease < foregroundDuration + 500L);
     }
 
     @Test
@@ -1566,6 +1573,27 @@ public class MainActivityFlowTest {
 
         clickId(R.id.game_undo_button);
         waitForStatusContaining("0 moves");
+    }
+
+    @Test
+    public void moveHistoryAndRedoPreserveWholeLineAsOneAction() throws Exception {
+        writeSavedGame(LINE_SLIDE_GRID, LINE_SLIDE_GRID, 0);
+        launchApp();
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+
+        tapCell(3, 1, 2);
+        waitForStatusContaining("1 move");
+        clickId(R.id.game_menu_button);
+        waitForText("Move History").click();
+        waitForTextContaining("1 completed actions · 0 available to redo");
+        waitForTextContaining("1. Empty right × 2 (one move)");
+        waitForText("CLOSE").click();
+
+        clickId(R.id.game_undo_button);
+        waitForStatusContaining("0 moves");
+        clickId(R.id.game_redo_button);
+        waitForStatusContaining("1 move");
     }
 
     @Test

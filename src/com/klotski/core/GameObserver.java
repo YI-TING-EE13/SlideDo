@@ -12,9 +12,9 @@ public interface GameObserver {
     /**
      * Called after the grid state changes.
      * <p>
-     * This event is emitted after resets, loads, undo operations, and completed
-     * moves. Views that are not animating should snap their rendered tiles to the
-     * model state here.
+     * This event is emitted after resets, loads, undo/redo operations, and
+     * completed moves. Views that are not animating should snap their rendered
+     * tiles to the model state here.
      * </p>
      */
     void onGridChanged();

@@ -10,9 +10,10 @@ import java.util.List;
 /**
  * Main desktop window for the Swing edition.
  * <p>
- * The frame wires menus, status text, solver actions, save/load commands, and
- * the {@link BoardPanel}. The rules remain inside {@link GameModel}; this class
- * acts as desktop-specific application glue.
+ * The frame wires menus, status text, solver actions, save/load commands,
+ * Undo/Redo and move-history presentation, and the {@link BoardPanel}. The
+ * rules remain inside {@link GameModel}; this class acts as desktop-specific
+ * application glue.
  * </p>
  */
 public class MainFrame extends JFrame implements GameObserver {
@@ -125,6 +126,15 @@ public class MainFrame extends JFrame implements GameObserver {
         undoItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, KeyEvent.CTRL_DOWN_MASK));
         undoItem.addActionListener(e -> undoMove());
         gameMenu.add(undoItem);
+
+        JMenuItem redoItem = new JMenuItem("Redo");
+        redoItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Y, KeyEvent.CTRL_DOWN_MASK));
+        redoItem.addActionListener(e -> redoMove());
+        gameMenu.add(redoItem);
+
+        JMenuItem moveHistoryItem = new JMenuItem("Move History");
+        moveHistoryItem.addActionListener(e -> showMoveHistoryDialog());
+        gameMenu.add(moveHistoryItem);
 
         gameMenu.addSeparator();
 
@@ -309,6 +319,54 @@ public class MainFrame extends JFrame implements GameObserver {
         clearMovableHint();
         model.undo();
         updateStatus();
+    }
+
+    private void redoMove() {
+        if (!showingGame || boardPanel.isBusy()) {
+            return;
+        }
+        clearMovableHint();
+        model.redo();
+        updateStatus();
+    }
+
+    private void showMoveHistoryDialog() {
+        if (!showingGame) {
+            JOptionPane.showMessageDialog(this, "Start or load a game first.");
+            return;
+        }
+        List<MoveAction> history = model.getActionHistory();
+        List<MoveAction> redo = model.getRedoHistory();
+        if (history.isEmpty() && redo.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No moves yet. Your current run history will appear here.",
+                    "Move History", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        StringBuilder text = new StringBuilder();
+        text.append(history.size()).append(" completed actions · ")
+                .append(redo.size()).append(" available to redo");
+        if (history.isEmpty()) {
+            text.append("\n\nAll completed actions are currently undone.");
+        }
+        int first = Math.max(0, history.size() - 50);
+        if (first > 0) {
+            text.append("\n\nShowing the latest 50 actions.");
+        }
+        for (int index = first; index < history.size(); index++) {
+            MoveAction action = history.get(index);
+            text.append("\n").append(index + 1).append(". Empty ")
+                    .append(action.getDirection().name().toLowerCase());
+            if (action.getSteps() > 1) {
+                text.append(" x ").append(action.getSteps()).append(" (one move)");
+            }
+        }
+        JTextArea historyText = new JTextArea(text.toString(), 18, 36);
+        historyText.setEditable(false);
+        historyText.setCaretPosition(0);
+        JOptionPane.showMessageDialog(this, new JScrollPane(historyText),
+                "Move History", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void loadGame() {

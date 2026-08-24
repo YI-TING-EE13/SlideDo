@@ -38,7 +38,7 @@ Current handoff status:
 - The latest local verification pass was warning-clean for the previously noisy
   Gradle DSL deprecation, Java native-access warning, and Android Java
   deprecation note.
-- Personal Play 2.0 Stages 1 through 5 are complete. Android Settings owns
+- Personal Play 2.0 Stages 1 through 6 are complete. Android Settings owns
   versioned local backup/restore, while the Daily Calendar browses today and
   earlier deterministic puzzles with per-date saves and completion markers.
   Favorite Puzzles stores up to 50 owner-labeled exact starting boards and
@@ -47,18 +47,20 @@ Current handoff status:
   difficulty and keeps a configurable 1–50 solve target entirely offline.
   Continuous Challenge chains 3, 5, or 10 puzzles of one selected size and
   difficulty in an isolated resumable session while retaining per-puzzle
-  completion, assistance, and player-best boundaries.
-- The latest dual-AVD acceptance covers all 100 Android tests in one serial run
+  completion, assistance, and player-best boundaries. Move History and Redo are
+  shared-model actions: whole-line slides remain one action, saves retain both
+  completed and redo histories, and legacy saves still load safely.
+- The latest dual-AVD acceptance covers all 102 Android tests in one serial run
   on each profile: Pixel_7 (Android 15, 1080x2400) and `small_phone` (Android
-  16 / API 36.1, 720x1280) completed in 445.081s and 505.349s respectively, with no
+  16 / API 36.1, 720x1280) completed in 779.487s and 529.091s respectively, with no
   failed or skipped tests. Coverage
   includes persistent sound/theme preferences, active-game preservation across
   theme recreation, strategic-hint assistance persistence and player-best protection,
   the deterministic offline daily challenge and streak state,
   exact-puzzle replay before and after Results recreation, difficulty
   selection, independent per-size saves, legacy-save migration, scoped records,
-  active-play timing, bounded completion history, lifetime statistics, and
-  player/solver-assisted separation.
+  active-play timing, bounded completion history, lifetime statistics,
+  player/solver-assisted separation, action-history persistence, and Redo.
 
 Start a new implementation session by checking:
 
@@ -77,8 +79,8 @@ verify-connected.bat
 
 The original eight-stage Personal Play roadmap in `Roadmap And Planning` is
 implemented and verified. Personal Play 2.0 is now the active staged program;
-Stages 1 through 5 are complete and Stage 6 Move History and Redo is the next
-implementation gate.
+Stages 1 through 6 are complete and Stage 7 Adaptive and Accessibility
+Reinforcement is the next implementation gate.
 
 Real Play upload signing is intentionally deferred until store submission. It
 is not required for a local push-ready commit, and no Git remote or push is part
@@ -546,8 +548,8 @@ protection before the next stage begins.
 | 3 | Favorite puzzle library | Bookmark exact puzzle identities, label them locally, and replay a favorite without reshuffling or altering normal saves. | Completed and verified on 2026-08-23. |
 | 4 | Personal trends and custom goals | Show local time/move trends and owner-defined goals without analytics or network services. | Completed and verified on 2026-08-24. |
 | 5 | Continuous challenge mode | Chain completed puzzles into a local session with clear progress, exit, resume, and record boundaries. | Completed and verified on 2026-08-24. |
-| 6 | Move history and Redo | Expose the current run's action history and add Redo while preserving whole-line one-action semantics, Restart, Save/Load, and solver input locks. | Planned; next stage. |
-| 7 | Adaptive and accessibility reinforcement | Improve compact/large-screen layout behavior, larger-text resilience, focus order, TalkBack descriptions, contrast, and reduced-motion coverage. | Planned. |
+| 6 | Move history and Redo | Expose the current run's action history and add Redo while preserving whole-line one-action semantics, Restart, Save/Load, and solver input locks. | Completed and verified on 2026-08-24. |
+| 7 | Adaptive and accessibility reinforcement | Improve compact/large-screen layout behavior, larger-text resilience, focus order, TalkBack descriptions, contrast, and reduced-motion coverage. | Planned; next stage. |
 | 8 | Toolchain and CI maintenance | Refresh supported Android/Gradle tooling, keep Windows and GitHub CI reproducible, and document warnings or compatibility migrations. | Planned. |
 
 Shared puzzle rules, deterministic puzzle identity, elapsed milliseconds, save
@@ -625,9 +627,9 @@ Desktop/Android feature parity matrix:
 | Home / start | Native Home with Continue metadata, New Game, Beginner Guide, Practice Tutorial, How to Play, Settings, and Records. | Swing Home/start with New Game, Continue/Load, How to Play, Practice Tutorial, Records, and Preferences. | Android has a richer first-run beginner guide; desktop has equivalent help entry but no paged onboarding. This is acceptable for beta. | Android instrumentation Home tests; desktop home copy tests. |
 | Mode selection | Mode Select starts 3x3, 4x4, and 5x5 games with difficulty labels, expected session length, first-puzzle guidance, and best record summaries. | Home/Game menu starts 3x3, 4x4, and 5x5 games and Records shows best summaries. | Android has richer pre-game guidance; available choices and record summaries match. | Android mode-select instrumentation; desktop compile/manual smoke. |
 | Learning surfaces | First-run onboarding, visual How to Play, Quick Reminder, and interactive Practice Tutorial. | How to Play and Practice Tutorial dialogs use Android-aligned language. | Android remains more visual and interactive; desktop parity covers the same concepts. | Android onboarding/tutorial/how-to instrumentation; desktop help-content tests. |
-| Touch/mouse movement | Tap/swipe aligned tiles; whole-line slide counts as one move and one undo snapshot. | Mouse click/release movement plus keyboard controls; whole-line slide uses shared model. | Input method differs by platform, rule outcome matches. | Shared core tests, Android whole-line instrumentation, desktop smoke. |
+| Touch/mouse movement | Tap/swipe aligned tiles; whole-line slide counts as one move and one action-history entry. | Mouse click/release movement plus keyboard controls; whole-line slide uses the shared model. | Input method differs by platform; Undo/Redo and action outcomes match. | Shared core history tests, Android whole-line/Undo/Redo instrumentation, desktop smoke. |
 | Assist / hints | Assist can suggest one strategic adjacent move, highlight all movable tiles, or offer solver playback. | Assist highlights movable tiles and supports solver playback. | Strategic guidance is Android-first; strategic- and solver-assisted wins do not update Android player records. | Android strategic-hint/persistence/results instrumentation; desktop result-copy tests. |
-| Save/load metadata | `AndroidGameStore` persists independent 3x3, 4x4, and 5x5 slots with size, grid, initial grid, moves, elapsed, updated-at, active, solved, and difficulty; it migrates the legacy single save without replacing a newer matching slot. | Desktop JSON save persists one size, grid, initial grid, moves, elapsed, updated-at, active, and solved; records live in user-data path. | Shared gameplay metadata is aligned; Android adds per-size slots and mobile-only settings/onboarding. | Android store instrumentation, root save metadata tests. |
+| Save/load metadata | `AndroidGameStore` persists independent 3x3, 4x4, and 5x5 slots with size, grid, initial grid, moves, elapsed, updated-at, active, solved, difficulty, completed actions, and Redo actions; it migrates the legacy single save without replacing a newer matching slot. | Desktop JSON save persists the same shared gameplay and action-history metadata for one slot; records live in the user-data path. | Shared gameplay metadata is aligned; Android adds per-size/mode slots and mobile-only settings/onboarding. Legacy saves without histories load with empty Undo/Redo state. | Android store instrumentation, shared history reconstruction and save metadata tests. |
 | Settings / preferences | Persistent English, Traditional Chinese, and Japanese language selection, haptic feedback, reduced motion, reset all saved games, and reset records. | Reduced motion preference plus desktop records/save flows. | App-language and haptics are Android-only; desktop currently remains English. | Android locale/store/settings instrumentation; desktop preferences copy tests/manual smoke. |
 | Records | Per-size local best records, fewer moves then lower time, solver-assisted protection, and player-facing policy explanation. | Per-size local best records with the same comparison, solver-assisted protection, and policy explanation. | Aligned. | Android records/results instrumentation; desktop result and records tests. |
 | Results | Full Results screen with exact-board Replay Puzzle, New Size, Home, record status, and assisted wording. | Android-style Results dialog with Play Again, New Size, Home, record status, and assisted wording. | Android now replays the same starting board for the Personal Play roadmap; desktop retains its new-puzzle action. | Android replay/results instrumentation; desktop results copy tests. |
@@ -1014,6 +1016,40 @@ Priority: Low to Medium
 ## Development Log
 
 ### 2026-08-24
+
+- Completed Personal Play 2.0 Stage 6 Move History and Redo. The shared
+  `GameModel` now owns immutable `MoveAction` histories for completed and undone
+  actions. An adjacent move and a whole-line slide each remain one action; Undo
+  transfers one action to Redo, Redo reapplies it with one move count, a new
+  valid action clears Redo, and Restart clears both histories.
+- Desktop JSON and every Android normal, daily, favorite-practice, and
+  Continuous Challenge save persist completed and redo histories. Loading
+  validates history by replaying it from `initialGrid` before accepting it;
+  malformed or legacy history is discarded safely without rejecting the saved
+  board. Android backup/restore includes the same fields automatically.
+- Android adds availability-aware Undo/Redo controls and a localized, scrollable
+  Move History dialog showing completed/redo counts and the latest 50 completed
+  actions using the empty-cell direction convention. Portrait uses two balanced
+  control rows, while landscape uses one adaptive row to preserve board height
+  at 720x1280. Desktop adds Redo (`Ctrl+Y`) and Move History through the same
+  shared model. Solver playback and board animation continue to lock all
+  conflicting actions.
+- All 50 shared tests passed. Final serial connected runs passed 102/102 on
+  Pixel_7 (Android 15, 1080x2400) in 779.487s and 102/102 on `small_phone`
+  (Android 16 / API 36.1, 720x1280) in 529.091s, with no failures or skips.
+  Coverage includes whole-line one-action history, Undo/Redo persistence,
+  rotation, background/resume, save isolation, and the existing complete UI
+  suite. The foreground timing assertion now measures the actual foreground
+  interval before Home is reached, avoiding host-scheduling false positives
+  while still detecting background-time leakage. A compact portrait/landscape
+  review found no clipped or overlapping board/status/action controls. All 331
+  localized resource keys and format signatures match. `ci.bat` passed shared
+  tests, desktop compile, Android debug/test and signed-release builds, lint,
+  both Javadoc/doclint gates, packaging, and release-readiness checks. The final
+  debug APK SHA-256 is
+  `4875F3D3341C258ACB4651F049D40385139359123D92E43F65F24D0C01045704`.
+  That exact APK installed and cold-launched on both AVDs with `MainActivity`
+  resumed and empty `AndroidRuntime:E` buffers.
 
 - Completed Personal Play 2.0 Stage 5 Continuous Challenge. The shared
   immutable `ContinuousChallenge` aggregate accepts 3, 5, or 10 puzzles and

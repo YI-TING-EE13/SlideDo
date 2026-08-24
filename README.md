@@ -7,7 +7,7 @@
 
 **SlideDo** is a polished number Klotski / sliding puzzle game written in Java. It includes a desktop Swing edition and a native Android edition that share the same core puzzle model, move rules, save format, and solver interfaces.
 
-The design goal is simple: make sliding numbered tiles feel fast, clear, and satisfying. The desktop version now opens on Home and supports mouse, keyboard, undo, restart, save/load, local records, a Records dialog, Preferences, Android-style Results, solver playback, How to Play, Practice Tutorial copy, and movable-tile assist hints. The Android edition adds a deterministic strategic next-move hint to its touch-first onboarding, tutorial, modes, settings, results, records, and compact game controls. Both editions explain that player records prefer fewer moves, break ties by faster time, and exclude assisted completions.
+The design goal is simple: make sliding numbered tiles feel fast, clear, and satisfying. The desktop version now opens on Home and supports mouse, keyboard, undo/redo, move history, restart, save/load, local records, a Records dialog, Preferences, Android-style Results, solver playback, How to Play, Practice Tutorial copy, and movable-tile assist hints. The Android edition adds a deterministic strategic next-move hint to its touch-first onboarding, tutorial, modes, settings, results, records, and compact game controls. Both editions explain that player records prefer fewer moves, break ties by faster time, and exclude assisted completions.
 
 ---
 
@@ -53,6 +53,8 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
   - Whole-line tap behavior maps naturally to touch screens.
   - One user gesture counts as one move.
   - Undo restores the entire previous user action.
+  - Redo reapplies one undone action, and Move History lists completed actions
+    plus the available Redo count using the empty-cell direction convention.
   - Android includes icon-plus-text controls, an outlined empty cell with a first-move prompt, menu-based save/load, autosave, persistent English, Traditional Chinese, and Japanese language selection, optional local sound feedback, Midnight/Ocean themes, haptic and reduced-motion settings, local best records, and a short completion-mark settle on Results.
   - Settings can export all Android saves, records, statistics, daily state, and
     preferences to a versioned local JSON document, then validate and restore a
@@ -66,7 +68,7 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
     assistance persist with the run and cannot replace player best records.
   - Android exposes board state, empty-cell position, highlighted movable tiles, and primary controls through accessibility descriptions.
 - **Quality-of-Life Gameplay**:
-  - Undo.
+  - Undo, Redo, and Move History.
   - Restart current puzzle without reshuffling.
   - Move counter and active-play timer with pause/resume persistence.
   - Local best records by puzzle size and difficulty.
@@ -87,7 +89,8 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
     Chinese, and Japanese localization, icon-plus-text controls, empty-cell
     guidance, touch controls, synchronized whole-line animation, optional local
     tones, persistent Midnight/Ocean themes, haptics, autosave, manual
-    save/load, local JSON backup/restore, best records, Assist hints,
+    save/load, action-history persistence, local JSON backup/restore, best
+    records, Undo/Redo, Move History, Assist hints,
     accessibility descriptions, nested solver controls, and instrumentation
     tests.
 
@@ -402,7 +405,7 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
 - Android instrumentation tests for onboarding, Home launch, Practice Tutorial,
   Mode Select guidance and accessibility text, Continue metadata, How to Play,
   Settings, persistent English, Traditional Chinese, and Japanese language switching, Results,
-  Assist hints, whole-line movement, undo, save/load
+  Assist hints, whole-line movement, undo/redo, move history, save/load
   persistence, app-state store behavior, Activity state/navigation helpers,
   rotation, screen-transition behavior, Reduced motion, and solver-assisted
   record protection, local completion history, lifetime statistics, and record
@@ -411,10 +414,10 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
 - Connected Android instrumentation helpers now wait for the foreground app
   window, wait for activity controls to become interactable, use device-level
   board taps, and fall back to direct swipe scrolling for long content.
-- The latest 2026-08-24 dual-AVD Android acceptance covers all 100 tests in one
-  serial run on each profile: Pixel_7 (Android 15, 1080x2400) passed 100/100 in
-  445.081s and `small_phone` (Android 16 / API 36.1, 720x1280) passed 100/100 in
-  505.349s, with no failed or skipped tests. The suite
+- The latest 2026-08-24 dual-AVD Android acceptance covers all 102 tests in one
+  serial run on each profile: Pixel_7 (Android 15, 1080x2400) passed 102/102 in
+  779.487s and `small_phone` (Android 16 / API 36.1, 720x1280) passed 102/102 in
+  529.091s, with no failed or skipped tests. The suite
   includes English-default isolation from device locale, persistent language
   switching, active-game preservation, and explicit Traditional Chinese and
   Japanese major-screen, difficulty-selection, independent per-size saves,
@@ -437,10 +440,15 @@ Sliding puzzles become expensive very quickly. For a production mobile game, sol
   validated 1–50 targets, compact-screen scrolling, and goal/scope persistence.
   Continuous Challenge tests cover all supported board sizes, session and
   backup persistence, save isolation, per-puzzle record boundaries, compact
-  start/resume/next/complete/end flows, and rotation-safe continuation.
+  start/resume/next/complete/end flows, and rotation-safe continuation. Move
+  History/Redo tests cover adjacent and whole-line action identity, undo/redo
+  ordering, new-action and Restart clearing, save/load and backup persistence,
+  rotation, compact portrait controls, and landscape board space.
 - Latest local `ci.bat` run passed the no-device verification and release
   readiness gates.
-- Android emulator smoke testing for install/launch, Home visibility, whole-line movement, undo, restart, save/load, solver warning dialog, rotation, and background resume.
+- Android emulator smoke testing for install/launch, Home visibility, whole-line
+  movement, undo/redo, Move History, restart, save/load, solver warning dialog,
+  portrait/landscape layout, rotation, and background resume.
 
 ### Useful Commands
 
@@ -579,10 +587,10 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
   `DEVELOPMENT.md` owns the detailed acceptance criteria and status.
 - Personal Play 2.0 is active. Stage 1 offline backup/restore, Stage 2 daily
   calendar/history replay, Stage 3 Favorite Puzzles, Stage 4 offline personal
-  trends/custom weekly goals, and Stage 5 Continuous Challenge completed their
-  two-AVD acceptance. Move history/Redo, adaptive accessibility, and toolchain
-  maintenance remain future stages until their own verification and commit
-  gates pass.
+  trends/custom weekly goals, Stage 5 Continuous Challenge, and Stage 6 Move
+  History/Redo completed their two-AVD acceptance. Adaptive accessibility and
+  toolchain maintenance remain future stages until their own verification and
+  commit gates pass.
 - Desktop/mobile player-facing parity MVP is complete for Home/start, Records, Preferences, Results, How to Play, Practice Tutorial, and Assist hints.
 - Save files now include release-readiness metadata and desktop saves now live in the user-data directory.
 - Signed Android release APK/AAB and desktop ZIP/app-image packaging scripts are available.

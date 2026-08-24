@@ -41,6 +41,21 @@ class SaveManagerTest {
         assertEquals(PuzzleDifficulty.CLASSIC, data.difficulty);
         assertArrayEquals(model.getGridCopy(), data.grid);
         assertArrayEquals(initial, data.initialGrid);
+        assertEquals("U1", data.actionHistory);
+        assertEquals("", data.redoHistory);
+
+        GameModel restored = new GameModel(3);
+        restored.loadState(data);
+        assertTrue(restored.canUndo());
+        assertTrue(restored.undo());
+        assertTrue(restored.canRedo());
+
+        assertTrue(SaveManager.saveGame(restored, saveFile));
+        GameModel restoredWithRedo = new GameModel(3);
+        restoredWithRedo.loadState(SaveManager.loadGame(saveFile, legacyFile));
+        assertTrue(restoredWithRedo.canRedo());
+        assertTrue(restoredWithRedo.redo());
+        assertArrayEquals(model.getGridCopy(), restoredWithRedo.getGridCopy());
     }
 
     @Test

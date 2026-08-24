@@ -2,6 +2,7 @@ package com.klotski.core;
 
 import java.util.ArrayList;
 import java.util.ArrayDeque;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
@@ -11,8 +12,8 @@ import java.util.function.LongSupplier;
 /**
  * Platform-independent state container and rules engine for Number Klotski.
  * <p>
- * The model owns the board, move count, active-play timer, undo stack, and win
- * detection. It emits observer callbacks but contains no Swing or Android code,
+ * The model owns the board, move count, active-play timer, action history,
+ * undo/redo stacks, and win detection. It emits observer callbacks but contains no Swing or Android code,
  * which keeps the same rules usable by both desktop and mobile front ends.
  * </p>
  */
@@ -29,7 +30,8 @@ public class GameModel {
     private boolean isGameRunning;
     private PuzzleDifficulty difficulty = PuzzleDifficulty.CLASSIC;
     private int[][] initialGrid;
-    private final Deque<int[][]> undoStack = new ArrayDeque<>();
+    private final Deque<ActionSnapshot> undoStack = new ArrayDeque<>();
+    private final Deque<ActionSnapshot> redoStack = new ArrayDeque<>();
 
     private final List<GameObserver> observers = new ArrayList<>();
     private final Random random = new Random();
@@ -73,6 +75,7 @@ public class GameModel {
         resetTimer(false, 0L);
         initialGrid = copyGrid(grid);
         undoStack.clear();
+        redoStack.clear();
         notifyGridChanged();
     }
 
@@ -139,6 +142,7 @@ public class GameModel {
         difficulty = selectedDifficulty;
         initialGrid = copyGrid(grid);
         undoStack.clear();
+        redoStack.clear();
         notifyGridChanged();
     }
 
@@ -187,11 +191,12 @@ public class GameModel {
             return false;
         }
 
-        undoStack.push(copyGrid(grid));
+        int[][] beforeGrid = copyGrid(grid);
         for (int i = 0; i < steps; i++) {
             moveInternal(dir, false, false, false, false);
         }
 
+        recordAction(beforeGrid, dir, steps);
         moveCount++;
         notifyLineMove(dir, steps);
         notifyGridChanged();
@@ -205,9 +210,7 @@ public class GameModel {
 
         if (isValid(newRow, newCol)) {
             boolean shouldCheckWin = isGameRunning && countRunningMove;
-            if (shouldCheckWin && pushUndo) {
-                undoStack.push(copyGrid(grid));
-            }
+            int[][] beforeGrid = shouldCheckWin && pushUndo ? copyGrid(grid) : null;
 
             // Swap
             grid[emptyRow][emptyCol] = grid[newRow][newCol];
@@ -218,6 +221,9 @@ public class GameModel {
 
             if (shouldCheckWin) {
                 moveCount++;
+                if (pushUndo) {
+                    recordAction(beforeGrid, dir, 1);
+                }
             }
 
             if (notifyMoveEvent) {
@@ -244,7 +250,9 @@ public class GameModel {
             return false;
         }
 
-        grid = undoStack.pop();
+        ActionSnapshot action = undoStack.pop();
+        grid = copyGrid(action.beforeGrid);
+        redoStack.push(action);
         findEmptyTile();
         if (moveCount > 0) {
             moveCount--;
@@ -264,6 +272,85 @@ public class GameModel {
     }
 
     /**
+     * Reapplies the most recently undone action as one counted move.
+     *
+     * @return {@code true} when an undone action was restored
+     */
+    public boolean redo() {
+        if (redoStack.isEmpty() || !isGameRunning) {
+            return false;
+        }
+
+        ActionSnapshot action = redoStack.pop();
+        grid = copyGrid(action.afterGrid);
+        findEmptyTile();
+        undoStack.push(action);
+        moveCount++;
+        if (action.action.getSteps() == 1) {
+            notifyMove(action.action.getDirection());
+        } else {
+            notifyLineMove(action.action.getDirection(), action.action.getSteps());
+        }
+        notifyGridChanged();
+        checkWin();
+        return true;
+    }
+
+    /**
+     * Checks whether the current game has an undone action available.
+     *
+     * @return {@code true} when Redo can reapply one action
+     */
+    public boolean canRedo() {
+        return !redoStack.isEmpty() && isGameRunning;
+    }
+
+    /**
+     * Returns completed actions in oldest-first order.
+     *
+     * @return defensive action-history list
+     */
+    public List<MoveAction> getActionHistory() {
+        List<MoveAction> history = new ArrayList<>();
+        for (ActionSnapshot action : undoStack) {
+            history.add(action.action);
+        }
+        Collections.reverse(history);
+        return history;
+    }
+
+    /**
+     * Returns undone actions in next-redo-first order.
+     *
+     * @return defensive redo-history list
+     */
+    public List<MoveAction> getRedoHistory() {
+        List<MoveAction> history = new ArrayList<>();
+        for (ActionSnapshot action : redoStack) {
+            history.add(action.action);
+        }
+        return history;
+    }
+
+    /**
+     * Encodes the completed action history for persistence.
+     *
+     * @return compact persisted form of the oldest-first completed actions
+     */
+    public String getEncodedActionHistory() {
+        return encodeActions(getActionHistory());
+    }
+
+    /**
+     * Encodes the redo action history for persistence.
+     *
+     * @return compact persisted form of the next-redo-first undone actions
+     */
+    public String getEncodedRedoHistory() {
+        return encodeActions(getRedoHistory());
+    }
+
+    /**
      * Restarts the current puzzle from the post-scramble starting grid.
      */
     public void restartCurrentGame() {
@@ -279,6 +366,7 @@ public class GameModel {
         isGameRunning = !isSolved;
         resetTimer(isGameRunning, 0L);
         undoStack.clear();
+        redoStack.clear();
         notifyGridChanged();
     }
 
@@ -557,6 +645,7 @@ public class GameModel {
         resetTimer(isGameRunning, 0L);
         this.initialGrid = copyGrid(savedGrid);
         this.undoStack.clear();
+        this.redoStack.clear();
         notifyGridChanged();
     }
 
@@ -580,6 +669,8 @@ public class GameModel {
             this.initialGrid = copyGrid(data.grid);
         }
         this.undoStack.clear();
+        this.redoStack.clear();
+        restoreActionHistory(data.actionHistory, data.redoHistory);
         notifyGridChanged();
     }
 
@@ -599,5 +690,119 @@ public class GameModel {
      */
     public int[][] getInitialGridCopy() {
         return copyGrid(initialGrid);
+    }
+
+    private void recordAction(int[][] beforeGrid, Direction direction, int steps) {
+        undoStack.push(new ActionSnapshot(beforeGrid, copyGrid(grid),
+                new MoveAction(direction, steps)));
+        redoStack.clear();
+    }
+
+    private void restoreActionHistory(String encodedHistory, String encodedRedo) {
+        if ((encodedHistory == null || encodedHistory.isEmpty())
+                && (encodedRedo == null || encodedRedo.isEmpty())) {
+            return;
+        }
+        try {
+            List<MoveAction> history = decodeActions(encodedHistory);
+            if (history.size() != moveCount) {
+                return;
+            }
+            int[][] reconstructed = copyGrid(initialGrid);
+            List<ActionSnapshot> restoredUndo = new ArrayList<>();
+            for (MoveAction action : history) {
+                int[][] before = copyGrid(reconstructed);
+                reconstructed = applyAction(reconstructed, action);
+                restoredUndo.add(new ActionSnapshot(before, copyGrid(reconstructed), action));
+            }
+            if (!java.util.Arrays.deepEquals(reconstructed, grid)) {
+                return;
+            }
+
+            List<ActionSnapshot> restoredRedo = new ArrayList<>();
+            for (MoveAction action : decodeActions(encodedRedo)) {
+                int[][] before = copyGrid(reconstructed);
+                reconstructed = applyAction(reconstructed, action);
+                restoredRedo.add(new ActionSnapshot(before, copyGrid(reconstructed), action));
+            }
+            for (ActionSnapshot action : restoredUndo) {
+                undoStack.push(action);
+            }
+            redoStack.addAll(restoredRedo);
+        } catch (RuntimeException exception) {
+            undoStack.clear();
+            redoStack.clear();
+        }
+    }
+
+    private int[][] applyAction(int[][] source, MoveAction action) {
+        int[][] result = copyGrid(source);
+        int emptyR = -1;
+        int emptyC = -1;
+        for (int row = 0; row < result.length; row++) {
+            for (int col = 0; col < result[row].length; col++) {
+                if (result[row][col] == 0) {
+                    emptyR = row;
+                    emptyC = col;
+                }
+            }
+        }
+        for (int step = 0; step < action.getSteps(); step++) {
+            int nextRow = emptyR + action.getDirection().dRow;
+            int nextCol = emptyC + action.getDirection().dCol;
+            if (!isValid(nextRow, nextCol)) {
+                throw new IllegalArgumentException("Move history leaves the board");
+            }
+            result[emptyR][emptyC] = result[nextRow][nextCol];
+            result[nextRow][nextCol] = 0;
+            emptyR = nextRow;
+            emptyC = nextCol;
+        }
+        return result;
+    }
+
+    private static String encodeActions(List<MoveAction> actions) {
+        StringBuilder encoded = new StringBuilder();
+        for (MoveAction action : actions) {
+            if (encoded.length() > 0) {
+                encoded.append(',');
+            }
+            encoded.append(action.getDirection().name().charAt(0))
+                    .append(action.getSteps());
+        }
+        return encoded.toString();
+    }
+
+    private static List<MoveAction> decodeActions(String encoded) {
+        List<MoveAction> actions = new ArrayList<>();
+        if (encoded == null || encoded.isEmpty()) {
+            return actions;
+        }
+        for (String token : encoded.split(",")) {
+            if (token.length() < 2) {
+                throw new IllegalArgumentException("Invalid move history token");
+            }
+            Direction direction = switch (token.charAt(0)) {
+                case 'U' -> Direction.UP;
+                case 'D' -> Direction.DOWN;
+                case 'L' -> Direction.LEFT;
+                case 'R' -> Direction.RIGHT;
+                default -> throw new IllegalArgumentException("Invalid move history direction");
+            };
+            actions.add(new MoveAction(direction, Integer.parseInt(token.substring(1))));
+        }
+        return actions;
+    }
+
+    private static final class ActionSnapshot {
+        private final int[][] beforeGrid;
+        private final int[][] afterGrid;
+        private final MoveAction action;
+
+        private ActionSnapshot(int[][] beforeGrid, int[][] afterGrid, MoveAction action) {
+            this.beforeGrid = beforeGrid;
+            this.afterGrid = afterGrid;
+            this.action = action;
+        }
     }
 }

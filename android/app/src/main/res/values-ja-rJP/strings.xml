@@ -234,6 +234,7 @@
     <string name="accessibility_game_home">現在のパズルを保存してホームへ戻ります</string>
     <string name="accessibility_game_menu">保存、読み込み、設定、記録、ホームを含むゲームメニューを開きます</string>
     <string name="accessibility_game_undo">直前の1手を元に戻します</string>
+    <string name="accessibility_game_redo">元に戻した次の1手をやり直します</string>
     <string name="accessibility_game_restart">このパズルを開始盤面からやり直します</string>
     <string name="accessibility_game_assist">戦略ヒント、動かせるタイルの表示、高度なソルバーツールを使うためにアシストを開きます</string>
     <string name="accessibility_settings_switch">%1$s。%2$s</string>
@@ -263,6 +264,18 @@
     <string name="button_4x4">4x4</string>
     <string name="button_5x5">5x5</string>
     <string name="button_undo">戻す</string>
+    <string name="button_redo">やり直す</string>
+    <string name="move_history_title">手順履歴</string>
+    <string name="move_history_empty">まだ動かしていません。このプレイの手順がここに表示されます。</string>
+    <string name="move_history_no_completed">完了した操作はすべて元に戻されています。</string>
+    <string name="move_history_summary">完了した操作 %1$d 件 · やり直せる操作 %2$d 件</string>
+    <string name="move_history_recent_only">最新の %1$d 件を表示しています。</string>
+    <string name="move_history_action_single">%1$d. 空白を%2$sへ</string>
+    <string name="move_history_action_line">%1$d. 空白を%2$sへ × %3$d（1手）</string>
+    <string name="move_direction_up">上</string>
+    <string name="move_direction_down">下</string>
+    <string name="move_direction_left">左</string>
+    <string name="move_direction_right">右</string>
     <string name="button_restart">再挑戦</string>
     <string name="button_save">保存</string>
     <string name="button_load">読み込む</string>

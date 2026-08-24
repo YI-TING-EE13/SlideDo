@@ -39,6 +39,7 @@ import com.klotski.core.Direction;
 import com.klotski.core.GameModel;
 import com.klotski.core.GameObserver;
 import com.klotski.core.IdaStarSolver;
+import com.klotski.core.MoveAction;
 import com.klotski.core.PuzzleIdentity;
 import com.klotski.core.PuzzleDifficulty;
 import com.klotski.core.SaveManager;
@@ -1365,8 +1366,20 @@ public class MainActivity extends Activity implements GameObserver {
             public void onUndo() {
                 if (canAcceptCommand()) {
                     clearGameHint();
-                    model.undo();
-                    performBoardHaptic(HapticFeedbackConstants.VIRTUAL_KEY);
+                    if (model.undo()) {
+                        performBoardHaptic(HapticFeedbackConstants.VIRTUAL_KEY);
+                    }
+                    updateStatus();
+                }
+            }
+
+            @Override
+            public void onRedo() {
+                if (canAcceptCommand()) {
+                    clearGameHint();
+                    if (model.redo()) {
+                        performBoardHaptic(HapticFeedbackConstants.VIRTUAL_KEY);
+                    }
                     updateStatus();
                 }
             }
@@ -1436,6 +1449,7 @@ public class MainActivity extends Activity implements GameObserver {
                 getString(R.string.button_save),
                 getString(R.string.button_load),
                 getString(R.string.button_restart),
+                getString(R.string.move_history_title),
                 getString(R.string.favorite_save_action),
                 getString(R.string.menu_new_size),
                 getString(R.string.menu_quick_reminder),
@@ -1463,18 +1477,19 @@ public class MainActivity extends Activity implements GameObserver {
                             }
                         }
                         case 3 -> restartCurrentGame();
-                        case 4 -> {
+                        case 4 -> showMoveHistory();
+                        case 5 -> {
                             showFavoriteNameDialog(currentFavoriteForModel());
                         }
-                        case 5 -> {
+                        case 6 -> {
                             saveGame();
                             showModeSelectScreen();
                         }
-                        case 6 -> showQuickReminder();
-                        case 7 -> showHowToScreen(Screen.GAME);
-                        case 8 -> showSettingsScreen(Screen.GAME);
-                        case 9 -> showRecordsScreen(Screen.GAME);
-                        case 10 -> {
+                        case 7 -> showQuickReminder();
+                        case 8 -> showHowToScreen(Screen.GAME);
+                        case 9 -> showSettingsScreen(Screen.GAME);
+                        case 10 -> showRecordsScreen(Screen.GAME);
+                        case 11 -> {
                             saveGame();
                             showHomeScreen();
                         }
@@ -1484,6 +1499,53 @@ public class MainActivity extends Activity implements GameObserver {
                 })
                 .create();
         showTimerPausingDialog(menuDialog);
+    }
+
+    private void showMoveHistory() {
+        List<MoveAction> history = model.getActionHistory();
+        String message;
+        List<MoveAction> redo = model.getRedoHistory();
+        if (history.isEmpty() && redo.isEmpty()) {
+            message = getString(R.string.move_history_empty);
+        } else {
+            StringBuilder text = new StringBuilder(getString(
+                    R.string.move_history_summary, history.size(), redo.size()));
+            if (history.isEmpty()) {
+                text.append("\n\n").append(getString(R.string.move_history_no_completed));
+            }
+            int first = Math.max(0, history.size() - 50);
+            if (first > 0) {
+                text.append("\n\n").append(getString(R.string.move_history_recent_only, 50));
+            }
+            for (int index = first; index < history.size(); index++) {
+                MoveAction action = history.get(index);
+                int stringId = action.getSteps() == 1
+                        ? R.string.move_history_action_single
+                        : R.string.move_history_action_line;
+                String line = action.getSteps() == 1
+                        ? getString(stringId, index + 1,
+                                moveDirectionName(action.getDirection()))
+                        : getString(stringId, index + 1,
+                                moveDirectionName(action.getDirection()), action.getSteps());
+                text.append("\n\n").append(line);
+            }
+            message = text.toString();
+        }
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.move_history_title)
+                .setMessage(message)
+                .setPositiveButton(R.string.dialog_close, null)
+                .create();
+        showTimerPausingDialog(dialog);
+    }
+
+    private String moveDirectionName(Direction direction) {
+        return getString(switch (direction) {
+            case UP -> R.string.move_direction_up;
+            case DOWN -> R.string.move_direction_down;
+            case LEFT -> R.string.move_direction_left;
+            case RIGHT -> R.string.move_direction_right;
+        });
     }
 
     private void showQuickReminder() {
@@ -2225,6 +2287,16 @@ public class MainActivity extends Activity implements GameObserver {
     private void updateControlsEnabled() {
         boolean enabled = canAcceptCommand();
         for (Button button : commandButtons) {
+            button.setEnabled(enabled);
+            button.setAlpha(enabled ? 1f : 0.45f);
+        }
+        updateActionButtonState(R.id.game_undo_button, enabled && model != null && model.canUndo());
+        updateActionButtonState(R.id.game_redo_button, enabled && model != null && model.canRedo());
+    }
+
+    private void updateActionButtonState(int viewId, boolean enabled) {
+        View button = findViewById(viewId);
+        if (button != null) {
             button.setEnabled(enabled);
             button.setAlpha(enabled ? 1f : 0.45f);
         }

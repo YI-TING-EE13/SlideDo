@@ -233,6 +233,7 @@
     <string name="accessibility_game_home">儲存目前拼圖並返回首頁</string>
     <string name="accessibility_game_menu">開啟遊戲選單，以使用儲存、載入、設定、紀錄與首頁</string>
     <string name="accessibility_game_undo">復原上一次移動</string>
+    <string name="accessibility_game_redo">重做下一個已復原的移動</string>
     <string name="accessibility_game_restart">從起始盤面重新開始此拼圖</string>
     <string name="accessibility_game_assist">開啟輔助，以使用策略提示、顯示可移動方塊或使用進階解題器工具</string>
     <string name="accessibility_settings_switch">%1$s。%2$s</string>
@@ -262,6 +263,18 @@
     <string name="button_4x4">4x4</string>
     <string name="button_5x5">5x5</string>
     <string name="button_undo">復原</string>
+    <string name="button_redo">重做</string>
+    <string name="move_history_title">移動紀錄</string>
+    <string name="move_history_empty">尚未移動。目前這局的操作紀錄會顯示在這裡。</string>
+    <string name="move_history_no_completed">目前所有已完成的操作都已復原。</string>
+    <string name="move_history_summary">已完成 %1$d 個操作 · 可重做 %2$d 個</string>
+    <string name="move_history_recent_only">顯示最近 %1$d 個操作。</string>
+    <string name="move_history_action_single">%1$d. 空格向%2$s</string>
+    <string name="move_history_action_line">%1$d. 空格向%2$s × %3$d（算一步）</string>
+    <string name="move_direction_up">上</string>
+    <string name="move_direction_down">下</string>
+    <string name="move_direction_left">左</string>
+    <string name="move_direction_right">右</string>
     <string name="button_restart">重來</string>
     <string name="button_save">儲存</string>
     <string name="button_load">載入</string>

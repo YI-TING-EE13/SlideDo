@@ -15,8 +15,9 @@ import java.util.regex.Pattern;
 /**
  * Persists desktop game state and best records.
  * <p>
- * New saves use a small JSON format so the data remains portable across Java
- * desktop and Android. The loader also accepts the legacy serialized
+ * New saves use a small JSON format, including completed and redo action
+ * histories, so the data remains portable across Java desktop and Android.
+ * The loader also accepts the legacy serialized
  * {@code klotski_save.dat} file to avoid breaking older local saves.
  * </p>
  */
@@ -60,6 +61,8 @@ public class SaveManager {
         data.active = model.isGameRunning();
         data.solved = model.isSolved();
         data.difficulty = model.getDifficulty();
+        data.actionHistory = model.getEncodedActionHistory();
+        data.redoHistory = model.getEncodedRedoHistory();
 
         try {
             writeText(saveFile, toJson(data));
@@ -219,7 +222,9 @@ public class SaveManager {
         sb.append("  \"solved\": ").append(data.solved).append(",\n");
         sb.append("  \"difficulty\": \"").append(data.difficulty.getId()).append("\",\n");
         sb.append("  \"grid\": ").append(gridToJson(data.grid)).append(",\n");
-        sb.append("  \"initialGrid\": ").append(gridToJson(data.initialGrid)).append("\n");
+        sb.append("  \"initialGrid\": ").append(gridToJson(data.initialGrid)).append(",\n");
+        sb.append("  \"actionHistory\": \"").append(data.actionHistory).append("\",\n");
+        sb.append("  \"redoHistory\": \"").append(data.redoHistory).append("\"\n");
         sb.append("}\n");
         return sb.toString();
     }
@@ -235,6 +240,8 @@ public class SaveManager {
         data.difficulty = PuzzleDifficulty.fromId(optionalStringField(json, "difficulty", null));
         data.grid = gridField(json, "grid", data.size);
         data.initialGrid = gridField(json, "initialGrid", data.size);
+        data.actionHistory = optionalStringField(json, "actionHistory", "");
+        data.redoHistory = optionalStringField(json, "redoHistory", "");
         return data;
     }
 
@@ -250,6 +257,12 @@ public class SaveManager {
         }
         if (data.difficulty == null) {
             data.difficulty = PuzzleDifficulty.CLASSIC;
+        }
+        if (data.actionHistory == null) {
+            data.actionHistory = "";
+        }
+        if (data.redoHistory == null) {
+            data.redoHistory = "";
         }
         boolean solvedGrid = isSolvedGrid(data.grid);
         data.solved = data.solved || solvedGrid;
@@ -473,6 +486,12 @@ public class SaveManager {
 
         /** Scramble-intensity preset, defaulting to Classic for legacy saves. */
         public PuzzleDifficulty difficulty;
+
+        /** Oldest-first completed action history in compact core format. */
+        public String actionHistory = "";
+
+        /** Next-redo-first undone action history in compact core format. */
+        public String redoHistory = "";
     }
 
     /**

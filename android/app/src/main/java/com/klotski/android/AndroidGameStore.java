@@ -29,7 +29,7 @@ import java.util.Set;
  * SharedPreferences-backed Android state store for app-level data.
  * <p>
  * This class owns the Android persistence schema for independent per-size
- * saves, favorite puzzles and their isolated practice progress, records,
+ * saves and their action histories, favorite puzzles and their isolated practice progress, records,
  * completion history, personal statistics, trend scope, weekly goal, settings,
  * onboarding, and the last selected puzzle size and difficulty. A legacy
  * single-save payload is migrated into its matching size slot without
@@ -50,6 +50,8 @@ final class AndroidGameStore {
     private static final String KEY_ACTIVE = "active";
     private static final String KEY_SOLVED = "solved";
     private static final String KEY_DIFFICULTY = "difficulty";
+    private static final String KEY_ACTION_HISTORY = "action_history";
+    private static final String KEY_REDO_HISTORY = "redo_history";
     private static final String KEY_ASSISTED = "assisted";
     private static final String KEY_SAVE_PREFIX = "save_";
     private static final String KEY_DAILY_SAVE_PREFIX = "daily_save_";
@@ -212,7 +214,8 @@ final class AndroidGameStore {
         SharedPreferences.Editor editor = prefs.edit();
         putSave(editor, prefix, model.getSize(), model.getGridCopy(), model.getInitialGridCopy(),
                 model.getMoveCount(), Math.max(0, elapsedMs), System.currentTimeMillis(),
-                model.isGameRunning(), model.isSolved(), model.getDifficulty());
+                model.isGameRunning(), model.isSolved(), model.getDifficulty(),
+                model.getEncodedActionHistory(), model.getEncodedRedoHistory());
         editor.putBoolean(prefix + KEY_ASSISTED, assisted)
                 .putInt(KEY_LAST_SIZE, model.getSize()).apply();
     }
@@ -336,7 +339,8 @@ final class AndroidGameStore {
         putSave(editor, favoriteRunPrefix(favorite.id), model.getSize(), model.getGridCopy(),
                 model.getInitialGridCopy(), model.getMoveCount(), Math.max(0, elapsedMs),
                 System.currentTimeMillis(), model.isGameRunning(), model.isSolved(),
-                model.getDifficulty());
+                model.getDifficulty(), model.getEncodedActionHistory(),
+                model.getEncodedRedoHistory());
         editor.apply();
     }
 
@@ -379,7 +383,8 @@ final class AndroidGameStore {
         putSave(editor, prefix, model.getSize(), model.getGridCopy(),
                 model.getInitialGridCopy(), model.getMoveCount(), Math.max(0, elapsedMs),
                 System.currentTimeMillis(), model.isGameRunning(), model.isSolved(),
-                model.getDifficulty());
+                model.getDifficulty(), model.getEncodedActionHistory(),
+                model.getEncodedRedoHistory());
         editor.putBoolean(prefix + KEY_ASSISTED, assisted).apply();
     }
 
@@ -546,7 +551,8 @@ final class AndroidGameStore {
         putSave(editor, KEY_CONTINUOUS_SAVE_PREFIX, model.getSize(), model.getGridCopy(),
                 model.getInitialGridCopy(), model.getMoveCount(), Math.max(0, elapsedMs),
                 System.currentTimeMillis(), model.isGameRunning(), model.isSolved(),
-                model.getDifficulty());
+                model.getDifficulty(), model.getEncodedActionHistory(),
+                model.getEncodedRedoHistory());
         editor.putBoolean(KEY_CONTINUOUS_SAVE_PREFIX + KEY_ASSISTED, assisted)
                 .putInt(KEY_CONTINUOUS_SAVE_PREFIX + KEY_CONTINUOUS_TARGET,
                         challenge.getTargetPuzzles())
@@ -873,6 +879,8 @@ final class AndroidGameStore {
         data.solved = prefs.getBoolean(prefix + KEY_SOLVED, false);
         data.active = prefs.getBoolean(prefix + KEY_ACTIVE, false);
         data.difficulty = PuzzleDifficulty.fromId(prefs.getString(prefix + KEY_DIFFICULTY, null));
+        data.actionHistory = prefs.getString(prefix + KEY_ACTION_HISTORY, "");
+        data.redoHistory = prefs.getString(prefix + KEY_REDO_HISTORY, "");
         try {
             normalizeStateMetadata(data);
         } catch (RuntimeException exception) {
@@ -896,7 +904,8 @@ final class AndroidGameStore {
         if (current == null || legacy.updatedAt >= current.updatedAt) {
             putSave(editor, targetPrefix, legacy.size, legacy.grid, legacy.initialGrid,
                     legacy.moveCount, legacy.elapsedTime, legacy.updatedAt,
-                    legacy.active, legacy.solved, legacy.difficulty);
+                    legacy.active, legacy.solved, legacy.difficulty,
+                    legacy.actionHistory, legacy.redoHistory);
         }
         removeSave(editor, "");
         editor.commit();
@@ -921,7 +930,8 @@ final class AndroidGameStore {
         if (current == null || legacy.updatedAt >= current.updatedAt) {
             putSave(editor, targetPrefix, legacy.size, legacy.grid, legacy.initialGrid,
                     legacy.moveCount, legacy.elapsedTime, legacy.updatedAt,
-                    legacy.active, legacy.solved, legacy.difficulty);
+                    legacy.active, legacy.solved, legacy.difficulty,
+                    legacy.actionHistory, legacy.redoHistory);
             editor.putBoolean(targetPrefix + KEY_ASSISTED, legacyAssisted);
         }
         removeSave(editor, KEY_DAILY_SAVE_PREFIX);
@@ -931,7 +941,8 @@ final class AndroidGameStore {
 
     private static void putSave(SharedPreferences.Editor editor, String prefix, int size,
             int[][] grid, int[][] initialGrid, int moves, long elapsedMs, long updatedAt,
-            boolean active, boolean solved, PuzzleDifficulty difficulty) {
+            boolean active, boolean solved, PuzzleDifficulty difficulty,
+            String actionHistory, String redoHistory) {
         PuzzleDifficulty selected = difficulty == null ? PuzzleDifficulty.CLASSIC : difficulty;
         editor.putInt(prefix + KEY_SIZE, size)
                 .putString(prefix + KEY_GRID, flatten(grid))
@@ -941,7 +952,11 @@ final class AndroidGameStore {
                 .putLong(prefix + KEY_UPDATED_AT, updatedAt)
                 .putBoolean(prefix + KEY_ACTIVE, active)
                 .putBoolean(prefix + KEY_SOLVED, solved)
-                .putString(prefix + KEY_DIFFICULTY, selected.getId());
+                .putString(prefix + KEY_DIFFICULTY, selected.getId())
+                .putString(prefix + KEY_ACTION_HISTORY,
+                        actionHistory == null ? "" : actionHistory)
+                .putString(prefix + KEY_REDO_HISTORY,
+                        redoHistory == null ? "" : redoHistory);
     }
 
     private static void removeSave(SharedPreferences.Editor editor, String prefix) {
@@ -954,6 +969,8 @@ final class AndroidGameStore {
                 .remove(prefix + KEY_ACTIVE)
                 .remove(prefix + KEY_SOLVED)
                 .remove(prefix + KEY_DIFFICULTY)
+                .remove(prefix + KEY_ACTION_HISTORY)
+                .remove(prefix + KEY_REDO_HISTORY)
                 .remove(prefix + KEY_ASSISTED);
     }
 

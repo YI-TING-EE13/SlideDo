@@ -144,6 +144,31 @@ public class AndroidGameStoreTest {
     }
 
     @Test
+    public void saveAndLoadPreserveMoveHistoryAndRedoStack() {
+        GameModel model = new GameModel(3);
+        model.loadState(new int[][] {
+                {1, 2, 3},
+                {4, 0, 6},
+                {7, 5, 8}
+        }, 0);
+        assertTrue(model.move(Direction.UP));
+        assertTrue(model.undo());
+
+        store.saveGame(model, 2_000L);
+        SaveManager.SaveData data = store.loadSavedGame(3);
+        assertNotNull(data);
+        assertEquals("", data.actionHistory);
+        assertEquals("U1", data.redoHistory);
+
+        GameModel restored = new GameModel(3);
+        restored.loadState(data);
+        assertFalse(restored.canUndo());
+        assertTrue(restored.canRedo());
+        assertTrue(restored.redo());
+        assertEquals(1, restored.getMoveCount());
+    }
+
+    @Test
     public void legacySingleSaveMigratesIntoItsSizeSlot() {
         prefs.edit()
                 .putInt("size", 3)

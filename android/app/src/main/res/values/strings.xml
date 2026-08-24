@@ -236,6 +236,7 @@
     <string name="accessibility_game_home">Save the current puzzle and return Home</string>
     <string name="accessibility_game_menu">Open game menu for save, load, settings, records, and Home</string>
     <string name="accessibility_game_undo">Undo the previous move</string>
+    <string name="accessibility_game_redo">Redo the next undone move</string>
     <string name="accessibility_game_restart">Restart this puzzle from its starting board</string>
     <string name="accessibility_game_assist">Open Assist for strategic and movable-tile hints or advanced Solver Tools</string>
     <string name="accessibility_settings_switch">%1$s. %2$s</string>
@@ -265,6 +266,18 @@
     <string name="button_4x4">4x4</string>
     <string name="button_5x5">5x5</string>
     <string name="button_undo">Undo</string>
+    <string name="button_redo">Redo</string>
+    <string name="move_history_title">Move History</string>
+    <string name="move_history_empty">No moves yet. Your current run history will appear here.</string>
+    <string name="move_history_no_completed">All completed actions are currently undone.</string>
+    <string name="move_history_summary">%1$d completed actions · %2$d available to redo</string>
+    <string name="move_history_recent_only">Showing the latest %1$d actions.</string>
+    <string name="move_history_action_single">%1$d. Empty %2$s</string>
+    <string name="move_history_action_line">%1$d. Empty %2$s × %3$d (one move)</string>
+    <string name="move_direction_up">up</string>
+    <string name="move_direction_down">down</string>
+    <string name="move_direction_left">left</string>
+    <string name="move_direction_right">right</string>
     <string name="button_restart">Restart</string>
     <string name="button_save">Save</string>
     <string name="button_load">Load</string>

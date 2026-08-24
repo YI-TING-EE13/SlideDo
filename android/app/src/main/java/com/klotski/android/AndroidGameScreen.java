@@ -4,6 +4,7 @@ import static com.klotski.android.AndroidUi.COLOR_PANEL;
 import static com.klotski.android.AndroidUi.COLOR_MUTED_TEXT;
 
 import android.app.Activity;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.view.Gravity;
@@ -77,20 +78,32 @@ final class AndroidGameScreen {
         LinearLayout bottomActions = new LinearLayout(activity);
         bottomActions.setGravity(Gravity.CENTER);
         bottomActions.setPadding(0, ui.dp(10), 0, 0);
-        bottomActions.setOrientation(LinearLayout.HORIZONTAL);
+        boolean landscape = activity.getResources().getConfiguration().orientation
+                == Configuration.ORIENTATION_LANDSCAPE;
+        bottomActions.setOrientation(landscape
+                ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
         root.addView(bottomActions, ui.fullWidthParams());
 
-        Button undoButton = ui.addGameButton(bottomActions, R.string.button_undo,
+        LinearLayout historyActions = landscape
+                ? bottomActions : createActionRow(bottomActions, 0);
+        Button undoButton = ui.addGameButton(historyActions, R.string.button_undo,
                 R.drawable.ic_action_undo, v -> actions.onUndo());
         undoButton.setId(R.id.game_undo_button);
         undoButton.setContentDescription(activity.getString(R.string.accessibility_game_undo));
 
-        Button restartButton = ui.addGameButton(bottomActions, R.string.button_restart,
+        Button redoButton = ui.addGameButton(historyActions, R.string.button_redo,
+                R.drawable.ic_action_redo, v -> actions.onRedo());
+        redoButton.setId(R.id.game_redo_button);
+        redoButton.setContentDescription(activity.getString(R.string.accessibility_game_redo));
+
+        LinearLayout toolActions = landscape
+                ? bottomActions : createActionRow(bottomActions, ui.dp(8));
+        Button restartButton = ui.addGameButton(toolActions, R.string.button_restart,
                 R.drawable.ic_action_restart, v -> actions.onRestart());
         restartButton.setId(R.id.game_restart_button);
         restartButton.setContentDescription(activity.getString(R.string.accessibility_game_restart));
 
-        Button assistButton = ui.addGameButton(bottomActions, R.string.game_assist,
+        Button assistButton = ui.addGameButton(toolActions, R.string.game_assist,
                 R.drawable.ic_action_assist, v -> actions.onAssist());
         assistButton.setId(R.id.game_assist_button);
         assistButton.setContentDescription(activity.getString(R.string.accessibility_game_assist));
@@ -102,6 +115,16 @@ final class AndroidGameScreen {
         button.setSingleLine(true);
         button.setTextSize(13);
         button.setPadding(ui.dp(8), 0, ui.dp(8), 0);
+    }
+
+    private LinearLayout createActionRow(LinearLayout parent, int topMargin) {
+        LinearLayout row = new LinearLayout(activity);
+        row.setGravity(Gravity.CENTER);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams params = ui.fullWidthParams();
+        params.setMargins(0, topMargin, 0, 0);
+        parent.addView(row, params);
+        return row;
     }
 
     private LinearLayout createRoot() {
@@ -139,6 +162,8 @@ final class AndroidGameScreen {
         void onMenu();
 
         void onUndo();
+
+        void onRedo();
 
         void onRestart();
 

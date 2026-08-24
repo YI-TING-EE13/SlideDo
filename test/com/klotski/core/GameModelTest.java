@@ -215,6 +215,94 @@ class GameModelTest {
     }
 
     @Test
+    void redoRestoresWholeLineAsOneActionAndNewMoveClearsRedo() {
+        GameModel model = runningModel(new int[][] {
+                { 1, 2, 3 },
+                { 4, 5, 0 },
+                { 7, 8, 6 }
+        });
+
+        assertTrue(model.slideLineTo(1, 0));
+        assertEquals(1, model.getActionHistory().size());
+        assertEquals(Direction.LEFT, model.getActionHistory().get(0).getDirection());
+        assertEquals(2, model.getActionHistory().get(0).getSteps());
+        assertTrue(model.undo());
+        assertTrue(model.canRedo());
+        assertEquals(1, model.getRedoHistory().size());
+
+        assertTrue(model.redo());
+        assertEquals(1, model.getMoveCount());
+        assertFalse(model.canRedo());
+        assertGridEquals(new int[][] {
+                { 1, 2, 3 },
+                { 0, 4, 5 },
+                { 7, 8, 6 }
+        }, model);
+
+        assertTrue(model.undo());
+        assertTrue(model.move(Direction.UP));
+        assertFalse(model.canRedo());
+        assertEquals(1, model.getActionHistory().size());
+    }
+
+    @Test
+    void restartClearsActionAndRedoHistory() {
+        GameModel model = runningModel(new int[][] {
+                { 1, 2, 3 },
+                { 4, 0, 6 },
+                { 7, 5, 8 }
+        });
+
+        assertTrue(model.move(Direction.UP));
+        assertTrue(model.undo());
+        assertTrue(model.canRedo());
+
+        model.restartCurrentGame();
+
+        assertTrue(model.getActionHistory().isEmpty());
+        assertTrue(model.getRedoHistory().isEmpty());
+        assertFalse(model.canUndo());
+        assertFalse(model.canRedo());
+    }
+
+    @Test
+    void loadRestoresValidatedActionAndRedoHistory() {
+        GameModel source = runningModel(new int[][] {
+                { 1, 2, 3 },
+                { 4, 5, 0 },
+                { 7, 8, 6 }
+        });
+        assertTrue(source.slideLineTo(1, 0));
+        assertTrue(source.move(Direction.UP));
+        assertTrue(source.undo());
+
+        SaveManager.SaveData data = new SaveManager.SaveData();
+        data.size = source.getSize();
+        data.grid = source.getGridCopy();
+        data.initialGrid = source.getInitialGridCopy();
+        data.moveCount = source.getMoveCount();
+        data.active = true;
+        data.updatedAt = 1L;
+        data.difficulty = source.getDifficulty();
+        data.actionHistory = source.getEncodedActionHistory();
+        data.redoHistory = source.getEncodedRedoHistory();
+
+        GameModel restored = new GameModel(3);
+        restored.loadState(data);
+
+        assertEquals(1, restored.getActionHistory().size());
+        assertTrue(restored.canUndo());
+        assertTrue(restored.canRedo());
+        assertTrue(restored.redo());
+        assertEquals(2, restored.getMoveCount());
+        assertGridEquals(new int[][] {
+                { 0, 2, 3 },
+                { 1, 4, 5 },
+                { 7, 8, 6 }
+        }, restored);
+    }
+
+    @Test
     void restartCurrentGameRestoresInitialLoadedGrid() {
         int[][] initial = {
                 { 1, 2, 3 },

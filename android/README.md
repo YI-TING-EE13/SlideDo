@@ -35,9 +35,11 @@ an emulator or connected Android device.
 - Tap a tile in the same row/column as the blank space to slide one or more tiles
 - Swipe a movable tile toward the blank space
 - Whole-line slides animate all affected tiles together and count as one move
-- Compact in-game controls with Undo, Restart, Menu, and Assist actions
-- Icon-plus-text Home, game, and Results actions, with compact game navigation
-  kept on one line at 720x1280
+- Adaptive in-game controls with Undo, Redo, Restart, and Assist actions;
+  portrait uses two balanced rows and landscape uses one row to preserve board
+  height at 720x1280
+- Localized Move History shows completed and available Redo counts plus the
+  latest 50 actions without truncating the persisted history
 - Outlined empty-cell affordance and a first-move prompt before the player moves
 - Deterministic Strategic Hint that highlights one recommended adjacent tile
   without moving the board, plus a non-assisted movable-tile hint; BFS, A*, and
@@ -53,7 +55,8 @@ an emulator or connected Android device.
 - Auto-save through `SharedPreferences`
 - Active-play timing pauses for game dialogs, navigation outside Game, and app
   background time, then resumes only when the Game screen is interactive
-- App-state persistence is isolated in `AndroidGameStore` for saves, settings,
+- App-state persistence is isolated in `AndroidGameStore` for saves and their
+  action/redo histories, settings,
   best records, completion history, personal statistics, onboarding, app
   language, and last selected size/difficulty
 - `AndroidPersonalDataArchive` validates the complete versioned backup before
@@ -166,10 +169,10 @@ This runs `verify.bat` and `verify-release.bat`. CI release artifacts are
 verification outputs and use the temporary signing key unless real Play upload
 signing is explicitly configured.
 
-Latest 2026-08-24 validation status: all 100 Android tests passed in one serial
-run on each emulator profile: Pixel_7 passed 100/100 on Android 15 at 1080x2400
-in 445.081s and `small_phone` passed 100/100 on Android 16 / API 36.1 at 720x1280
-in 505.349s. Neither run reported a failed or skipped test. The suite covers the
+Latest 2026-08-24 validation status: all 102 Android tests passed in one serial
+run on each emulator profile: Pixel_7 passed 102/102 on Android 15 at 1080x2400
+in 779.487s and `small_phone` passed 102/102 on Android 16 / API 36.1 at 720x1280
+in 529.091s. Neither run reported a failed or skipped test. The suite covers the
 normal animated transition path, the Reduced motion bypass, English-default
 locale isolation, persistent English, Traditional Chinese, and Japanese switching,
 explicit Traditional Chinese and Japanese major-screen/dialog/result flows,
@@ -179,7 +182,10 @@ nested dialogs, Assist, Settings, and background/resume. Exact-puzzle replay is
 checked before and after Results rotation, including board identity and zeroed
 run state. The suite also verifies bounded completion history, lifetime
 statistics, player/assisted separation, localized Records summaries, full
-record reset, and duplicate prevention during Results recreation.
+  record reset, and duplicate prevention during Results recreation.
+Personal Play 2.0 Stage 6 additionally covers action-history identity,
+whole-line one-action semantics, Redo ordering and clearing, persistence in all
+game modes and backup, rotation, and compact portrait/landscape control layout.
 Stage 8 adds a sound preference that defaults off, asset-free move/completion
 tones, persistent Midnight/Ocean palettes, and active-game preservation when a
 theme recreates the Activity. Automated checks cover defaults, persistence,
@@ -236,6 +242,15 @@ background/resume, and offline backup/restore, and are cleared by Reset Saved
 Games without affecting records or settings. The Stage 5 final debug APK
 SHA-256 is
 `87CA4FA93A96481B2A59D1CB6D231C5C5DBD4C9C9A41DCEC03D6B54EA69AEE05`.
+That exact APK installed and cold-launched with `MainActivity` resumed and no
+`AndroidRuntime:E` output on either final AVD.
+Personal Play 2.0 Stage 6 adds shared Move History and Redo. Completed and
+undone actions persist in desktop JSON and every Android save namespace,
+including backup/restore; valid history is reconstructed from `initialGrid`,
+while legacy or malformed history falls back to empty without losing the saved
+board. Android exposes availability-aware Undo/Redo plus localized history, and
+desktop exposes Redo with `Ctrl+Y`. The Stage 6 final debug APK SHA-256 is
+`4875F3D3341C258ACB4651F049D40385139359123D92E43F65F24D0C01045704`.
 That exact APK installed and cold-launched with `MainActivity` resumed and no
 `AndroidRuntime:E` output on either final AVD.
 CLI-captured manual review covered English onboarding, Traditional Chinese
