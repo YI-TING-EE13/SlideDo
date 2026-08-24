@@ -14,7 +14,8 @@ function Read-RepositoryFile {
         $failures.Add("Missing required toolchain file: $RelativePath")
         return ""
     }
-    return Get-Content -Raw -LiteralPath $path
+    $content = Get-Content -Raw -LiteralPath $path
+    return $content.Replace("`r`n", "`n").Replace("`r", "`n")
 }
 
 function Require-Pattern {

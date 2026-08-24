@@ -1044,8 +1044,9 @@ Priority: Low to Medium
 
 - Corrected the pinned `setup-android` license-acceptance input from the invalid
   YAML value `yes` to the action's supported boolean value `true`. Extended
-  `verify-toolchain.ps1` to enforce that exact CI contract so the same failure
-  is caught locally before another push.
+  `verify-toolchain.ps1` to enforce that exact CI contract and normalize input
+  line endings before matching, so invalid action inputs and Windows-runner
+  CRLF differences are caught consistently before another push.
 
 - Completed a post-Personal Play 2.0 documentation synchronization. Audited the
   root and Android READMEs, current behavioral reference, regression checklist,
