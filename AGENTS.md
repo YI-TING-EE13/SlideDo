@@ -33,8 +33,8 @@ Prioritize:
 Preserve the completed program and use the same implement, verify, document,
 and commit gate for future feature stages.
 Personal Play 2.0 backup/restore, Daily Calendar/history replay, Favorite
-Puzzles, and personal trends/custom weekly goals are complete. Continuous
-challenge mode is the next planned stage.
+Puzzles, personal trends/custom weekly goals, and Continuous Challenge are
+complete. Move History and Redo is the next planned stage.
 Defer store signing, store assets, accounts, cloud sync, ads, analytics, and
 other public-distribution work unless the owner changes direction.
 
@@ -66,6 +66,13 @@ Keep `GameModel` platform-independent. Navigation and presentation changes belon
 - Daily saves are independent by ISO date. Historical daily completion remains
   visible but must not move the latest-date streak backward; future dates are
   not playable.
+- Continuous Challenge supports 3, 5, or 10 puzzles in one fixed size and
+  difficulty scope. Its exact current board and aggregate totals use an isolated
+  save namespace and must not replace normal, daily, or favorite-practice saves.
+- Each continuous puzzle updates completion history and lifetime statistics
+  once. Solver-assisted completions must not update player best records.
+- Home resumes an unfinished continuous session. Ending it or Reset Saved Games
+  clears only continuous progress; Reset Records preserves the active session.
 
 ## Working Style
 

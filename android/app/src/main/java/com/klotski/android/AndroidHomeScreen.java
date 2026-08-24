@@ -13,6 +13,8 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.klotski.core.PuzzleDifficulty;
+
 /**
  * Builder for the Android Home screen.
  */
@@ -26,7 +28,7 @@ final class AndroidHomeScreen {
     }
 
     ScreenLayout build(AndroidGameStore.SaveMetadata[] saves, DailyStatus dailyStatus,
-            int favoriteCount,
+            ContinuousStatus continuousStatus, int favoriteCount,
             HomeActions actions) {
         AndroidGameStore.SaveMetadata[] availableSaves = saves == null
                 ? new AndroidGameStore.SaveMetadata[0]
@@ -116,6 +118,26 @@ final class AndroidHomeScreen {
                 R.string.home_records, R.drawable.ic_action_records,
                 COLOR_PANEL, v -> actions.onRecords());
         recordsButton.setId(R.id.home_records_button);
+
+        ContinuousStatus session = continuousStatus == null
+                ? ContinuousStatus.EMPTY : continuousStatus;
+        Button continuousButton = ui.addWideButton(screen.content,
+                R.string.home_continuous, R.drawable.ic_action_play, COLOR_PANEL_LIGHT,
+                view -> actions.onContinuousChallenge());
+        continuousButton.setId(R.id.home_continuous_button);
+        TextView continuousSummary = ui.createText(
+                session.active
+                        ? activity.getString(R.string.home_continuous_active,
+                                session.currentPuzzle, session.targetPuzzles,
+                                session.size, session.size,
+                                difficultyName(session.difficulty))
+                        : activity.getString(R.string.home_continuous_ready),
+                14, COLOR_MUTED_TEXT, Typeface.NORMAL);
+        continuousSummary.setId(R.id.home_continuous_summary_text);
+        continuousSummary.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams continuousParams = ui.fullWidthParams();
+        continuousParams.setMargins(0, 0, 0, ui.dp(14));
+        screen.content.addView(continuousSummary, continuousParams);
 
         return screen;
     }
@@ -212,8 +234,32 @@ final class AndroidHomeScreen {
         }
     }
 
+    /** Immutable summary used to render a resumable continuous session on Home. */
+    static final class ContinuousStatus {
+        private static final ContinuousStatus EMPTY = new ContinuousStatus(
+                false, 0, 0, 4, PuzzleDifficulty.CLASSIC);
+
+        final boolean active;
+        final int currentPuzzle;
+        final int targetPuzzles;
+        final int size;
+        final PuzzleDifficulty difficulty;
+
+        ContinuousStatus(boolean active, int currentPuzzle, int targetPuzzles,
+                int size, PuzzleDifficulty difficulty) {
+            this.active = active;
+            this.currentPuzzle = currentPuzzle;
+            this.targetPuzzles = targetPuzzles;
+            this.size = size;
+            this.difficulty = difficulty == null
+                    ? PuzzleDifficulty.CLASSIC : difficulty;
+        }
+    }
+
     interface HomeActions {
         void onDailyChallenge();
+
+        void onContinuousChallenge();
 
         void onContinue();
 

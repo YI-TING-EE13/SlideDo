@@ -75,8 +75,8 @@ Run every item in all supported locales.
 ### Home and onboarding
 
 - [ ] Home shows title, summary, Play/New Game, learning entries, Favorite
-  Puzzles, Trends & Weekly Goal, Settings, Records, and Continue only when a
-  valid normal save exists.
+  Puzzles, Trends & Weekly Goal, Continuous Challenge, Settings, Records, and
+  Continue only when a valid normal save exists.
 - [ ] New Game opens Mode Select; Back/Home returns to Home without creating a game.
 - [ ] First-launch onboarding pages show correct progress and support Next, Back, Skip, Practice Tutorial, and Start 3x3.
 - [ ] Beginner Guide can be reopened from Home after onboarding is complete.
@@ -142,6 +142,26 @@ Run every item in all supported locales.
   Goal, scope, comparison, empty state, dialogs, and Back remain reachable by
   scrolling at 720x1280 in all supported locales.
 
+### Continuous Challenge
+
+- [ ] Home starts or resumes a 3-, 5-, or 10-puzzle session in any of the nine
+  size/difficulty scopes and shows the current position plus aggregate totals.
+- [ ] Starting a session creates a valid first puzzle. Completing one puzzle
+  opens Results with aggregate moves/time and Next Puzzle until the target is met.
+- [ ] Home, relaunch, rotation, and background/resume preserve the exact current
+  board, session target, position, aggregate totals, and assisted/player counts.
+- [ ] Continuous progress is isolated from normal, daily, and favorite-practice
+  saves. Starting or resuming it does not replace any other mode's current game.
+- [ ] Every completed puzzle updates ordinary completion history and lifetime
+  statistics exactly once; assisted puzzles never improve player best records.
+- [ ] End Session requires confirmation, clears only continuous progress, and
+  returns Home. Repeat Session resets aggregate totals and starts a fresh puzzle
+  with the same target, size, and difficulty.
+- [ ] Continuous progress round-trips through offline backup/restore. Reset Saved
+  Games clears it, while Reset Records leaves the active session playable.
+- [ ] Setup, Home summary, in-progress game, intermediate/final Results, and
+  confirmation dialogs remain readable and reachable at 720x1280 in all locales.
+
 ### How to Play and tutorial
 
 - [ ] How to Play shows Goal, Tap, Whole-line slide, Swipe, Tools, Records, example boards, and Back.
@@ -162,8 +182,8 @@ Run every item in all supported locales.
 
 - [ ] Haptic and Reduced Motion switches toggle, persist after relaunch, and keep localized accessibility descriptions.
 - [ ] Export backup opens Android's create-document picker with a timestamped
-  `.json` name and writes every current save, favorite, record, statistic, daily field,
-  onboarding field, language, and preference.
+  `.json` name and writes every current save, continuous session, favorite,
+  record, statistic, daily field, onboarding field, language, and preference.
 - [ ] Import backup validates the entire document before showing the localized
   replacement dialog; Cancel preserves current data and Restore replaces it.
 - [ ] A malformed, oversized, duplicate-key, or unsupported-version backup is
@@ -171,8 +191,9 @@ Run every item in all supported locales.
 - [ ] Restored language, theme, sound, haptic, and Reduced Motion settings apply
   after Activity recreation; restored saves and records remain playable.
 - [ ] Reset Saved Games Cancel preserves every size slot; Reset clears all 3x3,
-  4x4, and 5x5 slots plus dated/favorite practice progress while preserving
-  favorite labels, records, and settings, then shows a localized confirmation toast.
+  4x4, and 5x5 slots plus dated, favorite-practice, and continuous progress
+  while preserving favorite labels, records, and settings, then shows a
+  localized confirmation toast.
 - [ ] Reset Records Cancel preserves all data; Reset clears every
   size/difficulty best, lifetime statistic, and recent-history entry while
   preserving saves/settings, then shows a localized toast.
@@ -242,8 +263,9 @@ result is required.
 Inspect every major screen in all supported locales on both AVD sizes.
 
 - [ ] Home, onboarding, tutorial, Mode Select, Daily Calendar, Favorite Puzzles,
-  Trends & Weekly Goal, How to Play, game, menus/dialogs, Settings, Records, and Results have no
-  clipped, overlapping, ellipsized, or off-screen required controls.
+  Trends & Weekly Goal, Continuous Challenge, How to Play, game, menus/dialogs,
+  Settings, Records, and Results have no clipped, overlapping, ellipsized, or
+  off-screen required controls.
 - [ ] Text wraps naturally; fixed button rows remain tappable and readable in Traditional Chinese and Japanese.
 - [ ] Scrolling reaches all content and Back/Home controls on the compact AVD.
 - [ ] Screen and board animations follow Reduced Motion; language changes do not alter motion behavior.
@@ -258,6 +280,23 @@ Do not mark the localization work complete until every applicable item above is
 checked in all supported locales, failures are fixed and rerun, and any
 unavailable device coverage is explicitly recorded as a limitation rather than
 reported as passed.
+
+### 2026-08-24 Personal Play 2.0 Stage 5 Continuous Challenge pass
+
+| Evidence | Result |
+| --- | --- |
+| Debug APK SHA-256 | `87CA4FA93A96481B2A59D1CB6D231C5C5DBD4C9C9A41DCEC03D6B54EA69AEE05` |
+| Local verification | All 47 shared tests passed; Android debug/test APK assembly, lint, desktop compile, and both Javadoc/doclint gates passed |
+| Pixel_7 | All 100 Android tests passed on Android 15 at 1080x2400 in one serial run (445.081s); 0 failed, 0 skipped |
+| `small_phone` | All 100 Android tests passed on Android 16 / API 36.1 at 720x1280 in one serial run (505.349s); 0 failed, 0 skipped |
+| Session contract | Targets are 3, 5, or 10 puzzles in one size/difficulty scope; aggregate totals and the exact current board persist in an isolated namespace and round-trip through backup |
+| Android flow | Home starts/resumes the session; Results advances, repeats, or confirms ending; Reset Saved Games clears progress without changing records/settings |
+| Record boundary | Every puzzle writes completion history and lifetime statistics once; assisted completions remain visible but cannot replace player bests |
+| UI and runtime coverage | Setup, compact Home summary, intermediate/final Results, rotation, background/resume, and all three locales passed automated coverage on both phone sizes; the exact final APK cold-launched with `MainActivity` resumed and empty `AndroidRuntime:E` buffers on both AVDs |
+
+Continuous Challenge does not replace normal, daily, or favorite-practice
+saves. Ending a session discards only its current puzzle and aggregate totals;
+repeating preserves its target and scope but creates a fresh session.
 
 ### 2026-08-23 Personal Play 2.0 Stage 3 Favorite Puzzles pass
 

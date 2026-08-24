@@ -32,6 +32,7 @@ import android.window.OnBackInvokedDispatcher;
 
 import com.klotski.core.AStarSolver;
 import com.klotski.core.BfsSolver;
+import com.klotski.core.ContinuousChallenge;
 import com.klotski.core.DailyCalendarMonth;
 import com.klotski.core.DailyChallenge;
 import com.klotski.core.Direction;
@@ -70,6 +71,7 @@ import java.util.List;
 public class MainActivity extends Activity implements GameObserver {
     private static final int REQUEST_EXPORT_BACKUP = 1401;
     private static final int REQUEST_IMPORT_BACKUP = 1402;
+    private static final String STATE_CONTINUOUS_MODE = "continuous_mode";
     private static final DateTimeFormatter BACKUP_FILE_TIME =
             DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
     private static final int ONBOARDING_PAGE_COUNT = 4;
@@ -122,6 +124,7 @@ public class MainActivity extends Activity implements GameObserver {
     private GameResult currentResult;
     private String activeDailyDateId;
     private String activeFavoriteId;
+    private ContinuousChallenge activeContinuousChallenge;
     private DailyCalendarMonth dailyCalendarMonth;
     private OnBackInvokedCallback backCallback;
     private Screen currentScreen = Screen.HOME;
@@ -137,6 +140,7 @@ public class MainActivity extends Activity implements GameObserver {
     private boolean renderingScreenChange;
     private boolean screenTransitionRunning;
     private boolean activityResumed;
+    private boolean saveSuppressedAfterReset;
     private boolean gameNavigationPending = true;
     private int timerPausingDialogCount;
     private long lastWinTimeMs = -1;
@@ -219,6 +223,7 @@ public class MainActivity extends Activity implements GameObserver {
                 onboardingPage, tutorialStep, currentResult, activeDailyDateId,
                 activeFavoriteId,
                 dailyCalendarMonth == null ? null : dailyCalendarMonth.getMonthId());
+        outState.putBoolean(STATE_CONTINUOUS_MODE, activeContinuousChallenge != null);
         super.onSaveInstanceState(outState);
     }
 
@@ -429,9 +434,12 @@ public class MainActivity extends Activity implements GameObserver {
         activeDailyDateId = savedState.activeDailyDateId;
         activeFavoriteId = savedState.activeFavoriteId;
         dailyCalendarMonth = restoreDailyCalendarMonth(savedState.dailyCalendarMonthId);
+        boolean savedContinuousMode = savedInstanceState.getBoolean(
+                STATE_CONTINUOUS_MODE, false);
 
         if (savedScreen == Screen.GAME) {
-            if (savedGameStarted && loadGame()) {
+            if (savedGameStarted && (savedContinuousMode
+                    ? loadContinuousGame() : loadGame())) {
                 showGameScreen();
                 return true;
             }
@@ -442,7 +450,9 @@ public class MainActivity extends Activity implements GameObserver {
         if (savedScreen == Screen.RESULTS) {
             GameResult restoredResult = currentResult;
             boolean loaded = restoredResult != null && savedGameStarted
-                    && (restoredResult.favoriteId != null
+                    && (savedContinuousMode
+                            ? loadContinuousGame()
+                            : restoredResult.favoriteId != null
                             ? loadFavoriteGame(restoredResult.favoriteId)
                             : restoredResult.dailyDateId != null
                             ? loadDailyGame(restoredResult.dailyDateId)
@@ -458,7 +468,8 @@ public class MainActivity extends Activity implements GameObserver {
         if ((savedScreen == Screen.HOW_TO_PLAY || savedScreen == Screen.RECORDS
                 || savedScreen == Screen.TRENDS
                 || savedScreen == Screen.SETTINGS)
-                && savedReturnScreen == Screen.GAME && savedGameStarted && !loadGame()) {
+                && savedReturnScreen == Screen.GAME && savedGameStarted
+                && !(savedContinuousMode ? loadContinuousGame() : loadGame())) {
             savedReturnScreen = Screen.HOME;
             gameStarted = false;
         }
@@ -501,17 +512,33 @@ public class MainActivity extends Activity implements GameObserver {
         DailyChallenge today = DailyChallenge.forDate(LocalDate.now());
         AndroidGameStore.DailyProgress dailyProgress = store.getDailyProgress(today.getDateId());
         AndroidGameStore.SaveMetadata dailySave = store.getDailySaveMetadata(today.getDateId());
+        AndroidGameStore.ContinuousGame continuousGame = store.loadContinuousGame();
+        if (continuousGame != null && continuousGame.challenge.isComplete()) {
+            store.clearContinuousGame();
+            continuousGame = null;
+        }
         AndroidHomeScreen.DailyStatus dailyStatus = new AndroidHomeScreen.DailyStatus(
                 today.getDateId(), dailySave != null && !dailySave.solved,
                 dailyProgress.completedToday, dailyProgress.currentStreak, dailyProgress.bestStreak);
+        AndroidHomeScreen.ContinuousStatus continuousStatus = continuousGame == null
+                ? null
+                : new AndroidHomeScreen.ContinuousStatus(true,
+                        continuousGame.challenge.getCurrentPuzzleNumber(),
+                        continuousGame.challenge.getTargetPuzzles(),
+                        continuousGame.game.size, continuousGame.game.difficulty);
         ScreenLayout screen = homeScreen.build(store.getAllSaveMetadata(), dailyStatus,
-                store.getFavoritePuzzles().length,
+                continuousStatus, store.getFavoritePuzzles().length,
                 new AndroidHomeScreen.HomeActions() {
             @Override
             public void onDailyChallenge() {
                 LocalDate today = LocalDate.now();
                 dailyCalendarMonth = DailyCalendarMonth.showing(YearMonth.from(today), today);
                 showDailyCalendarScreen();
+            }
+
+            @Override
+            public void onContinuousChallenge() {
+                showContinuousChallengeDialog();
             }
 
             @Override
@@ -565,6 +592,92 @@ public class MainActivity extends Activity implements GameObserver {
         });
 
         presentContentView(screen.root);
+    }
+
+    private void showContinuousChallengeDialog() {
+        AndroidGameStore.ContinuousGame saved = store.loadContinuousGame();
+        boolean resumable = saved != null && !saved.challenge.isComplete();
+        int[] targets = {3, 5, 10};
+        String[] labels = new String[targets.length + (resumable ? 1 : 0)];
+        int offset = resumable ? 1 : 0;
+        if (resumable) {
+            labels[0] = getString(R.string.continuous_resume_action,
+                    saved.challenge.getCurrentPuzzleNumber(),
+                    saved.challenge.getTargetPuzzles());
+        }
+        for (int index = 0; index < targets.length; index++) {
+            labels[index + offset] = getString(
+                    R.string.continuous_start_action, targets[index]);
+        }
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.continuous_dialog_title)
+                .setItems(labels, (selectedDialog, which) -> {
+                    if (resumable && which == 0) {
+                        resumeContinuousChallenge();
+                        return;
+                    }
+                    int target = targets[which - offset];
+                    if (resumable) {
+                        confirmReplaceContinuousChallenge(target);
+                    } else {
+                        showContinuousScopeDialog(target);
+                    }
+                })
+                .setNegativeButton(R.string.dialog_cancel, null)
+                .create();
+        showTimerPausingDialog(dialog);
+    }
+
+    private void confirmReplaceContinuousChallenge(int target) {
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.continuous_replace_title)
+                .setMessage(R.string.continuous_replace_message)
+                .setPositiveButton(android.R.string.ok,
+                        (selectedDialog, which) -> showContinuousScopeDialog(target))
+                .setNegativeButton(R.string.dialog_cancel, null)
+                .create();
+        showTimerPausingDialog(dialog);
+    }
+
+    private void showContinuousScopeDialog(int target) {
+        PuzzleDifficulty[] difficulties = PuzzleDifficulty.values();
+        String[] labels = new String[9];
+        for (int size = 3; size <= 5; size++) {
+            for (PuzzleDifficulty difficulty : difficulties) {
+                int index = (size - 3) * difficulties.length + difficulty.ordinal();
+                labels[index] = getString(R.string.trends_scope,
+                        size, size, difficultyName(difficulty));
+            }
+        }
+        int selected = (store.getLastSize(4) - 3) * difficulties.length
+                + store.getLastDifficulty().ordinal();
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.continuous_scope_title)
+                .setSingleChoiceItems(labels, selected, (selectedDialog, which) -> {
+                    selectedDialog.dismiss();
+                    startContinuousChallenge(
+                            3 + which / difficulties.length,
+                            difficulties[which % difficulties.length], target);
+                })
+                .setNegativeButton(R.string.dialog_cancel, null)
+                .create();
+        showTimerPausingDialog(dialog);
+    }
+
+    private void confirmEndContinuousChallenge() {
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.continuous_end_title)
+                .setMessage(R.string.continuous_end_message)
+                .setPositiveButton(R.string.continuous_end_session, (selectedDialog, which) -> {
+                    store.clearContinuousGame();
+                    activeContinuousChallenge = null;
+                    gameStarted = false;
+                    currentResult = null;
+                    showHomeScreen();
+                })
+                .setNegativeButton(R.string.dialog_cancel, null)
+                .create();
+        showTimerPausingDialog(dialog);
     }
 
     private DailyCalendarMonth restoreDailyCalendarMonth(String monthId) {
@@ -1095,16 +1208,27 @@ public class MainActivity extends Activity implements GameObserver {
         commandButtons.clear();
 
         ScreenLayout screen = resultsScreen.build(currentResult, formatMoves(currentResult.moves),
-                resultRecordText(currentResult), new AndroidResultsScreen.ResultsActions() {
+                resultRecordText(currentResult), activeContinuousChallenge,
+                new AndroidResultsScreen.ResultsActions() {
                     @Override
                     public void onPlayAgain() {
-                        replayCurrentPuzzle();
+                        if (activeContinuousChallenge == null) {
+                            replayCurrentPuzzle();
+                        } else if (activeContinuousChallenge.isComplete()) {
+                            repeatContinuousChallenge();
+                        } else {
+                            startNextContinuousPuzzle();
+                        }
                     }
 
                     @Override
                     public void onNewSize() {
-                        saveGame();
-                        showModeSelectScreen();
+                        if (activeContinuousChallenge == null) {
+                            saveGame();
+                            showModeSelectScreen();
+                        } else {
+                            confirmEndContinuousChallenge();
+                        }
                     }
 
                     @Override
@@ -1115,6 +1239,11 @@ public class MainActivity extends Activity implements GameObserver {
                     @Override
                     public void onHome() {
                         saveGame();
+                        if (activeContinuousChallenge != null
+                                && activeContinuousChallenge.isComplete()) {
+                            store.clearContinuousGame();
+                            activeContinuousChallenge = null;
+                        }
                         showHomeScreen();
                     }
                 });
@@ -1790,6 +1919,8 @@ public class MainActivity extends Activity implements GameObserver {
         model.scramble(difficulty);
         activeDailyDateId = null;
         activeFavoriteId = null;
+        activeContinuousChallenge = null;
+        saveSuppressedAfterReset = false;
         gameStarted = true;
         pendingWin = null;
         currentResult = null;
@@ -1802,6 +1933,85 @@ public class MainActivity extends Activity implements GameObserver {
         syncGameTimerState();
         performBoardHaptic(HapticFeedbackConstants.VIRTUAL_KEY);
         showGameScreen();
+    }
+
+    private void startContinuousChallenge(int size, PuzzleDifficulty difficulty, int target) {
+        if (solverRunning || !ContinuousChallenge.isSupportedTarget(target)) {
+            return;
+        }
+        store.clearContinuousGame();
+        activeContinuousChallenge = ContinuousChallenge.start(target);
+        attachModel(new GameModel(size));
+        model.scramble(difficulty);
+        activeDailyDateId = null;
+        activeFavoriteId = null;
+        saveSuppressedAfterReset = false;
+        gameStarted = true;
+        pendingWin = null;
+        currentResult = null;
+        assistedSolveActive = false;
+        hintActive = false;
+        strategicHintTile = -1;
+        lastWinTimeMs = -1;
+        store.setLastSize(size);
+        store.setLastDifficulty(difficulty);
+        saveGame();
+        syncGameTimerState();
+        performBoardHaptic(HapticFeedbackConstants.VIRTUAL_KEY);
+        showGameScreen();
+    }
+
+    private void resumeContinuousChallenge() {
+        if (!loadContinuousGame()) {
+            store.clearContinuousGame();
+            showHomeScreen();
+            return;
+        }
+        pendingWin = null;
+        currentResult = null;
+        if (activeContinuousChallenge.isComplete()) {
+            store.clearContinuousGame();
+            activeContinuousChallenge = null;
+            showHomeScreen();
+            return;
+        }
+        if (model.isSolved()) {
+            startNextContinuousPuzzle();
+        } else {
+            showGameScreen();
+        }
+    }
+
+    private void startNextContinuousPuzzle() {
+        if (solverRunning || activeContinuousChallenge == null
+                || activeContinuousChallenge.isComplete() || model == null) {
+            return;
+        }
+        int size = model.getSize();
+        PuzzleDifficulty difficulty = model.getDifficulty();
+        attachModel(new GameModel(size));
+        model.scramble(difficulty);
+        activeDailyDateId = null;
+        activeFavoriteId = null;
+        saveSuppressedAfterReset = false;
+        gameStarted = true;
+        pendingWin = null;
+        currentResult = null;
+        assistedSolveActive = false;
+        hintActive = false;
+        strategicHintTile = -1;
+        lastWinTimeMs = -1;
+        saveGame();
+        syncGameTimerState();
+        showGameScreen();
+    }
+
+    private void repeatContinuousChallenge() {
+        if (activeContinuousChallenge == null || model == null) {
+            return;
+        }
+        startContinuousChallenge(model.getSize(), model.getDifficulty(),
+                activeContinuousChallenge.getTargetPuzzles());
     }
 
     private void restartCurrentGame() {
@@ -1856,6 +2066,8 @@ public class MainActivity extends Activity implements GameObserver {
         }
         activeDailyDateId = challenge.getDateId();
         activeFavoriteId = null;
+        activeContinuousChallenge = null;
+        saveSuppressedAfterReset = false;
         gameStarted = true;
         pendingWin = null;
         currentResult = null;
@@ -1875,6 +2087,8 @@ public class MainActivity extends Activity implements GameObserver {
         attachModel(favorite.createGame());
         activeDailyDateId = null;
         activeFavoriteId = favorite.id;
+        activeContinuousChallenge = null;
+        saveSuppressedAfterReset = false;
         gameStarted = true;
         pendingWin = null;
         currentResult = null;
@@ -1908,7 +2122,13 @@ public class MainActivity extends Activity implements GameObserver {
         }
 
         if (gameTitleText != null) {
-            if (activeFavoriteId != null) {
+            if (activeContinuousChallenge != null) {
+                gameTitleText.setText(getString(R.string.continuous_game_title,
+                        activeContinuousChallenge.getCurrentPuzzleNumber(),
+                        activeContinuousChallenge.getTargetPuzzles(),
+                        model.getSize(), model.getSize(),
+                        difficultyName(model.getDifficulty())));
+            } else if (activeFavoriteId != null) {
                 AndroidGameStore.FavoritePuzzle favorite =
                         store.getFavoritePuzzle(activeFavoriteId);
                 String label = favorite == null
@@ -1953,6 +2173,12 @@ public class MainActivity extends Activity implements GameObserver {
         }
         if (activeFavoriteId != null) {
             status += "\n" + getString(R.string.status_favorite_practice);
+        }
+        if (activeContinuousChallenge != null) {
+            status += "\n" + getString(R.string.continuous_status,
+                    activeContinuousChallenge.getCompletedPuzzles(),
+                    activeContinuousChallenge.getPlayerPuzzles(),
+                    activeContinuousChallenge.getAssistedPuzzles());
         }
         statusText.setText(status);
         updateControlsEnabled();
@@ -2012,14 +2238,17 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private void saveGame() {
-        if (!gameStarted || model == null) {
+        if (!gameStarted || model == null || saveSuppressedAfterReset) {
             return;
         }
 
         long elapsed = model.isSolved() && lastWinTimeMs >= 0
                 ? lastWinTimeMs
                 : model.getElapsedTime();
-        if (activeFavoriteId != null) {
+        if (activeContinuousChallenge != null) {
+            store.saveContinuousGame(model, elapsed, assistedSolveActive,
+                    activeContinuousChallenge);
+        } else if (activeFavoriteId != null) {
             store.saveFavoriteRun(activeFavoriteId, model, elapsed);
         } else if (activeDailyDateId == null) {
             store.saveGame(model, elapsed, assistedSolveActive);
@@ -2029,6 +2258,9 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private boolean loadGame() {
+        if (activeContinuousChallenge != null) {
+            return loadContinuousGame();
+        }
         if (activeFavoriteId != null) {
             return loadFavoriteGame(activeFavoriteId);
         }
@@ -2052,6 +2284,8 @@ public class MainActivity extends Activity implements GameObserver {
         currentResult = null;
         activeDailyDateId = null;
         activeFavoriteId = null;
+        activeContinuousChallenge = null;
+        saveSuppressedAfterReset = false;
         hintActive = false;
         strategicHintTile = -1;
         gameStarted = true;
@@ -2072,6 +2306,8 @@ public class MainActivity extends Activity implements GameObserver {
         currentResult = null;
         activeDailyDateId = dateId;
         activeFavoriteId = null;
+        activeContinuousChallenge = null;
+        saveSuppressedAfterReset = false;
         hintActive = false;
         strategicHintTile = -1;
         gameStarted = true;
@@ -2091,6 +2327,29 @@ public class MainActivity extends Activity implements GameObserver {
         currentResult = null;
         activeDailyDateId = null;
         activeFavoriteId = favoriteId;
+        activeContinuousChallenge = null;
+        saveSuppressedAfterReset = false;
+        hintActive = false;
+        strategicHintTile = -1;
+        gameStarted = true;
+        syncGameTimerState();
+        return true;
+    }
+
+    private boolean loadContinuousGame() {
+        AndroidGameStore.ContinuousGame saved = store.loadContinuousGame();
+        if (saved == null) {
+            return false;
+        }
+        attachModel(new GameModel(saved.game.size));
+        model.loadState(saved.game);
+        lastWinTimeMs = model.isSolved() ? saved.game.elapsedTime : -1;
+        assistedSolveActive = saved.assisted;
+        activeContinuousChallenge = saved.challenge;
+        currentResult = null;
+        activeDailyDateId = null;
+        activeFavoriteId = null;
+        saveSuppressedAfterReset = false;
         hintActive = false;
         strategicHintTile = -1;
         gameStarted = true;
@@ -2100,6 +2359,7 @@ public class MainActivity extends Activity implements GameObserver {
 
     private void clearSavedGame() {
         store.clearSavedGame();
+        saveSuppressedAfterReset = true;
     }
 
     private AndroidGameStore.Best getBest(int size) {
@@ -2361,6 +2621,10 @@ public class MainActivity extends Activity implements GameObserver {
                 && AndroidGameStore.isBetterRecord(previousBest, win.moves, win.timeMs);
         if (newBest) {
             recordBest(win.size, win.difficulty, win.moves, win.timeMs);
+        }
+        if (activeContinuousChallenge != null) {
+            activeContinuousChallenge = activeContinuousChallenge.completePuzzle(
+                    win.moves, win.timeMs, win.assisted);
         }
         currentResult = new GameResult(win.size, win.difficulty, win.moves,
                 win.timeMs, win.assisted, newBest, previousBest,

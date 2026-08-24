@@ -38,16 +38,19 @@ Current handoff status:
 - The latest local verification pass was warning-clean for the previously noisy
   Gradle DSL deprecation, Java native-access warning, and Android Java
   deprecation note.
-- Personal Play 2.0 Stages 1 through 4 are complete. Android Settings owns
+- Personal Play 2.0 Stages 1 through 5 are complete. Android Settings owns
   versioned local backup/restore, while the Daily Calendar browses today and
   earlier deterministic puzzles with per-date saves and completion markers.
   Favorite Puzzles stores up to 50 owner-labeled exact starting boards and
   replays them as isolated practice without changing normal saves or records.
   Trends & Weekly Goal compares only player solves from one matching size and
   difficulty and keeps a configurable 1–50 solve target entirely offline.
-- The latest dual-AVD acceptance covers all 94 Android tests in one serial run
+  Continuous Challenge chains 3, 5, or 10 puzzles of one selected size and
+  difficulty in an isolated resumable session while retaining per-puzzle
+  completion, assistance, and player-best boundaries.
+- The latest dual-AVD acceptance covers all 100 Android tests in one serial run
   on each profile: Pixel_7 (Android 15, 1080x2400) and `small_phone` (Android
-  16 / API 36.1, 720x1280) completed in 603.426s and 629.539s respectively, with no
+  16 / API 36.1, 720x1280) completed in 445.081s and 505.349s respectively, with no
   failed or skipped tests. Coverage
   includes persistent sound/theme preferences, active-game preservation across
   theme recreation, strategic-hint assistance persistence and player-best protection,
@@ -74,7 +77,8 @@ verify-connected.bat
 
 The original eight-stage Personal Play roadmap in `Roadmap And Planning` is
 implemented and verified. Personal Play 2.0 is now the active staged program;
-Stages 1 through 4 are complete and Stage 5 is the next implementation gate.
+Stages 1 through 5 are complete and Stage 6 Move History and Redo is the next
+implementation gate.
 
 Real Play upload signing is intentionally deferred until store submission. It
 is not required for a local push-ready commit, and no Git remote or push is part
@@ -541,8 +545,8 @@ protection before the next stage begins.
 | 2 | Daily challenge calendar and history replay | Browse completed and missed local dates and replay any deterministic historical daily puzzle without changing the current-date streak twice. | Completed and verified on 2026-08-23. |
 | 3 | Favorite puzzle library | Bookmark exact puzzle identities, label them locally, and replay a favorite without reshuffling or altering normal saves. | Completed and verified on 2026-08-23. |
 | 4 | Personal trends and custom goals | Show local time/move trends and owner-defined goals without analytics or network services. | Completed and verified on 2026-08-24. |
-| 5 | Continuous challenge mode | Chain completed puzzles into a local session with clear progress, exit, resume, and record boundaries. | Planned; next stage. |
-| 6 | Move history and Redo | Expose the current run's action history and add Redo while preserving whole-line one-action semantics, Restart, Save/Load, and solver input locks. | Planned. |
+| 5 | Continuous challenge mode | Chain completed puzzles into a local session with clear progress, exit, resume, and record boundaries. | Completed and verified on 2026-08-24. |
+| 6 | Move history and Redo | Expose the current run's action history and add Redo while preserving whole-line one-action semantics, Restart, Save/Load, and solver input locks. | Planned; next stage. |
 | 7 | Adaptive and accessibility reinforcement | Improve compact/large-screen layout behavior, larger-text resilience, focus order, TalkBack descriptions, contrast, and reduced-motion coverage. | Planned. |
 | 8 | Toolchain and CI maintenance | Refresh supported Android/Gradle tooling, keep Windows and GitHub CI reproducible, and document warnings or compatibility migrations. | Planned. |
 
@@ -1010,6 +1014,36 @@ Priority: Low to Medium
 ## Development Log
 
 ### 2026-08-24
+
+- Completed Personal Play 2.0 Stage 5 Continuous Challenge. The shared
+  immutable `ContinuousChallenge` aggregate accepts 3, 5, or 10 puzzles and
+  tracks completed puzzles, player/assisted boundaries, total final moves, and
+  total active-play milliseconds without moving puzzle rules into Android UI.
+  Android can start one of nine size/difficulty scopes, resume the isolated
+  current puzzle, advance to the next puzzle, end with confirmation, or repeat
+  a completed session. Normal, dated daily, and favorite-practice saves remain
+  untouched. Every completed session puzzle still creates its own history and
+  lifetime-statistics entry; only an unassisted player result can improve its
+  matching best record.
+- Continuous progress and its current puzzle survive rotation, backgrounding,
+  relaunch, and versioned backup/restore. Reset Saved Games clears the session
+  but preserves records, settings, favorite labels, and trend preferences.
+  Home keeps its established Daily/Continue/New Game and learning order on the
+  compact profile; the new localized session entry remains reachable by
+  scrolling. Results show session totals plus Next Puzzle, Repeat Session, and
+  confirmed End Session actions.
+- Added two shared aggregate tests, three Android persistence/backup tests, and
+  three complete session UI flows. All 47 shared tests passed. In final serial
+  runs, Pixel_7 passed 100/100 Android tests in 445.081s and `small_phone`
+  passed 100/100 in 505.349s, with no failures or skips. The connected harness
+  now locks portrait/landscape rotations explicitly so headless AVD natural-
+  orientation metadata cannot collapse the compact tutorial board. All 318
+  localized resource keys and format signatures match. `verify.bat` passed
+  shared tests, desktop compile, Android debug/test APK assembly, lint, and
+  both Javadoc/doclint gates. The final debug APK SHA-256 is
+  `87CA4FA93A96481B2A59D1CB6D231C5C5DBD4C9C9A41DCEC03D6B54EA69AEE05`.
+  That exact APK installed and cold-launched on both AVDs with `MainActivity`
+  resumed and empty `AndroidRuntime:E` buffers.
 
 - Completed Personal Play 2.0 Stage 4 Personal Trends and Custom Goals.
   `PersonalTrend` compares newest-first player completions only within one

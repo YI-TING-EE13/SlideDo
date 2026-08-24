@@ -1,5 +1,6 @@
 package com.klotski.android;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -14,6 +15,7 @@ import android.os.LocaleList;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
+import com.klotski.core.ContinuousChallenge;
 import com.klotski.core.DailyChallenge;
 import com.klotski.core.Direction;
 import com.klotski.core.GameModel;
@@ -569,6 +571,58 @@ public class AndroidGameStoreTest {
     }
 
     @Test
+    public void continuousChallengePersistsIndependentlyFromNormalSaves() {
+        GameModel normal = new GameModel(3);
+        normal.scramble(PuzzleDifficulty.RELAXED, 11L);
+        store.saveGame(normal, 1_000L, false);
+        GameModel current = new GameModel(4);
+        current.scramble(PuzzleDifficulty.CHALLENGE, 22L);
+        ContinuousChallenge challenge = ContinuousChallenge.start(5)
+                .completePuzzle(10, 2_000L, false);
+
+        store.saveContinuousGame(current, 3_000L, true, challenge);
+        AndroidGameStore.ContinuousGame restored = store.loadContinuousGame();
+
+        assertNotNull(restored);
+        assertArrayEquals(current.getGridCopy(), restored.game.grid);
+        assertEquals(PuzzleDifficulty.CHALLENGE, restored.game.difficulty);
+        assertEquals(3_000L, restored.game.elapsedTime);
+        assertTrue(restored.assisted);
+        assertEquals(1, restored.challenge.getCompletedPuzzles());
+        assertEquals(5, restored.challenge.getTargetPuzzles());
+        assertArrayEquals(normal.getGridCopy(), store.loadSavedGame(3).grid);
+    }
+
+    @Test
+    public void continuousChallengeRestoresEverySupportedBoardSize() {
+        for (int size = 3; size <= 5; size++) {
+            GameModel current = new GameModel(size);
+            current.scramble(PuzzleDifficulty.RELAXED, 7L + size);
+            store.saveContinuousGame(current, size * 1_000L, false,
+                    ContinuousChallenge.start(3));
+
+            AndroidGameStore.ContinuousGame restored = store.loadContinuousGame();
+            assertNotNull(restored);
+            assertEquals(size, restored.game.size);
+            assertEquals(PuzzleDifficulty.RELAXED, restored.game.difficulty);
+        }
+    }
+
+    @Test
+    public void resettingSavesClearsContinuousChallengeButKeepsRecords() {
+        GameModel current = new GameModel(3);
+        current.scramble(PuzzleDifficulty.CLASSIC, 33L);
+        store.saveContinuousGame(current, 4_000L, false,
+                ContinuousChallenge.start(3));
+        store.recordCompletion(3, PuzzleDifficulty.CLASSIC, 8, 900L, false, 10L);
+
+        store.clearSavedGame();
+
+        assertNull(store.loadContinuousGame());
+        assertEquals(1, store.getCompletionHistory().length);
+    }
+
+    @Test
     public void completionHistoryIsBoundedWithoutTruncatingLifetimeStats() {
         for (int index = 0; index < 55; index++) {
             store.recordCompletion(5, PuzzleDifficulty.RELAXED,
@@ -703,6 +757,9 @@ public class AndroidGameStoreTest {
         store.recordDailyCompletion("2026-08-22");
         AndroidGameStore.FavoritePuzzle favorite = store.saveFavorite(
                 createSavedModel(3, PuzzleDifficulty.RELAXED, 0), "Backup favorite", 456L);
+        store.saveContinuousGame(
+                createSavedModel(5, PuzzleDifficulty.CLASSIC, 7), 8_000L, true,
+                ContinuousChallenge.start(3).completePuzzle(9, 1_000L, false));
 
         String backup = store.exportPersonalData();
         assertTrue(prefs.edit().clear().commit());
@@ -730,6 +787,12 @@ public class AndroidGameStoreTest {
         assertTrue(restored.getDailyProgress("2026-08-22").completedToday);
         assertEquals(1, restored.getFavoritePuzzles().length);
         assertEquals(favorite.id, restored.getFavoritePuzzles()[0].id);
+        AndroidGameStore.ContinuousGame continuous = restored.loadContinuousGame();
+        assertNotNull(continuous);
+        assertEquals(5, continuous.game.size);
+        assertEquals(7, continuous.game.moveCount);
+        assertTrue(continuous.assisted);
+        assertEquals(1, continuous.challenge.getCompletedPuzzles());
     }
 
     @Test

@@ -12,6 +12,7 @@ import android.app.Instrumentation;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.graphics.drawable.ColorDrawable;
 import android.os.SystemClock;
 import android.view.View;
@@ -32,6 +33,7 @@ import androidx.test.uiautomator.UiScrollable;
 import androidx.test.uiautomator.UiSelector;
 import androidx.test.uiautomator.Until;
 
+import com.klotski.core.ContinuousChallenge;
 import com.klotski.core.DailyChallenge;
 import com.klotski.core.GameModel;
 import com.klotski.core.PuzzleDifficulty;
@@ -77,8 +79,7 @@ public class MainActivityFlowTest {
         instrumentation = InstrumentationRegistry.getInstrumentation();
         device = UiDevice.getInstance(instrumentation);
         targetContext = instrumentation.getTargetContext();
-        device.setOrientationNatural();
-        waitForPortraitOrientation();
+        setPortraitOrientation();
         clearAppPreferences();
     }
 
@@ -90,8 +91,7 @@ public class MainActivityFlowTest {
             instrumentation.waitForIdleSync();
             activity = null;
         }
-        device.setOrientationNatural();
-        waitForPortraitOrientation();
+        setPortraitOrientation();
         device.pressHome();
     }
 
@@ -886,7 +886,8 @@ public class MainActivityFlowTest {
 
         clickId(R.id.game_home_button);
         waitForId("home_root");
-        scrollToText("Favorite Puzzles").click();
+        scrollToText("Favorite Puzzles");
+        clickId(R.id.home_favorites_button);
         waitForId("favorites_root");
         waitForText("One move finish");
         clickActivityContentDescriptionContaining("Replay favorite One move finish");
@@ -1064,7 +1065,7 @@ public class MainActivityFlowTest {
         assertTrue(getActivityContentDescription(R.id.game_board).startsWith(startingBoard));
         assertTrue(store.isSavedGameAssisted(3));
 
-        device.setOrientationLeft();
+        setLandscapeOrientation();
         waitForForegroundApp();
         instrumentation.waitForIdleSync();
         waitForResumedMainActivity();
@@ -1232,6 +1233,99 @@ public class MainActivityFlowTest {
     }
 
     @Test
+    public void continuousChallengeResumesRecordsOnePuzzleAndStartsTheNext() throws Exception {
+        markOnboardingSeen();
+        AndroidGameStore store = new AndroidGameStore(targetContext);
+        GameModel nearWin = createModel(ONE_MOVE_WIN_GRID, ONE_MOVE_WIN_GRID,
+                PuzzleDifficulty.CLASSIC, 0);
+        ContinuousChallenge challenge = ContinuousChallenge.start(3)
+                .completePuzzle(12, 2_000L, false);
+        store.saveContinuousGame(nearWin, 3_000L, false, challenge);
+
+        launchApp();
+        assertActivityTextContains(R.id.home_continuous_summary_text, "puzzle 2 of 3");
+        scrollToText("Continuous Challenge");
+        clickId(R.id.home_continuous_button);
+        waitForText("Resume puzzle 2 of 3").click();
+        waitForId("game_root");
+        assertActivityTextContains(R.id.game_title_text, "Continuous 2/3");
+
+        tapCell(3, 2, 2);
+
+        waitForId("results_root");
+        assertActivityTextContains(R.id.results_continuous_text, "Session 2/3");
+        assertEquals(1, store.getCompletionHistory().length);
+        scrollToText("Next Puzzle");
+        clickId(R.id.results_play_again_button);
+        waitForId("game_root");
+        assertActivityTextContains(R.id.game_title_text, "Continuous 3/3");
+        waitForStatusContaining("0 moves");
+        clickId(R.id.game_home_button);
+        waitForId("home_root");
+        assertActivityTextContains(R.id.home_continuous_summary_text, "puzzle 3 of 3");
+        assertNull(store.loadSavedGame(3));
+    }
+
+    @Test
+    public void continuousChallengeCanStartFromHomeWithoutCreatingANormalSave()
+            throws Exception {
+        markOnboardingSeen();
+        AndroidGameStore store = new AndroidGameStore(targetContext);
+
+        launchApp();
+        scrollToText("Continuous Challenge");
+        clickId(R.id.home_continuous_button);
+        waitForText("Start 3-puzzle session").click();
+        waitForText("3x3 · Classic").click();
+
+        waitForId("game_root");
+        assertActivityTextContains(R.id.game_title_text, "Continuous 1/3");
+        AndroidGameStore.ContinuousGame saved = store.loadContinuousGame();
+        assertNotNull(saved);
+        assertEquals(3, saved.challenge.getTargetPuzzles());
+        assertEquals(0, saved.challenge.getCompletedPuzzles());
+        assertNull(store.loadSavedGame(3));
+
+        setLandscapeOrientation();
+        waitForForegroundApp();
+        waitForResumedMainActivity();
+        waitForActivityView(R.id.game_board);
+        assertActivityTextContains(R.id.game_title_text, "Continuous 1/3");
+    }
+
+    @Test
+    public void continuousChallengeCompletesAndCanBeEndedWithoutDeletingRecords()
+            throws Exception {
+        markOnboardingSeen();
+        AndroidGameStore store = new AndroidGameStore(targetContext);
+        GameModel nearWin = createModel(ONE_MOVE_WIN_GRID, ONE_MOVE_WIN_GRID,
+                PuzzleDifficulty.CLASSIC, 0);
+        ContinuousChallenge challenge = ContinuousChallenge.start(3)
+                .completePuzzle(12, 2_000L, false)
+                .completePuzzle(14, 3_000L, true);
+        store.saveContinuousGame(nearWin, 4_000L, false, challenge);
+
+        launchApp();
+        scrollToText("Continuous Challenge");
+        clickId(R.id.home_continuous_button);
+        waitForText("Resume puzzle 3 of 3").click();
+        waitForId("game_root");
+        tapCell(3, 2, 2);
+
+        waitForId("results_root");
+        waitForText("Continuous challenge complete.");
+        assertActivityTextContains(R.id.results_continuous_text, "Session 3/3");
+        assertActivityTextContains(R.id.results_play_again_button, "Repeat Session");
+        scrollToText("End Session");
+        clickId(R.id.results_new_size_button);
+        waitForText("End continuous challenge?");
+        waitForText("END SESSION").click();
+        waitForId("home_root");
+        assertNull(store.loadContinuousGame());
+        assertEquals(1, store.getCompletionHistory().length);
+    }
+
+    @Test
     public void dailyChallengeRunsFromHomeThroughResultsAndUpdatesStreak() throws Exception {
         markOnboardingSeen();
         DailyChallenge challenge = DailyChallenge.forDate(LocalDate.now());
@@ -1292,7 +1386,7 @@ public class MainActivityFlowTest {
         waitForActivityTextContaining(R.id.daily_calendar_month_text, previousMonthLabel);
         waitForActivityContentDescriptionContaining(historicalChallenge.getDateId());
 
-        device.setOrientationLeft();
+        setLandscapeOrientation();
         waitForForegroundApp();
         instrumentation.waitForIdleSync();
         waitForResumedMainActivity();
@@ -1447,7 +1541,7 @@ public class MainActivityFlowTest {
         waitForId("results_root");
         assertEquals(1, new AndroidGameStore(targetContext).getCompletionHistory().length);
 
-        device.setOrientationLeft();
+        setLandscapeOrientation();
         waitForForegroundApp();
         instrumentation.waitForIdleSync();
         waitForResumedMainActivity();
@@ -1499,10 +1593,10 @@ public class MainActivityFlowTest {
         clickId(R.id.home_continue_button);
         waitForActivityView(R.id.game_board);
 
-        device.setOrientationLeft();
+        setLandscapeOrientation();
         waitForGameBoardAfterRotation();
 
-        device.setOrientationNatural();
+        setPortraitOrientation();
         waitForGameBoardAfterRotation();
     }
 
@@ -1515,6 +1609,8 @@ public class MainActivityFlowTest {
                 activity = instrumentation.startActivitySync(intent);
                 instrumentation.waitForIdleSync();
                 assertNotNull(activity);
+                setPortraitOrientation();
+                waitForResumedMainActivityInOrientation(Configuration.ORIENTATION_PORTRAIT);
                 // AVD window hierarchies can lag startActivitySync under load; the
                 // foreground window is the stable launch gate for these smoke tests.
                 waitForForegroundApp();
@@ -1569,6 +1665,24 @@ public class MainActivityFlowTest {
         fail("Emulator did not return to natural portrait orientation");
     }
 
+    private void setPortraitOrientation() throws Exception {
+        device.executeShellCommand("wm user-rotation lock 0");
+        waitForPortraitOrientation();
+    }
+
+    private void setLandscapeOrientation() throws Exception {
+        device.executeShellCommand("wm user-rotation lock 1");
+        long deadline = System.currentTimeMillis() + TIMEOUT_MS;
+        while (System.currentTimeMillis() < deadline) {
+            if (device.getDisplayWidth() > device.getDisplayHeight()) {
+                device.waitForIdle();
+                return;
+            }
+            Thread.sleep(100);
+        }
+        fail("Emulator did not enter landscape orientation");
+    }
+
     private void clearAppPreferences() {
         targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().commit();
         device.waitForIdle();
@@ -1619,6 +1733,31 @@ public class MainActivityFlowTest {
         editor.putInt("last_size", 4);
         editor.putBoolean("onboarding_seen", true);
         assertTrue(editor.commit());
+    }
+
+    private GameModel createModel(String gridText, String initialGridText,
+            PuzzleDifficulty difficulty, int moves) {
+        String[] values = gridText.split(",");
+        int size = (int) Math.sqrt(values.length);
+        SaveManager.SaveData data = new SaveManager.SaveData();
+        data.size = size;
+        data.grid = parseGrid(gridText, size);
+        data.initialGrid = parseGrid(initialGridText, size);
+        data.moveCount = moves;
+        data.difficulty = difficulty;
+        data.active = true;
+        GameModel created = new GameModel(size);
+        created.loadState(data);
+        return created;
+    }
+
+    private int[][] parseGrid(String encoded, int size) {
+        String[] values = encoded.split(",");
+        int[][] grid = new int[size][size];
+        for (int index = 0; index < values.length; index++) {
+            grid[index / size][index % size] = Integer.parseInt(values[index]);
+        }
+        return grid;
     }
 
     private void writeSlot(SharedPreferences.Editor editor, int size, String grid,
@@ -1791,6 +1930,33 @@ public class MainActivityFlowTest {
             Thread.sleep(100);
         }
         fail("MainActivity did not resume after rotation");
+    }
+
+    private void waitForResumedMainActivityInOrientation(int orientation)
+            throws InterruptedException {
+        long deadline = System.currentTimeMillis() + TIMEOUT_MS;
+        while (System.currentTimeMillis() < deadline) {
+            Activity[] resumedActivity = new Activity[1];
+            instrumentation.runOnMainSync(() -> {
+                Collection<Activity> resumedActivities = ActivityLifecycleMonitorRegistry.getInstance()
+                        .getActivitiesInStage(Stage.RESUMED);
+                for (Activity candidate : resumedActivities) {
+                    if (candidate instanceof MainActivity
+                            && candidate.getResources().getConfiguration().orientation
+                            == orientation) {
+                        resumedActivity[0] = candidate;
+                        return;
+                    }
+                }
+            });
+            if (resumedActivity[0] != null) {
+                activity = resumedActivity[0];
+                instrumentation.waitForIdleSync();
+                return;
+            }
+            Thread.sleep(100);
+        }
+        fail("MainActivity did not resume in orientation: " + orientation);
     }
 
     private void waitForRecreatedMainActivity(Activity previousActivity) throws InterruptedException {
@@ -2044,7 +2210,7 @@ public class MainActivityFlowTest {
     }
 
     private void tapCell(int boardResourceId, int size, int row, int col) throws InterruptedException {
-        waitForBoardReady(boardResourceId);
+        waitForBoardReady(boardResourceId, size);
         int[] screenPoint = new int[2];
         instrumentation.runOnMainSync(() -> {
             View board = activity.findViewById(boardResourceId);
@@ -2070,17 +2236,33 @@ public class MainActivityFlowTest {
         waitForBoardIdle(boardResourceId);
     }
 
-    private void waitForBoardReady(int boardResourceId) throws InterruptedException {
+    private void waitForBoardReady(int boardResourceId, int size) throws InterruptedException {
         long deadline = System.currentTimeMillis() + TIMEOUT_MS;
+        String[] boardState = {"missing"};
         while (System.currentTimeMillis() < deadline) {
             boolean[] ready = new boolean[1];
             instrumentation.runOnMainSync(() -> {
                 View board = activity.findViewById(boardResourceId);
+                float density = targetContext.getResources().getDisplayMetrics().density;
+                float minimumBoardSize = ((size + 1) * 9f + size) * density;
+                if (board != null) {
+                    boardState[0] = board.getWidth() + "x" + board.getHeight()
+                            + ", minimum=" + minimumBoardSize
+                            + ", display=" + activity.getResources().getDisplayMetrics().widthPixels
+                            + "x" + activity.getResources().getDisplayMetrics().heightPixels
+                            + ", orientation="
+                            + activity.getResources().getConfiguration().orientation
+                            + ", shown=" + board.isShown()
+                            + ", enabled=" + board.isEnabled()
+                            + ", focus=" + activity.hasWindowFocus()
+                            + ", busy=" + (board instanceof KlotskiView
+                                    && ((KlotskiView) board).isBusy());
+                }
                 ready[0] = board instanceof KlotskiView
                         && board.isShown()
                         && board.isEnabled()
-                        && board.getWidth() > 0
-                        && board.getHeight() > 0
+                        && board.getWidth() >= minimumBoardSize
+                        && board.getHeight() >= minimumBoardSize
                         && activity.hasWindowFocus()
                         && !((KlotskiView) board).isBusy();
             });
@@ -2090,7 +2272,8 @@ public class MainActivityFlowTest {
             }
             Thread.sleep(50);
         }
-        fail("Board did not become ready for touch: " + boardResourceId);
+        fail("Board did not become ready for touch: " + boardResourceId
+                + " (" + boardState[0] + ")");
     }
 
     private void waitForBoardIdle(int boardResourceId) throws InterruptedException {

@@ -166,10 +166,10 @@ This runs `verify.bat` and `verify-release.bat`. CI release artifacts are
 verification outputs and use the temporary signing key unless real Play upload
 signing is explicitly configured.
 
-Latest 2026-08-24 validation status: all 94 Android tests passed in one serial
-run on each emulator profile: Pixel_7 passed 94/94 on Android 15 at 1080x2400
-in 603.426s and `small_phone` passed 94/94 on Android 16 / API 36.1 at 720x1280
-in 629.539s. Neither run reported a failed or skipped test. The suite covers the
+Latest 2026-08-24 validation status: all 100 Android tests passed in one serial
+run on each emulator profile: Pixel_7 passed 100/100 on Android 15 at 1080x2400
+in 445.081s and `small_phone` passed 100/100 on Android 16 / API 36.1 at 720x1280
+in 505.349s. Neither run reported a failed or skipped test. The suite covers the
 normal animated transition path, the Reduced motion bypass, English-default
 locale isolation, persistent English, Traditional Chinese, and Japanese switching,
 explicit Traditional Chinese and Japanese major-screen/dialog/result flows,
@@ -225,6 +225,19 @@ player results; assisted and favorite-practice completions are excluded. The
 target and selected scope remain local, survive backup/restore, and stay
 separate from record reset. The Stage 4 final debug APK SHA-256 is
 `C5D3691C58C6A356C2E7BD18D9589E436DA4A995C7372CC3C7FEAF8FEEF7C0AF`.
+Personal Play 2.0 Stage 5 adds a resumable Continuous Challenge for 3, 5, or 10
+puzzles at one selected size and difficulty. Home shows the current position
+and aggregate totals; Results supports the next puzzle, repeating the same
+session target, or ending the session with confirmation. Each completed puzzle
+still writes its normal completion history and lifetime statistics, while only
+unassisted player completions may improve best records. The current board and
+session aggregate use an isolated save namespace, survive rotation, relaunch,
+background/resume, and offline backup/restore, and are cleared by Reset Saved
+Games without affecting records or settings. The Stage 5 final debug APK
+SHA-256 is
+`87CA4FA93A96481B2A59D1CB6D231C5C5DBD4C9C9A41DCEC03D6B54EA69AEE05`.
+That exact APK installed and cold-launched with `MainActivity` resumed and no
+`AndroidRuntime:E` output on either final AVD.
 CLI-captured manual review covered English onboarding, Traditional Chinese
 Home/Settings/Mode Select/Game, and Japanese Home/Settings/Mode Select/How to
 Play/Game on the compact AVD. The compact controls remained single-line after

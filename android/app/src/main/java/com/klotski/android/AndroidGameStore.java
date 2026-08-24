@@ -3,6 +3,7 @@ package com.klotski.android;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import com.klotski.core.ContinuousChallenge;
 import com.klotski.core.DailyChallenge;
 import com.klotski.core.GameModel;
 import com.klotski.core.PersonalTrend;
@@ -68,6 +69,12 @@ final class AndroidGameStore {
     private static final String KEY_TREND_DIFFICULTY = "trend_difficulty_v1";
     private static final String KEY_FAVORITE_PUZZLES = "favorite_puzzles_v1";
     private static final String KEY_FAVORITE_RUN_PREFIX = "favorite_run_v1_";
+    private static final String KEY_CONTINUOUS_SAVE_PREFIX = "continuous_save_v1_";
+    private static final String KEY_CONTINUOUS_TARGET = "challenge_target";
+    private static final String KEY_CONTINUOUS_COMPLETED = "challenge_completed";
+    private static final String KEY_CONTINUOUS_TOTAL_MOVES = "challenge_total_moves";
+    private static final String KEY_CONTINUOUS_TOTAL_TIME = "challenge_total_time";
+    private static final String KEY_CONTINUOUS_ASSISTED = "challenge_assisted";
     private static final String KEY_PLAYER_COMPLETIONS = "player_completions";
     private static final String KEY_ASSISTED_COMPLETIONS = "assisted_completions";
     private static final String KEY_PLAYER_MOVES = "player_moves";
@@ -530,12 +537,62 @@ final class AndroidGameStore {
         return loadSavedGame(size) != null;
     }
 
+    void saveContinuousGame(GameModel model, long elapsedMs, boolean assisted,
+            ContinuousChallenge challenge) {
+        if (model == null || challenge == null || !isSupportedSize(model.getSize())) {
+            return;
+        }
+        SharedPreferences.Editor editor = prefs.edit();
+        putSave(editor, KEY_CONTINUOUS_SAVE_PREFIX, model.getSize(), model.getGridCopy(),
+                model.getInitialGridCopy(), model.getMoveCount(), Math.max(0, elapsedMs),
+                System.currentTimeMillis(), model.isGameRunning(), model.isSolved(),
+                model.getDifficulty());
+        editor.putBoolean(KEY_CONTINUOUS_SAVE_PREFIX + KEY_ASSISTED, assisted)
+                .putInt(KEY_CONTINUOUS_SAVE_PREFIX + KEY_CONTINUOUS_TARGET,
+                        challenge.getTargetPuzzles())
+                .putInt(KEY_CONTINUOUS_SAVE_PREFIX + KEY_CONTINUOUS_COMPLETED,
+                        challenge.getCompletedPuzzles())
+                .putInt(KEY_CONTINUOUS_SAVE_PREFIX + KEY_CONTINUOUS_TOTAL_MOVES,
+                        challenge.getTotalMoves())
+                .putLong(KEY_CONTINUOUS_SAVE_PREFIX + KEY_CONTINUOUS_TOTAL_TIME,
+                        challenge.getTotalTimeMs())
+                .putInt(KEY_CONTINUOUS_SAVE_PREFIX + KEY_CONTINUOUS_ASSISTED,
+                        challenge.getAssistedPuzzles())
+                .apply();
+    }
+
+    ContinuousGame loadContinuousGame() {
+        SaveManager.SaveData game = readSavedGame(KEY_CONTINUOUS_SAVE_PREFIX, 0);
+        if (game == null) {
+            return null;
+        }
+        try {
+            ContinuousChallenge challenge = ContinuousChallenge.restore(
+                    prefs.getInt(KEY_CONTINUOUS_SAVE_PREFIX + KEY_CONTINUOUS_TARGET, 0),
+                    prefs.getInt(KEY_CONTINUOUS_SAVE_PREFIX + KEY_CONTINUOUS_COMPLETED, -1),
+                    prefs.getInt(KEY_CONTINUOUS_SAVE_PREFIX + KEY_CONTINUOUS_TOTAL_MOVES, -1),
+                    prefs.getLong(KEY_CONTINUOUS_SAVE_PREFIX + KEY_CONTINUOUS_TOTAL_TIME, -1L),
+                    prefs.getInt(KEY_CONTINUOUS_SAVE_PREFIX + KEY_CONTINUOUS_ASSISTED, -1));
+            return new ContinuousGame(game, challenge,
+                    prefs.getBoolean(KEY_CONTINUOUS_SAVE_PREFIX + KEY_ASSISTED, false));
+        } catch (RuntimeException exception) {
+            return null;
+        }
+    }
+
+    void clearContinuousGame() {
+        SharedPreferences.Editor editor = prefs.edit();
+        removeContinuousGame(editor);
+        editor.commit();
+    }
+
     void clearSavedGame() {
         SharedPreferences.Editor editor = prefs.edit();
         removeSave(editor, "");
         for (int size = 3; size <= 5; size++) {
             removeSave(editor, savePrefix(size));
         }
+        removeContinuousGame(editor);
         removeSave(editor, KEY_DAILY_SAVE_PREFIX);
         editor.remove(KEY_DAILY_SAVE_DATE);
         for (String key : prefs.getAll().keySet()) {
@@ -546,6 +603,15 @@ final class AndroidGameStore {
             }
         }
         editor.commit();
+    }
+
+    private static void removeContinuousGame(SharedPreferences.Editor editor) {
+        removeSave(editor, KEY_CONTINUOUS_SAVE_PREFIX);
+        editor.remove(KEY_CONTINUOUS_SAVE_PREFIX + KEY_CONTINUOUS_TARGET)
+                .remove(KEY_CONTINUOUS_SAVE_PREFIX + KEY_CONTINUOUS_COMPLETED)
+                .remove(KEY_CONTINUOUS_SAVE_PREFIX + KEY_CONTINUOUS_TOTAL_MOVES)
+                .remove(KEY_CONTINUOUS_SAVE_PREFIX + KEY_CONTINUOUS_TOTAL_TIME)
+                .remove(KEY_CONTINUOUS_SAVE_PREFIX + KEY_CONTINUOUS_ASSISTED);
     }
 
     Best getBest(int size) {
@@ -1110,6 +1176,22 @@ final class AndroidGameStore {
             this.active = active;
             this.solved = solved;
             this.difficulty = difficulty == null ? PuzzleDifficulty.CLASSIC : difficulty;
+        }
+    }
+
+    /**
+     * Restored continuous-challenge aggregate and its isolated current puzzle.
+     */
+    static final class ContinuousGame {
+        final SaveManager.SaveData game;
+        final ContinuousChallenge challenge;
+        final boolean assisted;
+
+        ContinuousGame(SaveManager.SaveData game, ContinuousChallenge challenge,
+                boolean assisted) {
+            this.game = game;
+            this.challenge = challenge;
+            this.assisted = assisted;
         }
     }
 

@@ -15,6 +15,8 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.klotski.core.ContinuousChallenge;
+
 /**
  * Builder for the Android post-completion results screen.
  */
@@ -27,13 +29,18 @@ final class AndroidResultsScreen {
         this.ui = ui;
     }
 
-    ScreenLayout build(GameResult result, String movesText, String recordText, ResultsActions actions) {
+    ScreenLayout build(GameResult result, String movesText, String recordText,
+            ContinuousChallenge continuousChallenge, ResultsActions actions) {
         ScreenLayout screen = ui.createScreenLayout();
         screen.root.setId(R.id.results_root);
         screen.content.setGravity(Gravity.CENTER_HORIZONTAL);
         ui.addScreenHeader(screen.content,
                 activity.getString(R.string.results_title),
-                activity.getString(result.dailyDateId != null
+                activity.getString(continuousChallenge != null
+                        ? (continuousChallenge.isComplete()
+                                ? R.string.continuous_session_complete_subtitle
+                                : R.string.continuous_results_subtitle)
+                        : result.dailyDateId != null
                         ? R.string.results_daily_subtitle
                         : (result.favoriteId != null
                                 ? R.string.results_favorite_subtitle
@@ -84,11 +91,30 @@ final class AndroidResultsScreen {
         LinearLayout.LayoutParams recordParams = ui.fullWidthParams();
         summary.addView(record, recordParams);
 
+        if (continuousChallenge != null) {
+            TextView continuous = ui.createText(activity.getString(
+                    R.string.continuous_results_summary,
+                    continuousChallenge.getCompletedPuzzles(),
+                    continuousChallenge.getTargetPuzzles(),
+                    formatMoves(continuousChallenge.getTotalMoves()),
+                    continuousChallenge.getTotalTimeMs() / 1000,
+                    continuousChallenge.getAssistedPuzzles()),
+                    15, COLOR_MUTED_TEXT, Typeface.BOLD);
+            continuous.setId(R.id.results_continuous_text);
+            continuous.setGravity(Gravity.CENTER);
+            summary.addView(continuous, recordParams);
+        }
+
         LinearLayout.LayoutParams summaryParams = ui.fullWidthParams();
         summaryParams.setMargins(0, 0, 0, ui.dp(18));
         screen.content.addView(summary, summaryParams);
 
-        Button playAgainButton = ui.addWideButton(screen.content, R.string.results_play_again,
+        int primaryLabel = continuousChallenge == null
+                ? R.string.results_play_again
+                : (continuousChallenge.isComplete()
+                        ? R.string.continuous_repeat_session
+                        : R.string.continuous_next_puzzle);
+        Button playAgainButton = ui.addWideButton(screen.content, primaryLabel,
                 R.drawable.ic_action_play, COLOR_PRIMARY,
                 v -> actions.onPlayAgain());
         playAgainButton.setId(R.id.results_play_again_button);
@@ -96,7 +122,9 @@ final class AndroidResultsScreen {
                 R.drawable.ic_action_records, COLOR_PANEL_HIGHLIGHT,
                 v -> actions.onFavorite());
         favoriteButton.setId(R.id.results_favorite_button);
-        Button newSizeButton = ui.addWideButton(screen.content, R.string.results_new_size,
+        Button newSizeButton = ui.addWideButton(screen.content,
+                continuousChallenge == null
+                        ? R.string.results_new_size : R.string.continuous_end_session,
                 R.drawable.ic_action_restart, COLOR_PANEL,
                 v -> actions.onNewSize());
         newSizeButton.setId(R.id.results_new_size_button);
@@ -113,6 +141,10 @@ final class AndroidResultsScreen {
             case CLASSIC -> R.string.difficulty_classic;
             case CHALLENGE -> R.string.difficulty_challenge;
         });
+    }
+
+    private String formatMoves(int moves) {
+        return activity.getResources().getQuantityString(R.plurals.moves_count, moves, moves);
     }
 
     interface ResultsActions {
