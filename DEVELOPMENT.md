@@ -1042,6 +1042,11 @@ Priority: Low to Medium
 
 ### 2026-08-24
 
+- Corrected the pinned `setup-android` license-acceptance input from the invalid
+  YAML value `yes` to the action's supported boolean value `true`. Extended
+  `verify-toolchain.ps1` to enforce that exact CI contract so the same failure
+  is caught locally before another push.
+
 - Completed a post-Personal Play 2.0 documentation synchronization. Audited the
   root and Android READMEs, current behavioral reference, regression checklist,
   release notes, and deferred distribution checklists against `GameModel`,

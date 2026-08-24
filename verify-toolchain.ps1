@@ -53,6 +53,8 @@ Require-Pattern $appBuild 'warningsAsErrors\s*=\s*true' `
 Require-Pattern $workflow 'java-version:\s*"17"' "GitHub CI must run the same JDK 17 baseline."
 Require-Pattern $workflow 'cmdline-tools-version:\s*"14742923"' `
     "GitHub CI must pin Android command-line tools 20.0 (14742923)."
+Require-Pattern $workflow 'accept-android-sdk-licenses:\s*"true"' `
+    "GitHub CI must pass a valid boolean when accepting Android SDK licenses."
 Require-Pattern $workflow 'sdkmanager --install "platforms;android-36" "build-tools;36\.0\.0"' `
     "GitHub CI must install the exact Android platform and build-tools packages."
 Require-Pattern $dependabot 'package-ecosystem:\s*"github-actions"' `

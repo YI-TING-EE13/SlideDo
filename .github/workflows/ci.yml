@@ -44,7 +44,7 @@ jobs:
         with:
           cmdline-tools-version: "14742923"
           packages: ""
-          accept-android-sdk-licenses: "yes"
+          accept-android-sdk-licenses: "true"
           log-accepted-android-sdk-licenses: "false"
 
       - name: Install Android SDK packages
