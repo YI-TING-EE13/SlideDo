@@ -52,6 +52,17 @@ public class MainFrame extends JFrame implements GameObserver {
     /** Active dated Daily Challenge namespace, or {@code null} for normal play. */
     private String activeDailyDateId;
 
+    /** Active Favorite Practice namespace, or {@code null} outside favorites. */
+    private String activeFavoriteId;
+
+    /** Active Continuous Challenge aggregate, or {@code null} outside continuous mode. */
+    private ContinuousChallenge activeContinuousChallenge;
+
+    /** Fixed size/difficulty scope retained for the active Continuous session. */
+    private int continuousSize;
+    /** Difficulty fixed for the active Continuous Challenge session. */
+    private PuzzleDifficulty continuousDifficulty;
+
     /** Last selected month shown by the Desktop Daily Calendar. */
     private YearMonth dailyCalendarMonth;
 
@@ -210,6 +221,18 @@ public class MainFrame extends JFrame implements GameObserver {
         dailyItem.addActionListener(e -> showDailyCalendarDialog());
         gameMenu.add(dailyItem);
 
+        JMenuItem favoritesItem = new JMenuItem("Favorites");
+        favoritesItem.addActionListener(e -> showFavoritesDialog());
+        gameMenu.add(favoritesItem);
+
+        JMenuItem trendsItem = new JMenuItem("Trends / Weekly Goal");
+        trendsItem.addActionListener(e -> showTrendsDialog());
+        gameMenu.add(trendsItem);
+
+        JMenuItem continuousItem = new JMenuItem("Continuous Challenge");
+        continuousItem.addActionListener(e -> showContinuousDialog());
+        gameMenu.add(continuousItem);
+
         JMenuItem preferencesItem = new JMenuItem("Preferences");
         preferencesItem.addActionListener(e -> showPreferencesDialog());
         gameMenu.add(preferencesItem);
@@ -310,6 +333,9 @@ public class MainFrame extends JFrame implements GameObserver {
         continueSummaryLabel.setForeground(new Color(86, 96, 108));
         panel.add(continueSummaryLabel, nextHomeRow(gbc));
         panel.add(createHomeButton("Daily Calendar", this::showDailyCalendarDialog), nextHomeRow(gbc));
+        panel.add(createHomeButton("Favorites", this::showFavoritesDialog), nextHomeRow(gbc));
+        panel.add(createHomeButton("Trends / Weekly Goal", this::showTrendsDialog), nextHomeRow(gbc));
+        panel.add(createHomeButton("Continuous Challenge", this::showContinuousDialog), nextHomeRow(gbc));
         panel.add(createHomeButton("How to Play", () -> showHelpDialog("How to Play", DesktopHelpContent.howToPlay())),
                 nextHomeRow(gbc));
         panel.add(createHomeButton("Practice Tutorial",
@@ -359,6 +385,9 @@ public class MainFrame extends JFrame implements GameObserver {
         boardPanel.setModel(model);
 
         activeDailyDateId = null;
+        activeFavoriteId = null;
+        activeContinuousChallenge = null;
+        continuousDifficulty = null;
         assistedSolveActive = false;
         completedAssisted = false;
         completionTracker.reset();
@@ -543,6 +572,9 @@ public class MainFrame extends JFrame implements GameObserver {
             }
             model.loadState(data);
             activeDailyDateId = null;
+            activeFavoriteId = null;
+            activeContinuousChallenge = null;
+            continuousDifficulty = null;
             assistedSolveActive = false;
             completedAssisted = false;
             completionTracker.reset();
@@ -558,6 +590,14 @@ public class MainFrame extends JFrame implements GameObserver {
     private boolean saveCurrentGame() {
         if (model == null) {
             return false;
+        }
+        if (activeContinuousChallenge != null) {
+            boolean assisted = assistedSolveActive || (model.isSolved() && completedAssisted);
+            return SaveManager.saveContinuousGame(model, activeContinuousChallenge, assisted);
+        }
+        if (activeFavoriteId != null) {
+            boolean assisted = assistedSolveActive || (model.isSolved() && completedAssisted);
+            return SaveManager.saveFavoriteRun(activeFavoriteId, model, assisted);
         }
         if (activeDailyDateId != null) {
             boolean assisted = assistedSolveActive || (model.isSolved() && completedAssisted);
@@ -709,6 +749,9 @@ public class MainFrame extends JFrame implements GameObserver {
             }
         }
         activeDailyDateId = challenge.getDateId();
+        activeFavoriteId = null;
+        activeContinuousChallenge = null;
+        continuousDifficulty = null;
         completedAssisted = savedAssisted;
         assistedSolveActive = savedAssisted;
         completionTracker.reset();
@@ -839,9 +882,340 @@ public class MainFrame extends JFrame implements GameObserver {
         showMessageDialog(message, "Records", JOptionPane.INFORMATION_MESSAGE);
     }
 
+    private void showFavoritesDialog() {
+        if (solverRunning) {
+            return;
+        }
+        SaveManager.FavoritePuzzle[] favorites = SaveManager.getFavoritePuzzles();
+        boolean canSaveCurrent = showingGame && activeFavoriteId == null
+                && activeContinuousChallenge == null && model != null;
+        Object[] options = new Object[favorites.length + (canSaveCurrent ? 1 : 0)];
+        int offset = canSaveCurrent ? 1 : 0;
+        if (canSaveCurrent) {
+            options[0] = "Save current puzzle as Favorite";
+        }
+        for (int index = 0; index < favorites.length; index++) {
+            options[index + offset] = DesktopFavoriteContent.optionLabel(favorites[index]);
+        }
+        if (options.length == 0) {
+            showMessageDialog("No favorites saved yet. Start a normal puzzle to save one.\n\n"
+                    + DesktopFavoriteContent.practiceSummary(), "Favorites",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        int choice = showOptionDialog(DesktopFavoriteContent.practiceSummary(), "Favorites",
+                JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE, null,
+                options, options[0]);
+        if (canSaveCurrent && choice == 0) {
+            saveCurrentAsFavorite();
+        } else if (choice >= offset && choice < options.length) {
+            showFavoriteActions(favorites[choice - offset]);
+        }
+    }
+
+    private void saveCurrentAsFavorite() {
+        String defaultLabel = model == null ? "Favorite" : model.getSize() + "x"
+                + model.getSize() + " " + difficultyLabel(model.getDifficulty());
+        String label = runWithPausedTimer(() -> JOptionPane.showInputDialog(this,
+                "Name this exact starting puzzle (up to 40 characters).",
+                defaultLabel));
+        if (label == null) {
+            return;
+        }
+        SaveManager.FavoritePuzzle saved = SaveManager.saveFavorite(model, label);
+        showMessageDialog(saved == null ? "Favorite could not be saved."
+                        : "Favorite saved: " + saved.label,
+                "Favorites", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void showFavoriteActions(SaveManager.FavoritePuzzle favorite) {
+        Object[] options = {"Replay Favorite", "Rename", "Delete", "Cancel"};
+        int choice = showOptionDialog(DesktopFavoriteContent.optionLabel(favorite) + "\n\n"
+                        + DesktopFavoriteContent.practiceSummary(), "Favorite",
+                JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE, null,
+                options, options[0]);
+        if (choice == 0) {
+            startFavoritePractice(favorite);
+        } else if (choice == 1) {
+            renameFavorite(favorite);
+        } else if (choice == 2) {
+            int confirm = showConfirmDialog("Delete this favorite and its practice save?",
+                    "Delete Favorite", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (confirm == JOptionPane.YES_OPTION) {
+                SaveManager.removeFavorite(favorite.id);
+            }
+        }
+    }
+
+    private void renameFavorite(SaveManager.FavoritePuzzle favorite) {
+        String label = runWithPausedTimer(() -> JOptionPane.showInputDialog(this,
+                "New favorite label (up to 40 characters).", favorite.label));
+        if (label != null && !SaveManager.renameFavorite(favorite.id, label)) {
+            showMessageDialog("Favorite label was not changed.", "Favorites",
+                    JOptionPane.WARNING_MESSAGE);
+        }
+    }
+
+    private void startFavoritePractice(SaveManager.FavoritePuzzle favorite) {
+        if (solverRunning || favorite == null) {
+            return;
+        }
+        autosaveCurrentGameIfSafe();
+        clearMovableHint();
+        model.removeObserver(this);
+        model = favorite.createGame();
+        model.addObserver(this);
+        boardPanel.setModel(model);
+        activeDailyDateId = null;
+        activeFavoriteId = favorite.id;
+        activeContinuousChallenge = null;
+        continuousDifficulty = null;
+        assistedSolveActive = false;
+        completedAssisted = false;
+        completionTracker.reset();
+        pendingResultMessage = null;
+        solverRunning = false;
+        showGame();
+    }
+
+    private void showTrendsDialog() {
+        if (solverRunning) {
+            return;
+        }
+        int size = SaveManager.getTrendSize();
+        PuzzleDifficulty difficulty = SaveManager.getTrendDifficulty();
+        Object[] options = {"Change Scope", "Set Weekly Goal", "Close"};
+        int choice = showOptionDialog(
+                DesktopTrendContent.summary(size, difficulty,
+                        SaveManager.getPersonalTrend(size, difficulty),
+                        SaveManager.getWeeklyGoalProgress(LocalDate.now(),
+                                java.time.ZoneId.systemDefault(), size, difficulty)),
+                "Trends / Weekly Goal", JOptionPane.DEFAULT_OPTION,
+                JOptionPane.INFORMATION_MESSAGE, null, options, options[0]);
+        if (choice == 0) {
+            showTrendScopeDialog();
+        } else if (choice == 1) {
+            showWeeklyGoalDialog();
+        }
+    }
+
+    private void showTrendScopeDialog() {
+        PuzzleDifficulty[] difficulties = PuzzleDifficulty.values();
+        Object[] options = new Object[9];
+        int selected = 0;
+        for (int size = 3; size <= 5; size++) {
+            for (int index = 0; index < difficulties.length; index++) {
+                options[(size - 3) * difficulties.length + index] =
+                        DesktopTrendContent.scopeLabel(size, difficulties[index]);
+                if (size == SaveManager.getTrendSize()
+                        && difficulties[index] == SaveManager.getTrendDifficulty()) {
+                    selected = (size - 3) * difficulties.length + index;
+                }
+            }
+        }
+        int choice = showOptionDialog("Choose the size and difficulty used by Trends and Weekly Goal.",
+                "Trend Scope", JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
+                null, options, options[selected]);
+        if (choice >= 0) {
+            SaveManager.setTrendSize(3 + choice / difficulties.length);
+            SaveManager.setTrendDifficulty(difficulties[choice % difficulties.length]);
+            showTrendsDialog();
+        }
+    }
+
+    private void showWeeklyGoalDialog() {
+        String value = runWithPausedTimer(() -> JOptionPane.showInputDialog(this,
+                "Weekly player-completion target (1-50).",
+                String.valueOf(SaveManager.getWeeklyGoalTarget())));
+        if (value == null) {
+            return;
+        }
+        try {
+            if (!SaveManager.setWeeklyGoalTarget(Integer.parseInt(value.trim()))) {
+                throw new NumberFormatException();
+            }
+            showTrendsDialog();
+        } catch (NumberFormatException exception) {
+            showMessageDialog("Weekly goal must be a whole number from 1 through 50.",
+                    "Weekly Goal", JOptionPane.WARNING_MESSAGE);
+        }
+    }
+
+    private void showContinuousDialog() {
+        if (solverRunning) {
+            return;
+        }
+        SaveManager.ContinuousGame saved = SaveManager.loadContinuousGame();
+        if (saved != null && saved.challenge.isComplete()) {
+            SaveManager.clearContinuousGame();
+            saved = null;
+        }
+        boolean resumable = saved != null;
+        int[] targets = {3, 5, 10};
+        Object[] options = new Object[targets.length + (resumable ? 2 : 0)];
+        int offset = 0;
+        if (resumable) {
+            options[0] = DesktopContinuousContent.optionLabel(saved.challenge, saved.size,
+                    saved.difficulty);
+            options[1] = "End saved challenge";
+            offset = 2;
+        }
+        for (int index = 0; index < targets.length; index++) {
+            options[index + offset] = "Start " + targets[index] + " puzzles";
+        }
+        int choice = showOptionDialog("One fixed size/difficulty scope; progress is isolated from normal, "
+                        + "Daily, and Favorite Practice saves.", "Continuous Challenge",
+                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null,
+                options, options[0]);
+        if (choice < 0) {
+            return;
+        }
+        if (resumable && choice == 0) {
+            resumeContinuousChallenge();
+        } else if (resumable && choice == 1) {
+            endContinuousChallenge();
+        } else {
+            chooseContinuousScope(targets[choice - offset]);
+        }
+    }
+
+    private void chooseContinuousScope(int target) {
+        String[] options = new String[9];
+        PuzzleDifficulty[] difficulties = PuzzleDifficulty.values();
+        int selected = 0;
+        for (int size = 3; size <= 5; size++) {
+            for (int index = 0; index < difficulties.length; index++) {
+                options[(size - 3) * difficulties.length + index] =
+                        DesktopTrendContent.scopeLabel(size, difficulties[index]);
+                if (size == (model == null ? 4 : model.getSize())
+                        && difficulties[index] == (model == null
+                                ? PuzzleDifficulty.CLASSIC : model.getDifficulty())) {
+                    selected = (size - 3) * difficulties.length + index;
+                }
+            }
+        }
+        int choice = showOptionDialog("Choose the fixed scope for this challenge.",
+                "Continuous Scope", JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
+                null, options, options[selected]);
+        if (choice >= 0) {
+            startContinuousChallenge(3 + choice / difficulties.length,
+                    difficulties[choice % difficulties.length], target);
+        }
+    }
+
+    private void startContinuousChallenge(int size, PuzzleDifficulty difficulty, int target) {
+        if (solverRunning || !ContinuousChallenge.isSupportedTarget(target)) {
+            return;
+        }
+        autosaveCurrentGameIfSafe();
+        SaveManager.clearContinuousGame();
+        activeContinuousChallenge = ContinuousChallenge.start(target);
+        continuousSize = size;
+        continuousDifficulty = difficulty;
+        clearMovableHint();
+        model.removeObserver(this);
+        model = DesktopGameFactory.create(size, difficulty);
+        model.addObserver(this);
+        boardPanel.setModel(model);
+        activeDailyDateId = null;
+        activeFavoriteId = null;
+        assistedSolveActive = false;
+        completedAssisted = false;
+        completionTracker.reset();
+        pendingResultMessage = null;
+        solverRunning = false;
+        saveCurrentGame();
+        showGame();
+    }
+
+    private void resumeContinuousChallenge() {
+        SaveManager.ContinuousGame saved = SaveManager.loadContinuousGame();
+        if (saved == null || saved.challenge.isComplete()) {
+            SaveManager.clearContinuousGame();
+            return;
+        }
+        clearMovableHint();
+        model.removeObserver(this);
+        model = new GameModel(saved.game.size);
+        model.loadState(saved.game);
+        model.addObserver(this);
+        boardPanel.setModel(model);
+        activeContinuousChallenge = saved.challenge;
+        continuousSize = saved.size;
+        continuousDifficulty = saved.difficulty;
+        activeDailyDateId = null;
+        activeFavoriteId = null;
+        assistedSolveActive = saved.assisted;
+        completedAssisted = saved.assisted;
+        completionTracker.reset();
+        pendingResultMessage = null;
+        solverRunning = false;
+        if (model.isSolved()) {
+            startNextContinuousPuzzle();
+        } else {
+            showGame();
+        }
+    }
+
+    private void startNextContinuousPuzzle() {
+        if (solverRunning || activeContinuousChallenge == null
+                || activeContinuousChallenge.isComplete()) {
+            return;
+        }
+        clearMovableHint();
+        model.removeObserver(this);
+        model = DesktopGameFactory.create(continuousSize, continuousDifficulty);
+        model.addObserver(this);
+        boardPanel.setModel(model);
+        activeDailyDateId = null;
+        activeFavoriteId = null;
+        assistedSolveActive = false;
+        completedAssisted = false;
+        completionTracker.reset();
+        pendingResultMessage = null;
+        solverRunning = false;
+        saveCurrentGame();
+        showGame();
+    }
+
+    private void endContinuousChallenge() {
+        SaveManager.clearContinuousGame();
+        activeContinuousChallenge = null;
+        continuousDifficulty = null;
+        completedAssisted = false;
+        assistedSolveActive = false;
+        if (showingGame) {
+            showHome();
+        }
+    }
+
     private void showResultsDialog(int moves, long timeMs) {
         if (activeDailyDateId != null && model != null && model.isSolved()) {
             saveCurrentGame();
+        }
+        if (activeFavoriteId != null || activeContinuousChallenge != null) {
+            if (activeFavoriteId != null) {
+                saveCurrentGame();
+                String message = pendingResultMessage == null
+                        ? DesktopResultContent.favoritePracticeMessage(
+                                model.getSize(), model.getDifficulty(), moves, timeMs)
+                        : pendingResultMessage;
+                pendingResultMessage = null;
+                Object[] options = {"Replay Favorite", "Favorites", "Home"};
+                int choice = showOptionDialog(message, "Favorite Practice",
+                        JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE,
+                        null, options, options[0]);
+                if (choice == 0) {
+                    replayCurrentPuzzle();
+                } else if (choice == 1) {
+                    showFavoritesDialog();
+                } else if (choice == 2) {
+                    showHome();
+                }
+                return;
+            }
+            showContinuousResultsDialog(moves, timeMs);
+            return;
         }
         String message = pendingResultMessage == null
                 ? DesktopResultContent.resultsMessage(model.getSize(), model.getDifficulty(), moves, timeMs,
@@ -857,6 +1231,28 @@ public class MainFrame extends JFrame implements GameObserver {
         if (choice == 0) {
             replayCurrentPuzzle();
         } else if (choice == 1 || choice == 2) {
+            showHome();
+        }
+    }
+
+    private void showContinuousResultsDialog(int moves, long timeMs) {
+        if (model != null && model.isSolved()) {
+            saveCurrentGame();
+        }
+        String message = DesktopContinuousContent.result(activeContinuousChallenge,
+                continuousSize, continuousDifficulty) + "\n\nLast puzzle: "
+                + DesktopResultContent.formatMoves(moves) + " · " + (timeMs / 1000) + "s";
+        Object[] options = activeContinuousChallenge.isComplete()
+                ? new Object[] {"End Challenge", "Home"}
+                : new Object[] {"Next Puzzle", "End Challenge", "Home"};
+        int choice = showOptionDialog(message, "Continuous Results",
+                JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE,
+                null, options, options[0]);
+        if (!activeContinuousChallenge.isComplete() && choice == 0) {
+            startNextContinuousPuzzle();
+        } else if (choice == (activeContinuousChallenge.isComplete() ? 0 : 1)) {
+            endContinuousChallenge();
+        } else if (choice >= 0) {
             showHome();
         }
     }
@@ -880,6 +1276,9 @@ public class MainFrame extends JFrame implements GameObserver {
         if (showingGame) {
             autosaveCurrentGameIfSafe();
             activeDailyDateId = null;
+            activeFavoriteId = null;
+            activeContinuousChallenge = null;
+            continuousDifficulty = null;
             completedAssisted = false;
             assistedSolveActive = false;
         }
@@ -888,7 +1287,7 @@ public class MainFrame extends JFrame implements GameObserver {
         syncGameTimerState();
         contentLayout.show(contentPanel, HOME_CARD);
         updateHomeSaveSummary();
-        statusLabel.setText("Home | New Game, Continue, Daily Calendar, How to Play, Records, Preferences");
+        statusLabel.setText("Home | New Game, Continue, Daily, Favorites, Trends, Continuous, Records");
     }
 
     private void showGame() {
@@ -996,9 +1395,12 @@ public class MainFrame extends JFrame implements GameObserver {
             String hintText = movableHintActive ? " | Hint: highlighted tiles can slide into the empty cell" : "";
             String motionText = reducedMotionEnabled ? " | Reduced motion" : "";
             String dailyText = activeDailyDateId == null ? "" : " | Daily: " + activeDailyDateId;
-            statusLabel.setText(String.format("Moves: %d | Time: %ds | Difficulty: %s | %s%s%s%s",
+            String favoriteText = activeFavoriteId == null ? "" : " | Favorite Practice";
+            String continuousText = activeContinuousChallenge == null ? ""
+                    : " | " + DesktopContinuousContent.status(activeContinuousChallenge);
+            statusLabel.setText(String.format("Moves: %d | Time: %ds | Difficulty: %s | %s%s%s%s%s%s",
                     model.getMoveCount(), elapsed, difficultyLabel(model.getDifficulty()),
-                    bestText, hintText, motionText, dailyText));
+                    bestText, hintText, motionText, dailyText, favoriteText, continuousText));
         }
     }
 
@@ -1024,6 +1426,16 @@ public class MainFrame extends JFrame implements GameObserver {
         int size = model.getSize();
         PuzzleDifficulty difficulty = model.getDifficulty();
         boolean assisted = assistedSolveActive;
+        if (activeFavoriteId != null) {
+            assistedSolveActive = false;
+            completedAssisted = assisted;
+            pendingResultMessage = DesktopResultContent.favoritePracticeMessage(
+                    size, difficulty, moves, timeMs);
+            saveCurrentGame();
+            statusLabel.setText(String.format("Favorite solved! Moves: %d | Time: %ds | Difficulty: %s",
+                    moves, timeMs / 1000, difficultyLabel(difficulty)));
+            return;
+        }
         SaveManager.recordCompletion(completionTracker.runId(), size, difficulty,
                 moves, timeMs, assisted);
         if (activeDailyDateId != null) {
@@ -1035,6 +1447,10 @@ public class MainFrame extends JFrame implements GameObserver {
         if (newBest) {
             SaveManager.recordBestIfBetter(size, difficulty, moves, timeMs);
         }
+        if (activeContinuousChallenge != null) {
+            activeContinuousChallenge = activeContinuousChallenge.completePuzzle(
+                    moves, timeMs, assisted);
+        }
         SaveManager.BestRecord best = SaveManager.getBestRecord(size, difficulty);
         assistedSolveActive = false;
         completedAssisted = assisted;
@@ -1044,6 +1460,9 @@ public class MainFrame extends JFrame implements GameObserver {
         if (activeDailyDateId != null) {
             pendingResultMessage += "\n" + DesktopDailyContent.progressSummary(
                     SaveManager.getDailyProgress(LocalDate.now().toString()));
+        }
+        if (activeContinuousChallenge != null) {
+            saveCurrentGame();
         }
         String bestText = best == null ? "--" : best.format();
         statusLabel.setText(String.format("Solved! Moves: %d | Time: %ds | Difficulty: %s | Best: %s",

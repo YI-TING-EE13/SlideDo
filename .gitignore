@@ -47,6 +47,23 @@ klotski_daily_*.assisted
 klotski_daily_progress.json
 klotski_daily_progress.json.tmp
 klotski_daily_progress.json.bak
+klotski_favorites.json
+klotski_favorites.json.tmp
+klotski_favorites.json.bak
+klotski_favorite_*.json
+klotski_favorite_*.json.tmp
+klotski_favorite_*.json.bak
+klotski_favorite_*.assisted
+klotski_personal_preferences.json
+klotski_personal_preferences.json.tmp
+klotski_personal_preferences.json.bak
+klotski_continuous_meta.json
+klotski_continuous_meta.json.tmp
+klotski_continuous_meta.json.bak
+klotski_continuous_current.json
+klotski_continuous_current.json.tmp
+klotski_continuous_current.json.bak
+klotski_continuous_current.json.assisted
 
 # Editor and OS files
 .idea/

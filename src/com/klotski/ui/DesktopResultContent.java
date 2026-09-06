@@ -54,6 +54,18 @@ final class DesktopResultContent {
         return moves + (moves == 1 ? " move" : " moves");
     }
 
+    static String favoritePracticeMessage(int size, PuzzleDifficulty difficulty,
+            int moves, long timeMs) {
+        return String.join("\n",
+                "Favorite Practice solved.",
+                "",
+                size + "x" + size + " Puzzle",
+                "Difficulty: " + difficultyLabel(difficulty),
+                formatMoves(moves) + "   Time: " + (timeMs / 1000) + "s",
+                "",
+                "Practice result not saved to records, history, statistics, or Daily streaks.");
+    }
+
     private static String recordText(boolean assisted, boolean newBest,
             SaveManager.BestRecord previousBest, SaveManager.BestRecord currentBest,
             boolean includeDifficulty) {
