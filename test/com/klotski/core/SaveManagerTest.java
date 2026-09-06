@@ -12,6 +12,7 @@ import java.io.FileOutputStream;
 import java.io.ObjectOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.time.LocalDate;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -349,6 +350,62 @@ class SaveManagerTest {
                     .playerCompletions);
             assertFalse(SaveManager.recordCompletion("run-0", 3, PuzzleDifficulty.CLASSIC,
                     99, 99, false, 99));
+        } finally {
+            restoreDataDirectoryProperty(oldValue);
+        }
+    }
+
+    @Test
+    void dailySaveUsesDatedNamespaceAndPreservesNormalSlot() {
+        String oldValue = System.getProperty(SaveManager.DATA_DIR_PROPERTY);
+        System.setProperty(SaveManager.DATA_DIR_PROPERTY, tempDir.getAbsolutePath());
+        try {
+            LocalDate date = LocalDate.now().minusDays(2);
+            GameModel daily = DailyChallenge.forDate(date).createGame();
+            assertTrue(daily.move(Direction.UP));
+            assertTrue(SaveManager.saveDailyGame(date.toString(), daily, true));
+
+            GameModel normal = new GameModel(4);
+            normal.scramble(PuzzleDifficulty.RELAXED, 44L);
+            assertTrue(SaveManager.saveGame(normal));
+            SaveManager.recordBest(4, PuzzleDifficulty.CLASSIC, 50, 50_000);
+
+            SaveManager.SaveData loadedDaily = SaveManager.loadDailyGame(date.toString());
+            assertNotNull(loadedDaily);
+            assertEquals(PuzzleDifficulty.CLASSIC, loadedDaily.difficulty);
+            assertTrue(SaveManager.isDailyGameAssisted(date.toString()));
+            assertEquals(normal.getMoveCount(), SaveManager.loadGame(4).moveCount);
+            assertEquals(50, SaveManager.getBestRecord(4, PuzzleDifficulty.CLASSIC).moves);
+            assertTrue(new File(tempDir, "klotski_daily_" + date + ".json").exists());
+            assertNotNull(SaveManager.getDailySaveMetadata(date.toString()));
+        } finally {
+            restoreDataDirectoryProperty(oldValue);
+        }
+    }
+
+    @Test
+    void dailyFutureDatesAreRejectedAndHistoricalStreaksDoNotMoveLatestBackward() {
+        String oldValue = System.getProperty(SaveManager.DATA_DIR_PROPERTY);
+        System.setProperty(SaveManager.DATA_DIR_PROPERTY, tempDir.getAbsolutePath());
+        try {
+            LocalDate today = LocalDate.of(2026, 9, 10);
+            assertTrue(SaveManager.isDailyDatePlayable("2026-09-10", today));
+            assertFalse(SaveManager.isDailyDatePlayable("2026-09-11", today));
+            GameModel future = DailyChallenge.forDate(LocalDate.now().plusDays(1)).createGame();
+            assertFalse(SaveManager.saveDailyGame(LocalDate.now().plusDays(1).toString(), future, false));
+            assertTrue(SaveManager.recordDailyCompletion("2026-09-08", today));
+            assertTrue(SaveManager.recordDailyCompletion("2026-09-09", today));
+            assertFalse(SaveManager.recordDailyCompletion("2026-09-11", today));
+
+            SaveManager.DailyProgress beforeHistorical = SaveManager.getDailyProgress("2026-09-10");
+            assertEquals(2, beforeHistorical.currentStreak);
+            assertEquals(2, beforeHistorical.bestStreak);
+            assertTrue(SaveManager.recordDailyCompletion("2026-09-07", today));
+            SaveManager.DailyProgress afterHistorical = SaveManager.getDailyProgress("2026-09-10");
+            assertEquals(2, afterHistorical.currentStreak);
+            assertEquals(2, afterHistorical.bestStreak);
+            assertEquals("2026-09-09", afterHistorical.lastCompletedDateId);
+            assertFalse(SaveManager.recordDailyCompletion("2026-09-08", today));
         } finally {
             restoreDataDirectoryProperty(oldValue);
         }

@@ -40,6 +40,13 @@ klotski_records_v2.json.bak
 klotski_statistics.json
 klotski_statistics.json.tmp
 klotski_statistics.json.bak
+klotski_daily_*.json
+klotski_daily_*.json.tmp
+klotski_daily_*.json.bak
+klotski_daily_*.assisted
+klotski_daily_progress.json
+klotski_daily_progress.json.tmp
+klotski_daily_progress.json.bak
 
 # Editor and OS files
 .idea/

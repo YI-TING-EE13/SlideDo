@@ -32,6 +32,8 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
   - Preferences includes a reduced-motion option that snaps tile movement without changing puzzle rules or records.
   - Records are scoped by board size and difficulty; the Records dialog also shows player and assisted completion totals.
   - Results show first-record, new-best, unchanged-best, and solver-assisted no-record wording. Completion history is bounded and duplicate win callbacks are ignored.
+  - Daily Calendar provides one offline 4x4 Classic puzzle per local ISO date,
+    isolated dated saves, historical replay, future-date blocking, and current/best streak copy.
 - **Mobile-Ready Interaction Model**:
   - Android opens on Home with Continue, New Game, Beginner Guide, Practice Tutorial, How to Play, Settings, and Records.
   - First-run onboarding introduces the goal, tap/swipe input, whole-line slides, undo/restart, and record rules.
@@ -206,6 +208,8 @@ klotski_save_5.json
 klotski_records.json                 (legacy size-only read-only source)
 klotski_records_v2.json              (size:difficulty player bests)
 klotski_statistics.json              (completion history and lifetime totals)
+klotski_daily_YYYY-MM-DD.json        (one isolated Daily save per date)
+klotski_daily_progress.json          (completed dates and streaks)
 ```
 
 For portable test or beta builds, set the JVM property
@@ -215,7 +219,8 @@ normal slots with size, difficulty, moves, and active elapsed time. Older
 into the matching size slot without deleting the source or replacing a newer
 slot. A failed or interrupted replacement leaves the previous JSON, a `.tmp`
 candidate, or a `.bak` recovery copy available for the next load. Legacy files
-in the project root remain a read-only fallback, and records/statistics stay in
+in the project root remain a read-only fallback, and records/statistics/daily
+state stay in
 the established user-data directory. Legacy size-only records are mapped to
 Classic without rewriting the source; new completion samples are deduplicated
 by run id, keep assisted results visible in history/statistics, and never let
