@@ -196,17 +196,24 @@ Windows: %APPDATA%\SlideDo
 Other platforms: <user.home>/.slidedo
 ```
 
-The default filenames are:
+The normal-save filenames are independent by board size:
 
 ```text
-klotski_save.json
+klotski_save_3.json
+klotski_save_4.json
+klotski_save_5.json
 klotski_records.json
 ```
 
 For portable test or beta builds, set the JVM property
-`slidedo.data.dir=<path>` to override the directory. If older
-`klotski_save.json`, `klotski_save.dat`, or `klotski_records.json` files exist
-in the project root, the loader still reads them as a migration fallback.
+`slidedo.data.dir=<path>` to override the directory. Continue lists valid
+normal slots with size, difficulty, moves, and active elapsed time. Older
+`klotski_save.json` and serialized `klotski_save.dat` files are imported lazily
+into the matching size slot without deleting the source or replacing a newer
+slot. A failed or interrupted replacement leaves the previous JSON, a `.tmp`
+candidate, or a `.bak` recovery copy available for the next load. Legacy files
+in the project root remain a read-only fallback, and records stay in the
+established user-data directory.
 
 ---
 

@@ -10,7 +10,7 @@ This is the single source of truth for SlideDo development planning, feature beh
 - Keep generated files, local runtime saves, IDE files, and machine-specific config out of Git.
 - Keep repository line endings stable through `.gitattributes`.
 - Do not rewrite history, squash, rebase, reset, or force-push unless the project owner explicitly requests it.
-- Before release or remote publication, verify `.gitignore` and ensure local files such as `klotski_save.json`, `klotski_save.dat`, `klotski_records.json`, `bin/`, `build/`, and Android build output are not tracked.
+- Before release or remote publication, verify `.gitignore` and ensure local files such as `klotski_save.json`, `klotski_save.dat`, `klotski_save_3.json`, `klotski_save_4.json`, `klotski_save_5.json`, `klotski_records.json`, `bin/`, `build/`, and Android build output are not tracked.
 
 ## Next Session Bootstrap
 
@@ -654,7 +654,7 @@ Desktop/Android feature parity matrix:
 | Learning surfaces | First-run onboarding, visual How to Play, Quick Reminder, and interactive Practice Tutorial. | How to Play and Practice Tutorial dialogs use Android-aligned language. | Android remains more visual and interactive; desktop parity covers the same concepts. | Android onboarding/tutorial/how-to instrumentation; desktop help-content tests. |
 | Touch/mouse movement | Tap/swipe aligned tiles; whole-line slide counts as one move and one action-history entry. | Mouse click/release movement plus keyboard controls; whole-line slide uses the shared model. | Input method differs by platform; Undo/Redo and action outcomes match. | Shared core history tests, Android whole-line/Undo/Redo instrumentation, desktop smoke. |
 | Assist / hints | Assist can suggest one strategic adjacent move, highlight all movable tiles, or offer solver playback. | Assist highlights movable tiles and supports solver playback. | Strategic guidance is Android-first; strategic- and solver-assisted wins do not update Android player records. | Android strategic-hint/persistence/results instrumentation; desktop result-copy tests. |
-| Save/load metadata | `AndroidGameStore` persists independent 3x3, 4x4, and 5x5 slots with size, grid, initial grid, moves, elapsed, updated-at, active, solved, difficulty, completed actions, and Redo actions; it migrates the legacy single save without replacing a newer matching slot. | Desktop JSON save persists the same shared gameplay and action-history metadata for one slot; records live in the user-data path. | Shared gameplay metadata is aligned; Android adds per-size/mode slots and mobile-only settings/onboarding. Legacy saves without histories load with empty Undo/Redo state. | Android store instrumentation, shared history reconstruction and save metadata tests. |
+| Save/load metadata | `AndroidGameStore` persists independent 3x3, 4x4, and 5x5 slots with size, grid, initial grid, moves, elapsed, updated-at, active, solved, difficulty, completed actions, and Redo actions; it migrates the legacy single save without replacing a newer matching slot. | Desktop `SaveManager` persists independent `klotski_save_3.json`, `klotski_save_4.json`, and `klotski_save_5.json` slots with the same shared gameplay and action-history metadata; atomic replacements retain `.tmp`/`.bak` recovery candidates. | Shared gameplay metadata and normal size-slot behavior are aligned; Android adds per-mode slots and mobile-only settings/onboarding. Legacy JSON and `.dat` saves remain untouched while known fields migrate into a matching Desktop slot; missing histories default safely. | `SaveManagerTest`, `GameModelTest`, and desktop compile/Javadocs. |
 | Settings / preferences | Persistent English, Traditional Chinese, and Japanese language selection, haptic feedback, reduced motion, reset all saved games, and reset records. | Reduced motion preference plus desktop records/save flows. | App-language and haptics are Android-only; desktop currently remains English. | Android locale/store/settings instrumentation; desktop preferences copy tests/manual smoke. |
 | Records | Per-size local best records, fewer moves then lower time, solver-assisted protection, and player-facing policy explanation. | Per-size local best records with the same comparison, solver-assisted protection, and policy explanation. | Aligned. | Android records/results instrumentation; desktop result and records tests. |
 | Results | Full Results screen with exact-board Replay Puzzle, New Size, Home, record status, and assisted wording. | Android-style Results dialog with Play Again, New Size, Home, record status, and assisted wording. | Android now replays the same starting board for the Personal Play roadmap; desktop retains its new-puzzle action. | Android replay/results instrumentation; desktop results copy tests. |
@@ -695,6 +695,27 @@ roadmap stage and a fresh matrix re-check.
 - Added focused coverage for all supported size/difficulty combinations,
   seeded reproducibility, exact replay, timer gates, solver input locking, and
   selected-difficulty Results wording.
+
+2026-09-07 Stage 2 persistence and lifecycle implementation:
+
+- Desktop normal saves now use independent `klotski_save_3.json`,
+  `klotski_save_4.json`, and `klotski_save_5.json` slots. Each slot retains
+  size, difficulty, current and initial grids, move count, active elapsed time,
+  completion state, and both compact action histories.
+- Home Continue lists valid slot metadata and lets the player choose a saved
+  size. MainFrame autosaves a stable game at Home/navigation, inactive-window,
+  and close boundaries while preserving the manual Save/Load commands. It
+  intentionally skips transient BoardPanel animation and solver-owned state.
+- Save writes are atomic and retain recoverable `.tmp` and `.bak` siblings.
+  Legacy `klotski_save.json` and serialized `klotski_save.dat` inputs are read
+  from the user-data directory or project-root fallback, copied lazily into a
+  matching size slot, never deleted, and never allowed to replace a newer slot.
+  Missing difficulty/history fields default to Classic/empty histories; invalid
+  histories are discarded by GameModel reconstruction without discarding the
+  valid board.
+- `SaveManagerTest` now covers per-size isolation, metadata, JSON and serialized
+  migration, newer-slot preservation, malformed history, atomic recovery, and
+  failed replacement behavior.
 
 ### Completed 2026-05-25 MVP Items
 

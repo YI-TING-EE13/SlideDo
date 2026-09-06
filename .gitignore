@@ -30,6 +30,9 @@ local.properties
 # Game runtime data
 klotski_save.json
 klotski_save.dat
+klotski_save_*.json
+klotski_save_*.json.tmp
+klotski_save_*.json.bak
 klotski_records.json
 
 # Editor and OS files
