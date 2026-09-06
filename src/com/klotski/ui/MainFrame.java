@@ -7,6 +7,8 @@ import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -46,6 +48,15 @@ public class MainFrame extends JFrame implements GameObserver {
 
     /** Ensures duplicate observer callbacks cannot record one run twice. */
     private final DesktopCompletionTracker completionTracker = new DesktopCompletionTracker();
+
+    /** Active dated Daily Challenge namespace, or {@code null} for normal play. */
+    private String activeDailyDateId;
+
+    /** Last selected month shown by the Desktop Daily Calendar. */
+    private YearMonth dailyCalendarMonth;
+
+    /** Preserves assisted eligibility for a solved Daily save after Results. */
+    private boolean completedAssisted;
 
     /** Tracks whether desktop assist highlights are currently visible. */
     private boolean movableHintActive;
@@ -179,7 +190,7 @@ public class MainFrame extends JFrame implements GameObserver {
                 return;
             }
             runWithPausedTimer(() -> {
-                boolean saved = SaveManager.saveGame(model);
+                boolean saved = saveCurrentGame();
                 showMessageDialog(saved ? "Game saved." : "Could not save game.",
                         "Save Game", JOptionPane.INFORMATION_MESSAGE);
             });
@@ -194,6 +205,10 @@ public class MainFrame extends JFrame implements GameObserver {
         JMenuItem recordsItem = new JMenuItem("Records");
         recordsItem.addActionListener(e -> showRecordsDialog());
         gameMenu.add(recordsItem);
+
+        JMenuItem dailyItem = new JMenuItem("Daily Calendar");
+        dailyItem.addActionListener(e -> showDailyCalendarDialog());
+        gameMenu.add(dailyItem);
 
         JMenuItem preferencesItem = new JMenuItem("Preferences");
         preferencesItem.addActionListener(e -> showPreferencesDialog());
@@ -272,7 +287,8 @@ public class MainFrame extends JFrame implements GameObserver {
         gbc.insets = new Insets(0, 0, 6, 0);
         panel.add(title, gbc);
 
-        JLabel subtitle = new JLabel("Choose a puzzle or continue your last desktop save.", SwingConstants.CENTER);
+        JLabel subtitle = new JLabel("Choose a puzzle, daily challenge, or continue your last desktop save.",
+                SwingConstants.CENTER);
         subtitle.setFont(new Font("SansSerif", Font.PLAIN, 15));
         subtitle.setForeground(new Color(86, 96, 108));
         gbc.gridy++;
@@ -293,6 +309,7 @@ public class MainFrame extends JFrame implements GameObserver {
         continueSummaryLabel.setFont(new Font("SansSerif", Font.PLAIN, 13));
         continueSummaryLabel.setForeground(new Color(86, 96, 108));
         panel.add(continueSummaryLabel, nextHomeRow(gbc));
+        panel.add(createHomeButton("Daily Calendar", this::showDailyCalendarDialog), nextHomeRow(gbc));
         panel.add(createHomeButton("How to Play", () -> showHelpDialog("How to Play", DesktopHelpContent.howToPlay())),
                 nextHomeRow(gbc));
         panel.add(createHomeButton("Practice Tutorial",
@@ -341,7 +358,9 @@ public class MainFrame extends JFrame implements GameObserver {
         model.addObserver(this);
         boardPanel.setModel(model);
 
+        activeDailyDateId = null;
         assistedSolveActive = false;
+        completedAssisted = false;
         completionTracker.reset();
         pendingResultMessage = null;
         solverRunning = false;
@@ -393,6 +412,7 @@ public class MainFrame extends JFrame implements GameObserver {
         model.addObserver(this);
         boardPanel.setModel(model);
         assistedSolveActive = false;
+        completedAssisted = false;
         completionTracker.reset();
         pendingResultMessage = null;
         solverRunning = false;
@@ -409,6 +429,7 @@ public class MainFrame extends JFrame implements GameObserver {
         clearMovableHint();
         model.restartCurrentGame();
         assistedSolveActive = false;
+        completedAssisted = false;
         completionTracker.reset();
         syncGameTimerState();
         updateStatus();
@@ -521,7 +542,9 @@ public class MainFrame extends JFrame implements GameObserver {
                 boardPanel.setModel(model);
             }
             model.loadState(data);
+            activeDailyDateId = null;
             assistedSolveActive = false;
+            completedAssisted = false;
             completionTracker.reset();
             pendingResultMessage = null;
             solverRunning = false;
@@ -530,6 +553,168 @@ public class MainFrame extends JFrame implements GameObserver {
         } else {
             showMessageDialog("No save file found.", "SlideDo", JOptionPane.INFORMATION_MESSAGE);
         }
+    }
+
+    private boolean saveCurrentGame() {
+        if (model == null) {
+            return false;
+        }
+        if (activeDailyDateId != null) {
+            boolean assisted = assistedSolveActive || (model.isSolved() && completedAssisted);
+            return SaveManager.saveDailyGame(activeDailyDateId, model, assisted);
+        }
+        return SaveManager.saveGame(model);
+    }
+
+    private void showDailyCalendarDialog() {
+        if (solverRunning) {
+            return;
+        }
+        if (showingGame) {
+            showHome();
+        }
+        LocalDate today = LocalDate.now();
+        YearMonth requested = dailyCalendarMonth == null
+                ? YearMonth.from(today) : dailyCalendarMonth;
+        showDailyCalendarDialog(DailyCalendarMonth.showing(requested, today));
+    }
+
+    private void showDailyCalendarDialog(DailyCalendarMonth calendar) {
+        dailyCalendarMonth = calendar.getMonth();
+        LocalDate today = LocalDate.now();
+        JDialog dialog = new JDialog(this, "Daily Calendar", true);
+        dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        dialog.setContentPane(createDailyCalendarPanel(dialog, calendar, today));
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        runWithPausedTimer(() -> dialog.setVisible(true));
+    }
+
+    private JPanel createDailyCalendarPanel(JDialog dialog, DailyCalendarMonth calendar,
+            LocalDate today) {
+        JPanel panel = new JPanel(new BorderLayout(0, 12));
+        panel.setBorder(BorderFactory.createEmptyBorder(16, 16, 12, 16));
+
+        JPanel heading = new JPanel(new BorderLayout(0, 4));
+        JLabel title = new JLabel("Daily Calendar", SwingConstants.CENTER);
+        title.setFont(new Font("SansSerif", Font.BOLD, 22));
+        JLabel subtitle = new JLabel("4x4 Classic · choose today or replay an earlier offline puzzle.",
+                SwingConstants.CENTER);
+        subtitle.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        heading.add(title, BorderLayout.NORTH);
+        heading.add(subtitle, BorderLayout.SOUTH);
+        panel.add(heading, BorderLayout.NORTH);
+
+        JPanel calendarBody = new JPanel(new BorderLayout(0, 8));
+        JPanel monthNavigation = new JPanel(new BorderLayout(8, 0));
+        JButton previous = new JButton("Previous");
+        previous.setEnabled(true);
+        previous.addActionListener(event -> {
+            dialog.dispose();
+            dailyCalendarMonth = calendar.getMonth().minusMonths(1);
+            SwingUtilities.invokeLater(() -> showDailyCalendarDialog(
+                    DailyCalendarMonth.showing(dailyCalendarMonth, LocalDate.now())));
+        });
+        JLabel month = new JLabel(calendar.getMonthId(), SwingConstants.CENTER);
+        month.setFont(new Font("SansSerif", Font.BOLD, 16));
+        JButton next = new JButton("Next");
+        next.setEnabled(calendar.canGoNext());
+        next.addActionListener(event -> {
+            dialog.dispose();
+            dailyCalendarMonth = calendar.getMonth().plusMonths(1);
+            SwingUtilities.invokeLater(() -> showDailyCalendarDialog(
+                    DailyCalendarMonth.showing(dailyCalendarMonth, LocalDate.now())));
+        });
+        monthNavigation.add(previous, BorderLayout.WEST);
+        monthNavigation.add(month, BorderLayout.CENTER);
+        monthNavigation.add(next, BorderLayout.EAST);
+        calendarBody.add(monthNavigation, BorderLayout.NORTH);
+
+        JPanel grid = new JPanel(new GridLayout(0, 7, 4, 4));
+        String[] weekdays = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+        for (String weekday : weekdays) {
+            JLabel label = new JLabel(weekday, SwingConstants.CENTER);
+            label.setFont(new Font("SansSerif", Font.BOLD, 12));
+            grid.add(label);
+        }
+        for (int index = 0; index < calendar.getFirstDayOffset(); index++) {
+            grid.add(new JLabel());
+        }
+        for (LocalDate date : calendar.getDates()) {
+            DesktopDailyContent.DayState state = dailyDayState(date, today);
+            JButton day = new JButton(DesktopDailyContent.dayButtonText(date, state));
+            day.setToolTipText(DesktopDailyContent.dayAccessibilityText(date, state));
+            day.getAccessibleContext().setAccessibleName(
+                    DesktopDailyContent.dayAccessibilityText(date, state));
+            day.setEnabled(state != DesktopDailyContent.DayState.FUTURE);
+            day.setForeground(state == DesktopDailyContent.DayState.COMPLETED
+                    ? new Color(35, 120, 70) : Color.DARK_GRAY);
+            day.addActionListener(event -> {
+                dialog.dispose();
+                startDailyChallenge(date);
+            });
+            grid.add(day);
+        }
+        calendarBody.add(grid, BorderLayout.CENTER);
+
+        JLabel legend = new JLabel("+ Completed   ~ In progress   ! Missed   · Future",
+                SwingConstants.CENTER);
+        legend.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        calendarBody.add(legend, BorderLayout.SOUTH);
+        panel.add(calendarBody, BorderLayout.CENTER);
+
+        JPanel footer = new JPanel(new BorderLayout(8, 0));
+        SaveManager.DailyProgress progress = SaveManager.getDailyProgress(today.toString());
+        JLabel streak = new JLabel(DesktopDailyContent.progressSummary(progress));
+        JButton close = new JButton("Back");
+        close.addActionListener(event -> dialog.dispose());
+        footer.add(streak, BorderLayout.CENTER);
+        footer.add(close, BorderLayout.EAST);
+        panel.add(footer, BorderLayout.SOUTH);
+        return panel;
+    }
+
+    private DesktopDailyContent.DayState dailyDayState(LocalDate date, LocalDate today) {
+        if (date.isAfter(today)) {
+            return DesktopDailyContent.DayState.FUTURE;
+        }
+        SaveManager.DailyProgress progress = SaveManager.getDailyProgress(date.toString());
+        SaveManager.SaveMetadata metadata = SaveManager.getDailySaveMetadata(date.toString());
+        if (progress.completed || (metadata != null && metadata.solved)) {
+            return DesktopDailyContent.DayState.COMPLETED;
+        }
+        if (metadata != null) {
+            return DesktopDailyContent.DayState.IN_PROGRESS;
+        }
+        return date.equals(today)
+                ? DesktopDailyContent.DayState.READY : DesktopDailyContent.DayState.MISSED;
+    }
+
+    private void startDailyChallenge(LocalDate date) {
+        if (solverRunning || date == null || date.isAfter(LocalDate.now())) {
+            return;
+        }
+        DailyChallenge challenge = DailyChallenge.forDate(date);
+        SaveManager.SaveData saved = SaveManager.loadDailyGame(challenge.getDateId());
+        boolean savedAssisted = saved != null && SaveManager.isDailyGameAssisted(challenge.getDateId());
+        clearMovableHint();
+        model.removeObserver(this);
+        model = saved == null ? challenge.createGame() : new GameModel(saved.size);
+        model.addObserver(this);
+        boardPanel.setModel(model);
+        if (saved != null) {
+            model.loadState(saved);
+            if (model.isSolved()) {
+                model.restartCurrentGame();
+            }
+        }
+        activeDailyDateId = challenge.getDateId();
+        completedAssisted = savedAssisted;
+        assistedSolveActive = savedAssisted;
+        completionTracker.reset();
+        pendingResultMessage = null;
+        solverRunning = false;
+        showGame();
     }
 
     private void runSolver(Solver solver) {
@@ -655,6 +840,9 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void showResultsDialog(int moves, long timeMs) {
+        if (activeDailyDateId != null && model != null && model.isSolved()) {
+            saveCurrentGame();
+        }
         String message = pendingResultMessage == null
                 ? DesktopResultContent.resultsMessage(model.getSize(), model.getDifficulty(), moves, timeMs,
                         false, false, null, SaveManager.getBestRecord(model.getSize(), model.getDifficulty()))
@@ -691,13 +879,16 @@ public class MainFrame extends JFrame implements GameObserver {
     private void showHome() {
         if (showingGame) {
             autosaveCurrentGameIfSafe();
+            activeDailyDateId = null;
+            completedAssisted = false;
+            assistedSolveActive = false;
         }
         showingGame = false;
         clearMovableHint();
         syncGameTimerState();
         contentLayout.show(contentPanel, HOME_CARD);
         updateHomeSaveSummary();
-        statusLabel.setText("Home | New Game, Continue, How to Play, Records, Preferences");
+        statusLabel.setText("Home | New Game, Continue, Daily Calendar, How to Play, Records, Preferences");
     }
 
     private void showGame() {
@@ -732,7 +923,7 @@ public class MainFrame extends JFrame implements GameObserver {
                 showingGame, boardPanel != null && boardPanel.isBusy(), solverRunning)) {
             return false;
         }
-        return runWithPausedTimer(() -> SaveManager.autosaveGame(model));
+        return runWithPausedTimer(this::saveCurrentGame);
     }
 
     private void syncGameTimerState() {
@@ -804,9 +995,10 @@ public class MainFrame extends JFrame implements GameObserver {
             String bestText = best == null ? "Best: --" : "Best: " + best.format();
             String hintText = movableHintActive ? " | Hint: highlighted tiles can slide into the empty cell" : "";
             String motionText = reducedMotionEnabled ? " | Reduced motion" : "";
-            statusLabel.setText(String.format("Moves: %d | Time: %ds | Difficulty: %s | %s%s%s",
+            String dailyText = activeDailyDateId == null ? "" : " | Daily: " + activeDailyDateId;
+            statusLabel.setText(String.format("Moves: %d | Time: %ds | Difficulty: %s | %s%s%s%s",
                     model.getMoveCount(), elapsed, difficultyLabel(model.getDifficulty()),
-                    bestText, hintText, motionText));
+                    bestText, hintText, motionText, dailyText));
         }
     }
 
@@ -834,6 +1026,9 @@ public class MainFrame extends JFrame implements GameObserver {
         boolean assisted = assistedSolveActive;
         SaveManager.recordCompletion(completionTracker.runId(), size, difficulty,
                 moves, timeMs, assisted);
+        if (activeDailyDateId != null) {
+            SaveManager.recordDailyCompletion(activeDailyDateId);
+        }
         SaveManager.BestRecord previousBest = SaveManager.getBestRecord(size, difficulty);
         SaveManager.BestRecord candidate = new SaveManager.BestRecord(moves, timeMs);
         boolean newBest = !assisted && (previousBest == null || candidate.isBetterThan(previousBest));
@@ -842,9 +1037,14 @@ public class MainFrame extends JFrame implements GameObserver {
         }
         SaveManager.BestRecord best = SaveManager.getBestRecord(size, difficulty);
         assistedSolveActive = false;
+        completedAssisted = assisted;
         pendingResultMessage = DesktopResultContent.resultsMessage(
                 size, difficulty, moves, timeMs,
                 assisted, newBest, previousBest, best);
+        if (activeDailyDateId != null) {
+            pendingResultMessage += "\n" + DesktopDailyContent.progressSummary(
+                    SaveManager.getDailyProgress(LocalDate.now().toString()));
+        }
         String bestText = best == null ? "--" : best.format();
         statusLabel.setText(String.format("Solved! Moves: %d | Time: %ds | Difficulty: %s | Best: %s",
                 moves, timeMs / 1000, difficultyLabel(difficulty), bestText));

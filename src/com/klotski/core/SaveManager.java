@@ -11,10 +11,16 @@ import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -46,6 +52,10 @@ public class SaveManager {
     private static final String RECORDS_FILE = "klotski_records.json";
     private static final String SCOPED_RECORDS_FILE = "klotski_records_v2.json";
     private static final String STATISTICS_FILE = "klotski_statistics.json";
+    private static final String DAILY_SAVE_PREFIX = "klotski_daily_";
+    private static final String DAILY_SAVE_SUFFIX = ".json";
+    private static final String DAILY_ASSISTED_SUFFIX = ".assisted";
+    private static final String DAILY_PROGRESS_FILE = "klotski_daily_progress.json";
     private static final int MAX_COMPLETION_HISTORY = 50;
     private static final String ATOMIC_TEMP_SUFFIX = ".tmp";
     private static final String ATOMIC_BACKUP_SUFFIX = ".bak";
@@ -168,6 +178,168 @@ public class SaveManager {
      */
     public static boolean hasSavedGame() {
         return getAllSaveMetadata().length > 0;
+    }
+
+    /**
+     * Reports whether a date can be opened in the offline daily calendar.
+     *
+     * @param dateId ISO-8601 date identity
+     * @param today caller-selected local date boundary
+     * @return {@code true} for a valid date that is not in the future
+     */
+    public static boolean isDailyDatePlayable(String dateId, LocalDate today) {
+        LocalDate date = parseDailyDate(dateId);
+        return date != null && today != null && !date.isAfter(today);
+    }
+
+    /**
+     * Writes an isolated daily save for one dated 4x4 Classic challenge.
+     *
+     * @param dateId ISO-8601 date identity
+     * @param model daily game model to persist
+     * @param assisted whether solver or strategic assistance is active
+     * @return {@code true} when the daily save and assistance marker are written
+     */
+    public static synchronized boolean saveDailyGame(String dateId, GameModel model, boolean assisted) {
+        LocalDate date = parseDailyDate(dateId);
+        if (date == null || date.isAfter(LocalDate.now()) || model == null) {
+            return false;
+        }
+        DailyChallenge challenge = DailyChallenge.forDate(date);
+        if (!matchesDailyIdentity(model.getSize(), model.getDifficulty(), model.getInitialGridCopy(), challenge)) {
+            return false;
+        }
+        File saveFile = getDailySaveFile(date);
+        if (!saveGame(model, saveFile)) {
+            return false;
+        }
+        try {
+            writeTextAtomic(getDailyAssistedFile(date), Boolean.toString(assisted));
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Loads one isolated daily save after validating its exact dated identity.
+     * Historical dates remain loadable; future dates are rejected.
+     *
+     * @param dateId ISO-8601 date identity
+     * @return validated daily save data, or {@code null}
+     */
+    public static synchronized SaveData loadDailyGame(String dateId) {
+        LocalDate date = parseDailyDate(dateId);
+        if (date == null || date.isAfter(LocalDate.now())) {
+            return null;
+        }
+        DailyChallenge challenge = DailyChallenge.forDate(date);
+        SaveData data = readJsonWithRecovery(getDailySaveFile(date));
+        if (data == null || !matchesDailyIdentity(data.size, data.difficulty, data.initialGrid, challenge)) {
+            return null;
+        }
+        return data;
+    }
+
+    /**
+     * Reads metadata for one dated daily save.
+     *
+     * @param dateId ISO-8601 date identity
+     * @return metadata, or {@code null} when no valid daily save exists
+     */
+    public static SaveMetadata getDailySaveMetadata(String dateId) {
+        SaveData data = loadDailyGame(dateId);
+        return data == null ? null : new SaveMetadata(data);
+    }
+
+    /**
+     * Reports whether the saved daily run used assistance.
+     *
+     * @param dateId ISO-8601 date identity
+     * @return {@code true} only when the validated save has an assistance marker
+     */
+    public static boolean isDailyGameAssisted(String dateId) {
+        LocalDate date = parseDailyDate(dateId);
+        if (date == null || loadDailyGame(dateId) == null) {
+            return false;
+        }
+        File marker = getDailyAssistedFile(date);
+        if (!marker.exists()) {
+            return false;
+        }
+        try {
+            return Boolean.parseBoolean(readText(marker).trim());
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Records a daily completion using the host's local date as the boundary.
+     *
+     * @param dateId completed daily date
+     * @return {@code true} when this date was newly recorded
+     */
+    public static boolean recordDailyCompletion(String dateId) {
+        return recordDailyCompletion(dateId, LocalDate.now());
+    }
+
+    /**
+     * Testable daily completion overload with an explicit local-date boundary.
+     * Historical completion never moves the latest-date streak backward.
+     *
+     * @param dateId completed daily date
+     * @param today caller-selected local date boundary
+     * @return {@code true} when this date was newly recorded
+     */
+    public static synchronized boolean recordDailyCompletion(String dateId, LocalDate today) {
+        LocalDate date = parseDailyDate(dateId);
+        if (date == null || today == null || date.isAfter(today)) {
+            return false;
+        }
+        DailyProgressState state = loadDailyProgressState();
+        String canonicalDateId = date.toString();
+        if (!state.completedDates.add(canonicalDateId)) {
+            return false;
+        }
+
+        if (state.lastCompletedDate == null || date.isAfter(state.lastCompletedDate)) {
+            state.currentStreak = state.lastCompletedDate != null
+                    && date.equals(state.lastCompletedDate.plusDays(1))
+                    ? state.currentStreak + 1 : 1;
+            state.bestStreak = Math.max(state.bestStreak, state.currentStreak);
+            state.lastCompletedDate = date;
+        }
+        return saveDailyProgressState(state);
+    }
+
+    /**
+     * Returns completion and streak state for a selected calendar date.
+     *
+     * @param dateId selected ISO-8601 date
+     * @return immutable progress, or zero state for an invalid date
+     */
+    public static synchronized DailyProgress getDailyProgress(String dateId) {
+        LocalDate date = parseDailyDate(dateId);
+        if (date == null) {
+            return DailyProgress.empty();
+        }
+        DailyProgressState state = loadDailyProgressState();
+        boolean current = state.lastCompletedDate != null
+                && (state.lastCompletedDate.equals(date)
+                        || state.lastCompletedDate.equals(date.minusDays(1)));
+        return new DailyProgress(state.completedDates.contains(date.toString()),
+                current ? state.currentStreak : 0, state.bestStreak,
+                state.lastCompletedDate == null ? null : state.lastCompletedDate.toString());
+    }
+
+    /**
+     * Returns the dates recorded as completed, in ascending order.
+     *
+     * @return defensive set of ISO date identities
+     */
+    public static synchronized Set<String> getDailyCompletedDates() {
+        return Collections.unmodifiableSet(new LinkedHashSet<>(loadDailyProgressState().completedDates));
     }
 
     /**
@@ -719,6 +891,108 @@ public class SaveManager {
         return new File(getDataDirectory(), saveFileName(size));
     }
 
+    private static LocalDate parseDailyDate(String dateId) {
+        if (dateId == null || dateId.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(dateId);
+        } catch (DateTimeParseException e) {
+            return null;
+        }
+    }
+
+    private static File getDailySaveFile(LocalDate date) {
+        return new File(getDataDirectory(), DAILY_SAVE_PREFIX + date + DAILY_SAVE_SUFFIX);
+    }
+
+    private static File getDailyAssistedFile(LocalDate date) {
+        return new File(getDataDirectory(), DAILY_SAVE_PREFIX + date + DAILY_ASSISTED_SUFFIX);
+    }
+
+    private static boolean matchesDailyIdentity(int size, PuzzleDifficulty difficulty,
+            int[][] initialGrid, DailyChallenge challenge) {
+        if (challenge == null || size != challenge.getSize()
+                || normalizeDifficulty(difficulty) != challenge.getDifficulty()
+                || initialGrid == null) {
+            return false;
+        }
+        return Arrays.deepEquals(initialGrid, challenge.createGame().getInitialGridCopy());
+    }
+
+    private static DailyProgressState loadDailyProgressState() {
+        File file = new File(getDataDirectory(), DAILY_PROGRESS_FILE);
+        File[] candidates = {
+                file,
+                new File(file.getPath() + ATOMIC_TEMP_SUFFIX),
+                new File(file.getPath() + ATOMIC_BACKUP_SUFFIX)
+        };
+        for (File candidate : candidates) {
+            if (!candidate.exists() || candidate.isDirectory()) {
+                continue;
+            }
+            try {
+                return dailyProgressFromJson(readText(candidate));
+            } catch (IOException | RuntimeException ignored) {
+                // Try the recoverable sibling.
+            }
+        }
+        return new DailyProgressState();
+    }
+
+    private static boolean saveDailyProgressState(DailyProgressState state) {
+        File file = new File(getDataDirectory(), DAILY_PROGRESS_FILE);
+        try {
+            ensureParentDirectory(file);
+            writeTextAtomic(file, dailyProgressToJson(state));
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    private static String dailyProgressToJson(DailyProgressState state) {
+        StringBuilder json = new StringBuilder("{\n  \"completedDates\": [");
+        int index = 0;
+        for (String date : state.completedDates) {
+            if (index++ > 0) {
+                json.append(", ");
+            }
+            json.append(jsonString(date));
+        }
+        json.append("],\n  \"lastCompletedDate\": ")
+                .append(state.lastCompletedDate == null ? "null" : jsonString(state.lastCompletedDate.toString()))
+                .append(",\n  \"currentStreak\": ").append(state.currentStreak)
+                .append(",\n  \"bestStreak\": ").append(state.bestStreak)
+                .append("\n}\n");
+        return json.toString();
+    }
+
+    private static DailyProgressState dailyProgressFromJson(String json) {
+        if (json == null || !json.trim().startsWith("{") || !json.trim().endsWith("}")) {
+            throw new IllegalArgumentException("Invalid daily progress");
+        }
+        DailyProgressState state = new DailyProgressState();
+        Matcher dates = Pattern.compile("\\\"completedDates\\\"\\s*:\\s*\\[(.*?)\\]",
+                Pattern.DOTALL).matcher(json);
+        if (dates.find()) {
+            Matcher date = Pattern.compile("\\\"(\\d{4}-\\d{2}-\\d{2})\\\"").matcher(dates.group(1));
+            while (date.find()) {
+                if (parseDailyDate(date.group(1)) != null) {
+                    state.completedDates.add(date.group(1));
+                }
+            }
+        }
+        Matcher last = Pattern.compile("\\\"lastCompletedDate\\\"\\s*:\\s*\\\"(\\d{4}-\\d{2}-\\d{2})\\\"")
+                .matcher(json);
+        if (last.find()) {
+            state.lastCompletedDate = parseDailyDate(last.group(1));
+        }
+        state.currentStreak = Math.max(0, (int) optionalLongField(json, "currentStreak", 0));
+        state.bestStreak = Math.max(0, (int) optionalLongField(json, "bestStreak", 0));
+        return state;
+    }
+
     private static String toJson(SaveData data) {
         StringBuilder sb = new StringBuilder();
         sb.append("{\n");
@@ -1173,6 +1447,50 @@ public class SaveManager {
             active = data.active;
             solved = data.solved;
             difficulty = data.difficulty == null ? PuzzleDifficulty.CLASSIC : data.difficulty;
+        }
+    }
+
+    private static final class DailyProgressState {
+        private final Set<String> completedDates = new java.util.TreeSet<>();
+        private LocalDate lastCompletedDate;
+        private int currentStreak;
+        private int bestStreak;
+    }
+
+    /**
+     * Immutable daily completion and streak state for a selected date.
+     */
+    public static final class DailyProgress {
+        /** Whether the selected daily date has a recorded completion. */
+        public final boolean completed;
+
+        /** Current streak when the latest completion is current for this date. */
+        public final int currentStreak;
+
+        /** Highest recorded consecutive completion streak. */
+        public final int bestStreak;
+
+        /** Latest completion date, or {@code null} when none exists. */
+        public final String lastCompletedDateId;
+
+        /**
+         * Creates immutable progress for a selected date.
+         *
+         * @param completed whether the date is complete
+         * @param currentStreak current streak value
+         * @param bestStreak highest streak value
+         * @param lastCompletedDateId latest completion date or {@code null}
+         */
+        public DailyProgress(boolean completed, int currentStreak, int bestStreak,
+                String lastCompletedDateId) {
+            this.completed = completed;
+            this.currentStreak = Math.max(0, currentStreak);
+            this.bestStreak = Math.max(0, bestStreak);
+            this.lastCompletedDateId = lastCompletedDateId;
+        }
+
+        private static DailyProgress empty() {
+            return new DailyProgress(false, 0, 0, null);
         }
     }
 

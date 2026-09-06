@@ -121,6 +121,8 @@ Desktop currently supports:
 - Undo, Redo, Move History, and restart.
 - Save/load.
 - Best records.
+- Size-and-difficulty scoped completion history, lifetime statistics, and
+  Daily Challenge/calendar saves with current/best streak state.
 - Solver playback with BFS, A*, and IDA*.
 
 Android currently supports:
@@ -734,6 +736,23 @@ roadmap stage and a fresh matrix re-check.
   exactly-once completion accounting, duplicate callback claims, and scoped
   Results/Records copy. Daily, favorite, trend, and continuous attribution
   remain explicitly out of scope for this stage.
+
+2026-09-07 Stage 4 Daily Challenge and calendar implementation:
+
+- Desktop now exposes a keyboard-reachable Sunday-first Daily Calendar for the
+  shared fixed 4x4 Classic date puzzle. Month navigation clamps at the local
+  current month; future dates are disabled, while completed, in-progress,
+  missed, and ready states remain visible.
+- `SaveManager` stores one validated `klotski_daily_YYYY-MM-DD.json` slot per
+  local ISO date plus a separate assistance marker. Daily saves preserve the
+  exact `DailyChallenge` initial grid and never replace normal size slots.
+- Daily completion state persists completed dates, latest-date current streak,
+  and best streak. Historical replay can fill a gap but cannot move the latest
+  streak backward; duplicate and future completions are ignored.
+- Daily wins reuse Stage 3 record/history/statistics behavior and Results adds
+  current/best streak copy. Focused tests cover date identity, save isolation,
+  future rejection, streak gaps/historical replay, and accessible state labels.
+  Manual Swing keyboard/close smoke remains a follow-up gate.
 
 ### Completed 2026-05-25 MVP Items
 
