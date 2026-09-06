@@ -13,6 +13,7 @@ import java.io.ObjectOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.LocalDate;
+import java.time.ZoneId;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -406,6 +407,136 @@ class SaveManagerTest {
             assertEquals(2, afterHistorical.bestStreak);
             assertEquals("2026-09-09", afterHistorical.lastCompletedDateId);
             assertFalse(SaveManager.recordDailyCompletion("2026-09-08", today));
+        } finally {
+            restoreDataDirectoryProperty(oldValue);
+        }
+    }
+
+    @Test
+    void favoritesUseExactIdentityAndIsolatedPracticeNamespace() {
+        String oldValue = System.getProperty(SaveManager.DATA_DIR_PROPERTY);
+        System.setProperty(SaveManager.DATA_DIR_PROPERTY, tempDir.getAbsolutePath());
+        try {
+            GameModel normal = new GameModel(4);
+            normal.scramble(PuzzleDifficulty.CHALLENGE, 401L);
+            assertTrue(SaveManager.saveGame(normal));
+            GameModel daily = DailyChallenge.forDate(LocalDate.now().minusDays(1)).createGame();
+            assertTrue(daily.move(Direction.UP));
+            assertTrue(SaveManager.saveDailyGame(LocalDate.now().minusDays(1).toString(), daily, false));
+
+            SaveManager.FavoritePuzzle favorite = SaveManager.saveFavorite(normal, "  Saved board  ", 11L);
+            assertNotNull(favorite);
+            assertEquals("Saved board", favorite.label);
+            assertEquals(favorite.id, SaveManager.saveFavorite(normal, "Renamed", 12L).id);
+            assertEquals(1, SaveManager.getFavoritePuzzles().length);
+            assertEquals("Renamed", SaveManager.getFavoritePuzzle(favorite.id).label);
+
+            GameModel practice = favorite.createGame();
+            assertTrue(practice.move(Direction.UP));
+            assertTrue(SaveManager.saveFavoriteRun(favorite.id, practice, true));
+            SaveManager.SaveData restoredPractice = SaveManager.loadFavoriteRun(favorite.id);
+            assertNotNull(restoredPractice);
+            assertEquals(1, restoredPractice.moveCount);
+            assertTrue(SaveManager.isFavoriteRunAssisted(favorite.id));
+            assertEquals(normal.getMoveCount(), SaveManager.loadGame(4).moveCount);
+            assertEquals(daily.getMoveCount(), SaveManager.loadDailyGame(
+                    LocalDate.now().minusDays(1).toString()).moveCount);
+            assertNull(SaveManager.getBestRecord(4, PuzzleDifficulty.CHALLENGE));
+            assertEquals(0, SaveManager.getCompletionStats(4, PuzzleDifficulty.CHALLENGE)
+                    .playerCompletions);
+
+            assertTrue(SaveManager.renameFavorite(favorite.id, "Final label"));
+            assertEquals("Final label", SaveManager.getFavoritePuzzle(favorite.id).label);
+            assertTrue(SaveManager.removeFavorite(favorite.id));
+            assertNull(SaveManager.getFavoritePuzzle(favorite.id));
+            assertNull(SaveManager.loadFavoriteRun(favorite.id));
+        } finally {
+            restoreDataDirectoryProperty(oldValue);
+        }
+    }
+
+    @Test
+    void trendsAndWeeklyGoalsPersistScopeAndExcludeAssistedOrOtherScopes() {
+        String oldValue = System.getProperty(SaveManager.DATA_DIR_PROPERTY);
+        System.setProperty(SaveManager.DATA_DIR_PROPERTY, tempDir.getAbsolutePath());
+        try {
+            assertTrue(SaveManager.setTrendSize(3));
+            assertTrue(SaveManager.setTrendDifficulty(PuzzleDifficulty.RELAXED));
+            assertTrue(SaveManager.setWeeklyGoalTarget(4));
+            assertEquals(3, SaveManager.getTrendSize());
+            assertEquals(PuzzleDifficulty.RELAXED, SaveManager.getTrendDifficulty());
+            assertEquals(4, SaveManager.getWeeklyGoalTarget());
+
+            long monday = LocalDate.of(2026, 9, 7).atStartOfDay(ZoneId.of("UTC"))
+                    .toInstant().toEpochMilli();
+            for (int index = 0; index < 6; index++) {
+                assertTrue(SaveManager.recordCompletion("trend-player-" + index, 3,
+                        PuzzleDifficulty.RELAXED, 30 - index, 3_000L - index * 100L,
+                        false, monday + index * 60_000L));
+            }
+            assertTrue(SaveManager.recordCompletion("trend-assisted", 3,
+                    PuzzleDifficulty.RELAXED, 1, 1, true, monday));
+            assertTrue(SaveManager.recordCompletion("trend-other-scope", 4,
+                    PuzzleDifficulty.RELAXED, 1, 1, false, monday));
+
+            PersonalTrend trend = SaveManager.getPersonalTrend(3, PuzzleDifficulty.RELAXED);
+            assertEquals(3, trend.getRecentCount());
+            assertEquals(3, trend.getPreviousCount());
+            assertEquals(PersonalTrend.Direction.IMPROVING, trend.getMoveDirection());
+            WeeklyGoalProgress progress = SaveManager.getWeeklyGoalProgress(
+                    LocalDate.of(2026, 9, 7), ZoneId.of("UTC"), 3, PuzzleDifficulty.RELAXED);
+            assertEquals(6, progress.getCompleted());
+            assertTrue(progress.isReached());
+        } finally {
+            restoreDataDirectoryProperty(oldValue);
+        }
+    }
+
+    @Test
+    void favoriteLibraryIsBoundedAtFiftyEntries() {
+        String oldValue = System.getProperty(SaveManager.DATA_DIR_PROPERTY);
+        System.setProperty(SaveManager.DATA_DIR_PROPERTY, tempDir.getAbsolutePath());
+        try {
+            for (int index = 0; index < 51; index++) {
+                GameModel model = new GameModel(3);
+                model.scramble(PuzzleDifficulty.CHALLENGE, 10_000L + index);
+                assertNotNull(SaveManager.saveFavorite(model, "Puzzle " + index, index));
+            }
+            SaveManager.FavoritePuzzle[] favorites = SaveManager.getFavoritePuzzles();
+            assertEquals(50, favorites.length);
+            assertEquals("Puzzle 50", favorites[0].label);
+            assertEquals("Puzzle 1", favorites[49].label);
+        } finally {
+            restoreDataDirectoryProperty(oldValue);
+        }
+    }
+
+    @Test
+    void continuousChallengeRoundTripsAndClearsOnlyItsNamespace() {
+        String oldValue = System.getProperty(SaveManager.DATA_DIR_PROPERTY);
+        System.setProperty(SaveManager.DATA_DIR_PROPERTY, tempDir.getAbsolutePath());
+        try {
+            GameModel normal = new GameModel(3);
+            normal.scramble(PuzzleDifficulty.CLASSIC, 77L);
+            assertTrue(SaveManager.saveGame(normal));
+            ContinuousChallenge challenge = ContinuousChallenge.start(3)
+                    .completePuzzle(8, 900L, false);
+            GameModel current = new GameModel(4);
+            current.scramble(PuzzleDifficulty.CHALLENGE, 88L);
+            assertTrue(SaveManager.saveContinuousGame(current, challenge, true));
+
+            SaveManager.ContinuousGame restored = SaveManager.loadContinuousGame();
+            assertNotNull(restored);
+            assertEquals(4, restored.size);
+            assertEquals(PuzzleDifficulty.CHALLENGE, restored.difficulty);
+            assertEquals(1, restored.challenge.getCompletedPuzzles());
+            assertEquals(8, restored.challenge.getTotalMoves());
+            assertTrue(restored.assisted);
+            assertEquals(current.getMoveCount(), restored.game.moveCount);
+
+            assertTrue(SaveManager.clearContinuousGame());
+            assertNull(SaveManager.loadContinuousGame());
+            assertEquals(normal.getMoveCount(), SaveManager.loadGame(3).moveCount);
         } finally {
             restoreDataDirectoryProperty(oldValue);
         }

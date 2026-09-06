@@ -680,7 +680,7 @@ The narrow MVP parity pass above is historical status, not a claim that the
 completed Android Personal Play program is fully available in Swing. The
 current evidence-based inventory, status matrix, Java documentation audit, and
 bounded implementation roadmap are maintained in
-[DESKTOP_ANDROID_PARITY.md](DESKTOP_ANDROID_PARITY.md). Stages 1-3 below are
+[DESKTOP_ANDROID_PARITY.md](DESKTOP_ANDROID_PARITY.md). Stages 1-5 below are
 owner-approved and implemented; future behavior work requires a new approved
 roadmap stage and a fresh matrix re-check.
 
@@ -753,6 +753,32 @@ roadmap stage and a fresh matrix re-check.
   current/best streak copy. Focused tests cover date identity, save isolation,
   future rejection, streak gaps/historical replay, and accessible state labels.
   Manual Swing keyboard/close smoke remains a follow-up gate.
+
+2026-09-07 Stage 5 Favorites, Trends, Weekly Goal, and Continuous Challenge
+implementation:
+
+- Desktop now stores up to 50 owner-labeled exact favorite identities using
+  `PuzzleIdentity` and an additive `klotski_favorites.json` library. Saving an
+  existing identity renames it without duplication; rename, remove, and exact
+  replay paths are exposed from Home and the Game menu.
+- Favorite Practice autosave uses a validated per-identity file and an
+  assistance marker. Favorite wins are deliberately excluded from normal and
+  Daily saves, best records, completion history, lifetime statistics, and
+  streaks.
+- Trends and Weekly Goal use shared `PersonalTrend` and
+  `WeeklyGoalProgress` calculations over non-assisted completion samples in
+  one persisted size/difficulty scope. The local target and scope live in
+  `klotski_personal_preferences.json`; Desktop exposes summary, scope, and
+  target dialogs.
+- Continuous Challenge supports 3, 5, or 10 fixed-scope puzzles. The exact
+  current board and aggregate are isolated in `klotski_continuous_meta.json`
+  and `klotski_continuous_current.json`; Home/Game flows support start, resume,
+  next puzzle, and end. Each claimed puzzle updates shared completion history
+  once, while assisted wins remain ineligible for player bests.
+- Focused SaveManager and Desktop presentation tests cover identity,
+  isolation, exclusion, trend filtering, goal persistence, and continuous
+  round-trip/clear semantics. Manual Swing cross-mode smoke remains a follow-up
+  gate and is not claimed as executed.
 
 ### Completed 2026-05-25 MVP Items
 

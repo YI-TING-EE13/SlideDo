@@ -34,6 +34,8 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
   - Results show first-record, new-best, unchanged-best, and solver-assisted no-record wording. Completion history is bounded and duplicate win callbacks are ignored.
   - Daily Calendar provides one offline 4x4 Classic puzzle per local ISO date,
     isolated dated saves, historical replay, future-date blocking, and current/best streak copy.
+  - Favorites stores up to 50 exact starting puzzles with local labels; Favorite Practice has its own save and never changes normal/Daily records or statistics.
+  - Trends / Weekly Goal compares player-only completions in one persisted size/difficulty scope, and Continuous Challenge supports isolated 3/5/10-puzzle sessions with resume and aggregate totals.
 - **Mobile-Ready Interaction Model**:
   - Android opens on Home with Continue, New Game, Beginner Guide, Practice Tutorial, How to Play, Settings, and Records.
   - First-run onboarding introduces the goal, tap/swipe input, whole-line slides, undo/restart, and record rules.
@@ -210,6 +212,11 @@ klotski_records_v2.json              (size:difficulty player bests)
 klotski_statistics.json              (completion history and lifetime totals)
 klotski_daily_YYYY-MM-DD.json        (one isolated Daily save per date)
 klotski_daily_progress.json          (completed dates and streaks)
+klotski_favorites.json                (exact favorite identities and labels)
+klotski_favorite_<identity>.json     (isolated Favorite Practice save)
+klotski_personal_preferences.json    (trend scope and weekly goal)
+klotski_continuous_meta.json         (Continuous aggregate)
+klotski_continuous_current.json      (Continuous current puzzle)
 ```
 
 For portable test or beta builds, set the JVM property

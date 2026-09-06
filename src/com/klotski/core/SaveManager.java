@@ -12,7 +12,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
+import java.util.Base64;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.ArrayList;
@@ -56,7 +59,18 @@ public class SaveManager {
     private static final String DAILY_SAVE_SUFFIX = ".json";
     private static final String DAILY_ASSISTED_SUFFIX = ".assisted";
     private static final String DAILY_PROGRESS_FILE = "klotski_daily_progress.json";
+    private static final String FAVORITES_FILE = "klotski_favorites.json";
+    private static final String FAVORITE_RUN_PREFIX = "klotski_favorite_";
+    private static final String FAVORITE_RUN_SUFFIX = ".json";
+    private static final String FAVORITE_ASSISTED_SUFFIX = ".assisted";
+    private static final String PERSONAL_PREFERENCES_FILE = "klotski_personal_preferences.json";
+    private static final String CONTINUOUS_META_FILE = "klotski_continuous_meta.json";
+    private static final String CONTINUOUS_CURRENT_FILE = "klotski_continuous_current.json";
+    private static final String CONTINUOUS_ASSISTED_SUFFIX = ".assisted";
     private static final int MAX_COMPLETION_HISTORY = 50;
+    private static final int MAX_FAVORITE_PUZZLES = 50;
+    private static final int MAX_FAVORITE_LABEL_LENGTH = 40;
+    private static final int DEFAULT_WEEKLY_GOAL_TARGET = 5;
     private static final String ATOMIC_TEMP_SUFFIX = ".tmp";
     private static final String ATOMIC_BACKUP_SUFFIX = ".bak";
 
@@ -340,6 +354,643 @@ public class SaveManager {
      */
     public static synchronized Set<String> getDailyCompletedDates() {
         return Collections.unmodifiableSet(new LinkedHashSet<>(loadDailyProgressState().completedDates));
+    }
+
+    /**
+     * Saves one exact starting puzzle in the local favorite library.
+     * <p>
+     * Favorite identity is supplied by {@link PuzzleIdentity}; saving the same
+     * identity updates its label instead of creating a duplicate. The favorite
+     * list has its own bounded file and never changes a normal or Daily slot.
+     * </p>
+     *
+     * @param model puzzle whose immutable starting board should be retained
+     * @param label owner-provided local label
+     * @return persisted favorite, or {@code null} when input is invalid or the
+     *         library file cannot be written
+     */
+    public static FavoritePuzzle saveFavorite(GameModel model, String label) {
+        return saveFavorite(model, label, System.currentTimeMillis());
+    }
+
+    /**
+     * Testable favorite-save overload with an explicit creation timestamp.
+     *
+     * @param model puzzle whose immutable starting board should be retained
+     * @param label owner-provided local label
+     * @param createdAt timestamp used for newest-first ordering
+     * @return persisted favorite, or {@code null} for invalid input
+     */
+    public static synchronized FavoritePuzzle saveFavorite(GameModel model, String label,
+            long createdAt) {
+        String normalizedLabel = normalizeFavoriteLabel(label);
+        if (model == null || !isSupportedSize(model.getSize())
+                || normalizedLabel == null || createdAt < 0) {
+            return null;
+        }
+
+        final PuzzleIdentity identity;
+        try {
+            identity = PuzzleIdentity.from(model);
+        } catch (RuntimeException exception) {
+            return null;
+        }
+
+        List<FavoritePuzzle> current = new ArrayList<>(getFavoritePuzzlesList());
+        List<FavoritePuzzle> updated = new ArrayList<>();
+        FavoritePuzzle result = null;
+        for (FavoritePuzzle favorite : current) {
+            if (favorite.id.equals(identity.getId())) {
+                result = new FavoritePuzzle(identity, normalizedLabel, favorite.createdAt);
+                updated.add(result);
+            } else if (updated.size() < MAX_FAVORITE_PUZZLES) {
+                updated.add(favorite);
+            }
+        }
+        if (result == null) {
+            result = new FavoritePuzzle(identity, normalizedLabel, createdAt);
+            updated.add(0, result);
+        }
+        List<String> evictedIds = new ArrayList<>();
+        while (updated.size() > MAX_FAVORITE_PUZZLES) {
+            FavoritePuzzle removed = updated.remove(updated.size() - 1);
+            evictedIds.add(removed.id);
+        }
+        if (!saveFavorites(updated)) {
+            return null;
+        }
+        for (String evictedId : evictedIds) {
+            deleteFavoriteRun(evictedId);
+        }
+        return result;
+    }
+
+    /**
+     * Returns valid favorite entries in newest-first library order.
+     *
+     * @return defensive array of exact puzzle identities and labels
+     */
+    public static synchronized FavoritePuzzle[] getFavoritePuzzles() {
+        return getFavoritePuzzlesList().toArray(new FavoritePuzzle[0]);
+    }
+
+    /**
+     * Finds one favorite by its stable exact-puzzle identity.
+     *
+     * @param favoriteId lowercase SHA-256 identity
+     * @return favorite entry, or {@code null}
+     */
+    public static synchronized FavoritePuzzle getFavoritePuzzle(String favoriteId) {
+        if (favoriteId == null) {
+            return null;
+        }
+        for (FavoritePuzzle favorite : getFavoritePuzzlesList()) {
+            if (favorite.id.equals(favoriteId)) {
+                return favorite;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Renames a favorite without changing its identity or practice save.
+     *
+     * @param favoriteId favorite identity
+     * @param label new owner-provided label
+     * @return {@code true} when the renamed library was persisted
+     */
+    public static synchronized boolean renameFavorite(String favoriteId, String label) {
+        FavoritePuzzle favorite = getFavoritePuzzle(favoriteId);
+        if (favorite == null) {
+            return false;
+        }
+        return saveFavorite(favorite.createGame(), label, favorite.createdAt) != null;
+    }
+
+    /**
+     * Removes a favorite and its isolated practice progress.
+     *
+     * @param favoriteId favorite identity
+     * @return {@code true} when an entry was removed and the library persisted
+     */
+    public static synchronized boolean removeFavorite(String favoriteId) {
+        if (getFavoritePuzzle(favoriteId) == null) {
+            return false;
+        }
+        List<FavoritePuzzle> retained = new ArrayList<>();
+        for (FavoritePuzzle favorite : getFavoritePuzzlesList()) {
+            if (!favorite.id.equals(favoriteId)) {
+                retained.add(favorite);
+            }
+        }
+        if (!saveFavorites(retained)) {
+            return false;
+        }
+        deleteFavoriteRun(favoriteId);
+        return true;
+    }
+
+    /**
+     * Persists a favorite-practice board in its own namespace.
+     *
+     * @param favoriteId exact favorite identity
+     * @param model current practice board
+     * @param assisted whether assistance is active for this practice run
+     * @return {@code true} when both the board and marker were written
+     */
+    public static synchronized boolean saveFavoriteRun(String favoriteId, GameModel model,
+            boolean assisted) {
+        FavoritePuzzle favorite = getFavoritePuzzle(favoriteId);
+        if (favorite == null || model == null) {
+            return false;
+        }
+        try {
+            if (!favorite.id.equals(PuzzleIdentity.from(model).getId())) {
+                return false;
+            }
+        } catch (RuntimeException exception) {
+            return false;
+        }
+        File saveFile = getFavoriteRunFile(favorite.id);
+        if (!saveGame(model, saveFile)) {
+            return false;
+        }
+        try {
+            writeTextAtomic(getFavoriteAssistedFile(favorite.id), Boolean.toString(assisted));
+            return true;
+        } catch (IOException exception) {
+            return false;
+        }
+    }
+
+    /**
+     * Loads validated favorite-practice progress without touching other modes.
+     *
+     * @param favoriteId exact favorite identity
+     * @return isolated practice save, or {@code null}
+     */
+    public static synchronized SaveData loadFavoriteRun(String favoriteId) {
+        FavoritePuzzle favorite = getFavoritePuzzle(favoriteId);
+        if (favorite == null) {
+            return null;
+        }
+        SaveData data = readJsonWithRecovery(getFavoriteRunFile(favorite.id));
+        if (data == null || data.difficulty != favorite.difficulty
+                || !Arrays.deepEquals(data.initialGrid, favorite.initialGrid)) {
+            return null;
+        }
+        return data;
+    }
+
+    /**
+     * Reports whether a validated favorite-practice save was assisted.
+     *
+     * @param favoriteId exact favorite identity
+     * @return assistance marker value, or {@code false} when absent/invalid
+     */
+    public static synchronized boolean isFavoriteRunAssisted(String favoriteId) {
+        if (loadFavoriteRun(favoriteId) == null) {
+            return false;
+        }
+        File marker = getFavoriteAssistedFile(favoriteId);
+        if (!marker.exists()) {
+            return false;
+        }
+        try {
+            return Boolean.parseBoolean(readText(marker).trim());
+        } catch (IOException exception) {
+            return false;
+        }
+    }
+
+    /**
+     * Persists one isolated Continuous Challenge current board and aggregate.
+     *
+     * @param model current fixed-scope puzzle
+     * @param challenge session aggregate
+     * @param assisted whether the current puzzle used assistance
+     * @return {@code true} when current board and aggregate were written
+     */
+    public static synchronized boolean saveContinuousGame(GameModel model,
+            ContinuousChallenge challenge, boolean assisted) {
+        if (model == null || challenge == null || !isSupportedSize(model.getSize())
+                || model.getDifficulty() == null) {
+            return false;
+        }
+        if (!saveGame(model, getContinuousCurrentFile())) {
+            return false;
+        }
+        StringBuilder json = new StringBuilder("{\n")
+                .append("  \"version\": 1,\n")
+                .append("  \"size\": ").append(model.getSize()).append(",\n")
+                .append("  \"difficulty\": ").append(jsonString(model.getDifficulty().getId())).append(",\n")
+                .append("  \"targetPuzzles\": ").append(challenge.getTargetPuzzles()).append(",\n")
+                .append("  \"completedPuzzles\": ").append(challenge.getCompletedPuzzles()).append(",\n")
+                .append("  \"totalMoves\": ").append(challenge.getTotalMoves()).append(",\n")
+                .append("  \"totalTimeMs\": ").append(challenge.getTotalTimeMs()).append(",\n")
+                .append("  \"assistedPuzzles\": ").append(challenge.getAssistedPuzzles()).append(",\n")
+                .append("  \"assistedCurrent\": ").append(assisted).append(",\n")
+                .append("  \"updatedAt\": ").append(System.currentTimeMillis()).append("\n}\n");
+        try {
+            writeTextAtomic(getContinuousMetaFile(), json.toString());
+            writeTextAtomic(getContinuousAssistedFile(), Boolean.toString(assisted));
+            return true;
+        } catch (IOException exception) {
+            return false;
+        }
+    }
+
+    /**
+     * Loads the isolated Continuous Challenge state after validating its
+     * aggregate and current-board scope.
+     *
+     * @return restored session, or {@code null} when either file is invalid
+     */
+    public static synchronized ContinuousGame loadContinuousGame() {
+        File metaFile = getContinuousMetaFile();
+        if (!metaFile.exists()) {
+            return null;
+        }
+        try {
+            String json = readText(metaFile);
+            int size = intField(json, "size");
+            PuzzleDifficulty difficulty = PuzzleDifficulty.fromId(
+                    optionalStringField(json, "difficulty", PuzzleDifficulty.CLASSIC.getId()));
+            ContinuousChallenge challenge = ContinuousChallenge.restore(
+                    intField(json, "targetPuzzles"), intField(json, "completedPuzzles"),
+                    intField(json, "totalMoves"), longField(json, "totalTimeMs"),
+                    intField(json, "assistedPuzzles"));
+            SaveData game = readJsonWithRecovery(getContinuousCurrentFile());
+            if (game == null || game.size != size || game.difficulty != difficulty) {
+                return null;
+            }
+            boolean assisted = optionalBooleanField(json, "assistedCurrent", false);
+            return new ContinuousGame(game, challenge, size, difficulty, assisted);
+        } catch (IOException | IllegalArgumentException | IllegalStateException exception) {
+            return null;
+        }
+    }
+
+    /**
+     * Ends a Continuous Challenge without touching normal, Daily, Favorite,
+     * records, or completion-history files.
+     *
+     * @return {@code true} when the continuous files were removed
+     */
+    public static synchronized boolean clearContinuousGame() {
+        try {
+            Files.deleteIfExists(getContinuousMetaFile().toPath());
+            Files.deleteIfExists(getContinuousCurrentFile().toPath());
+            Files.deleteIfExists(getContinuousAssistedFile().toPath());
+            return true;
+        } catch (IOException exception) {
+            return false;
+        }
+    }
+
+    /**
+     * Returns the persisted weekly goal target, defaulting to five completions.
+     *
+     * @return weekly player-completion target
+     */
+    public static synchronized int getWeeklyGoalTarget() {
+        PersonalPreferences preferences = loadPersonalPreferences();
+        return WeeklyGoalProgress.isValidTarget(preferences.weeklyGoalTarget)
+                ? preferences.weeklyGoalTarget : DEFAULT_WEEKLY_GOAL_TARGET;
+    }
+
+    /**
+     * Stores a valid weekly player-completion target.
+     *
+     * @param target target from one through fifty
+     * @return {@code true} when the preference was written
+     */
+    public static synchronized boolean setWeeklyGoalTarget(int target) {
+        if (!WeeklyGoalProgress.isValidTarget(target)) {
+            return false;
+        }
+        PersonalPreferences preferences = loadPersonalPreferences();
+        preferences.weeklyGoalTarget = target;
+        return savePersonalPreferences(preferences);
+    }
+
+    /**
+     * Returns the selected trends/weekly-goal board size, defaulting to 4.
+     *
+     * @return selected supported board size
+     */
+    public static synchronized int getTrendSize() {
+        PersonalPreferences preferences = loadPersonalPreferences();
+        return isSupportedSize(preferences.trendSize) ? preferences.trendSize : 4;
+    }
+
+    /**
+     * Stores the selected trends/weekly-goal board size.
+     *
+     * @param size supported square board size
+     * @return {@code true} when the preference was written
+     */
+    public static synchronized boolean setTrendSize(int size) {
+        if (!isSupportedSize(size)) {
+            return false;
+        }
+        PersonalPreferences preferences = loadPersonalPreferences();
+        preferences.trendSize = size;
+        return savePersonalPreferences(preferences);
+    }
+
+    /**
+     * Returns the selected trends/weekly-goal difficulty, defaulting to Classic.
+     *
+     * @return selected difficulty
+     */
+    public static synchronized PuzzleDifficulty getTrendDifficulty() {
+        PersonalPreferences preferences = loadPersonalPreferences();
+        return normalizeDifficulty(preferences.trendDifficulty);
+    }
+
+    /**
+     * Stores the selected trends/weekly-goal difficulty.
+     *
+     * @param difficulty selected difficulty
+     * @return {@code true} when the preference was written
+     */
+    public static synchronized boolean setTrendDifficulty(PuzzleDifficulty difficulty) {
+        if (difficulty == null) {
+            return false;
+        }
+        PersonalPreferences preferences = loadPersonalPreferences();
+        preferences.trendDifficulty = difficulty;
+        return savePersonalPreferences(preferences);
+    }
+
+    /**
+     * Computes player-only trends for one exact size/difficulty scope.
+     *
+     * @param size board size
+     * @param difficulty difficulty scope
+     * @return shared-core trend summary
+     */
+    public static synchronized PersonalTrend getPersonalTrend(int size,
+            PuzzleDifficulty difficulty) {
+        PuzzleDifficulty selected = normalizeDifficulty(difficulty);
+        List<PersonalTrend.Sample> samples = new ArrayList<>();
+        for (CompletionRecord record : getCompletionHistory()) {
+            if (!record.assisted && record.size == size && record.difficulty == selected) {
+                samples.add(new PersonalTrend.Sample(record.moves, record.timeMs));
+            }
+        }
+        return PersonalTrend.summarize(samples);
+    }
+
+    /**
+     * Computes the selected-scope weekly goal using local completion dates.
+     * Assisted and Favorite Practice results are absent from completion history.
+     *
+     * @param today local date boundary
+     * @param zoneId local date zone
+     * @return selected-scope weekly progress
+     */
+    public static synchronized WeeklyGoalProgress getWeeklyGoalProgress(LocalDate today,
+            ZoneId zoneId) {
+        return getWeeklyGoalProgress(today, zoneId, getTrendSize(), getTrendDifficulty());
+    }
+
+    /**
+     * Computes weekly progress for an explicit size/difficulty scope.
+     *
+     * @param today local date boundary
+     * @param zoneId local date zone
+     * @param size board size
+     * @param difficulty difficulty scope
+     * @return selected-scope weekly progress
+     */
+    public static synchronized WeeklyGoalProgress getWeeklyGoalProgress(LocalDate today,
+            ZoneId zoneId, int size, PuzzleDifficulty difficulty) {
+        ZoneId selectedZone = zoneId == null ? ZoneId.systemDefault() : zoneId;
+        PuzzleDifficulty selected = normalizeDifficulty(difficulty);
+        List<LocalDate> completionDates = new ArrayList<>();
+        for (CompletionRecord record : getCompletionHistory()) {
+            if (!record.assisted && record.size == size && record.difficulty == selected) {
+                completionDates.add(Instant.ofEpochMilli(record.completedAt)
+                        .atZone(selectedZone).toLocalDate());
+            }
+        }
+        return WeeklyGoalProgress.calculate(today, getWeeklyGoalTarget(), completionDates);
+    }
+
+    private static List<FavoritePuzzle> getFavoritePuzzlesList() {
+        File file = new File(getDataDirectory(), FAVORITES_FILE);
+        File[] candidates = {
+                file,
+                new File(file.getPath() + ATOMIC_TEMP_SUFFIX),
+                new File(file.getPath() + ATOMIC_BACKUP_SUFFIX)
+        };
+        for (File candidate : candidates) {
+            if (!candidate.exists() || candidate.isDirectory()) {
+                continue;
+            }
+            try {
+                return parseFavorites(readText(candidate));
+            } catch (IOException | RuntimeException ignored) {
+                // Try the recoverable sibling.
+            }
+        }
+        return new ArrayList<>();
+    }
+
+    private static boolean saveFavorites(List<FavoritePuzzle> favorites) {
+        try {
+            writeTextAtomic(new File(getDataDirectory(), FAVORITES_FILE), favoritesToJson(favorites));
+            return true;
+        } catch (IOException exception) {
+            return false;
+        }
+    }
+
+    private static List<FavoritePuzzle> parseFavorites(String json) {
+        List<FavoritePuzzle> favorites = new ArrayList<>();
+        if (json == null || !json.trim().startsWith("[") || !json.trim().endsWith("]")) {
+            throw new IllegalArgumentException("Invalid favorites file");
+        }
+        Matcher entries = Pattern.compile("\\{(.*?)\\}", Pattern.DOTALL).matcher(json);
+        Set<String> seenIds = new LinkedHashSet<>();
+        while (entries.find() && favorites.size() < MAX_FAVORITE_PUZZLES) {
+            String value = entries.group(1);
+            String id = optionalStringField(value, "id", "");
+            String labelEncoded = optionalStringField(value, "label", "");
+            String difficultyId = optionalStringField(value, "difficulty",
+                    PuzzleDifficulty.CLASSIC.getId());
+            int size = (int) optionalLongField(value, "size", 0);
+            long createdAt = optionalLongField(value, "createdAt", -1);
+            String flattened = optionalStringField(value, "initialGrid", "");
+            if (!isValidFavoriteId(id) || !isSupportedSize(size) || createdAt < 0
+                    || !seenIds.add(id)) {
+                continue;
+            }
+            try {
+                PuzzleDifficulty difficulty = PuzzleDifficulty.fromId(difficultyId);
+                String label = new String(Base64.getUrlDecoder().decode(labelEncoded),
+                        StandardCharsets.UTF_8);
+                label = normalizeFavoriteLabel(label);
+                int[][] grid = parseFlattenedGrid(flattened, size);
+                PuzzleIdentity identity = new PuzzleIdentity(size, difficulty, grid);
+                if (!id.equals(identity.getId()) || label == null) {
+                    continue;
+                }
+                favorites.add(new FavoritePuzzle(identity, label, createdAt));
+            } catch (IllegalArgumentException exception) {
+                // Ignore one corrupt row while preserving the remaining library.
+            }
+        }
+        return favorites;
+    }
+
+    private static String favoritesToJson(List<FavoritePuzzle> favorites) {
+        StringBuilder json = new StringBuilder("[\n");
+        for (int index = 0; index < favorites.size(); index++) {
+            if (index > 0) {
+                json.append(",\n");
+            }
+            FavoritePuzzle favorite = favorites.get(index);
+            String label = Base64.getUrlEncoder().withoutPadding().encodeToString(
+                    favorite.label.getBytes(StandardCharsets.UTF_8));
+            json.append("  {\"id\": ").append(jsonString(favorite.id))
+                    .append(", \"createdAt\": ").append(favorite.createdAt)
+                    .append(", \"size\": ").append(favorite.size)
+                    .append(", \"difficulty\": ").append(jsonString(favorite.difficulty.getId()))
+                    .append(", \"label\": ").append(jsonString(label))
+                    .append(", \"initialGrid\": ").append(jsonString(flattenGrid(favorite.initialGrid)))
+                    .append("}");
+        }
+        return json.append("\n]\n").toString();
+    }
+
+    private static String normalizeFavoriteLabel(String label) {
+        if (label == null) {
+            return null;
+        }
+        String normalized = label.trim();
+        if (normalized.isEmpty() || normalized.length() > MAX_FAVORITE_LABEL_LENGTH) {
+            return null;
+        }
+        return normalized;
+    }
+
+    private static String flattenGrid(int[][] grid) {
+        StringBuilder value = new StringBuilder();
+        for (int[] row : grid) {
+            for (int tile : row) {
+                if (value.length() > 0) {
+                    value.append(',');
+                }
+                value.append(tile);
+            }
+        }
+        return value.toString();
+    }
+
+    private static int[][] parseFlattenedGrid(String value, int size) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("Missing favorite grid");
+        }
+        String[] values = value.split(",", -1);
+        if (values.length != size * size) {
+            throw new IllegalArgumentException("Invalid favorite grid length");
+        }
+        int[][] grid = new int[size][size];
+        int index = 0;
+        for (int row = 0; row < size; row++) {
+            for (int col = 0; col < size; col++) {
+                grid[row][col] = Integer.parseInt(values[index++]);
+            }
+        }
+        return grid;
+    }
+
+    private static boolean isValidFavoriteId(String favoriteId) {
+        return favoriteId != null && favoriteId.matches("[0-9a-f]{64}");
+    }
+
+    private static File getFavoriteRunFile(String favoriteId) {
+        return new File(getDataDirectory(), FAVORITE_RUN_PREFIX + favoriteId + FAVORITE_RUN_SUFFIX);
+    }
+
+    private static File getFavoriteAssistedFile(String favoriteId) {
+        return new File(getDataDirectory(), FAVORITE_RUN_PREFIX + favoriteId
+                + FAVORITE_ASSISTED_SUFFIX);
+    }
+
+    private static void deleteFavoriteRun(String favoriteId) {
+        if (!isValidFavoriteId(favoriteId)) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(getFavoriteRunFile(favoriteId).toPath());
+            Files.deleteIfExists(getFavoriteAssistedFile(favoriteId).toPath());
+        } catch (IOException ignored) {
+            // Removing a stale practice file must not invalidate the library.
+        }
+    }
+
+    private static PersonalPreferences loadPersonalPreferences() {
+        File file = new File(getDataDirectory(), PERSONAL_PREFERENCES_FILE);
+        File[] candidates = {
+                file,
+                new File(file.getPath() + ATOMIC_TEMP_SUFFIX),
+                new File(file.getPath() + ATOMIC_BACKUP_SUFFIX)
+        };
+        for (File candidate : candidates) {
+            if (!candidate.exists() || candidate.isDirectory()) {
+                continue;
+            }
+            try {
+                return personalPreferencesFromJson(readText(candidate));
+            } catch (IOException | RuntimeException ignored) {
+                // Try the recoverable sibling.
+            }
+        }
+        return new PersonalPreferences();
+    }
+
+    private static boolean savePersonalPreferences(PersonalPreferences preferences) {
+        try {
+            writeTextAtomic(new File(getDataDirectory(), PERSONAL_PREFERENCES_FILE),
+                    personalPreferencesToJson(preferences));
+            return true;
+        } catch (IOException exception) {
+            return false;
+        }
+    }
+
+    private static String personalPreferencesToJson(PersonalPreferences preferences) {
+        return "{\n"
+                + "  \"weeklyGoalTarget\": " + preferences.weeklyGoalTarget + ",\n"
+                + "  \"trendSize\": " + preferences.trendSize + ",\n"
+                + "  \"trendDifficulty\": " + jsonString(preferences.trendDifficulty.getId()) + "\n"
+                + "}\n";
+    }
+
+    private static PersonalPreferences personalPreferencesFromJson(String json) {
+        PersonalPreferences preferences = new PersonalPreferences();
+        preferences.weeklyGoalTarget = (int) optionalLongField(json,
+                "weeklyGoalTarget", DEFAULT_WEEKLY_GOAL_TARGET);
+        preferences.trendSize = (int) optionalLongField(json, "trendSize", 4);
+        preferences.trendDifficulty = PuzzleDifficulty.fromId(optionalStringField(json,
+                "trendDifficulty", PuzzleDifficulty.CLASSIC.getId()));
+        return preferences;
+    }
+
+    private static File getContinuousMetaFile() {
+        return new File(getDataDirectory(), CONTINUOUS_META_FILE);
+    }
+
+    private static File getContinuousCurrentFile() {
+        return new File(getDataDirectory(), CONTINUOUS_CURRENT_FILE);
+    }
+
+    private static File getContinuousAssistedFile() {
+        return new File(getDataDirectory(), CONTINUOUS_CURRENT_FILE + CONTINUOUS_ASSISTED_SUFFIX);
     }
 
     /**
@@ -1410,6 +2061,14 @@ public class SaveManager {
         return true;
     }
 
+    private static int[][] copyGrid(int[][] source) {
+        int[][] copy = new int[source.length][];
+        for (int row = 0; row < source.length; row++) {
+            copy[row] = source[row].clone();
+        }
+        return copy;
+    }
+
     private static boolean isSupportedSize(int size) {
         return size >= MIN_SUPPORTED_SIZE && size <= MAX_SUPPORTED_SIZE;
     }
@@ -1492,6 +2151,90 @@ public class SaveManager {
         private static DailyProgress empty() {
             return new DailyProgress(false, 0, 0, null);
         }
+    }
+
+    /**
+     * Restored Continuous Challenge aggregate and its isolated current puzzle.
+     */
+    public static final class ContinuousGame {
+        /** Current puzzle save data. */
+        public final SaveData game;
+
+        /** Aggregate progress for the fixed-scope session. */
+        public final ContinuousChallenge challenge;
+
+        /** Board size fixed for the session. */
+        public final int size;
+
+        /** Difficulty fixed for the session. */
+        public final PuzzleDifficulty difficulty;
+
+        /** Whether the current puzzle has an active assistance marker. */
+        public final boolean assisted;
+
+        private ContinuousGame(SaveData game, ContinuousChallenge challenge,
+                int size, PuzzleDifficulty difficulty, boolean assisted) {
+            this.game = game;
+            this.challenge = challenge;
+            this.size = size;
+            this.difficulty = difficulty;
+            this.assisted = assisted;
+        }
+    }
+
+    /**
+     * Immutable owner-labeled entry in the local exact-puzzle favorite library.
+     */
+    public static final class FavoritePuzzle {
+        /** Stable SHA-256 identity of size, difficulty, and initial grid. */
+        public final String id;
+
+        /** Owner-provided display label. */
+        public final String label;
+
+        /** Creation timestamp retained when a favorite is renamed. */
+        public final long createdAt;
+
+        /** Board size in the identity. */
+        public final int size;
+
+        /** Difficulty in the identity. */
+        public final PuzzleDifficulty difficulty;
+
+        private final int[][] initialGrid;
+
+        private FavoritePuzzle(PuzzleIdentity identity, String label, long createdAt) {
+            this.id = identity.getId();
+            this.label = label;
+            this.createdAt = createdAt;
+            this.size = identity.getSize();
+            this.difficulty = identity.getDifficulty();
+            this.initialGrid = identity.getInitialGridCopy();
+        }
+
+        /**
+         * Returns a defensive copy of the exact favorite starting grid.
+         *
+         * @return copied initial grid
+         */
+        public int[][] getInitialGridCopy() {
+            return copyGrid(initialGrid);
+        }
+
+        /**
+         * Creates a fresh zero-move model for isolated favorite practice.
+         *
+         * @return new model at the exact favorite starting board
+         */
+        public GameModel createGame() {
+            return new PuzzleIdentity(size, difficulty, initialGrid).createGame();
+        }
+    }
+
+    private static final class PersonalPreferences {
+        private int weeklyGoalTarget = DEFAULT_WEEKLY_GOAL_TARGET;
+        private int trendSize = 4;
+        private PuzzleDifficulty trendDifficulty = PuzzleDifficulty.CLASSIC;
     }
 
     /**
