@@ -37,6 +37,8 @@ klotski_records.json
 klotski_records_v2.json
 klotski_records_v2.json.tmp
 klotski_records_v2.json.bak
+klotski_records_reset.marker
+klotski_saved_games_reset.marker
 klotski_statistics.json
 klotski_statistics.json.tmp
 klotski_statistics.json.bak

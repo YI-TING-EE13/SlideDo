@@ -78,6 +78,18 @@ public class MainFrame extends JFrame implements GameObserver {
     /** Desktop presentation preference for snapping tile movement. */
     private boolean reducedMotionEnabled;
 
+    /** Desktop sound-feedback preference. */
+    private boolean soundEnabled;
+
+    /** Prevents an active session from recreating a save immediately after reset. */
+    private boolean savedGamesReset;
+
+    /** Persisted desktop palette. */
+    private DesktopTheme desktopTheme;
+
+    /** Persisted desktop locale. */
+    private DesktopLocale desktopLocale;
+
     /** Prepared Results message shown after the board finishes its win animation. */
     private String pendingResultMessage;
 
@@ -97,6 +109,11 @@ public class MainFrame extends JFrame implements GameObserver {
      * Creates and shows the desktop application window.
      */
     public MainFrame() {
+        desktopTheme = DesktopTheme.fromId(SaveManager.getDesktopTheme());
+        desktopLocale = DesktopLocale.fromTag(SaveManager.getDesktopLanguageTag());
+        reducedMotionEnabled = SaveManager.isReducedMotionEnabled();
+        soundEnabled = SaveManager.isSoundEnabled();
+
         setTitle("Number Klotski - Java Edition");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(600, 700);
@@ -125,6 +142,8 @@ public class MainFrame extends JFrame implements GameObserver {
         model.addObserver(this);
 
         boardPanel = new BoardPanel(model);
+        boardPanel.setTheme(desktopTheme);
+        boardPanel.setReducedMotion(reducedMotionEnabled);
         boardPanel.setWinDialogHandler((parent, moves, timeMs) -> showResultsDialog(moves, timeMs));
 
         contentLayout = new CardLayout();
@@ -146,50 +165,57 @@ public class MainFrame extends JFrame implements GameObserver {
 
         showHome();
         setVisible(true);
+        if (!SaveManager.isOnboardingSeen()) {
+            SwingUtilities.invokeLater(this::showOnboardingDialog);
+        }
+    }
+
+    private String text(String key) {
+        return desktopLocale.text(key);
     }
 
     private void setupMenu() {
         JMenuBar menuBar = new JMenuBar();
 
         // Game Menu
-        JMenu gameMenu = new JMenu("Game");
+        JMenu gameMenu = new JMenu(text("game"));
 
-        JMenuItem newGame3 = new JMenuItem("New 3x3");
+        JMenuItem newGame3 = new JMenuItem(text("new3"));
         newGame3.addActionListener(e -> startNewGame(3));
         gameMenu.add(newGame3);
 
-        JMenuItem newGame4 = new JMenuItem("New 4x4");
+        JMenuItem newGame4 = new JMenuItem(text("new4"));
         newGame4.addActionListener(e -> startNewGame(4));
         gameMenu.add(newGame4);
 
-        JMenuItem newGame5 = new JMenuItem("New 5x5");
+        JMenuItem newGame5 = new JMenuItem(text("new5"));
         newGame5.addActionListener(e -> startNewGame(5));
         gameMenu.add(newGame5);
 
         gameMenu.addSeparator();
 
-        JMenuItem restartItem = new JMenuItem("Restart This Puzzle");
+        JMenuItem restartItem = new JMenuItem(text("restart"));
         restartItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, KeyEvent.CTRL_DOWN_MASK));
         restartItem.addActionListener(e -> restartCurrentGame());
         gameMenu.add(restartItem);
 
-        JMenuItem undoItem = new JMenuItem("Undo");
+        JMenuItem undoItem = new JMenuItem(text("undo"));
         undoItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, KeyEvent.CTRL_DOWN_MASK));
         undoItem.addActionListener(e -> undoMove());
         gameMenu.add(undoItem);
 
-        JMenuItem redoItem = new JMenuItem("Redo");
+        JMenuItem redoItem = new JMenuItem(text("redo"));
         redoItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Y, KeyEvent.CTRL_DOWN_MASK));
         redoItem.addActionListener(e -> redoMove());
         gameMenu.add(redoItem);
 
-        JMenuItem moveHistoryItem = new JMenuItem("Move History");
+        JMenuItem moveHistoryItem = new JMenuItem(text("history"));
         moveHistoryItem.addActionListener(e -> showMoveHistoryDialog());
         gameMenu.add(moveHistoryItem);
 
         gameMenu.addSeparator();
 
-        JMenuItem saveItem = new JMenuItem("Save Game");
+        JMenuItem saveItem = new JMenuItem(text("save"));
         saveItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, KeyEvent.CTRL_DOWN_MASK));
         saveItem.addActionListener(e -> {
             if (solverRunning) {
@@ -208,38 +234,42 @@ public class MainFrame extends JFrame implements GameObserver {
         });
         gameMenu.add(saveItem);
 
-        JMenuItem loadItem = new JMenuItem("Load Game");
+        JMenuItem loadItem = new JMenuItem(text("load"));
         loadItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, KeyEvent.CTRL_DOWN_MASK));
         loadItem.addActionListener(e -> loadGame());
         gameMenu.add(loadItem);
 
-        JMenuItem recordsItem = new JMenuItem("Records");
+        JMenuItem recordsItem = new JMenuItem(text("records"));
         recordsItem.addActionListener(e -> showRecordsDialog());
         gameMenu.add(recordsItem);
 
-        JMenuItem dailyItem = new JMenuItem("Daily Calendar");
+        JMenuItem dailyItem = new JMenuItem(text("daily"));
         dailyItem.addActionListener(e -> showDailyCalendarDialog());
         gameMenu.add(dailyItem);
 
-        JMenuItem favoritesItem = new JMenuItem("Favorites");
+        JMenuItem favoritesItem = new JMenuItem(text("favorites"));
         favoritesItem.addActionListener(e -> showFavoritesDialog());
         gameMenu.add(favoritesItem);
 
-        JMenuItem trendsItem = new JMenuItem("Trends / Weekly Goal");
+        JMenuItem trendsItem = new JMenuItem(text("trends"));
         trendsItem.addActionListener(e -> showTrendsDialog());
         gameMenu.add(trendsItem);
 
-        JMenuItem continuousItem = new JMenuItem("Continuous Challenge");
+        JMenuItem continuousItem = new JMenuItem(text("continuous"));
         continuousItem.addActionListener(e -> showContinuousDialog());
         gameMenu.add(continuousItem);
 
-        JMenuItem preferencesItem = new JMenuItem("Preferences");
+        JMenuItem quickReminderItem = new JMenuItem(text("quickReminder"));
+        quickReminderItem.addActionListener(e -> showQuickReminderDialog());
+        gameMenu.add(quickReminderItem);
+
+        JMenuItem preferencesItem = new JMenuItem(text("preferences"));
         preferencesItem.addActionListener(e -> showPreferencesDialog());
         gameMenu.add(preferencesItem);
 
         gameMenu.addSeparator();
 
-        JMenuItem exitItem = new JMenuItem("Exit");
+        JMenuItem exitItem = new JMenuItem(text("exit"));
         exitItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, KeyEvent.CTRL_DOWN_MASK));
         exitItem.addActionListener(e -> {
             autosaveCurrentGameIfSafe();
@@ -250,9 +280,9 @@ public class MainFrame extends JFrame implements GameObserver {
         menuBar.add(gameMenu);
 
         // Assist Menu
-        JMenu assistMenu = new JMenu("Assist");
+        JMenu assistMenu = new JMenu(text("assist"));
 
-        JMenuItem showMovableItem = new JMenuItem("Show Movable Tiles");
+        JMenuItem showMovableItem = new JMenuItem(text("showMovable"));
         showMovableItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, KeyEvent.CTRL_DOWN_MASK));
         showMovableItem.addActionListener(e -> showMovableTiles());
         assistMenu.add(showMovableItem);
@@ -260,7 +290,7 @@ public class MainFrame extends JFrame implements GameObserver {
         menuBar.add(assistMenu);
 
         // Solver Menu
-        JMenu solverMenu = new JMenu("Solver");
+        JMenu solverMenu = new JMenu(text("solver"));
 
         JMenuItem bfsItem = new JMenuItem("Solve with BFS (Best for 3x3)");
         bfsItem.addActionListener(e -> runSolver(new BfsSolver()));
@@ -277,16 +307,19 @@ public class MainFrame extends JFrame implements GameObserver {
         menuBar.add(solverMenu);
 
         // Help Menu
-        JMenu helpMenu = new JMenu("Help");
+        JMenu helpMenu = new JMenu(text("help"));
 
-        JMenuItem howToPlayItem = new JMenuItem("How to Play");
-        howToPlayItem.addActionListener(e -> showHelpDialog("How to Play", DesktopHelpContent.howToPlay()));
+        JMenuItem howToPlayItem = new JMenuItem(text("howToPlay"));
+        howToPlayItem.addActionListener(e -> showHelpDialog(text("howToPlay"), DesktopHelpContent.howToPlay(desktopLocale)));
         helpMenu.add(howToPlayItem);
 
-        JMenuItem practiceTutorialItem = new JMenuItem("Practice Tutorial");
-        practiceTutorialItem.addActionListener(
-                e -> showHelpDialog("Practice Tutorial", DesktopHelpContent.practiceTutorial()));
+        JMenuItem practiceTutorialItem = new JMenuItem(text("practiceTutorial"));
+        practiceTutorialItem.addActionListener(e -> showPracticeTutorialDialog());
         helpMenu.add(practiceTutorialItem);
+
+        JMenuItem beginnerGuideItem = new JMenuItem(text("beginnerGuide"));
+        beginnerGuideItem.addActionListener(e -> showOnboardingDialog());
+        helpMenu.add(beginnerGuideItem);
 
         menuBar.add(helpMenu);
 
@@ -296,7 +329,7 @@ public class MainFrame extends JFrame implements GameObserver {
     private JPanel createHomePanel() {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBorder(BorderFactory.createEmptyBorder(36, 48, 36, 48));
-        panel.setBackground(new Color(245, 247, 250));
+        panel.setBackground(desktopTheme.getHomeBackground());
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
@@ -305,15 +338,15 @@ public class MainFrame extends JFrame implements GameObserver {
 
         JLabel title = new JLabel("SlideDo", SwingConstants.CENTER);
         title.setFont(new Font("SansSerif", Font.BOLD, 42));
-        title.setForeground(new Color(32, 40, 48));
+        title.setForeground(desktopTheme.getHomeTitle());
         gbc.gridy = 0;
         gbc.insets = new Insets(0, 0, 6, 0);
         panel.add(title, gbc);
 
-        JLabel subtitle = new JLabel("Choose a puzzle, daily challenge, or continue your last desktop save.",
+        JLabel subtitle = new JLabel(text("firstRunSubtitle"),
                 SwingConstants.CENTER);
         subtitle.setFont(new Font("SansSerif", Font.PLAIN, 15));
-        subtitle.setForeground(new Color(86, 96, 108));
+        subtitle.setForeground(desktopTheme.getHomeSecondary());
         gbc.gridy++;
         gbc.insets = new Insets(0, 0, 24, 0);
         panel.add(subtitle, gbc);
@@ -327,21 +360,21 @@ public class MainFrame extends JFrame implements GameObserver {
         gbc.insets = new Insets(0, 0, 12, 0);
         panel.add(sizePanel, gbc);
 
-        panel.add(createHomeButton("Continue / Load", this::loadGame), nextHomeRow(gbc));
+        panel.add(createHomeButton(text("continueLoad"), this::loadGame), nextHomeRow(gbc));
         continueSummaryLabel = new JLabel("", SwingConstants.CENTER);
         continueSummaryLabel.setFont(new Font("SansSerif", Font.PLAIN, 13));
-        continueSummaryLabel.setForeground(new Color(86, 96, 108));
+        continueSummaryLabel.setForeground(desktopTheme.getHomeSecondary());
         panel.add(continueSummaryLabel, nextHomeRow(gbc));
-        panel.add(createHomeButton("Daily Calendar", this::showDailyCalendarDialog), nextHomeRow(gbc));
-        panel.add(createHomeButton("Favorites", this::showFavoritesDialog), nextHomeRow(gbc));
-        panel.add(createHomeButton("Trends / Weekly Goal", this::showTrendsDialog), nextHomeRow(gbc));
-        panel.add(createHomeButton("Continuous Challenge", this::showContinuousDialog), nextHomeRow(gbc));
-        panel.add(createHomeButton("How to Play", () -> showHelpDialog("How to Play", DesktopHelpContent.howToPlay())),
+        panel.add(createHomeButton(text("daily"), this::showDailyCalendarDialog), nextHomeRow(gbc));
+        panel.add(createHomeButton(text("favorites"), this::showFavoritesDialog), nextHomeRow(gbc));
+        panel.add(createHomeButton(text("trends"), this::showTrendsDialog), nextHomeRow(gbc));
+        panel.add(createHomeButton(text("continuous"), this::showContinuousDialog), nextHomeRow(gbc));
+        panel.add(createHomeButton(text("howToPlay"), () -> showHelpDialog(text("howToPlay"), DesktopHelpContent.howToPlay(desktopLocale))),
                 nextHomeRow(gbc));
-        panel.add(createHomeButton("Practice Tutorial",
-                () -> showHelpDialog("Practice Tutorial", DesktopHelpContent.practiceTutorial())), nextHomeRow(gbc));
-        panel.add(createHomeButton("Records", this::showRecordsDialog), nextHomeRow(gbc));
-        panel.add(createHomeButton("Preferences", this::showPreferencesDialog), nextHomeRow(gbc));
+        panel.add(createHomeButton(text("practiceTutorial"), this::showPracticeTutorialDialog), nextHomeRow(gbc));
+        panel.add(createHomeButton(text("beginnerGuide"), this::showOnboardingDialog), nextHomeRow(gbc));
+        panel.add(createHomeButton(text("records"), this::showRecordsDialog), nextHomeRow(gbc));
+        panel.add(createHomeButton(text("preferences"), this::showPreferencesDialog), nextHomeRow(gbc));
 
         return panel;
     }
@@ -378,6 +411,7 @@ public class MainFrame extends JFrame implements GameObserver {
             return;
         }
         autosaveCurrentGameIfSafe();
+        savedGamesReset = false;
         clearMovableHint();
         model.removeObserver(this);
         model = DesktopGameFactory.create(size, difficulty);
@@ -436,6 +470,7 @@ public class MainFrame extends JFrame implements GameObserver {
             return;
         }
         clearMovableHint();
+        savedGamesReset = false;
         model.removeObserver(this);
         model = createReplayModel(model);
         model.addObserver(this);
@@ -563,6 +598,7 @@ public class MainFrame extends JFrame implements GameObserver {
     private void loadGameWhilePaused(int size) {
         SaveManager.SaveData data = SaveManager.loadGame(size);
         if (data != null) {
+            savedGamesReset = false;
             clearMovableHint();
             if (model.getSize() != data.size) {
                 model.removeObserver(this);
@@ -588,7 +624,7 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private boolean saveCurrentGame() {
-        if (model == null) {
+        if (model == null || savedGamesReset) {
             return false;
         }
         if (activeContinuousChallenge != null) {
@@ -735,6 +771,7 @@ public class MainFrame extends JFrame implements GameObserver {
             return;
         }
         DailyChallenge challenge = DailyChallenge.forDate(date);
+        savedGamesReset = false;
         SaveManager.SaveData saved = SaveManager.loadDailyGame(challenge.getDateId());
         boolean savedAssisted = saved != null && SaveManager.isDailyGameAssisted(challenge.getDateId());
         clearMovableHint();
@@ -867,6 +904,171 @@ public class MainFrame extends JFrame implements GameObserver {
         showMessageDialog(message, title, JOptionPane.INFORMATION_MESSAGE);
     }
 
+    private void showQuickReminderDialog() {
+        showHelpDialog(text("quickReminder"), DesktopHelpContent.quickReminder(desktopLocale));
+    }
+
+    /** Shows the first-run learning path and remembers completion separately from saves. */
+    private void showOnboardingDialog() {
+        List<DesktopLearningContent.OnboardingPage> pages =
+                DesktopLearningContent.onboardingPages(desktopLocale);
+        JDialog dialog = new JDialog(this, text("beginnerGuide"), true);
+        dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        JPanel content = new JPanel(new BorderLayout(0, 12));
+        content.setBorder(BorderFactory.createEmptyBorder(18, 22, 14, 22));
+        JLabel title = new JLabel("", SwingConstants.CENTER);
+        title.setFont(new Font("SansSerif", Font.BOLD, 22));
+        JTextArea body = new JTextArea();
+        body.setEditable(false);
+        body.setLineWrap(true);
+        body.setWrapStyleWord(true);
+        body.setOpaque(false);
+        body.setFont(new Font("SansSerif", Font.PLAIN, 15));
+        body.setRows(5);
+        body.setColumns(34);
+        JLabel progress = new JLabel("", SwingConstants.CENTER);
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
+        JButton back = new JButton(text("back"));
+        JButton next = new JButton(text("next"));
+        JButton skip = new JButton(text("skip"));
+        JButton practice = new JButton(text("practiceTutorial"));
+        JButton start = new JButton(text("start"));
+        footer.add(back);
+        footer.add(next);
+        footer.add(skip);
+        footer.add(practice);
+        footer.add(start);
+        content.add(title, BorderLayout.NORTH);
+        content.add(body, BorderLayout.CENTER);
+        JPanel bottom = new JPanel(new BorderLayout(0, 6));
+        bottom.add(progress, BorderLayout.NORTH);
+        bottom.add(footer, BorderLayout.SOUTH);
+        content.add(bottom, BorderLayout.SOUTH);
+        dialog.setContentPane(content);
+
+        int[] index = {0};
+        Runnable refresh = () -> {
+            DesktopLearningContent.OnboardingPage page = pages.get(index[0]);
+            title.setText(page.getTitle());
+            body.setText(page.getBody());
+            progress.setText((index[0] + 1) + " / " + pages.size());
+            back.setEnabled(index[0] > 0);
+            next.setEnabled(index[0] < pages.size() - 1);
+        };
+        back.addActionListener(event -> {
+            if (index[0] > 0) {
+                index[0]--;
+                refresh.run();
+            }
+        });
+        next.addActionListener(event -> {
+            if (index[0] < pages.size() - 1) {
+                index[0]++;
+                refresh.run();
+            }
+        });
+        skip.addActionListener(event -> {
+            SaveManager.markOnboardingSeen();
+            dialog.dispose();
+        });
+        practice.addActionListener(event -> {
+            SaveManager.markOnboardingSeen();
+            dialog.dispose();
+            SwingUtilities.invokeLater(this::showPracticeTutorialDialog);
+        });
+        start.addActionListener(event -> {
+            SaveManager.markOnboardingSeen();
+            dialog.dispose();
+            startNewGame(3, PuzzleDifficulty.CLASSIC);
+        });
+        dialog.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosed(WindowEvent event) {
+                SaveManager.markOnboardingSeen();
+            }
+        });
+        refresh.run();
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        runWithPausedTimer(() -> dialog.setVisible(true));
+    }
+
+    /** Opens an isolated interactive two-step practice board without recording a game. */
+    private void showPracticeTutorialDialog() {
+        GameModel tutorialModel = new GameModel(3);
+        tutorialModel.loadState(new int[][] {{1, 2, 3}, {4, 0, 6}, {7, 5, 8}}, 0);
+        DesktopTutorialProgress progress = new DesktopTutorialProgress();
+        BoardPanel tutorialBoard = new BoardPanel(tutorialModel);
+        tutorialBoard.setTheme(desktopTheme);
+        tutorialBoard.setReducedMotion(reducedMotionEnabled);
+        tutorialBoard.setPreferredSize(new Dimension(420, 420));
+        tutorialBoard.setWinDialogHandler((parent, moves, timeMs) -> { });
+
+        JDialog dialog = new JDialog(this, text("practiceTutorial"), true);
+        dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+        JPanel panel = new JPanel(new BorderLayout(0, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        JLabel instruction = new JLabel("", SwingConstants.CENTER);
+        instruction.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        JLabel state = new JLabel("", SwingConstants.CENTER);
+        JPanel controls = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
+        JButton reset = new JButton(text("resetLesson"));
+        JButton start = new JButton(text("startTutorialPuzzle"));
+        JButton close = new JButton(text("close"));
+        controls.add(reset);
+        controls.add(start);
+        controls.add(close);
+        panel.add(instruction, BorderLayout.NORTH);
+        panel.add(tutorialBoard, BorderLayout.CENTER);
+        JPanel south = new JPanel(new BorderLayout(0, 6));
+        south.add(state, BorderLayout.NORTH);
+        south.add(controls, BorderLayout.SOUTH);
+        panel.add(south, BorderLayout.SOUTH);
+        dialog.setContentPane(panel);
+
+        Runnable refresh = () -> {
+            instruction.setText(DesktopLearningContent.practiceTutorial(desktopLocale)
+                    .split("\\n", 2)[0]);
+            String step = switch (progress.getStep()) {
+                case FIRST_MOVE -> "1 / 2: make an adjacent move";
+                case WHOLE_LINE -> "2 / 2: try a farther aligned tile";
+                case COMPLETE -> "Complete: you can start a normal puzzle.";
+            };
+            state.setText(step);
+        };
+        tutorialModel.addObserver(new GameObserver() {
+            @Override
+            public void onGridChanged() {
+                refresh.run();
+            }
+
+            @Override
+            public void onMove(Direction direction) {
+                progress.observe(tutorialModel);
+                refresh.run();
+            }
+
+            @Override
+            public void onGameWon(int moves, long timeMs) {
+                refresh.run();
+            }
+        });
+        reset.addActionListener(event -> {
+            tutorialModel.restartCurrentGame();
+            progress.reset();
+            refresh.run();
+        });
+        start.addActionListener(event -> {
+            dialog.dispose();
+            startNewGame(3, PuzzleDifficulty.CLASSIC);
+        });
+        close.addActionListener(event -> dialog.dispose());
+        refresh.run();
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        runWithPausedTimer(() -> dialog.setVisible(true));
+    }
+
     private void showRecordsDialog() {
         PuzzleDifficulty[] difficulties = PuzzleDifficulty.values();
         SaveManager.BestRecord[][] records = new SaveManager.BestRecord[3][difficulties.length];
@@ -961,6 +1163,7 @@ public class MainFrame extends JFrame implements GameObserver {
             return;
         }
         autosaveCurrentGameIfSafe();
+        savedGamesReset = false;
         clearMovableHint();
         model.removeObserver(this);
         model = favorite.createGame();
@@ -1108,6 +1311,7 @@ public class MainFrame extends JFrame implements GameObserver {
             return;
         }
         autosaveCurrentGameIfSafe();
+        savedGamesReset = false;
         SaveManager.clearContinuousGame();
         activeContinuousChallenge = ContinuousChallenge.start(target);
         continuousSize = size;
@@ -1134,6 +1338,7 @@ public class MainFrame extends JFrame implements GameObserver {
             SaveManager.clearContinuousGame();
             return;
         }
+        savedGamesReset = false;
         clearMovableHint();
         model.removeObserver(this);
         model = new GameModel(saved.game.size);
@@ -1162,6 +1367,7 @@ public class MainFrame extends JFrame implements GameObserver {
                 || activeContinuousChallenge.isComplete()) {
             return;
         }
+        savedGamesReset = false;
         clearMovableHint();
         model.removeObserver(this);
         model = DesktopGameFactory.create(continuousSize, continuousDifficulty);
@@ -1258,18 +1464,96 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void showPreferencesDialog() {
-        JCheckBox reducedMotionBox = new JCheckBox("Reduce motion", reducedMotionEnabled);
+        JCheckBox reducedMotionBox = new JCheckBox(text("reduceMotion"), reducedMotionEnabled);
+        JCheckBox soundBox = new JCheckBox(text("sound"), soundEnabled);
+        JComboBox<String> languageBox = new JComboBox<>(DesktopLocale.supportedTags());
+        languageBox.setSelectedItem(desktopLocale.getTag());
+        JComboBox<String> themeBox = new JComboBox<>(new String[] {"midnight", "ocean"});
+        themeBox.setSelectedItem(desktopTheme.getId());
+
+        JPanel choices = new JPanel(new GridLayout(0, 2, 8, 8));
+        choices.add(new JLabel(text("language")));
+        choices.add(languageBox);
+        choices.add(new JLabel(text("theme")));
+        choices.add(themeBox);
+        choices.add(reducedMotionBox);
+        choices.add(soundBox);
+
+        JButton resetSaved = new JButton(text("resetSaved"));
+        resetSaved.addActionListener(event -> {
+            int answer = showConfirmDialog(text("resetSavedConfirm"), text("resetSaved"),
+                    JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (answer == JOptionPane.YES_OPTION) {
+                boolean cleared = SaveManager.clearSavedGames();
+                savedGamesReset = true;
+                showMessageDialog(cleared ? "Saved-game domains cleared." : "Some saved-game files could not be cleared.",
+                        text("resetSaved"), cleared ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
+                updateHomeSaveSummary();
+            }
+        });
+        JButton resetRecords = new JButton(text("resetRecords"));
+        resetRecords.addActionListener(event -> {
+            int answer = showConfirmDialog(text("resetRecordsConfirm"), text("resetRecords"),
+                    JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (answer == JOptionPane.YES_OPTION) {
+                boolean cleared = SaveManager.clearRecords();
+                showMessageDialog(cleared ? "Records and statistics cleared." : "Some record files could not be cleared.",
+                        text("resetRecords"), cleared ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
+            }
+        });
+        JPanel resets = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
+        resets.add(resetSaved);
+        resets.add(resetRecords);
+
         JPanel panel = new JPanel(new BorderLayout(0, 10));
         panel.add(new JLabel(DesktopHomeContent.preferencesDescription()), BorderLayout.NORTH);
-        panel.add(reducedMotionBox, BorderLayout.CENTER);
+        panel.add(choices, BorderLayout.CENTER);
+        panel.add(resets, BorderLayout.SOUTH);
 
-        int result = showConfirmDialog(panel, "Preferences",
+        int result = showConfirmDialog(panel, text("preferences"),
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (result == JOptionPane.OK_OPTION) {
+            String selectedLanguage = (String) languageBox.getSelectedItem();
+            String selectedTheme = (String) themeBox.getSelectedItem();
+            boolean changed = !desktopLocale.getTag().equals(selectedLanguage)
+                    || !desktopTheme.getId().equals(selectedTheme);
+            SaveManager.setReducedMotionEnabled(reducedMotionBox.isSelected());
+            SaveManager.setSoundEnabled(soundBox.isSelected());
+            SaveManager.setDesktopLanguageTag(selectedLanguage);
+            SaveManager.setDesktopTheme(selectedTheme);
             reducedMotionEnabled = reducedMotionBox.isSelected();
+            soundEnabled = soundBox.isSelected();
+            desktopLocale = DesktopLocale.fromTag(selectedLanguage);
+            desktopTheme = DesktopTheme.fromId(selectedTheme);
             boardPanel.setReducedMotion(reducedMotionEnabled);
-            updateStatus();
+            boardPanel.setTheme(desktopTheme);
+            if (changed) {
+                rebuildLocalizedWindow();
+            } else {
+                updateStatus();
+            }
         }
+    }
+
+    private void rebuildLocalizedWindow() {
+        boolean wasShowingGame = showingGame;
+        if (wasShowingGame) {
+            autosaveCurrentGameIfSafe();
+        }
+        remove(contentPanel);
+        contentLayout = new CardLayout();
+        contentPanel = new JPanel(contentLayout);
+        contentPanel.add(createHomePanel(), HOME_CARD);
+        contentPanel.add(boardPanel, GAME_CARD);
+        add(contentPanel, BorderLayout.CENTER);
+        setupMenu();
+        if (wasShowingGame) {
+            showGame();
+        } else {
+            showHome();
+        }
+        revalidate();
+        repaint();
     }
 
     private void showHome() {
@@ -1287,7 +1571,7 @@ public class MainFrame extends JFrame implements GameObserver {
         syncGameTimerState();
         contentLayout.show(contentPanel, HOME_CARD);
         updateHomeSaveSummary();
-        statusLabel.setText("Home | New Game, Continue, Daily, Favorites, Trends, Continuous, Records");
+        statusLabel.setText(text("homeSummary"));
     }
 
     private void showGame() {
@@ -1304,7 +1588,7 @@ public class MainFrame extends JFrame implements GameObserver {
         }
         SaveManager.SaveMetadata[] saves = SaveManager.getAllSaveMetadata();
         if (saves.length == 0) {
-            continueSummaryLabel.setText("No saved games yet.");
+            continueSummaryLabel.setText(text("noSaves"));
             return;
         }
         if (saves.length == 1) {
@@ -1414,12 +1698,14 @@ public class MainFrame extends JFrame implements GameObserver {
     @Override
     public void onMove(Direction dir) {
         clearMovableHint();
+        DesktopSoundFeedback.playMove(soundEnabled);
         updateStatus();
     }
 
     @Override
     public void onGameWon(int moves, long timeMs) {
         syncGameTimerState();
+        DesktopSoundFeedback.playWin(soundEnabled);
         if (!completionTracker.claim()) {
             return;
         }

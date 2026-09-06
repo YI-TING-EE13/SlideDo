@@ -1,14 +1,14 @@
 # SlideDo Desktop / Android Parity Qualification
 
-Status: owner-approved qualification baseline with Stages 1-5 session,
+Status: owner-approved qualification baseline with Stages 1-6 session,
 persistence, records, Daily, Favorites, Trends, Weekly Goal, and Continuous
-behavior implemented and verified; later stages remain planning-only. This
+behavior plus Desktop learning/preferences implemented and verified; later stages remain planning-only. This
 document records current implementation evidence and bounded follow-up work.
 
 Qualification date: 2026-09-07
 Repository: YI-TING-EE13/SlideDo
 Authoritative branch: main
-Expected and observed origin/main: a46a94ee74dd2bb4ee31a12f8566b0bebf3b275b
+Expected and observed origin/main at Stage 6 start: 10cc642ec7156ff23e152d278d817465373237ae
 
 ## Authority, scope, and evidence rules
 
@@ -39,7 +39,8 @@ namespace isolation, and solver-assisted record protection.
 ## Qualification snapshot
 
 - The required fetch and identity checks completed before editing. HEAD and
-  origin/main both resolved to a46a94ee74dd2bb4ee31a12f8566b0bebf3b275b.
+  origin/main both resolved to 10cc642ec7156ff23e152d278d817465373237ae at
+  the Stage 6 branch point.
 - The only pre-existing worktree change was the unrelated untracked
   SlideDo_Project_Development_Record.html. It was preserved and is not part
   of this initiative.
@@ -95,18 +96,18 @@ namespace isolation, and solver-assisted record protection.
 
 | ID | Capability | Canonical/shared-core support | Android source of truth | Desktop source and verified current behavior | Status | Required parity; persistence and record semantics | Tests, documentation, dependencies, and risk |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| L1 | Home, navigation, start, and continue flows | No new rules are needed; navigation is platform-specific controller state. | AndroidHomeScreen and MainActivity expose Home, daily, favorites, trends, continuous, onboarding, mode select, records, settings, and save metadata. | MainFrame Home and Game menu expose normal sizes, Continue/Load, Daily Calendar, Favorites, Trends/Weekly Goal, Continuous Challenge, Records, and Preferences; mode dialogs retain isolated saves while Home autosaves stable state. | PARTIAL | Desktop now exposes the Personal Play destinations; onboarding, settings breadth, and platform-native lifecycle remain later parity gaps. Android transitions remain native; Swing uses cards/dialogs. | MainFrame compile/Javadocs, SaveManager isolation tests, and DesktopPersonalPlayContentTest cover the new routes. Manual Swing cross-mode smoke remains an acceptance follow-up. |
-| L2 | First-run onboarding and Beginner Guide | Puzzle rules are shared, but onboarding content is UI-only. | MainActivity and AndroidTutorialScreen provide four onboarding pages, Skip, Back, Tutorial, and Start 3x3; AndroidLearningContent supplies the guide. | No first-run onboarding or Beginner Guide exists; Practice Tutorial is a static help dialog. | MISSING | Desktop needs an optional first-run guide with a persisted seen flag, skip/reopen behavior, and a clear route to a first puzzle. It must not alter puzzle data or records. | Android onboarding tests and new desktop first-run/preferences tests. Risk is confusing a tutorial board with a record-eligible game. |
-| L3 | Practice Tutorial | AndroidTutorialScreen and MainActivity use fixed tutorial boards and guided highlights; KlotskiView only renders hints. | Interactive first move, aligned tile, whole-line, and completion steps with progress and reset. | DesktopHelpContent.practiceTutorial is static explanatory text shown in a dialog; it does not accept moves or track tutorial state. | PARTIAL | Desktop may use Swing interaction, but must teach the same first move, aligned move, whole-line one-action behavior, and completion outcome without writing personal records. | Android tutorial tests, desktop help-content tests, and future Swing tutorial tests. Risk is duplicating movement logic; tutorial moves should still call GameModel. |
-| L4 | How to Play and learning examples | AndroidLearningContent contains visual Goal, Tap, whole-line, swipe, tools, and records guidance. | Android How-to screen renders localized examples and links to learning surfaces. | DesktopHelpContent.howToPlay contains aligned-move, whole-line, assist, solver, and GameModel text in a plain dialog. | PARTIAL | Desktop content must remain behaviorally accurate and explain whole-line one-action history, assists, solver record protection, and replay. Visual layout can be native Swing. | Desktop help-copy tests and Android learning tests. Risk is stale parity wording; link this document and update the content when contracts change. |
-| L5 | Quick Reminder during play | Android pause menu opens a compact localized reminder without losing the current game. | MainActivity.showQuickReminder is reachable from the Game pause menu and pauses active timing. | Desktop has no Quick Reminder command; How to Play is a general modal help route. | MISSING | Add an in-game reminder that pauses active time and returns to the same board without mutating state. It should be shorter than the full guide. | Add desktop dialog/timer tests and content assertions. Risk is forgetting the G6 modal pause rule. |
-| L6 | Settings and preferences | AndroidGameStore persists language, theme, sound, haptic, reduced motion, onboarding, and reset choices. | AndroidSettingsScreen and MainActivity apply settings, recreate for locale/theme, and expose backup/reset. | MainFrame Preferences exposes only an in-memory reduced-motion checkbox; colors, sound, language, backup, and reset are absent. | PARTIAL | Desktop settings must persist the supported subset, clearly label platform-specific options, and never reset a save when only presentation settings change. | Android settings/store tests and new desktop preference persistence tests. Risk is applying a setting on the wrong thread or losing active state on recreate-like transitions. |
-| L7 | Visual themes and contrast | AndroidVisualTheme and AndroidColorContrast define Midnight/Day palettes and 4.5:1 button contrast checks. | AndroidUi, AndroidUiPolicy, and KlotskiView apply the selected theme persistently. | BoardPanel and MainFrame use fixed colors and no theme selector; no automated contrast check exists. | MISSING | Provide at least the agreed theme set or explicitly scope a smaller desktop palette, keep text and controls readable, and persist the choice. Theme changes must not affect puzzle state. | AndroidAdaptiveUiTest and new desktop rendering/contrast smoke. Risk is Swing look-and-feel variance and color contrast regression. |
-| L8 | Optional sound feedback | Sound is not a shared puzzle rule. | AndroidSoundFeedback and AndroidGameStore provide optional asset-free move, win, and error tones. | Desktop has no sound setting or feedback path. | MISSING | If meaningful for desktop, provide an opt-in local feedback channel with the same enabled/disabled and assisted semantics; do not make audio a prerequisite for play. | Add opt-in desktop smoke and settings tests; no core dependency. Risk is platform audio availability and test nondeterminism. |
-| L9 | Reduced motion | Presentation-only policy; GameModel timing and actions remain unchanged. | AndroidGameStore persists reduced motion; AndroidMotion, AndroidUiPolicy, and KlotskiView apply it across transitions and board animation. | MainFrame and BoardPanel snap board animation when an in-memory flag is set; Home/dialog transitions and persistence are not covered. | PARTIAL | Persist the desktop preference, apply it to all parity-relevant transitions/animations, and keep busy and action semantics unchanged. | Android adaptive tests, desktop preference/animation tests, and manual 100/125/150% checks. Risk is conflating reduced motion with disabling input locks. |
-| L10 | Localization | Core domain IDs are stable; Android resources carry localized presentation. | AndroidAppLocale and resources support English, Traditional Chinese, and Japanese and persist the selected tag. | Desktop strings are hardcoded English in MainFrame, BoardPanel, and helper content. | MISSING | Decide a desktop locale subset and localize all player-facing labels, history directions, status, settings, and result policy text. Preserve stable IDs and migrate no puzzle data for locale changes. | Android locale tests and new desktop resource/content tests. Risk is duplicating strings in Swing and making accessibility descriptions diverge from visible text. |
+| L1 | Home, navigation, start, and continue flows | No new rules are needed; navigation is platform-specific controller state. | AndroidHomeScreen and MainActivity expose Home, daily, favorites, trends, continuous, onboarding, mode select, records, settings, and save metadata. | MainFrame Home and Game menu expose normal sizes, Continue/Load, Daily Calendar, Favorites, Trends/Weekly Goal, Continuous Challenge, Records, Preferences, Beginner Guide, and Quick Reminder; mode dialogs retain isolated saves while Home autosaves stable state. | PARITY | Desktop transitions remain native Swing cards/dialogs, but all completed Desktop-supported destinations are discoverable without changing save or record contracts. | MainFrame compile/Javadocs, SaveManager isolation tests, and DesktopPersonalPlayContentTest cover the routes; manual Swing cross-mode smoke remains an acceptance follow-up. |
+| L2 | First-run onboarding and Beginner Guide | Puzzle rules are shared, but onboarding content is UI-only. | MainActivity and AndroidTutorialScreen provide four onboarding pages, Skip, Back, Tutorial, and Start 3x3; AndroidLearningContent supplies the guide. | MainFrame opens a four-page first-run guide from a persisted `onboardingSeen` flag, supports Skip/Back/Next/Tutorial/Start 3x3, and allows reopening from Help/Home without writing game data. | PARITY | The tutorial board is isolated; leaving the guide marks only onboarding preference state and cannot create a record or overwrite a save. | DesktopLearningContentTest, DesktopLocaleTest, SaveManager preference/reset tests, and MainFrame compile/Javadocs. Risk remains only native Swing modal presentation. |
+| L3 | Practice Tutorial | AndroidTutorialScreen and MainActivity use fixed tutorial boards and guided highlights; KlotskiView only renders hints. | Interactive first move, aligned tile, whole-line, and completion steps with progress and reset. | MainFrame opens an isolated BoardPanel/GameModel lesson with reset, guided milestone text, whole-line detection, and Start 3x3; no completion tracker or personal store is attached. | PARITY | Tutorial teaches first move, aligned move, whole-line one-action behavior, and completion without writing personal records. | DesktopTutorialProgressTest, DesktopLearningContentTest, and focused compile/Javadocs; model history remains the rule source. |
+| L4 | How to Play and learning examples | AndroidLearningContent contains visual Goal, Tap, whole-line, swipe, tools, and records guidance. | Android How-to screen renders localized examples and links to learning surfaces. | DesktopLearningContent/HelpContent documents goal, aligned movement, whole-line one-action history, assist, solver record protection, and exact replay in a native dialog. | PARITY | Content is behaviorally accurate; Swing text replaces Android visual resources without copying Android resource files. | DesktopHelpContentTest plus localized learning-content tests; update this copy when shared contracts change. |
+| L5 | Quick Reminder during play | Android pause menu opens a compact localized reminder without losing the current game. | MainActivity.showQuickReminder is reachable from the Game pause menu and pauses active timing. | Game > Quick Reminder opens the compact localized reminder through `runWithPausedTimer`, then returns to the same board/mode. | PARITY | Reminder is shorter than the full guide and mutates neither model state nor records. | DesktopLearningContentTest and existing DesktopTimerPolicy/modal wiring; manual in-game dialog smoke remains useful. |
+| L6 | Settings and preferences | AndroidGameStore persists language, theme, sound, haptic, reduced motion, onboarding, and reset choices. | AndroidSettingsScreen and MainActivity apply settings, recreate for locale/theme, and expose backup/reset. | SaveManager persists the Desktop subset: language (`en`/`zh-TW`/`ja-JP`), Midnight/Ocean theme, sound feedback, reduced motion, onboarding seen, plus confirmed saved-game and records/statistics resets. | PARITY | Haptics and backup remain platform-specific; presentation changes rebuild Swing controls without changing puzzle rules, saves, or records. | SaveManager preference/reset tests, DesktopLocale/Theme tests, MainFrame compile/Javadocs. |
+| L7 | Visual themes and contrast | AndroidVisualTheme and AndroidColorContrast define Midnight/Day palettes and 4.5:1 button contrast checks. | AndroidUi, AndroidUiPolicy, and KlotskiView apply the selected theme persistently. | DesktopTheme supplies persisted Midnight/Ocean palettes to Home and BoardPanel; numbered tiles and text retain high-contrast colors and theme changes are presentation-only. | PARITY | Desktop palette names are native equivalents; no Android color resource dependency is introduced. | DesktopThemeTest, BoardPanel compile/Javadocs, and manual look-and-feel smoke; formal adaptive contrast/accessibility remains Stage 7. |
+| L8 | Optional sound feedback | Sound is not a shared puzzle rule. | AndroidSoundFeedback and AndroidGameStore provide optional asset-free move, win, and error tones. | SaveManager persists an opt-in sound flag; MainFrame emits native Toolkit move/win beeps only when enabled, with no audio prerequisite. | PARITY | Audio remains presentation-only and cannot change moves, timing, assisted state, or records. | SaveManager preference test and DesktopSoundFeedback compile; audio device behavior remains manual/platform-specific. |
+| L9 | Reduced motion | Presentation-only policy; GameModel timing and actions remain unchanged. | AndroidGameStore persists reduced motion; AndroidMotion, AndroidUiPolicy, and KlotskiView apply it across transitions and board animation. | SaveManager persists reduced motion; MainFrame applies it to BoardPanel and preserves busy/action semantics while preference changes rebuild the native shell. | PARITY | Reduced motion changes animation presentation only; it does not disable input locks or alter rules/records. | SaveManager preference test, BoardPanel API, and desktop compile/Javadocs; full DPI/adaptive coverage remains Stage 7. |
+| L10 | Localization | Core domain IDs are stable; Android resources carry localized presentation. | AndroidAppLocale and resources support English, Traditional Chinese, and Japanese and persist the selected tag. | DesktopLocale persists all three tags and localizes critical menus, Home routes, onboarding, help, reminders, and preference controls; several legacy mode/result detail strings remain English until the later documentation/accessibility stage. | PARTIAL | Locale changes rebuild the Swing shell and preserve stable IDs/data. No Android resources are used; remaining non-critical detail copy is explicitly tracked rather than claimed as full localization. | DesktopLocaleTest and localized learning tests; remaining strings are a bounded follow-up, not a data/migration risk. |
 | L11 | Full personal backup and restore | AndroidPersonalDataArchive validates a versioned archive and AndroidGameStore replaces all personal preferences only after decode. | MainActivity uses the system picker for export/import and confirms full replacement. | Desktop can manually copy individual JSON files but has no archive, validation, or full replacement flow. | MISSING | Provide a versioned, validated Desktop personal-data archive covering all normal/mode saves, records, stats, history, settings, and favorites. Invalid input must leave existing data untouched. | AndroidGameStoreTest archive cases are the contract reference; add desktop archive round-trip, malformed, and replacement tests. Risk is cross-platform schema compatibility; keep Android implementation out of Desktop and define an explicit shared archive version. |
-| L12 | Reset semantics | AndroidGameStore separates clear saved games, clear records, and full archive replacement while preserving unrelated namespaces as documented. | AndroidSettingsScreen/MainActivity expose reset saved games and reset records with confirmation. | Desktop has no reset UI; deleting a file manually has undefined scope and can affect legacy fallback behavior. | MISSING | Add explicit, confirmed reset operations with documented scope: saved-game namespaces versus records/stats/history/settings. Reset must not silently delete backups or unrelated user files. | Android reset/store tests and new desktop reset tests. Risk is destructive scope; use recoverable or clearly confirmed operations and preserve legacy files until migration is complete. |
+| L12 | Reset semantics | AndroidGameStore separates clear saved games, clear records, and full archive replacement while preserving unrelated namespaces as documented. | AndroidSettingsScreen/MainActivity expose reset saved games and reset records with confirmation. | Preferences exposes confirmed `clearSavedGames` and `clearRecords` actions. The first removes normal/Daily/Favorite Practice/Continuous saves but preserves favorites, records, stats, Daily progress, and preferences; the second clears scoped records/statistics/Daily progress, masks legacy records, and preserves active Continuous files. | PARITY | Reset scopes are explicit and tested; legacy record sources are left untouched but cannot resurrect a cleared value. | SaveManager preference/reset test and MainFrame confirmation wiring; full archive replacement remains Stage 8/backup scope. |
 | L13 | Accessibility semantics and playable board | AndroidUiPolicy establishes headings, focus order, 48dp targets, localized descriptions, and KlotskiView virtual per-cell actionable nodes. | AndroidMainActivity, AndroidUi, resource strings, and BoardAccessibilityProvider expose screen-reader movement for movable cells. | Swing buttons and labels provide basic keyboard/focus behavior, but BoardPanel is one painted surface with no virtual cell nodes or equivalent assistive-tech audit. | PARTIAL | Desktop must expose a navigable, actionable board model to supported assistive technologies, retain keyboard movement, announce busy/win/history state, and meet contrast/focus expectations. Android virtual-node mechanics remain platform-specific. | AndroidAdaptiveUiTest and Android flow tests; add desktop accessibility/manual keyboard and assistive-tech checks. Risk is Swing accessibility API behavior and painted-cell hit targets. |
 | L14 | Adaptive and scaled layout | AndroidUiPolicy and ScreenLayout handle compact layouts, large text, safe insets, and 48dp controls. | AndroidAdaptiveUiTest covers compact AVD, large text, both themes, headings, and focus order. | BoardPanel scales the square board to its panel, but MainFrame is fixed at 600x700 and dense Home/dialog content has no large-font or wide-window acceptance. | PARTIAL | Desktop must remain usable at supported DPI/font scales and resizable windows, keep the board playable, and preserve complete actions without relying on Android dp rules. | Android adaptive tests plus desktop 100/125/150% and resize smoke; add focused layout assertions where stable. Risk is native Swing layout variability across platforms. |
 
@@ -131,9 +132,9 @@ files:
 
 | Status | Count | Interpretation |
 | --- | ---: | --- |
-| PARITY | 19 | Shared rules, sizes, difficulty/session identity, exact replay, active timer, input outcomes, animation locks, undo/redo, restart, movable assist, scoped best records, assisted-result protection, Daily, Favorite Practice, Trends/Weekly Goal, and Continuous behavior are evidenced on both platforms. |
-| PARTIAL | 11 | The Desktop slice exists but differs materially in persistence namespace, learning depth, settings, or adaptive/accessibility coverage. |
-| MISSING | 11 | Android-only completed product capabilities have no verified Desktop equivalent, chiefly onboarding, themes, sound, localization, backup, reset, and strategic hints. |
+| PARITY | 33 | Shared rules, sizes, difficulty/session identity, exact replay, active timer, input outcomes, animation locks, undo/redo, restart, movable assist, scoped best records, assisted-result protection, Daily, Favorite Practice, Trends/Weekly Goal, Continuous behavior, Home routes, learning flows, Quick Reminder, Desktop preferences, themes, sound, and reduced motion are evidenced on both platforms. |
+| PARTIAL | 6 | The Desktop slice exists but differs materially in move-history wording, solver UX, localization completeness, accessibility/adaptive behavior, or package scope. |
+| MISSING | 2 | Android-only capabilities still lacking a verified Desktop equivalent: strategic hints and full backup/archive behavior. |
 | PLATFORM-SPECIFIC | 4 | Android lifecycle, haptics, system picker, and touch/virtual-node mechanics require desktop equivalents rather than copied implementations. |
 
 ### Stage 1 verified implementation
@@ -214,7 +215,8 @@ doclint gate:
    without stating the behavioral contract. The historical parity matrix in
    DEVELOPMENT.md also describes the narrow MVP as if the broader Android
    progression were already comparable. This document is the current
-   qualification source; no Java comments were changed in this stage.
+    qualification source; Stage 6 added contract comments for the new
+    Desktop preference, theme, locale, learning, and tutorial APIs.
 6. The existing core/Desktop and Android Javadoc commands use
    -public -Xdoclint:all. They prove syntax, links, and doclint validity for
    the selected public surface, not completeness of package-private contracts,
@@ -407,6 +409,38 @@ issue boundary:
   the new Desktop presentation copy. Manual Swing cross-mode smoke remains an
   explicit acceptance follow-up.
 
+### Stage 6 verified implementation
+
+The Stage 6 learning, navigation, and preferences work is implemented and
+verified within the approved issue boundary:
+
+- `DesktopLearningContent` supplies four localized onboarding pages, interactive
+  practice copy, How to Play guidance, and a compact Quick Reminder. The
+  onboarding flag is persisted independently from game data; the practice
+  board uses an isolated `GameModel` and `DesktopTutorialProgress` state machine
+  so it cannot create completion history or records.
+- MainFrame Home/Help/Game routes now expose Beginner Guide, Practice Tutorial,
+  Quick Reminder, and all previously completed Personal Play destinations. The
+  reminder and learning dialogs use the existing timer-pause boundary and
+  return to the same active mode.
+- `SaveManager` persists reduced motion, optional sound, `midnight`/`ocean`
+  theme, `en`/`zh-TW`/`ja-JP` language, and onboarding completion in the
+  existing personal-preferences JSON namespace. `BoardPanel` applies the
+  selected palette without touching model state; optional Toolkit feedback is
+  presentation-only.
+- Preferences provides explicit confirmations for saved-game reset and records
+  reset. Saved-game reset removes normal/Daily/Favorite Practice/Continuous
+  progress and legacy normal save candidates while preserving favorite labels,
+  records/statistics, Daily history, and preferences. Its reset marker also
+  prevents a project-root legacy fallback from resurrecting cleared games.
+  Records reset clears scoped records/statistics/Daily
+  progress, masks legacy size-only records, and preserves active Continuous
+  state. Full archive backup/restore remains a later stage.
+- Focused tests cover locale/theme catalogs, onboarding/learning copy, tutorial
+  milestone state, preference round-trip, reset-domain isolation, and legacy
+  record masking. Root tests and desktop compile/Javadocs are required gates;
+  manual Swing DPI/accessibility smoke remains Stage 7 evidence.
+
 ### Stage 3 - Records, results, history, and statistics
 
 - Objective: add size-plus-difficulty best records, completion history,
@@ -482,6 +516,9 @@ issue boundary:
   eligible completion.
 
 ### Stage 6 - Learning, navigation, and preferences
+
+Status: implemented and verified on the current Stage 6 branch; the completion
+gate below remains the acceptance contract for its protected PR.
 
 - Objective: close meaningful Home, onboarding, tutorial, How-to, Quick
   Reminder, settings, theme, sound, reduced-motion, localization, and reset

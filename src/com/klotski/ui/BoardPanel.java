@@ -53,13 +53,16 @@ public class BoardPanel extends JPanel implements GameObserver {
     private final int TILE_GAP = 10;
 
     /** Fill color for numbered tiles. */
-    private final Color TILE_COLOR = new Color(60, 179, 113);
+    private Color TILE_COLOR = new Color(60, 179, 113);
 
     /** Text color for numbered tile labels. */
-    private final Color TILE_TEXT_COLOR = Color.WHITE;
+    private Color TILE_TEXT_COLOR = Color.WHITE;
 
     /** Panel background color outside the board. */
-    private final Color BG_COLOR = new Color(40, 40, 40);
+    private Color BG_COLOR = new Color(40, 40, 40);
+
+    /** Active desktop palette. */
+    private DesktopTheme theme = DesktopTheme.MIDNIGHT;
 
     /** Indicates whether a tile or line animation is currently active. */
     private boolean isAnimating = false;
@@ -297,6 +300,30 @@ public class BoardPanel extends JPanel implements GameObserver {
      */
     public void setReducedMotion(boolean reducedMotion) {
         this.reducedMotion = reducedMotion;
+    }
+
+    /**
+     * Applies a desktop palette without changing the model or any gameplay
+     * state.
+     *
+     * @param theme palette to render, defaulting to Midnight when null
+     */
+    public void setTheme(DesktopTheme theme) {
+        this.theme = theme == null ? DesktopTheme.MIDNIGHT : theme;
+        TILE_COLOR = this.theme.getTile();
+        TILE_TEXT_COLOR = this.theme.getTileText();
+        BG_COLOR = this.theme.getBoardBackground();
+        setBackground(BG_COLOR);
+        repaint();
+    }
+
+    /**
+     * Returns the currently applied desktop palette.
+     *
+     * @return currently applied desktop palette
+     */
+    public DesktopTheme getTheme() {
+        return theme;
     }
 
     /**
@@ -649,7 +676,7 @@ public class BoardPanel extends JPanel implements GameObserver {
         int startX = (panelW - boardW) / 2;
         int startY = (panelH - boardH) / 2;
 
-        g2.setColor(new Color(60, 60, 60));
+        g2.setColor(theme.getBoardSurface());
         g2.fillRoundRect(startX, startY, boardW, boardH, 15, 15);
 
         for (int r = 0; r < size; r++) {

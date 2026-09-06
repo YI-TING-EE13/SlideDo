@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -54,6 +55,8 @@ public class SaveManager {
     private static final String LEGACY_SAVE_FILE = "klotski_save.dat";
     private static final String RECORDS_FILE = "klotski_records.json";
     private static final String SCOPED_RECORDS_FILE = "klotski_records_v2.json";
+    private static final String RECORDS_RESET_FILE = "klotski_records_reset.marker";
+    private static final String SAVED_GAMES_RESET_FILE = "klotski_saved_games_reset.marker";
     private static final String STATISTICS_FILE = "klotski_statistics.json";
     private static final String DAILY_SAVE_PREFIX = "klotski_daily_";
     private static final String DAILY_SAVE_SUFFIX = ".json";
@@ -87,7 +90,11 @@ public class SaveManager {
         if (model == null || !isSupportedSize(model.getSize())) {
             return false;
         }
-        return saveGame(model, getSaveFile(model.getSize()));
+        boolean saved = saveGame(model, getSaveFile(model.getSize()));
+        if (saved) {
+            deleteFile(new File(getDataDirectory(), SAVED_GAMES_RESET_FILE));
+        }
+        return saved;
     }
 
     /**
@@ -140,7 +147,9 @@ public class SaveManager {
      * @return parsed save data, or {@code null} when no valid save exists
      */
     public static SaveData loadGame() {
-        migrateLegacySaves();
+        if (!isSavedGamesReset()) {
+            migrateLegacySaves();
+        }
         SaveData newest = null;
         for (int size = MIN_SUPPORTED_SIZE; size <= MAX_SUPPORTED_SIZE; size++) {
             SaveData candidate = loadSlot(size);
@@ -151,7 +160,7 @@ public class SaveManager {
         if (newest != null) {
             return newest;
         }
-        return loadLegacyFallback();
+        return isSavedGamesReset() ? null : loadLegacyFallback();
     }
 
     /**
@@ -164,7 +173,9 @@ public class SaveManager {
         if (!isSupportedSize(size)) {
             return null;
         }
-        migrateLegacySaves();
+        if (!isSavedGamesReset()) {
+            migrateLegacySaves();
+        }
         return loadSlot(size);
     }
 
@@ -174,7 +185,9 @@ public class SaveManager {
      * @return independent save summaries for the Home Continue chooser
      */
     public static SaveMetadata[] getAllSaveMetadata() {
-        migrateLegacySaves();
+        if (!isSavedGamesReset()) {
+            migrateLegacySaves();
+        }
         List<SaveMetadata> metadata = new ArrayList<>();
         for (int size = MIN_SUPPORTED_SIZE; size <= MAX_SUPPORTED_SIZE; size++) {
             SaveData data = loadSlot(size);
@@ -638,14 +651,10 @@ public class SaveManager {
      * @return {@code true} when the continuous files were removed
      */
     public static synchronized boolean clearContinuousGame() {
-        try {
-            Files.deleteIfExists(getContinuousMetaFile().toPath());
-            Files.deleteIfExists(getContinuousCurrentFile().toPath());
-            Files.deleteIfExists(getContinuousAssistedFile().toPath());
-            return true;
-        } catch (IOException exception) {
-            return false;
-        }
+        boolean success = deleteAtomicFile(getContinuousMetaFile());
+        success &= deleteAtomicFile(getContinuousCurrentFile());
+        success &= deleteFile(getContinuousAssistedFile());
+        return success;
     }
 
     /**
@@ -672,6 +681,176 @@ public class SaveManager {
         PersonalPreferences preferences = loadPersonalPreferences();
         preferences.weeklyGoalTarget = target;
         return savePersonalPreferences(preferences);
+    }
+
+    /**
+     * Reads the persisted Desktop reduced-motion presentation preference.
+     *
+     * @return whether reduced motion is enabled
+     */
+    public static synchronized boolean isReducedMotionEnabled() {
+        return loadPersonalPreferences().reducedMotion;
+    }
+
+    /**
+     * Persists the Desktop reduced-motion presentation preference.
+     *
+     * @param enabled whether animations should snap
+     * @return {@code true} when the preference was written
+     */
+    public static synchronized boolean setReducedMotionEnabled(boolean enabled) {
+        PersonalPreferences preferences = loadPersonalPreferences();
+        preferences.reducedMotion = enabled;
+        return savePersonalPreferences(preferences);
+    }
+
+    /**
+     * Reads the persisted optional Desktop sound-feedback preference.
+     *
+     * @return whether sound feedback is enabled
+     */
+    public static synchronized boolean isSoundEnabled() {
+        return loadPersonalPreferences().soundEnabled;
+    }
+
+    /**
+     * Persists the optional Desktop sound-feedback preference.
+     *
+     * @param enabled whether local move/win beeps are enabled
+     * @return {@code true} when the preference was written
+     */
+    public static synchronized boolean setSoundEnabled(boolean enabled) {
+        PersonalPreferences preferences = loadPersonalPreferences();
+        preferences.soundEnabled = enabled;
+        return savePersonalPreferences(preferences);
+    }
+
+    /**
+     * Reads the stable Desktop theme id, currently {@code midnight} or {@code ocean}.
+     *
+     * @return persisted theme id
+     */
+    public static synchronized String getDesktopTheme() {
+        PersonalPreferences preferences = loadPersonalPreferences();
+        String normalized = normalizeDesktopTheme(preferences.theme);
+        return normalized == null ? "midnight" : normalized;
+    }
+
+    /**
+     * Persists a supported Desktop theme id.
+     *
+     * @param theme stable theme id
+     * @return {@code true} when the preference was written
+     */
+    public static synchronized boolean setDesktopTheme(String theme) {
+        String normalized = normalizeDesktopTheme(theme);
+        if (normalized == null) {
+            return false;
+        }
+        PersonalPreferences preferences = loadPersonalPreferences();
+        preferences.theme = normalized;
+        return savePersonalPreferences(preferences);
+    }
+
+    /**
+     * Reads the normalized Desktop language tag, defaulting to English.
+     *
+     * @return persisted language tag
+     */
+    public static synchronized String getDesktopLanguageTag() {
+        String normalized = normalizeDesktopLanguage(loadPersonalPreferences().languageTag);
+        return normalized == null ? "en" : normalized;
+    }
+
+    /**
+     * Persists one of the supported Desktop language tags.
+     *
+     * @param languageTag {@code en}, {@code zh-TW}, or {@code ja-JP}
+     * @return {@code true} when the preference was written
+     */
+    public static synchronized boolean setDesktopLanguageTag(String languageTag) {
+        String normalized = normalizeDesktopLanguage(languageTag);
+        if (normalized == null) {
+            return false;
+        }
+        PersonalPreferences preferences = loadPersonalPreferences();
+        preferences.languageTag = normalized;
+        return savePersonalPreferences(preferences);
+    }
+
+    /**
+     * Reads whether first-run Desktop onboarding has been completed.
+     *
+     * @return whether onboarding was seen
+     */
+    public static synchronized boolean isOnboardingSeen() {
+        return loadPersonalPreferences().onboardingSeen;
+    }
+
+    /**
+     * Marks the first-run Desktop onboarding as completed.
+     *
+     * @return whether the preference was written
+     */
+    public static synchronized boolean markOnboardingSeen() {
+        PersonalPreferences preferences = loadPersonalPreferences();
+        preferences.onboardingSeen = true;
+        return savePersonalPreferences(preferences);
+    }
+
+    /**
+     * Clears normal, dated Daily, Favorite Practice, and Continuous save data.
+     * Favorite labels, records, statistics, Daily completion history, and
+     * preferences remain intact.
+     *
+     * @return {@code true} when all targeted files were removed
+     */
+    public static synchronized boolean clearSavedGames() {
+        boolean success = true;
+        File dataDirectory = getDataDirectory();
+        for (int size = MIN_SUPPORTED_SIZE; size <= MAX_SUPPORTED_SIZE; size++) {
+            success &= deleteAtomicFile(new File(dataDirectory, saveFileName(size)));
+        }
+        success &= deleteAtomicFile(new File(dataDirectory, SAVE_FILE));
+        success &= deleteAtomicFile(new File(dataDirectory, LEGACY_SAVE_FILE));
+        File[] files = dataDirectory.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                String name = file.getName();
+                if ((name.startsWith(DAILY_SAVE_PREFIX)
+                        && !name.startsWith(DAILY_PROGRESS_FILE))
+                        || name.startsWith(FAVORITE_RUN_PREFIX)) {
+                    success &= deleteFile(file);
+                }
+            }
+        }
+        success &= clearContinuousGame();
+        try {
+            writeTextAtomic(new File(dataDirectory, SAVED_GAMES_RESET_FILE), "reset\n");
+            return success;
+        } catch (IOException exception) {
+            return false;
+        }
+    }
+
+    /**
+     * Clears best records, completion history/statistics, and Daily streak
+     * state while preserving active Continuous Challenge files and settings.
+     * Legacy size-only record source files remain untouched but are masked by a
+     * reset marker so an explicit reset cannot resurrect their values.
+     *
+     * @return {@code true} when reset state was persisted
+     */
+    public static synchronized boolean clearRecords() {
+        boolean success = deleteFile(new File(getDataDirectory(), SCOPED_RECORDS_FILE));
+        success &= deleteFile(new File(getDataDirectory(), STATISTICS_FILE));
+        success &= deleteFile(new File(getDataDirectory(), DAILY_PROGRESS_FILE));
+        try {
+            writeTextAtomic(new File(getDataDirectory(), RECORDS_RESET_FILE), "reset\n");
+            return success;
+        } catch (IOException exception) {
+            return false;
+        }
     }
 
     /**
@@ -967,7 +1146,12 @@ public class SaveManager {
         return "{\n"
                 + "  \"weeklyGoalTarget\": " + preferences.weeklyGoalTarget + ",\n"
                 + "  \"trendSize\": " + preferences.trendSize + ",\n"
-                + "  \"trendDifficulty\": " + jsonString(preferences.trendDifficulty.getId()) + "\n"
+                + "  \"trendDifficulty\": " + jsonString(preferences.trendDifficulty.getId()) + ",\n"
+                + "  \"reducedMotion\": " + preferences.reducedMotion + ",\n"
+                + "  \"soundEnabled\": " + preferences.soundEnabled + ",\n"
+                + "  \"theme\": " + jsonString(preferences.theme) + ",\n"
+                + "  \"languageTag\": " + jsonString(preferences.languageTag) + ",\n"
+                + "  \"onboardingSeen\": " + preferences.onboardingSeen + "\n"
                 + "}\n";
     }
 
@@ -978,6 +1162,11 @@ public class SaveManager {
         preferences.trendSize = (int) optionalLongField(json, "trendSize", 4);
         preferences.trendDifficulty = PuzzleDifficulty.fromId(optionalStringField(json,
                 "trendDifficulty", PuzzleDifficulty.CLASSIC.getId()));
+        preferences.reducedMotion = optionalBooleanField(json, "reducedMotion", false);
+        preferences.soundEnabled = optionalBooleanField(json, "soundEnabled", false);
+        preferences.theme = optionalStringField(json, "theme", "midnight");
+        preferences.languageTag = optionalStringField(json, "languageTag", "en");
+        preferences.onboardingSeen = optionalBooleanField(json, "onboardingSeen", false);
         return preferences;
     }
 
@@ -1180,6 +1369,9 @@ public class SaveManager {
     }
 
     private static BestRecord findLegacyRecord(int size) {
+        if (isRecordsReset()) {
+            return null;
+        }
         BestRecord record = getBestRecord(new File(getDataDirectory(), RECORDS_FILE), size);
         if (record != null) {
             return record;
@@ -1189,6 +1381,14 @@ public class SaveManager {
             return getBestRecord(rootFile, size);
         }
         return null;
+    }
+
+    private static boolean isRecordsReset() {
+        return new File(getDataDirectory(), RECORDS_RESET_FILE).isFile();
+    }
+
+    private static boolean isSavedGamesReset() {
+        return new File(getDataDirectory(), SAVED_GAMES_RESET_FILE).isFile();
     }
 
     private static Map<String, BestRecord> loadScopedRecordsForWrite(File target) {
@@ -1427,6 +1627,9 @@ public class SaveManager {
     }
 
     private static void migrateLegacySaves() {
+        if (isSavedGamesReset()) {
+            return;
+        }
         File dataDirectory = getDataDirectory();
         for (File legacyFile : legacyCandidates(dataDirectory)) {
             SaveData legacy = legacyFile.getName().endsWith(".dat")
@@ -2073,6 +2276,52 @@ public class SaveManager {
         return size >= MIN_SUPPORTED_SIZE && size <= MAX_SUPPORTED_SIZE;
     }
 
+    private static String normalizeDesktopTheme(String theme) {
+        if (theme == null) {
+            return null;
+        }
+        String normalized = theme.trim().toLowerCase(Locale.ROOT);
+        return "midnight".equals(normalized) || "ocean".equals(normalized)
+                ? normalized : null;
+    }
+
+    private static String normalizeDesktopLanguage(String languageTag) {
+        if (languageTag == null) {
+            return null;
+        }
+        String normalized = languageTag.trim();
+        if ("en".equalsIgnoreCase(normalized)) {
+            return "en";
+        }
+        if ("zh-TW".equalsIgnoreCase(normalized)) {
+            return "zh-TW";
+        }
+        if ("ja-JP".equalsIgnoreCase(normalized)) {
+            return "ja-JP";
+        }
+        return null;
+    }
+
+    private static boolean deleteFile(File file) {
+        if (file == null || !file.exists()) {
+            return true;
+        }
+        try {
+            return Files.deleteIfExists(file.toPath());
+        } catch (IOException exception) {
+            return false;
+        }
+    }
+
+    private static boolean deleteAtomicFile(File file) {
+        boolean success = deleteFile(file);
+        if (file != null) {
+            success &= deleteFile(new File(file.getPath() + ATOMIC_TEMP_SUFFIX));
+            success &= deleteFile(new File(file.getPath() + ATOMIC_BACKUP_SUFFIX));
+        }
+        return success;
+    }
+
     /**
      * Immutable summary of one independent normal save slot.
      */
@@ -2235,6 +2484,11 @@ public class SaveManager {
         private int weeklyGoalTarget = DEFAULT_WEEKLY_GOAL_TARGET;
         private int trendSize = 4;
         private PuzzleDifficulty trendDifficulty = PuzzleDifficulty.CLASSIC;
+        private boolean reducedMotion;
+        private boolean soundEnabled;
+        private String theme = "midnight";
+        private String languageTag = "en";
+        private boolean onboardingSeen;
     }
 
     /**

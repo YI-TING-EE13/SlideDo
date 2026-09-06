@@ -12,7 +12,7 @@ contract, and solver interfaces. Each platform owns its persistence container:
 desktop uses JSON files, while Android uses app preferences plus versioned JSON
 backup and restore.
 
-The design goal is simple: make sliding numbered tiles feel fast, clear, and satisfying. The desktop version now opens on Home and supports mouse, keyboard, undo/redo, move history, restart, save/load, local records, a Records dialog, Preferences, Android-style Results, solver playback, How to Play, Practice Tutorial copy, and movable-tile assist hints. The Android edition adds a deterministic strategic next-move hint to its touch-first onboarding, tutorial, modes, settings, results, records, and compact game controls. Both editions explain that player records prefer fewer moves, break ties by faster time, and exclude assisted completions.
+The design goal is simple: make sliding numbered tiles feel fast, clear, and satisfying. The desktop version now opens on Home and supports mouse, keyboard, undo/redo, move history, restart, save/load, local records, Daily/Favorite/Trend/Continuous personal-play modes, Android-style Results, solver playback, a persisted Beginner Guide and interactive Practice Tutorial, Quick Reminder, localized critical controls, themes, sound, and movable-tile assist hints. The Android edition adds a deterministic strategic next-move hint to its touch-first onboarding, tutorial, modes, settings, results, records, and compact game controls. Both editions explain that player records prefer fewer moves, break ties by faster time, and exclude assisted completions.
 
 ---
 
@@ -22,14 +22,17 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
   difficulty, action history, personal trend calculations, and solvers remain
   independent from Swing and Android.
 - **Fluid Desktop Controls**:
-  - Desktop opens on Home with 3x3, 4x4, 5x5, Continue/Load, How to Play, Practice Tutorial, Records, and Preferences.
+  - Desktop opens on Home with 3x3, 4x4, 5x5, Continue/Load, Daily, Favorites, Trends, Continuous Challenge, Beginner Guide, How to Play, Practice Tutorial, Records, and Preferences.
   - Click a tile in the same row or column as the empty space.
   - Non-adjacent clicks slide the whole row or column in one synchronized animation.
   - Arrow keys move the empty space one step.
   - Movable tiles show a hand cursor on hover.
   - Assist > Show Movable Tiles highlights legal same-row or same-column choices without moving the board.
-  - Help includes How to Play and Practice Tutorial dialogs aligned with the Android learning flow.
-  - Preferences includes a reduced-motion option that snaps tile movement without changing puzzle rules or records.
+  - Help includes localized How to Play, a four-page persisted Beginner Guide,
+    an isolated interactive Practice Tutorial, and a timer-pausing Quick Reminder.
+  - Preferences persist reduced motion, optional sound, Midnight/Ocean theme,
+    English/Traditional Chinese/Japanese critical controls, onboarding state,
+    and confirmed saved-game versus records/statistics reset domains.
   - Records are scoped by board size and difficulty; the Records dialog also shows player and assisted completion totals.
   - Results show first-record, new-best, unchanged-best, and solver-assisted no-record wording. Completion history is bounded and duplicate win callbacks are ignored.
   - Daily Calendar provides one offline 4x4 Classic puzzle per local ISO date,
@@ -379,6 +382,10 @@ SlideDo/
       ui/
         MainFrame.java       # Swing application frame
         BoardPanel.java      # Swing board rendering and input
+        DesktopLearningContent.java # Onboarding, guide, and reminder copy
+        DesktopLocale.java   # Desktop-native critical-control translations
+        DesktopTheme.java    # Persisted Swing palettes
+        DesktopTutorialProgress.java # Isolated practice milestones
   android/
     app/                     # Native Android app
     gradle/wrapper/          # Gradle wrapper
@@ -675,6 +682,12 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
   a separately approved major migration that begins with Android Studio's
   Upgrade Assistant and its own compatibility and regression stage.
 - Desktop/mobile player-facing parity MVP is complete for Home/start, Records, Preferences, Results, How to Play, Practice Tutorial, and Assist hints.
+- The owner-approved Desktop/Android parity qualification has verified Stages
+  1-6: independent saves/records/Daily/Favorites/Trends/Continuous namespaces,
+  persisted Desktop learning preferences, Beginner Guide, interactive Practice
+  Tutorial, Quick Reminder, localized critical controls, themes, sound, and
+  explicit reset domains. Strategic hints, full backup/archive, accessibility,
+  adaptive layout, and release qualification remain separately scoped.
 - Save files now include release-readiness metadata and desktop saves now live in the user-data directory.
 - Signed Android release APK/AAB and desktop ZIP/app-image packaging scripts are available.
 - Desktop public beta readiness notes and local package checks are tracked in
