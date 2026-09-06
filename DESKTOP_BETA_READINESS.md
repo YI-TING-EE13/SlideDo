@@ -84,6 +84,29 @@ Run this checklist from the final extracted ZIP, not from the development tree.
 - How to Play and Practice Tutorial text match Android's teaching flow.
 - Solver-assisted completion does not replace player records.
 
+Stage 7 accessibility/adaptive acceptance adds the following checks:
+
+- From Home, use Tab and Shift+Tab to reach the size, Continue, Daily,
+  Favorites, Trends, Continuous, learning, Records, and Preferences actions;
+  the focused action has a visible focus indicator.
+- From a running puzzle, Tab through the row-major board-cell controls, press
+  Space or Enter on an aligned tile, and use arrow keys while a cell has focus.
+  The board, move count, timer, undo/redo, and records follow the same rules as
+  mouse play.
+- Open Beginner Guide, Practice Tutorial, How to Play, Quick Reminder, and
+  Preferences without a mouse. Dialog buttons, text areas, combo boxes,
+  checkboxes, and reset confirmations have a reachable focus order.
+- Resize the packaged window at 100%, 125%, and 150% Windows display scaling;
+  use a larger system font where available. Home scrolls vertically instead of
+  clipping actions, learning copy remains readable, and every board cell stays
+  actionable.
+- Toggle Midnight/Ocean theme and reduced motion. Tile text, status text,
+  assist highlights, and focus borders remain readable; puzzle rules, records,
+  and persistence do not change.
+
+Screen-reader certification is not claimed. This checklist verifies Swing
+roles/names, keyboard actions, focus indication, and layout behavior only.
+
 ## Manual Desktop Accessibility Review
 
 - Keyboard shortcuts work for New Game, Undo, Redo, Restart, Save, Load, and
@@ -109,3 +132,29 @@ Before opening desktop public beta:
 - Confirm the release artifact manifest includes the desktop ZIP SHA-256 hash.
 - Confirm no local save files are included in the ZIP.
 - Publish the beta download page with the tester instructions and known limits.
+
+## Stage 7 Evidence Record
+
+Record the exact package path, Windows display scaling, font setting, and date
+after running the checklist above. The record must identify each check as PASS,
+FAIL, or NOT RUN; do not treat source inspection or a successful CI build as a
+replacement for this packaged desktop review.
+
+Current qualification attempt (2026-09-07):
+
+- Package path: `dist/desktop/SlideDo-0.2.0-beta.1.zip` and the extracted
+  `dist/desktop/SlideDo-0.2.0-beta.1` directory.
+- Package/readiness checks: PASS (`package-desktop.bat` and
+  `check-desktop-beta-readiness.bat`).
+- Automated Swing contract checks: PASS (focused JUnit, desktop compile, and
+  Javadoc gates).
+- Full repository CI contract: PASS (`ci.bat`, including Android build/lint,
+  release/package checks, and desktop readiness file checks).
+- Manual Windows keyboard/focus/DPI checklist: NOT RUN. The qualification host
+  reports `java.awt.HeadlessException` when the packaged `MainFrame` starts and
+  exposes no controllable native display surface, so 100/125/150% scaling and
+  keyboard traversal cannot be observed here.
+- Screen-reader certification: NOT RUN and not claimed by Stage 7.
+
+The manual checklist remains a required owner-run gate before closing the
+Desktop beta accessibility blocker.

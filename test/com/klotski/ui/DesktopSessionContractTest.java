@@ -87,6 +87,34 @@ class DesktopSessionContractTest {
         assertFalse(board.isBusy());
     }
 
+    @Test
+    void boardExposesFocusableAccessibleCellsForKeyboardPlay() {
+        BoardPanel board = new BoardPanel(new GameModel(3));
+        board.setSize(DesktopAdaptivePolicy.MINIMUM_WINDOW_WIDTH,
+                DesktopAdaptivePolicy.MINIMUM_WINDOW_HEIGHT);
+        board.doLayout();
+
+        assertEquals(9, board.getAccessibleCellCount());
+        assertEquals("Puzzle board", board.getAccessibleContext().getAccessibleName());
+        assertTrue(board.getAccessibleCellForTesting(0, 0).isFocusable());
+        assertEquals("Tile 1, row 1, column 1",
+                board.getAccessibleCellForTesting(0, 0).getAccessibleContext().getAccessibleName());
+        assertTrue(board.getAccessibleCellForTesting(0, 0).getWidth()
+                >= DesktopAdaptivePolicy.MINIMUM_FOCUS_TARGET);
+        assertEquals("Empty cell, row 3, column 3",
+                board.getAccessibleCellForTesting(2, 2).getAccessibleContext().getAccessibleName());
+        assertTrue(board.getAccessibleCellForTesting(2, 2).getAccessibleContext()
+                .getAccessibleDescription().contains("Empty cell"));
+    }
+
+    @Test
+    void everySupportedBoardSizeGetsACompleteAccessibleCellSurface() {
+        for (int size : new int[] {3, 4, 5}) {
+            BoardPanel board = new BoardPanel(new GameModel(size));
+            assertEquals(size * size, board.getAccessibleCellCount());
+        }
+    }
+
     private static void assertGridEquals(GameModel expected, GameModel actual) {
         assertGridEquals(expected.getGridCopy(), actual);
     }

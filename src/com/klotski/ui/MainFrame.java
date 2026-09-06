@@ -105,6 +105,9 @@ public class MainFrame extends JFrame implements GameObserver {
     /** Home summary for the independent normal save slots. */
     private JLabel continueSummaryLabel;
 
+    /** First Home action used to restore a predictable keyboard focus target. */
+    private JButton firstHomeButton;
+
     /**
      * Creates and shows the desktop application window.
      */
@@ -117,6 +120,7 @@ public class MainFrame extends JFrame implements GameObserver {
         setTitle("Number Klotski - Java Edition");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(600, 700);
+        setMinimumSize(DesktopAdaptivePolicy.minimumWindowSize());
         setLocationRelativeTo(null);
         addWindowFocusListener(new WindowAdapter() {
             @Override
@@ -154,6 +158,11 @@ public class MainFrame extends JFrame implements GameObserver {
         statusLabel = new JLabel("Moves: 0 | Time: 0s");
         statusLabel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         statusLabel.setFont(new Font("Monospaced", Font.BOLD, 14));
+        statusLabel.setOpaque(true);
+        statusLabel.getAccessibleContext().setAccessibleName("Game status");
+        statusLabel.getAccessibleContext().setAccessibleDescription(
+                "Current moves, elapsed time, difficulty, and record status.");
+        applyStatusTheme();
 
         setLayout(new BorderLayout());
         add(contentPanel, BorderLayout.CENTER);
@@ -176,9 +185,12 @@ public class MainFrame extends JFrame implements GameObserver {
 
     private void setupMenu() {
         JMenuBar menuBar = new JMenuBar();
+        menuBar.getAccessibleContext().setAccessibleName("SlideDo menu bar");
 
         // Game Menu
         JMenu gameMenu = new JMenu(text("game"));
+        gameMenu.setMnemonic(KeyEvent.VK_G);
+        setAccessibleDescription(gameMenu, text("game"), "Open game creation, save, reset, and navigation commands.");
 
         JMenuItem newGame3 = new JMenuItem(text("new3"));
         newGame3.addActionListener(e -> startNewGame(3));
@@ -281,6 +293,8 @@ public class MainFrame extends JFrame implements GameObserver {
 
         // Assist Menu
         JMenu assistMenu = new JMenu(text("assist"));
+        assistMenu.setMnemonic(KeyEvent.VK_A);
+        setAccessibleDescription(assistMenu, text("assist"), "Open presentation-only assistance commands.");
 
         JMenuItem showMovableItem = new JMenuItem(text("showMovable"));
         showMovableItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, KeyEvent.CTRL_DOWN_MASK));
@@ -291,6 +305,8 @@ public class MainFrame extends JFrame implements GameObserver {
 
         // Solver Menu
         JMenu solverMenu = new JMenu(text("solver"));
+        solverMenu.setMnemonic(KeyEvent.VK_S);
+        setAccessibleDescription(solverMenu, text("solver"), "Open solver commands.");
 
         JMenuItem bfsItem = new JMenuItem("Solve with BFS (Best for 3x3)");
         bfsItem.addActionListener(e -> runSolver(new BfsSolver()));
@@ -308,6 +324,8 @@ public class MainFrame extends JFrame implements GameObserver {
 
         // Help Menu
         JMenu helpMenu = new JMenu(text("help"));
+        helpMenu.setMnemonic(KeyEvent.VK_H);
+        setAccessibleDescription(helpMenu, text("help"), "Open learning and help commands.");
 
         JMenuItem howToPlayItem = new JMenuItem(text("howToPlay"));
         howToPlayItem.addActionListener(e -> showHelpDialog(text("howToPlay"), DesktopHelpContent.howToPlay(desktopLocale)));
@@ -326,10 +344,13 @@ public class MainFrame extends JFrame implements GameObserver {
         setJMenuBar(menuBar);
     }
 
-    private JPanel createHomePanel() {
+    private JComponent createHomePanel() {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBorder(BorderFactory.createEmptyBorder(36, 48, 36, 48));
         panel.setBackground(desktopTheme.getHomeBackground());
+        panel.getAccessibleContext().setAccessibleName("SlideDo Home");
+        panel.getAccessibleContext().setAccessibleDescription(
+                "Choose a puzzle size, continue a saved game, open learning, or open settings.");
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
@@ -351,9 +372,10 @@ public class MainFrame extends JFrame implements GameObserver {
         gbc.insets = new Insets(0, 0, 24, 0);
         panel.add(subtitle, gbc);
 
-        JPanel sizePanel = new JPanel(new GridLayout(1, 3, 10, 0));
+        JPanel sizePanel = new JPanel(new GridLayout(0, 1, 10, 8));
         sizePanel.setOpaque(false);
-        sizePanel.add(createHomeButton("3x3", () -> startNewGame(3)));
+        firstHomeButton = createHomeButton("3x3", () -> startNewGame(3));
+        sizePanel.add(firstHomeButton);
         sizePanel.add(createHomeButton("4x4", () -> startNewGame(4)));
         sizePanel.add(createHomeButton("5x5", () -> startNewGame(5)));
         gbc.gridy++;
@@ -376,7 +398,15 @@ public class MainFrame extends JFrame implements GameObserver {
         panel.add(createHomeButton(text("records"), this::showRecordsDialog), nextHomeRow(gbc));
         panel.add(createHomeButton(text("preferences"), this::showPreferencesDialog), nextHomeRow(gbc));
 
-        return panel;
+        JScrollPane scroll = new JScrollPane(panel,
+                ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.getViewport().setBackground(desktopTheme.getHomeBackground());
+        scroll.getAccessibleContext().setAccessibleName("SlideDo Home");
+        scroll.getAccessibleContext().setAccessibleDescription(
+                "Scrollable Home actions for puzzle modes, learning, records, and preferences.");
+        return scroll;
     }
 
     private GridBagConstraints nextHomeRow(GridBagConstraints gbc) {
@@ -390,10 +420,27 @@ public class MainFrame extends JFrame implements GameObserver {
     private JButton createHomeButton(String text, Runnable action) {
         JButton button = new JButton(text);
         button.setFont(new Font("SansSerif", Font.BOLD, 15));
-        button.setFocusPainted(false);
-        button.setPreferredSize(new Dimension(120, 42));
+        button.setFocusPainted(true);
+        button.setMargin(new Insets(10, 16, 10, 16));
+        button.setMinimumSize(new Dimension(DesktopAdaptivePolicy.MINIMUM_FOCUS_TARGET * 3,
+                DesktopAdaptivePolicy.MINIMUM_FOCUS_TARGET));
+        button.getAccessibleContext().setAccessibleName(text);
+        button.getAccessibleContext().setAccessibleDescription("Activate " + text + ".");
         button.addActionListener(e -> action.run());
         return button;
+    }
+
+    private void setAccessibleDescription(JComponent component, String name, String description) {
+        component.getAccessibleContext().setAccessibleName(name);
+        component.getAccessibleContext().setAccessibleDescription(description);
+    }
+
+    private void applyStatusTheme() {
+        if (statusLabel == null) {
+            return;
+        }
+        statusLabel.setBackground(desktopTheme.getHomeBackground());
+        statusLabel.setForeground(desktopTheme.getHomeTitle());
     }
 
     private void startNewGame(int size) {
@@ -926,6 +973,8 @@ public class MainFrame extends JFrame implements GameObserver {
         body.setFont(new Font("SansSerif", Font.PLAIN, 15));
         body.setRows(5);
         body.setColumns(34);
+        body.getAccessibleContext().setAccessibleName("Beginner guide text");
+        body.getAccessibleContext().setAccessibleDescription("Current learning page.");
         JLabel progress = new JLabel("", SwingConstants.CENTER);
         JPanel footer = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
         JButton back = new JButton(text("back"));
@@ -939,12 +988,21 @@ public class MainFrame extends JFrame implements GameObserver {
         footer.add(practice);
         footer.add(start);
         content.add(title, BorderLayout.NORTH);
-        content.add(body, BorderLayout.CENTER);
+        JScrollPane bodyScroll = new JScrollPane(body);
+        bodyScroll.setBorder(BorderFactory.createEmptyBorder());
+        content.add(bodyScroll, BorderLayout.CENTER);
         JPanel bottom = new JPanel(new BorderLayout(0, 6));
         bottom.add(progress, BorderLayout.NORTH);
         bottom.add(footer, BorderLayout.SOUTH);
         content.add(bottom, BorderLayout.SOUTH);
         dialog.setContentPane(content);
+        dialog.getAccessibleContext().setAccessibleName(text("beginnerGuide"));
+        setAccessibleDescription(back, text("back"), "Show the previous learning page.");
+        setAccessibleDescription(next, text("next"), "Show the next learning page.");
+        setAccessibleDescription(skip, text("skip"), "Close the guide and mark onboarding as seen.");
+        setAccessibleDescription(practice, text("practiceTutorial"), "Open the isolated practice tutorial.");
+        setAccessibleDescription(start, text("start"), "Start a normal 3x3 puzzle.");
+        dialog.getRootPane().setDefaultButton(next);
 
         int[] index = {0};
         Runnable refresh = () -> {
@@ -989,8 +1047,13 @@ public class MainFrame extends JFrame implements GameObserver {
         });
         refresh.run();
         dialog.pack();
+        dialog.setMinimumSize(new Dimension(460, 360));
+        dialog.setResizable(true);
         dialog.setLocationRelativeTo(this);
-        runWithPausedTimer(() -> dialog.setVisible(true));
+        runWithPausedTimer(() -> {
+            dialog.setVisible(true);
+            SwingUtilities.invokeLater(next::requestFocusInWindow);
+        });
     }
 
     /** Opens an isolated interactive two-step practice board without recording a game. */
@@ -1002,6 +1065,7 @@ public class MainFrame extends JFrame implements GameObserver {
         tutorialBoard.setTheme(desktopTheme);
         tutorialBoard.setReducedMotion(reducedMotionEnabled);
         tutorialBoard.setPreferredSize(new Dimension(420, 420));
+        tutorialBoard.getAccessibleContext().setAccessibleName("Practice tutorial board");
         tutorialBoard.setWinDialogHandler((parent, moves, timeMs) -> { });
 
         JDialog dialog = new JDialog(this, text("practiceTutorial"), true);
@@ -1025,6 +1089,11 @@ public class MainFrame extends JFrame implements GameObserver {
         south.add(controls, BorderLayout.SOUTH);
         panel.add(south, BorderLayout.SOUTH);
         dialog.setContentPane(panel);
+        dialog.getAccessibleContext().setAccessibleName(text("practiceTutorial"));
+        setAccessibleDescription(reset, text("resetLesson"), "Restart the isolated tutorial board.");
+        setAccessibleDescription(start, text("startTutorialPuzzle"), "Leave the tutorial and start a normal 3x3 puzzle.");
+        setAccessibleDescription(close, text("close"), "Close the practice tutorial.");
+        dialog.getRootPane().setDefaultButton(close);
 
         Runnable refresh = () -> {
             instruction.setText(DesktopLearningContent.practiceTutorial(desktopLocale)
@@ -1065,8 +1134,13 @@ public class MainFrame extends JFrame implements GameObserver {
         close.addActionListener(event -> dialog.dispose());
         refresh.run();
         dialog.pack();
+        dialog.setMinimumSize(new Dimension(470, 560));
+        dialog.setResizable(true);
         dialog.setLocationRelativeTo(this);
-        runWithPausedTimer(() -> dialog.setVisible(true));
+        runWithPausedTimer(() -> {
+            dialog.setVisible(true);
+            SwingUtilities.invokeLater(reset::requestFocusInWindow);
+        });
     }
 
     private void showRecordsDialog() {
@@ -1470,16 +1544,28 @@ public class MainFrame extends JFrame implements GameObserver {
         languageBox.setSelectedItem(desktopLocale.getTag());
         JComboBox<String> themeBox = new JComboBox<>(new String[] {"midnight", "ocean"});
         themeBox.setSelectedItem(desktopTheme.getId());
+        setAccessibleDescription(languageBox, text("language"), "Choose the desktop language.");
+        setAccessibleDescription(themeBox, text("theme"), "Choose the desktop color theme.");
+        setAccessibleDescription(reducedMotionBox, text("reduceMotion"),
+                "Disable board transition animation without changing puzzle rules.");
+        setAccessibleDescription(soundBox, text("sound"),
+                "Enable or disable desktop move and completion feedback.");
 
         JPanel choices = new JPanel(new GridLayout(0, 2, 8, 8));
-        choices.add(new JLabel(text("language")));
+        JLabel languageLabel = new JLabel(text("language"));
+        languageLabel.setLabelFor(languageBox);
+        choices.add(languageLabel);
         choices.add(languageBox);
-        choices.add(new JLabel(text("theme")));
+        JLabel themeLabel = new JLabel(text("theme"));
+        themeLabel.setLabelFor(themeBox);
+        choices.add(themeLabel);
         choices.add(themeBox);
         choices.add(reducedMotionBox);
         choices.add(soundBox);
 
         JButton resetSaved = new JButton(text("resetSaved"));
+        setAccessibleDescription(resetSaved, text("resetSaved"),
+                "Delete saved-game domains after explicit confirmation.");
         resetSaved.addActionListener(event -> {
             int answer = showConfirmDialog(text("resetSavedConfirm"), text("resetSaved"),
                     JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
@@ -1492,6 +1578,8 @@ public class MainFrame extends JFrame implements GameObserver {
             }
         });
         JButton resetRecords = new JButton(text("resetRecords"));
+        setAccessibleDescription(resetRecords, text("resetRecords"),
+                "Delete records, completion statistics, and daily streak state after explicit confirmation.");
         resetRecords.addActionListener(event -> {
             int answer = showConfirmDialog(text("resetRecordsConfirm"), text("resetRecords"),
                     JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
@@ -1501,14 +1589,19 @@ public class MainFrame extends JFrame implements GameObserver {
                         text("resetRecords"), cleared ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
             }
         });
-        JPanel resets = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
+        JPanel resets = new JPanel(new GridLayout(0, 1, 8, 8));
         resets.add(resetSaved);
         resets.add(resetRecords);
 
         JPanel panel = new JPanel(new BorderLayout(0, 10));
-        panel.add(new JLabel(DesktopHomeContent.preferencesDescription()), BorderLayout.NORTH);
+        JLabel description = new JLabel(DesktopHomeContent.preferencesDescription());
+        description.getAccessibleContext().setAccessibleName("Preferences description");
+        panel.add(description, BorderLayout.NORTH);
         panel.add(choices, BorderLayout.CENTER);
         panel.add(resets, BorderLayout.SOUTH);
+        panel.getAccessibleContext().setAccessibleName(text("preferences"));
+        panel.getAccessibleContext().setAccessibleDescription(
+                "Choose language, theme, sound, reduced motion, or reset one persisted domain.");
 
         int result = showConfirmDialog(panel, text("preferences"),
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
@@ -1527,6 +1620,7 @@ public class MainFrame extends JFrame implements GameObserver {
             desktopTheme = DesktopTheme.fromId(selectedTheme);
             boardPanel.setReducedMotion(reducedMotionEnabled);
             boardPanel.setTheme(desktopTheme);
+            applyStatusTheme();
             if (changed) {
                 rebuildLocalizedWindow();
             } else {
@@ -1572,6 +1666,11 @@ public class MainFrame extends JFrame implements GameObserver {
         contentLayout.show(contentPanel, HOME_CARD);
         updateHomeSaveSummary();
         statusLabel.setText(text("homeSummary"));
+        SwingUtilities.invokeLater(() -> {
+            if (firstHomeButton != null) {
+                firstHomeButton.requestFocusInWindow();
+            }
+        });
     }
 
     private void showGame() {
@@ -1579,7 +1678,7 @@ public class MainFrame extends JFrame implements GameObserver {
         contentLayout.show(contentPanel, GAME_CARD);
         syncGameTimerState();
         updateStatus();
-        SwingUtilities.invokeLater(() -> boardPanel.requestFocusInWindow());
+        SwingUtilities.invokeLater(boardPanel::requestBoardFocus);
     }
 
     private void updateHomeSaveSummary() {
