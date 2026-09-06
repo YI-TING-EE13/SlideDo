@@ -672,6 +672,16 @@ Parity conclusion for current beta:
 - Future repeat-play systems such as achievements and session goals should be
   scoped deliberately; the current owner-only daily flow is Android-first.
 
+### Owner-approved Desktop/Android Parity Qualification (2026-09-07)
+
+The narrow MVP parity pass above is historical status, not a claim that the
+completed Android Personal Play program is fully available in Swing. The
+current evidence-based inventory, status matrix, Java documentation audit, and
+bounded implementation roadmap are maintained in
+[DESKTOP_ANDROID_PARITY.md](DESKTOP_ANDROID_PARITY.md). This qualification
+stage is audit/planning only; future behavior work requires an owner-approved
+roadmap stage and a fresh matrix re-check.
+
 ### Completed 2026-05-25 MVP Items
 
 ### 1. Add Android Instrumentation Tests
