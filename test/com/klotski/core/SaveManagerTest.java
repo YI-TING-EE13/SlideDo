@@ -541,4 +541,68 @@ class SaveManagerTest {
             restoreDataDirectoryProperty(oldValue);
         }
     }
+
+    @Test
+    void desktopPreferencesPersistAndResetsKeepTheirDocumentedDomains() throws Exception {
+        String oldValue = System.getProperty(SaveManager.DATA_DIR_PROPERTY);
+        System.setProperty(SaveManager.DATA_DIR_PROPERTY, tempDir.getAbsolutePath());
+        try {
+            assertTrue(SaveManager.setReducedMotionEnabled(true));
+            assertTrue(SaveManager.setSoundEnabled(true));
+            assertTrue(SaveManager.setDesktopTheme("ocean"));
+            assertTrue(SaveManager.setDesktopLanguageTag("zh-TW"));
+            assertTrue(SaveManager.markOnboardingSeen());
+            assertTrue(SaveManager.isReducedMotionEnabled());
+            assertTrue(SaveManager.isSoundEnabled());
+            assertEquals("ocean", SaveManager.getDesktopTheme());
+            assertEquals("zh-TW", SaveManager.getDesktopLanguageTag());
+            assertTrue(SaveManager.isOnboardingSeen());
+            assertFalse(SaveManager.setDesktopTheme("neon"));
+            assertFalse(SaveManager.setDesktopLanguageTag("fr"));
+
+            GameModel normal = new GameModel(3);
+            normal.scramble(PuzzleDifficulty.CLASSIC, 700L);
+            assertTrue(SaveManager.saveGame(normal));
+            Files.writeString(new File(tempDir, "klotski_save.json").toPath(),
+                    "{\"version\":1,\"size\":3,\"grid\":[[1,2,3],[4,5,6],[7,0,8]]}\n");
+            LocalDate date = LocalDate.now().minusDays(1);
+            GameModel daily = DailyChallenge.forDate(date).createGame();
+            assertTrue(SaveManager.saveDailyGame(date.toString(), daily, false));
+            SaveManager.FavoritePuzzle favorite = SaveManager.saveFavorite(normal, "Keep label", 701L);
+            assertNotNull(favorite);
+            assertTrue(SaveManager.saveFavoriteRun(favorite.id, favorite.createGame(), false));
+            ContinuousChallenge challenge = ContinuousChallenge.start(3);
+            assertTrue(SaveManager.saveContinuousGame(normal, challenge, false));
+            assertNotNull(SaveManager.recordBest(3, PuzzleDifficulty.CLASSIC, 9, 900L));
+            assertTrue(SaveManager.recordCompletion("reset-player", 3, PuzzleDifficulty.CLASSIC,
+                    9, 900L, false));
+            assertTrue(SaveManager.recordDailyCompletion(date.toString()));
+
+            assertTrue(SaveManager.clearSavedGames());
+            assertNull(SaveManager.loadGame(3));
+            assertFalse(new File(tempDir, "klotski_save.json").exists());
+            assertNull(SaveManager.loadDailyGame(date.toString()));
+            assertNull(SaveManager.loadFavoriteRun(favorite.id));
+            assertNull(SaveManager.loadContinuousGame());
+            assertNotNull(SaveManager.getFavoritePuzzle(favorite.id));
+            assertNotNull(SaveManager.getBestRecord(3, PuzzleDifficulty.CLASSIC));
+            assertEquals(1, SaveManager.getCompletionStats(3, PuzzleDifficulty.CLASSIC)
+                    .playerCompletions);
+            assertTrue(SaveManager.getDailyProgress(date.toString()).completed);
+
+            // Records reset does not end an active Continuous Challenge.
+            assertTrue(SaveManager.saveContinuousGame(normal, challenge, false));
+            assertTrue(SaveManager.clearRecords());
+            assertNull(SaveManager.getBestRecord(3, PuzzleDifficulty.CLASSIC));
+            assertEquals(0, SaveManager.getCompletionStats(3, PuzzleDifficulty.CLASSIC)
+                    .playerCompletions);
+            assertFalse(SaveManager.getDailyProgress(date.toString()).completed);
+            assertNotNull(SaveManager.loadContinuousGame());
+            Files.writeString(new File(tempDir, "klotski_records.json").toPath(),
+                    "{\n  \"3\": {\"moves\": 1, \"timeMs\": 1}\n}\n");
+            assertNull(SaveManager.getBestRecord(3, PuzzleDifficulty.CLASSIC));
+        } finally {
+            restoreDataDirectoryProperty(oldValue);
+        }
+    }
 }

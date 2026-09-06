@@ -123,6 +123,13 @@ Desktop currently supports:
 - Best records.
 - Size-and-difficulty scoped completion history, lifetime statistics, and
   Daily Challenge/calendar saves with current/best streak state.
+- Up to 50 exact Favorite Puzzles with isolated practice saves, personal Trends
+  and Weekly Goal scope, and isolated 3/5/10-puzzle Continuous Challenge.
+- First-run Beginner Guide, interactive Practice Tutorial, localized How to Play
+  and Quick Reminder learning surfaces.
+- Persisted Desktop preferences for reduced motion, optional sound, Midnight or
+  Ocean theme, English/Traditional Chinese/Japanese critical controls, and
+  explicitly scoped saved-game/records resets.
 - Solver playback with BFS, A*, and IDA*.
 
 Android currently supports:
@@ -651,13 +658,13 @@ Desktop/Android feature parity matrix:
 | Area | Android status | Desktop status | Platform difference / next step | Verification |
 | --- | --- | --- | --- | --- |
 | Shared puzzle rules | Uses shared `GameModel`; `move(Direction)` and `slideLineTo(row, col)` remain the only rule path. | Uses the same shared `GameModel`. | No known rule gap. Keep future puzzle behavior in shared core tests. | Root Gradle tests, connected Android whole-line/undo tests, desktop compile. |
-| Home / start | Native Home with Continue metadata, New Game, Beginner Guide, Practice Tutorial, How to Play, Settings, and Records. | Swing Home/start with New Game, Continue/Load, How to Play, Practice Tutorial, Records, and Preferences. | Android has a richer first-run beginner guide; desktop has equivalent help entry but no paged onboarding. This is acceptable for beta. | Android instrumentation Home tests; desktop home copy tests. |
+| Home / start | Native Home with Continue metadata, New Game, Beginner Guide, Practice Tutorial, How to Play, Settings, and Records. | Swing Home/start with New Game, Continue/Load, Beginner Guide, Practice Tutorial, How to Play, Records, Preferences, Daily, Favorites, Trends, and Continuous routes. | Cards/dialogs are native Swing; the completed Desktop-supported destinations are discoverable without changing save/record contracts. | Android instrumentation Home tests; desktop compile and focused content/store tests. |
 | Mode selection | Mode Select starts 3x3, 4x4, and 5x5 games with difficulty labels, expected session length, first-puzzle guidance, and best record summaries. | Home/Game menu starts 3x3, 4x4, and 5x5 games and Records shows best summaries. | Android has richer pre-game guidance; available choices and record summaries match. | Android mode-select instrumentation; desktop compile/manual smoke. |
-| Learning surfaces | First-run onboarding, visual How to Play, Quick Reminder, and interactive Practice Tutorial. | How to Play and Practice Tutorial dialogs use Android-aligned language. | Android remains more visual and interactive; desktop parity covers the same concepts. | Android onboarding/tutorial/how-to instrumentation; desktop help-content tests. |
+| Learning surfaces | First-run onboarding, visual How to Play, Quick Reminder, and interactive Practice Tutorial. | Four-page persisted Beginner Guide, isolated interactive Practice Tutorial, localized How to Play, and timer-pausing Quick Reminder. | Android remains more visual; Desktop uses GameModel-backed Swing content and deliberately keeps tutorial data out of personal records. | Android onboarding/tutorial/how-to instrumentation; desktop learning/locale/tutorial tests. |
 | Touch/mouse movement | Tap/swipe aligned tiles; whole-line slide counts as one move and one action-history entry. | Mouse click/release movement plus keyboard controls; whole-line slide uses the shared model. | Input method differs by platform; Undo/Redo and action outcomes match. | Shared core history tests, Android whole-line/Undo/Redo instrumentation, desktop smoke. |
 | Assist / hints | Assist can suggest one strategic adjacent move, highlight all movable tiles, or offer solver playback. | Assist highlights movable tiles and supports solver playback. | Strategic guidance is Android-first; strategic- and solver-assisted wins do not update Android player records. | Android strategic-hint/persistence/results instrumentation; desktop result-copy tests. |
 | Save/load metadata | `AndroidGameStore` persists independent 3x3, 4x4, and 5x5 slots with size, grid, initial grid, moves, elapsed, updated-at, active, solved, difficulty, completed actions, and Redo actions; it migrates the legacy single save without replacing a newer matching slot. | Desktop `SaveManager` persists independent `klotski_save_3.json`, `klotski_save_4.json`, and `klotski_save_5.json` slots with the same shared gameplay and action-history metadata; atomic replacements retain `.tmp`/`.bak` recovery candidates. | Shared gameplay metadata and normal size-slot behavior are aligned; Android adds per-mode slots and mobile-only settings/onboarding. Legacy JSON and `.dat` saves remain untouched while known fields migrate into a matching Desktop slot; missing histories default safely. | `SaveManagerTest`, `GameModelTest`, and desktop compile/Javadocs. |
-| Settings / preferences | Persistent English, Traditional Chinese, and Japanese language selection, haptic feedback, reduced motion, reset all saved games, and reset records. | Reduced motion preference plus desktop records/save flows. | App-language and haptics are Android-only; desktop currently remains English. | Android locale/store/settings instrumentation; desktop preferences copy tests/manual smoke. |
+| Settings / preferences | Persistent English, Traditional Chinese, and Japanese language selection, haptic feedback, reduced motion, reset all saved games, and reset records. | Persistent English/Traditional Chinese/Japanese critical controls, Midnight/Ocean theme, sound, reduced motion, onboarding flag, and confirmed scoped resets. | Haptics and full backup remain Android/platform-specific; Desktop rebuilds its Swing shell on locale/theme changes. | Android locale/store/settings instrumentation; desktop SaveManager preference/reset and locale/theme tests. |
 | Records | Per-size local best records, fewer moves then lower time, solver-assisted protection, and player-facing policy explanation. | Per-size local best records with the same comparison, solver-assisted protection, and policy explanation. | Aligned. | Android records/results instrumentation; desktop result and records tests. |
 | Results | Full Results screen with exact-board Replay Puzzle, New Size, Home, record status, and assisted wording. | Android-style Results dialog with Play Again, New Size, Home, record status, and assisted wording. | Android now replays the same starting board for the Personal Play roadmap; desktop retains its new-puzzle action. | Android replay/results instrumentation; desktop results copy tests. |
 | Accessibility | Screen and section headings, explicit game traversal order, 48dp action targets, localized board summaries, and per-cell virtual accessibility nodes with playable movable-tile actions exist. Both themes select button content at 4.5:1 or better. | Basic Swing labels/dialog text exist, but no full assistive-tech audit. | Android automated semantics are substantially reinforced; both platforms still need broader manual assistive-technology review before public release. | Android accessibility/adaptive instrumentation, 1.5x font and wide-window acceptance, plus future manual TalkBack/desktop review. |
@@ -680,7 +687,7 @@ The narrow MVP parity pass above is historical status, not a claim that the
 completed Android Personal Play program is fully available in Swing. The
 current evidence-based inventory, status matrix, Java documentation audit, and
 bounded implementation roadmap are maintained in
-[DESKTOP_ANDROID_PARITY.md](DESKTOP_ANDROID_PARITY.md). Stages 1-5 below are
+[DESKTOP_ANDROID_PARITY.md](DESKTOP_ANDROID_PARITY.md). Stages 1-6 below are
 owner-approved and implemented; future behavior work requires a new approved
 roadmap stage and a fresh matrix re-check.
 
@@ -779,6 +786,28 @@ implementation:
   isolation, exclusion, trend filtering, goal persistence, and continuous
   round-trip/clear semantics. Manual Swing cross-mode smoke remains a follow-up
   gate and is not claimed as executed.
+
+2026-09-07 Stage 6 learning, navigation, and preferences implementation:
+
+- Desktop now persists reduced motion, optional sound, Midnight/Ocean theme,
+  English/Traditional Chinese/Japanese critical controls, and first-run
+  onboarding completion in `klotski_personal_preferences.json`. Theme changes
+  apply to Home and BoardPanel without touching puzzle state.
+- Home, Help, and Game routes expose a four-page Beginner Guide, an isolated
+  interactive Practice Tutorial with reset and whole-line milestones, localized
+  How to Play copy, and a timer-pausing Quick Reminder. Tutorial moves use the
+  shared GameModel and never enter completion history or best records.
+- Preferences adds explicit confirmations for Reset Saved Games and Reset
+  Records & Statistics. The former removes normal/Daily/Favorite Practice/
+  Continuous progress and legacy normal-save candidates while preserving
+  favorite labels, records/statistics, Daily history, and preferences; a reset
+  marker prevents a project-root legacy fallback from resurrecting them. The
+  latter clears records/statistics/Daily
+  progress, masks legacy record fallback, and preserves active Continuous state.
+- Focused tests cover preference round-trip, locale/theme catalogs, onboarding
+  and tutorial state, reset-domain isolation, and legacy-record masking. Manual
+  Swing DPI/accessibility smoke remains Stage 7 evidence and is not claimed as
+  executed.
 
 ### Completed 2026-05-25 MVP Items
 
