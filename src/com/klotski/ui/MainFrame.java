@@ -44,6 +44,9 @@ public class MainFrame extends JFrame implements GameObserver {
     /** Tracks whether the current completion was produced by solver playback. */
     private boolean assistedSolveActive;
 
+    /** Ensures duplicate observer callbacks cannot record one run twice. */
+    private final DesktopCompletionTracker completionTracker = new DesktopCompletionTracker();
+
     /** Tracks whether desktop assist highlights are currently visible. */
     private boolean movableHintActive;
 
@@ -339,6 +342,7 @@ public class MainFrame extends JFrame implements GameObserver {
         boardPanel.setModel(model);
 
         assistedSolveActive = false;
+        completionTracker.reset();
         pendingResultMessage = null;
         solverRunning = false;
         showGame();
@@ -389,6 +393,7 @@ public class MainFrame extends JFrame implements GameObserver {
         model.addObserver(this);
         boardPanel.setModel(model);
         assistedSolveActive = false;
+        completionTracker.reset();
         pendingResultMessage = null;
         solverRunning = false;
         showGame();
@@ -404,6 +409,7 @@ public class MainFrame extends JFrame implements GameObserver {
         clearMovableHint();
         model.restartCurrentGame();
         assistedSolveActive = false;
+        completionTracker.reset();
         syncGameTimerState();
         updateStatus();
     }
@@ -516,6 +522,7 @@ public class MainFrame extends JFrame implements GameObserver {
             }
             model.loadState(data);
             assistedSolveActive = false;
+            completionTracker.reset();
             pendingResultMessage = null;
             solverRunning = false;
             showGame();
@@ -633,17 +640,24 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void showRecordsDialog() {
-        String message = DesktopHomeContent.recordsSummary(
-                SaveManager.getBestRecord(3),
-                SaveManager.getBestRecord(4),
-                SaveManager.getBestRecord(5));
+        PuzzleDifficulty[] difficulties = PuzzleDifficulty.values();
+        SaveManager.BestRecord[][] records = new SaveManager.BestRecord[3][difficulties.length];
+        SaveManager.CompletionStats[][] stats = new SaveManager.CompletionStats[3][difficulties.length];
+        for (int row = 0; row < records.length; row++) {
+            int size = row + 3;
+            for (int column = 0; column < difficulties.length; column++) {
+                records[row][column] = SaveManager.getBestRecord(size, difficulties[column]);
+                stats[row][column] = SaveManager.getCompletionStats(size, difficulties[column]);
+            }
+        }
+        String message = DesktopHomeContent.recordsSummary(records, stats);
         showMessageDialog(message, "Records", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void showResultsDialog(int moves, long timeMs) {
         String message = pendingResultMessage == null
                 ? DesktopResultContent.resultsMessage(model.getSize(), model.getDifficulty(), moves, timeMs,
-                        false, false, null, SaveManager.getBestRecord(model.getSize()))
+                        false, false, null, SaveManager.getBestRecord(model.getSize(), model.getDifficulty()))
                 : pendingResultMessage;
         pendingResultMessage = null;
 
@@ -786,7 +800,7 @@ public class MainFrame extends JFrame implements GameObserver {
     private void updateStatus() {
         if (showingGame && model.isGameRunning()) {
             long elapsed = model.getElapsedTime() / 1000;
-            SaveManager.BestRecord best = SaveManager.getBestRecord(model.getSize());
+            SaveManager.BestRecord best = SaveManager.getBestRecord(model.getSize(), model.getDifficulty());
             String bestText = best == null ? "Best: --" : "Best: " + best.format();
             String hintText = movableHintActive ? " | Hint: highlighted tiles can slide into the empty cell" : "";
             String motionText = reducedMotionEnabled ? " | Reduced motion" : "";
@@ -812,19 +826,28 @@ public class MainFrame extends JFrame implements GameObserver {
     @Override
     public void onGameWon(int moves, long timeMs) {
         syncGameTimerState();
+        if (!completionTracker.claim()) {
+            return;
+        }
         int size = model.getSize();
+        PuzzleDifficulty difficulty = model.getDifficulty();
         boolean assisted = assistedSolveActive;
-        SaveManager.BestRecord previousBest = SaveManager.getBestRecord(size);
+        SaveManager.recordCompletion(completionTracker.runId(), size, difficulty,
+                moves, timeMs, assisted);
+        SaveManager.BestRecord previousBest = SaveManager.getBestRecord(size, difficulty);
         SaveManager.BestRecord candidate = new SaveManager.BestRecord(moves, timeMs);
         boolean newBest = !assisted && (previousBest == null || candidate.isBetterThan(previousBest));
-        SaveManager.BestRecord best = assisted ? previousBest : SaveManager.recordBest(size, moves, timeMs);
+        if (newBest) {
+            SaveManager.recordBestIfBetter(size, difficulty, moves, timeMs);
+        }
+        SaveManager.BestRecord best = SaveManager.getBestRecord(size, difficulty);
         assistedSolveActive = false;
         pendingResultMessage = DesktopResultContent.resultsMessage(
-                size, model.getDifficulty(), moves, timeMs,
+                size, difficulty, moves, timeMs,
                 assisted, newBest, previousBest, best);
         String bestText = best == null ? "--" : best.format();
         statusLabel.setText(String.format("Solved! Moves: %d | Time: %ds | Difficulty: %s | Best: %s",
-                moves, timeMs / 1000, difficultyLabel(model.getDifficulty()), bestText));
+                moves, timeMs / 1000, difficultyLabel(difficulty), bestText));
         // BoardPanel invokes the Results dialog after the final animation ends.
     }
 

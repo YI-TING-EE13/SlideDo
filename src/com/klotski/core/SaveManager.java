@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -23,10 +24,12 @@ import java.util.regex.Pattern;
  * <p>
  * New saves use one small JSON slot per supported board size, including
  * completed and redo action histories, so the data remains portable across
- * Java desktop and Android. Replacements are atomic and leave recoverable
- * siblings when the platform cannot complete a write. The loader also accepts
- * the legacy single JSON and serialized {@code klotski_save.dat} files without
- * deleting them or overwriting a newer size slot.
+ * Java desktop and Android. Scoped best records and bounded completion
+ * history/statistics use additive files and durable completion ids. Replacements
+ * are atomic and leave recoverable siblings when the platform cannot complete a
+ * write. The loader also accepts the legacy single JSON and serialized
+ * {@code klotski_save.dat} files without deleting them or overwriting a newer
+ * size slot.
  * </p>
  */
 public class SaveManager {
@@ -41,6 +44,9 @@ public class SaveManager {
     private static final String SAVE_FILE = "klotski_save.json";
     private static final String LEGACY_SAVE_FILE = "klotski_save.dat";
     private static final String RECORDS_FILE = "klotski_records.json";
+    private static final String SCOPED_RECORDS_FILE = "klotski_records_v2.json";
+    private static final String STATISTICS_FILE = "klotski_statistics.json";
+    private static final int MAX_COMPLETION_HISTORY = 50;
     private static final String ATOMIC_TEMP_SUFFIX = ".tmp";
     private static final String ATOMIC_BACKUP_SUFFIX = ".bak";
 
@@ -203,11 +209,63 @@ public class SaveManager {
      * @return the best record after comparing the submitted result
      */
     public static BestRecord recordBest(int size, int moves, long timeMs) {
-        File recordsFile = new File(getDataDirectory(), RECORDS_FILE);
-        if (!recordsFile.exists() && new File(RECORDS_FILE).exists()) {
-            return recordBest(recordsFile, new File(RECORDS_FILE), size, moves, timeMs);
+        return recordBest(size, PuzzleDifficulty.CLASSIC, moves, timeMs);
+    }
+
+    /**
+     * Records a player score in the size-plus-difficulty namespace.
+     * <p>
+     * A legacy size-only record is read as the Classic record until a better
+     * Classic result is written to the additive v2 file. The legacy source is
+     * never rewritten or deleted.
+     * </p>
+     *
+     * @param size puzzle size, such as 3, 4, or 5
+     * @param difficulty stable difficulty scope, defaulting to Classic when null
+     * @param moves final move count
+     * @param timeMs elapsed time in milliseconds
+     * @return the best record after comparing the submitted result
+     */
+    public static synchronized BestRecord recordBest(int size, PuzzleDifficulty difficulty,
+            int moves, long timeMs) {
+        if (!isSupportedSize(size)) {
+            return null;
         }
-        return recordBest(recordsFile, size, moves, timeMs);
+        PuzzleDifficulty selected = normalizeDifficulty(difficulty);
+        String key = recordScopeKey(size, selected);
+        File target = new File(getDataDirectory(), SCOPED_RECORDS_FILE);
+        Map<String, BestRecord> records = loadScopedRecordsForWrite(target);
+        BestRecord current = records.get(key);
+        if (current == null && selected == PuzzleDifficulty.CLASSIC) {
+            current = findLegacyRecord(size);
+        }
+        BestRecord candidate = new BestRecord(moves, timeMs);
+        if (current == null || candidate.isBetterThan(current)) {
+            records.put(key, candidate);
+            saveScopedRecords(target, records);
+            return candidate;
+        }
+        return current;
+    }
+
+    /**
+     * Records a player score only when it improves the scoped record.
+     *
+     * @param size puzzle size
+     * @param difficulty difficulty scope
+     * @param moves final move count
+     * @param timeMs elapsed time in milliseconds
+     * @return {@code true} when the submitted score is a new scoped best
+     */
+    public static synchronized boolean recordBestIfBetter(int size, PuzzleDifficulty difficulty,
+            int moves, long timeMs) {
+        BestRecord current = getBestRecord(size, difficulty);
+        BestRecord candidate = new BestRecord(moves, timeMs);
+        if (current != null && !candidate.isBetterThan(current)) {
+            return false;
+        }
+        recordBest(size, difficulty, moves, timeMs);
+        return true;
     }
 
     /**
@@ -244,8 +302,26 @@ public class SaveManager {
      * @return the best record, or {@code null} if none has been saved
      */
     public static BestRecord getBestRecord(int size) {
-        BestRecord record = getBestRecord(new File(getDataDirectory(), RECORDS_FILE), size);
-        return record != null ? record : getBestRecord(new File(RECORDS_FILE), size);
+        return getBestRecord(size, PuzzleDifficulty.CLASSIC);
+    }
+
+    /**
+     * Reads the best local player record for one size and difficulty.
+     *
+     * @param size puzzle size
+     * @param difficulty difficulty scope, defaulting to Classic when null
+     * @return the best record, or {@code null} when no result exists
+     */
+    public static synchronized BestRecord getBestRecord(int size, PuzzleDifficulty difficulty) {
+        if (!isSupportedSize(size)) {
+            return null;
+        }
+        PuzzleDifficulty selected = normalizeDifficulty(difficulty);
+        BestRecord record = findScopedRecord(size, selected);
+        if (record == null && selected == PuzzleDifficulty.CLASSIC) {
+            return findLegacyRecord(size);
+        }
+        return record;
     }
 
     /**
@@ -257,6 +333,254 @@ public class SaveManager {
      */
     static BestRecord getBestRecord(File recordsFile, int size) {
         return loadRecords(recordsFile).get(size);
+    }
+
+    private static PuzzleDifficulty normalizeDifficulty(PuzzleDifficulty difficulty) {
+        return difficulty == null ? PuzzleDifficulty.CLASSIC : difficulty;
+    }
+
+    private static String recordScopeKey(int size, PuzzleDifficulty difficulty) {
+        return size + ":" + normalizeDifficulty(difficulty).getId();
+    }
+
+    private static BestRecord findScopedRecord(int size, PuzzleDifficulty difficulty) {
+        File dataFile = new File(getDataDirectory(), SCOPED_RECORDS_FILE);
+        BestRecord record = loadScopedRecords(dataFile).get(recordScopeKey(size, difficulty));
+        if (record != null) {
+            return record;
+        }
+        File rootFile = new File(SCOPED_RECORDS_FILE);
+        if (!sameFile(dataFile, rootFile)) {
+            return loadScopedRecords(rootFile).get(recordScopeKey(size, difficulty));
+        }
+        return null;
+    }
+
+    private static BestRecord findLegacyRecord(int size) {
+        BestRecord record = getBestRecord(new File(getDataDirectory(), RECORDS_FILE), size);
+        if (record != null) {
+            return record;
+        }
+        File rootFile = new File(RECORDS_FILE);
+        if (!sameFile(rootFile, new File(getDataDirectory(), RECORDS_FILE))) {
+            return getBestRecord(rootFile, size);
+        }
+        return null;
+    }
+
+    private static Map<String, BestRecord> loadScopedRecordsForWrite(File target) {
+        if (target.exists()) {
+            return loadScopedRecords(target);
+        }
+        File rootFile = new File(SCOPED_RECORDS_FILE);
+        if (!sameFile(target, rootFile) && rootFile.exists()) {
+            return loadScopedRecords(rootFile);
+        }
+        return new HashMap<>();
+    }
+
+    private static Map<String, BestRecord> loadScopedRecords(File file) {
+        Map<String, BestRecord> records = new HashMap<>();
+        if (file == null) {
+            return records;
+        }
+        File[] candidates = {
+                file,
+                new File(file.getPath() + ATOMIC_TEMP_SUFFIX),
+                new File(file.getPath() + ATOMIC_BACKUP_SUFFIX)
+        };
+        for (File candidate : candidates) {
+            if (!candidate.exists() || candidate.isDirectory()) {
+                continue;
+            }
+            try {
+                String json = readText(candidate);
+                String trimmed = json.trim();
+                if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) {
+                    continue;
+                }
+                Matcher matcher = Pattern.compile(
+                        "\\\"(\\d+:(?:relaxed|classic|challenge))\\\"\\s*:\\s*\\{\\s*"
+                                + "\\\"moves\\\"\\s*:\\s*(\\d+)\\s*,\\s*"
+                                + "\\\"timeMs\\\"\\s*:\\s*(\\d+)\\s*\\}").matcher(json);
+                while (matcher.find()) {
+                    records.put(matcher.group(1), new BestRecord(
+                            Integer.parseInt(matcher.group(2)), Long.parseLong(matcher.group(3))));
+                }
+                return records;
+            } catch (IOException | RuntimeException ignored) {
+                // Try the recoverable sibling.
+            }
+        }
+        return records;
+    }
+
+    private static void saveScopedRecords(File file, Map<String, BestRecord> records) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("{\n");
+        int index = 0;
+        for (Map.Entry<String, BestRecord> entry : new TreeMap<>(records).entrySet()) {
+            if (index++ > 0) {
+                sb.append(",\n");
+            }
+            BestRecord record = entry.getValue();
+            sb.append("  \"").append(entry.getKey()).append("\": {");
+            sb.append("\"moves\": ").append(record.moves).append(", ");
+            sb.append("\"timeMs\": ").append(record.timeMs).append("}");
+        }
+        sb.append("\n}\n");
+        try {
+            ensureParentDirectory(file);
+            writeTextAtomic(file, sb.toString());
+        } catch (IOException ignored) {
+            // Records remain unchanged when an atomic replacement fails.
+        }
+    }
+
+    /**
+     * Records one player or solver-assisted completion exactly once.
+     *
+     * @param completionId stable id for the current completed run
+     * @param size puzzle size
+     * @param difficulty difficulty scope
+     * @param moves final move count
+     * @param timeMs elapsed time in milliseconds
+     * @param assisted whether solver or strategic assistance produced the win
+     * @return {@code true} when a new completion sample was persisted
+     */
+    public static boolean recordCompletion(String completionId, int size, PuzzleDifficulty difficulty,
+            int moves, long timeMs, boolean assisted) {
+        return recordCompletion(completionId, size, difficulty, moves, timeMs, assisted,
+                System.currentTimeMillis());
+    }
+
+    /**
+     * Testable completion-recording overload with an explicit completion time.
+     *
+     * @param completionId stable id for the current completed run
+     * @param size puzzle size
+     * @param difficulty difficulty scope
+     * @param moves final move count
+     * @param timeMs elapsed time in milliseconds
+     * @param assisted whether solver or strategic assistance produced the win
+     * @param completedAt completion timestamp in milliseconds since epoch
+     * @return {@code true} when a new completion sample was persisted
+     */
+    public static synchronized boolean recordCompletion(String completionId, int size,
+            PuzzleDifficulty difficulty, int moves, long timeMs, boolean assisted, long completedAt) {
+        if (completionId == null || completionId.isBlank() || !isSupportedSize(size)
+                || moves < 0 || timeMs < 0 || completedAt < 0) {
+            return false;
+        }
+        CompletionStore store = loadCompletionStore();
+        if (store.recordedIds.contains(completionId)) {
+            return false;
+        }
+
+        PuzzleDifficulty selected = normalizeDifficulty(difficulty);
+        CompletionRecord record = new CompletionRecord(completionId, completedAt, size,
+                selected, moves, timeMs, assisted);
+        store.recordedIds.add(completionId);
+        store.history.add(0, record);
+        while (store.history.size() > MAX_COMPLETION_HISTORY) {
+            store.history.remove(store.history.size() - 1);
+        }
+        String key = recordScopeKey(size, selected);
+        CompletionStatsMutable stats = store.stats.get(key);
+        if (stats == null) {
+            stats = new CompletionStatsMutable();
+            store.stats.put(key, stats);
+        }
+        if (assisted) {
+            stats.assistedCompletions++;
+        } else {
+            stats.playerCompletions++;
+            stats.playerMoves += moves;
+            stats.playerTimeMs += timeMs;
+        }
+        return saveCompletionStore(store);
+    }
+
+    /**
+     * Returns newest-first local completion samples, retaining at most 50.
+     *
+     * @return a defensive array of completion records
+     */
+    public static synchronized CompletionRecord[] getCompletionHistory() {
+        CompletionStore store = loadCompletionStore();
+        return store.history.toArray(new CompletionRecord[0]);
+    }
+
+    /**
+     * Returns lifetime completion totals for one size and difficulty.
+     *
+     * @param size puzzle size
+     * @param difficulty difficulty scope
+     * @return immutable scoped totals, or zero totals when none exist
+     */
+    public static synchronized CompletionStats getCompletionStats(int size, PuzzleDifficulty difficulty) {
+        if (!isSupportedSize(size)) {
+            return CompletionStats.empty();
+        }
+        CompletionStatsMutable stats = loadCompletionStore().stats.get(recordScopeKey(size, difficulty));
+        return stats == null ? CompletionStats.empty() : stats.toImmutable();
+    }
+
+    /**
+     * Returns lifetime totals across all size and difficulty scopes.
+     *
+     * @return immutable aggregate totals
+     */
+    public static synchronized CompletionStats getOverallCompletionStats() {
+        CompletionStatsMutable total = new CompletionStatsMutable();
+        for (CompletionStatsMutable stats : loadCompletionStore().stats.values()) {
+            total.add(stats);
+        }
+        return total.toImmutable();
+    }
+
+    private static CompletionStore loadCompletionStore() {
+        File file = new File(getDataDirectory(), STATISTICS_FILE);
+        File rootFile = new File(STATISTICS_FILE);
+        CompletionStore store = loadCompletionStore(file);
+        if (store.hasData() || sameFile(file, rootFile)) {
+            return store;
+        }
+        return loadCompletionStore(rootFile);
+    }
+
+    private static CompletionStore loadCompletionStore(File file) {
+        CompletionStore empty = new CompletionStore();
+        if (file == null) {
+            return empty;
+        }
+        File[] candidates = {
+                file,
+                new File(file.getPath() + ATOMIC_TEMP_SUFFIX),
+                new File(file.getPath() + ATOMIC_BACKUP_SUFFIX)
+        };
+        for (File candidate : candidates) {
+            if (!candidate.exists() || candidate.isDirectory()) {
+                continue;
+            }
+            try {
+                return completionStoreFromJson(readText(candidate));
+            } catch (IOException | RuntimeException ignored) {
+                // Try the recoverable sibling.
+            }
+        }
+        return empty;
+    }
+
+    private static boolean saveCompletionStore(CompletionStore store) {
+        try {
+            File file = new File(getDataDirectory(), STATISTICS_FILE);
+            ensureParentDirectory(file);
+            writeTextAtomic(file, completionStoreToJson(store));
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
     }
 
     private static SaveData loadLegacyGame(File file) {
@@ -610,6 +934,120 @@ public class SaveManager {
         }
     }
 
+    private static String completionStoreToJson(CompletionStore store) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("{\n  \"version\": 1,\n  \"recordedIds\": [");
+        for (int index = 0; index < store.recordedIds.size(); index++) {
+            if (index > 0) {
+                sb.append(", ");
+            }
+            sb.append(jsonString(store.recordedIds.get(index)));
+        }
+        sb.append("],\n  \"history\": [\n");
+        for (int index = 0; index < store.history.size(); index++) {
+            if (index > 0) {
+                sb.append(",\n");
+            }
+            CompletionRecord record = store.history.get(index);
+            sb.append("    {\"id\": ").append(jsonString(record.id))
+                    .append(", \"completedAt\": ").append(record.completedAt)
+                    .append(", \"size\": ").append(record.size)
+                    .append(", \"difficulty\": ").append(jsonString(record.difficulty.getId()))
+                    .append(", \"moves\": ").append(record.moves)
+                    .append(", \"timeMs\": ").append(record.timeMs)
+                    .append(", \"assisted\": ").append(record.assisted).append("}");
+        }
+        sb.append("\n  ],\n  \"stats\": {\n");
+        int index = 0;
+        for (Map.Entry<String, CompletionStatsMutable> entry : new TreeMap<>(store.stats).entrySet()) {
+            if (index++ > 0) {
+                sb.append(",\n");
+            }
+            CompletionStatsMutable stats = entry.getValue();
+            sb.append("    ").append(jsonString(entry.getKey())).append(": {\"playerCompletions\": ")
+                    .append(stats.playerCompletions).append(", \"assistedCompletions\": ")
+                    .append(stats.assistedCompletions).append(", \"playerMoves\": ")
+                    .append(stats.playerMoves).append(", \"playerTimeMs\": ")
+                    .append(stats.playerTimeMs).append("}");
+        }
+        sb.append("\n  }\n}\n");
+        return sb.toString();
+    }
+
+    private static CompletionStore completionStoreFromJson(String json) {
+        if (json == null || !json.trim().startsWith("{") || !json.trim().endsWith("}")) {
+            throw new IllegalArgumentException("Invalid completion store");
+        }
+        CompletionStore store = new CompletionStore();
+        Matcher idsSection = Pattern.compile("\\\"recordedIds\\\"\\s*:\\s*\\[(.*?)\\]",
+                Pattern.DOTALL).matcher(json);
+        if (idsSection.find()) {
+            Matcher id = Pattern.compile("\\\"([^\\\"]+)\\\"").matcher(idsSection.group(1));
+            while (id.find()) {
+                store.recordedIds.add(id.group(1));
+            }
+        }
+
+        Matcher recordMatcher = Pattern.compile(
+                "\\{\\s*\\\"id\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"\\s*,"
+                        + "\\s*\\\"completedAt\\\"\\s*:\\s*(\\d+)\\s*,"
+                        + "\\s*\\\"size\\\"\\s*:\\s*(\\d+)\\s*,"
+                        + "\\s*\\\"difficulty\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"\\s*,"
+                        + "\\s*\\\"moves\\\"\\s*:\\s*(\\d+)\\s*,"
+                        + "\\s*\\\"timeMs\\\"\\s*:\\s*(\\d+)\\s*,"
+                        + "\\s*\\\"assisted\\\"\\s*:\\s*(true|false)\\s*\\}").matcher(json);
+        while (recordMatcher.find()) {
+            int size = Integer.parseInt(recordMatcher.group(3));
+            if (!isSupportedSize(size)) {
+                continue;
+            }
+            CompletionRecord record = new CompletionRecord(recordMatcher.group(1),
+                    Long.parseLong(recordMatcher.group(2)), size,
+                    PuzzleDifficulty.fromId(recordMatcher.group(4)),
+                    Integer.parseInt(recordMatcher.group(5)),
+                    Long.parseLong(recordMatcher.group(6)),
+                    Boolean.parseBoolean(recordMatcher.group(7)));
+            store.history.add(record);
+            if (!store.recordedIds.contains(record.id)) {
+                store.recordedIds.add(record.id);
+            }
+        }
+
+        Matcher statsMatcher = Pattern.compile(
+                "\\\"(\\d+:(?:relaxed|classic|challenge))\\\"\\s*:\\s*\\{"
+                        + "\\s*\\\"playerCompletions\\\"\\s*:\\s*(\\d+)\\s*,"
+                        + "\\s*\\\"assistedCompletions\\\"\\s*:\\s*(\\d+)\\s*,"
+                        + "\\s*\\\"playerMoves\\\"\\s*:\\s*(\\d+)\\s*,"
+                        + "\\s*\\\"playerTimeMs\\\"\\s*:\\s*(\\d+)\\s*\\}").matcher(json);
+        while (statsMatcher.find()) {
+            CompletionStatsMutable stats = new CompletionStatsMutable();
+            stats.playerCompletions = Integer.parseInt(statsMatcher.group(2));
+            stats.assistedCompletions = Integer.parseInt(statsMatcher.group(3));
+            stats.playerMoves = Long.parseLong(statsMatcher.group(4));
+            stats.playerTimeMs = Long.parseLong(statsMatcher.group(5));
+            store.stats.put(statsMatcher.group(1), stats);
+        }
+        if (store.stats.isEmpty() && !store.history.isEmpty()) {
+            for (CompletionRecord record : store.history) {
+                CompletionStatsMutable stats = store.stats.computeIfAbsent(
+                        recordScopeKey(record.size, record.difficulty), key -> new CompletionStatsMutable());
+                if (record.assisted) {
+                    stats.assistedCompletions++;
+                } else {
+                    stats.playerCompletions++;
+                    stats.playerMoves += record.moves;
+                    stats.playerTimeMs += record.timeMs;
+                }
+            }
+        }
+        return store;
+    }
+
+    private static String jsonString(String value) {
+        String text = value == null ? "" : value;
+        return "\"" + text.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
+    }
+
     private static void ensureParentDirectory(File file) throws IOException {
         File parent = file.getParentFile();
         if (parent != null && !parent.exists() && !parent.mkdirs()) {
@@ -785,6 +1223,109 @@ public class SaveManager {
 
         /** Next-redo-first undone action history in compact core format. */
         public String redoHistory = "";
+    }
+
+    private static final class CompletionStore {
+        private final List<CompletionRecord> history = new ArrayList<>();
+        private final Map<String, CompletionStatsMutable> stats = new HashMap<>();
+        private final List<String> recordedIds = new ArrayList<>();
+
+        private boolean hasData() {
+            return !history.isEmpty() || !stats.isEmpty() || !recordedIds.isEmpty();
+        }
+    }
+
+    private static final class CompletionStatsMutable {
+        private int playerCompletions;
+        private int assistedCompletions;
+        private long playerMoves;
+        private long playerTimeMs;
+
+        private void add(CompletionStatsMutable other) {
+            playerCompletions += other.playerCompletions;
+            assistedCompletions += other.assistedCompletions;
+            playerMoves += other.playerMoves;
+            playerTimeMs += other.playerTimeMs;
+        }
+
+        private CompletionStats toImmutable() {
+            return new CompletionStats(playerCompletions, assistedCompletions,
+                    playerMoves, playerTimeMs);
+        }
+    }
+
+    /**
+     * Immutable completion-history sample retained by the Desktop personal store.
+     */
+    public static final class CompletionRecord {
+        /** Unique id used to make repeated win callbacks idempotent. */
+        public final String id;
+
+        /** Completion timestamp in milliseconds since the epoch. */
+        public final long completedAt;
+
+        /** Board size of the completed puzzle. */
+        public final int size;
+
+        /** Difficulty scope of the completed puzzle. */
+        public final PuzzleDifficulty difficulty;
+
+        /** Final move count. */
+        public final int moves;
+
+        /** Active elapsed milliseconds. */
+        public final long timeMs;
+
+        /** Whether the result used solver or strategic assistance. */
+        public final boolean assisted;
+
+        private CompletionRecord(String id, long completedAt, int size,
+                PuzzleDifficulty difficulty, int moves, long timeMs, boolean assisted) {
+            this.id = id;
+            this.completedAt = completedAt;
+            this.size = size;
+            this.difficulty = normalizeDifficulty(difficulty);
+            this.moves = moves;
+            this.timeMs = timeMs;
+            this.assisted = assisted;
+        }
+    }
+
+    /**
+     * Immutable lifetime completion totals for one scope or the aggregate store.
+     */
+    public static final class CompletionStats {
+        /** Number of eligible player completions. */
+        public final int playerCompletions;
+
+        /** Number of solver/strategic-assisted completions. */
+        public final int assistedCompletions;
+
+        /** Sum of moves across eligible player completions. */
+        public final long playerMoves;
+
+        /** Sum of elapsed milliseconds across eligible player completions. */
+        public final long playerTimeMs;
+
+        /**
+         * Creates immutable totals for a scope or aggregate view.
+         *
+         * @param playerCompletions eligible player completion count
+         * @param assistedCompletions assisted completion count
+         * @param playerMoves sum of moves for player completions
+         * @param playerTimeMs sum of elapsed milliseconds for player completions
+         */
+        public CompletionStats(int playerCompletions, int assistedCompletions,
+                long playerMoves, long playerTimeMs) {
+            this.playerCompletions = playerCompletions;
+            this.assistedCompletions = assistedCompletions;
+            this.playerMoves = playerMoves;
+            this.playerTimeMs = playerTimeMs;
+        }
+
+        private static CompletionStats empty() {
+            return new CompletionStats(0, 0, 0, 0);
+        }
     }
 
     /**

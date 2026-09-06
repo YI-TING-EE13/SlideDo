@@ -678,8 +678,8 @@ The narrow MVP parity pass above is historical status, not a claim that the
 completed Android Personal Play program is fully available in Swing. The
 current evidence-based inventory, status matrix, Java documentation audit, and
 bounded implementation roadmap are maintained in
-[DESKTOP_ANDROID_PARITY.md](DESKTOP_ANDROID_PARITY.md). This qualification
-stage is audit/planning only; future behavior work requires an owner-approved
+[DESKTOP_ANDROID_PARITY.md](DESKTOP_ANDROID_PARITY.md). Stages 1-3 below are
+owner-approved and implemented; future behavior work requires a new approved
 roadmap stage and a fresh matrix re-check.
 
 2026-09-07 Stage 1 session contract implementation:
@@ -716,6 +716,24 @@ roadmap stage and a fresh matrix re-check.
 - `SaveManagerTest` now covers per-size isolation, metadata, JSON and serialized
   migration, newer-slot preservation, malformed history, atomic recovery, and
   failed replacement behavior.
+
+2026-09-07 Stage 3 records, results, and statistics implementation:
+
+- Desktop best records now use an additive `size:difficulty` namespace in
+  `klotski_records_v2.json`. Legacy size-only records remain untouched and are
+  read deterministically as Classic until a better Classic score is written.
+  Fewer moves rank first and equal moves use lower active time.
+- Completion samples now persist in `klotski_statistics.json` with a newest-first
+  50-entry history, lifetime player/assisted totals, and a durable completion-id
+  ledger. Duplicate callbacks are no-ops; assisted samples count toward history
+  and statistics but never replace player best records.
+- MainFrame resets a completion scope for new, replayed, restarted, and loaded
+  puzzles. Results uses the selected size/difficulty record and Records lists
+  every scope with player and assisted counts.
+- Focused tests cover scoped records, legacy preservation, tie-breaks,
+  exactly-once completion accounting, duplicate callback claims, and scoped
+  Results/Records copy. Daily, favorite, trend, and continuous attribution
+  remain explicitly out of scope for this stage.
 
 ### Completed 2026-05-25 MVP Items
 

@@ -3,6 +3,7 @@ package com.klotski.ui;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.klotski.core.SaveManager;
+import com.klotski.core.PuzzleDifficulty;
 import org.junit.jupiter.api.Test;
 
 class DesktopHomeContentTest {
@@ -28,5 +29,28 @@ class DesktopHomeContentTest {
         assertTrue(text.contains("presentation"));
         assertTrue(text.contains("Puzzle rules"));
         assertTrue(text.contains("records"));
+    }
+
+    @Test
+    void scopedRecordsSummaryShowsDifficultyAndCompletionCounts() {
+        SaveManager.BestRecord[][] records = new SaveManager.BestRecord[3][3];
+        SaveManager.CompletionStats[][] stats = new SaveManager.CompletionStats[3][3];
+        records[0][PuzzleDifficulty.CHALLENGE.ordinal()] = new SaveManager.BestRecord(9, 12_000);
+        stats[0][PuzzleDifficulty.CHALLENGE.ordinal()] =
+                completionStatsForTest(2, 1, 20, 30_000);
+
+        String text = DesktopHomeContent.recordsSummary(records, stats);
+
+        assertTrue(text.contains("3x3"));
+        assertTrue(text.contains("Challenge: 9 moves, 12s"));
+        assertTrue(text.contains("Player solves: 2"));
+        assertTrue(text.contains("Assisted: 1"));
+        assertTrue(text.contains("size"));
+        assertTrue(text.contains("difficulty"));
+    }
+
+    private static SaveManager.CompletionStats completionStatsForTest(int player,
+            int assisted, long moves, long timeMs) {
+        return new SaveManager.CompletionStats(player, assisted, moves, timeMs);
     }
 }

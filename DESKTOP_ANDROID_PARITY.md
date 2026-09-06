@@ -1,14 +1,14 @@
 # SlideDo Desktop / Android Parity Qualification
 
-Status: owner-approved qualification baseline with Stage 1 session-contract and
-Stage 2 persistence/lifecycle behavior implemented and verified; later stages
-remain planning-only. This document records current implementation evidence and
-bounded follow-up work.
+Status: owner-approved qualification baseline with Stages 1-3 session,
+persistence, records, and completion-accounting behavior implemented and
+verified; later stages remain planning-only. This document records current
+implementation evidence and bounded follow-up work.
 
 Qualification date: 2026-09-07
 Repository: YI-TING-EE13/SlideDo
 Authoritative branch: main
-Expected and observed origin/main: 7bc4770df6d23d8a5cba6e009f48a43f7641d1a1
+Expected and observed origin/main: faedda2af2d59632fe7443fb12d190e4bd2fc0d1
 
 ## Authority, scope, and evidence rules
 
@@ -39,7 +39,7 @@ namespace isolation, and solver-assisted record protection.
 ## Qualification snapshot
 
 - The required fetch and identity checks completed before editing. HEAD and
-  origin/main both resolved to 7bc4770df6d23d8a5cba6e009f48a43f7641d1a1.
+  origin/main both resolved to faedda2af2d59632fe7443fb12d190e4bd2fc0d1.
 - The only pre-existing worktree change was the unrelated untracked
   SlideDo_Project_Development_Record.html. It was preserved and is not part
   of this initiative.
@@ -73,13 +73,13 @@ namespace isolation, and solver-assisted record protection.
 | G13 | Undo and Redo semantics | GameModel.undo and redo move the latest completed MoveAction between stacks; a new valid action clears Redo; restart clears both. | Android Game screen buttons and AndroidGameStore persist both histories. | MainFrame Ctrl+Z/Ctrl+Y menu actions call the same model methods; BoardPanel redraws from model state. | PARITY | One whole-line action remains one undoable action; Redo reapplies the exact direction and step count. Saves and restarts preserve or clear stacks exactly as the shared contract requires. | GameModelTest, Android move-history tests, and desktop smoke. No new rules code; add desktop persistence assertions when per-size saves land. |
 | G14 | Move History presentation and timer pause | MoveAction exposes direction and steps; history is bounded to the latest 50 in Android UI. | MainActivity.showMoveHistory pauses via showTimerPausingDialog, shows completed and Redo counts, and localizes directions. | MainFrame.showMoveHistoryDialog shows counts and latest 50 but leaves the model timer running while the modal dialog is open and is English-only. | PARTIAL | Desktop history must show completed and available Redo actions, preserve whole-line “one move” wording, pause active time for the dialog, and use the selected desktop locale when localization is added. | Add Swing dialog/timer tests and content assertions; reuse GameModel history tests. Risk is modal reentrancy and EDT timer coordination. |
 | G15 | Restart current puzzle | GameModel.restartCurrentGame restores initialGrid, resets moves and histories, and restarts active timing. | MainActivity.restartCurrentGame is available from Game and pause menu and saves the restored state. | MainFrame.restartCurrentGame calls the same model method, retains the selected difficulty, and is disabled while BoardPanel or solver work is busy. | PARITY | Restart must retain the exact puzzle identity, size, and selected difficulty while clearing actions and resetting active elapsed time. It must not alter records, history, daily streaks, favorites, or continuous aggregates. | GameModelTest, Android flow tests, DesktopSessionContractTest, and desktop restart smoke. Timer display and lifecycle gates remain covered by G6. |
-| G16 | Local best records by size and difficulty | SaveManager.BestRecord compares fewer moves then lower time; PuzzleDifficulty is the missing scope dimension. | AndroidGameStore stores best records per size and difficulty and refuses assisted wins. | SaveManager stores one best record per size; MainFrame and DesktopResultContent query size-only records. | PARTIAL | Desktop records must key by both size and difficulty, use the shared comparison, and leave the player best unchanged for solver or strategic-hint assisted runs. Legacy size-only records need an explicit Classic mapping or a documented non-migrating archive. | SaveManagerTest and AndroidGameStoreTest are references; add desktop record-scope and assisted-result tests. Risk is silently reclassifying old records; require a migration decision before implementation. |
+| G16 | Local best records by size and difficulty | SaveManager.BestRecord compares fewer moves then lower time; PuzzleDifficulty supplies the scope dimension. | AndroidGameStore stores best records per size and difficulty and refuses assisted wins. | SaveManager stores additive `size:difficulty` records; MainFrame and DesktopResultContent query the selected scope and keep assisted wins out of player bests. | PARITY | Desktop records key by both size and difficulty, use the shared comparison, and leave the player best unchanged for solver or strategic-hint assisted runs. Legacy size-only values are read deterministically as Classic and remain preserved until a better scoped value is written. | SaveManagerTest covers scope separation, tie-breaks, and legacy-source preservation; DesktopResultContentTest and MainFrame flow cover scoped result wording and assisted protection. |
 
 ### Progression, repeat play, and assistance
 
 | ID | Capability | Canonical/shared-core support | Android source of truth | Desktop source and verified current behavior | Status | Required parity; persistence and record semantics | Tests, documentation, dependencies, and risk |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| P1 | Completion history and lifetime statistics | PersonalTrend and WeeklyGoalProgress consume completion samples; GameModel supplies moves and active time but not the personal store. | MainActivity.showWinWhenReady records player and assisted completions; AndroidGameStore keeps bounded history, counts, moves, and time; Records and Trends render them. | MainFrame.onGameWon updates only the size-only SaveManager best record; no completion history, lifetime totals, or stats screen exists. | MISSING | Every normal, daily, and continuous completion must be recorded exactly once; favorite practice is excluded. Assisted completions remain visible in history and lifetime totals but never update player bests. | Add desktop store and Records/Trends tests modeled on AndroidGameStoreTest and MainActivityFlowTest. Migration starts empty unless old bests are explicitly imported as non-history data. Risk is duplicate win callbacks and mode attribution. |
+| P1 | Completion history and lifetime statistics | PersonalTrend and WeeklyGoalProgress consume completion samples; GameModel supplies moves and active time but not the personal store. | MainActivity.showWinWhenReady records player and assisted completions; AndroidGameStore keeps bounded history, counts, moves, and time; Records and Trends render them. | SaveManager keeps a newest-first bounded history, persistent lifetime totals by size+difficulty, and completion ids; MainFrame claims one run before recording and the Records dialog renders scoped totals. | PARTIAL | Every normal, daily, and continuous completion must be recorded exactly once; favorite practice is excluded. Assisted completions remain visible in history and lifetime totals but never update player bests. Desktop foundational normal-run history/statistics are verified; daily/favorite/continuous attribution and Trends UI remain later stages. | SaveManagerTest covers idempotency, assisted/player totals, history round-trip, and retention contract; DesktopCompletionTrackerTest covers duplicate callbacks. Risk remains mode attribution until later namespaces are added. |
 | P2 | Offline Daily Challenge | DailyChallenge defines fixed 4x4 Classic date-derived seed and createGame. | MainActivity.startDailyChallenge and AndroidGameStore dated daily saves implement the daily route. | No daily route, date seed, or daily save exists in MainFrame or SaveManager. | MISSING | Desktop must use the same date ID, fixed size/difficulty, deterministic board, future-date block, and per-date save namespace. Daily completion feeds history/stats and streak rules but not a normal save slot. | DailyChallengeTest, Android daily instrumentation, and new desktop date/seed/persistence tests. Risk is timezone/date boundary; use the documented local ISO-date policy. |
 | P3 | Daily Calendar, historical replay, and streaks | DailyCalendarMonth supplies immutable Sunday-first month data and future clamping; daily streak state is store policy. | AndroidDailyCalendarScreen and MainActivity expose month navigation, historical replay, completion status, and latest-date streak updates. | Desktop has no calendar, historical daily replay, or streak state. | MISSING | Historical dates may be replayed and remain visible, but cannot move the latest-date streak backward; future dates are not playable. Daily saves remain isolated by ISO date. | DailyCalendarMonthTest, Android calendar/streak tests, and desktop calendar/store tests. Risk is coupling calendar UI to local dates and accidental replacement of normal saves. |
 | P4 | Favorite Puzzle library and exact identity | PuzzleIdentity is a stable SHA-256 over size, difficulty, and exact initialGrid. | AndroidFavoritesScreen and AndroidGameStore save up to 50 labeled favorites, deduplicate identity, and permit rename/remove. | Desktop has no favorite library, identity label, or favorite actions. | MISSING | Desktop favorites must retain the immutable starting board, size, difficulty, identity, label, and creation ordering. Saving the same identity updates the label instead of duplicating it. | PuzzleIdentityTest, Android favorites tests, and new desktop library tests. Risk is mutable-grid aliasing and maximum-list migration; copy the initial grid defensively. |
@@ -131,9 +131,9 @@ files:
 
 | Status | Count | Interpretation |
 | --- | ---: | --- |
-| PARITY | 12 | Shared rules, sizes, difficulty/session identity, exact replay, active timer, input outcomes, animation locks, undo/redo, restart, movable assist, and current best-record protection are evidenced on both platforms. |
+| PARITY | 13 | Shared rules, sizes, difficulty/session identity, exact replay, active timer, input outcomes, animation locks, undo/redo, restart, movable assist, scoped best records, and assisted-result protection are evidenced on both platforms. |
 | PARTIAL | 12 | The Desktop slice exists but differs materially in persistence namespace, records dimension, learning depth, settings, or adaptive/accessibility coverage. |
-| MISSING | 17 | Android-only completed product capabilities have no verified Desktop equivalent, chiefly autosave, progression systems, daily/favorites/trends/continuous, onboarding, themes, sound, localization, backup, and reset. |
+| MISSING | 16 | Android-only completed product capabilities have no verified Desktop equivalent, chiefly daily/favorites/trends/continuous, onboarding, themes, sound, localization, backup, and reset. |
 | PLATFORM-SPECIFIC | 4 | Android lifecycle, haptics, system picker, and touch/virtual-node mechanics require desktop equivalents rather than copied implementations. |
 
 ### Stage 1 verified implementation
@@ -154,9 +154,9 @@ to the issue boundary:
 - Focused tests cover all size/difficulty combinations, seeded equality,
   exact replay, timer gates, solver locking, and Results difficulty wording.
 
-Persistence migration, per-difficulty records, and later mode namespaces are
-intentionally not part of this update and remain assigned to downstream
-issues.
+Persistence migration and per-difficulty records are implemented in the
+dependent Stage 2 and Stage 3 updates; later mode namespaces remain assigned to
+downstream issues.
 
 Highest-risk gaps, in dependency order:
 
@@ -334,6 +334,29 @@ gate below remains the acceptance contract for its protected PR.
 - Atomic replacement retains `.tmp` and `.bak` recovery candidates. Focused
   tests cover slot isolation, metadata, migration, newer-slot preservation,
   malformed histories, recovery, and failed replacement behavior.
+
+### Stage 3 verified implementation
+
+The Stage 3 records/results/statistics work is implemented and verified within
+the owner-approved issue boundary:
+
+- `SaveManager` stores additive `size:difficulty` best records in
+  `klotski_records_v2.json`. Existing size-only `klotski_records.json` values
+  are read as Classic, remain untouched, and are copied into the scoped file
+  only when a better Classic result is submitted. Lower moves rank first and
+  equal moves use lower active time.
+- Completion samples are persisted in `klotski_statistics.json` with a
+  newest-first history capped at 50 entries, lifetime player/assisted totals,
+  and a durable completion-id ledger. Repeated callbacks return no-op and do
+  not increment totals. Assisted samples remain visible but never update a
+  player best.
+- `MainFrame` resets a completion scope for new, replayed, restarted, and
+  loaded puzzles; `DesktopCompletionTracker` claims the first win callback;
+  Results and Records query the same size+difficulty scope and expose the
+  player/assisted counts.
+- Focused tests cover scoped records, tie-breaks, legacy-source preservation,
+  exactly-once history/stat updates, duplicate callback claims, and scoped
+  Results wording. Shared tests and desktop compilation remain required gates.
 
 ### Stage 3 - Records, results, history, and statistics
 
