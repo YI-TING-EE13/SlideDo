@@ -682,6 +682,20 @@ bounded implementation roadmap are maintained in
 stage is audit/planning only; future behavior work requires an owner-approved
 roadmap stage and a fresh matrix re-check.
 
+2026-09-07 Stage 1 session contract implementation:
+
+- Desktop now offers Relaxed, Classic, and Challenge for 3x3, 4x4, and 5x5
+  through the shared PuzzleDifficulty and GameModel contracts.
+- Seeded Desktop construction delegates to the shared scramble implementation;
+  exact replay uses PuzzleIdentity and restores the same initial grid with
+  zero moves, elapsed time, and histories.
+- Desktop status/results use GameModel active elapsed milliseconds. Home,
+  modal dialogs, solver work, and inactive-window events pause the model timer
+  through a deterministic DesktopTimerPolicy.
+- Added focused coverage for all supported size/difficulty combinations,
+  seeded reproducibility, exact replay, timer gates, solver input locking, and
+  selected-difficulty Results wording.
+
 ### Completed 2026-05-25 MVP Items
 
 ### 1. Add Android Instrumentation Tests

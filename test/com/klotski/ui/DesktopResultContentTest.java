@@ -2,6 +2,7 @@ package com.klotski.ui;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.klotski.core.PuzzleDifficulty;
 import com.klotski.core.SaveManager;
 import org.junit.jupiter.api.Test;
 
@@ -42,5 +43,14 @@ class DesktopResultContentTest {
                 new SaveManager.BestRecord(15, 80_000));
 
         assertTrue(text.contains("Best remains: 15 moves, 80s"));
+    }
+
+    @Test
+    void resultsIdentifyTheSelectedDifficulty() {
+        String text = DesktopResultContent.resultsMessage(5, PuzzleDifficulty.CHALLENGE,
+                20, 90_000, false, false, null,
+                new SaveManager.BestRecord(20, 90_000));
+
+        assertTrue(text.contains("Difficulty: Challenge"));
     }
 }
