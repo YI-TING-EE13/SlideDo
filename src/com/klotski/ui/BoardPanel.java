@@ -85,6 +85,9 @@ public class BoardPanel extends JPanel implements GameObserver {
     /** Queued empty-tile moves used for keyboard and solver playback. */
     private final Deque<Direction> moveQueue = new ArrayDeque<>();
 
+    /** Controller-owned lock used while solver computation is in progress. */
+    private boolean inputLocked;
+
     /** Mouse press location used to distinguish click and swipe gestures. */
     private Point pressPoint;
 
@@ -247,6 +250,7 @@ public class BoardPanel extends JPanel implements GameObserver {
         }
         moveQueue.clear();
         isAnimating = false;
+        inputLocked = false;
         pendingWinMoves = null;
         highlightedCells = null;
         this.model = model;
@@ -394,8 +398,8 @@ public class BoardPanel extends JPanel implements GameObserver {
      * @param dir direction the empty tile should move
      */
     public void enqueueMove(Direction dir) {
-        if (model.isSolved()) {
-            log("enqueueMove ignored: model solved");
+        if (inputLocked || model.isSolved()) {
+            log("enqueueMove ignored: board locked or model solved");
             return;
         }
         clearHighlights();
@@ -426,7 +430,17 @@ public class BoardPanel extends JPanel implements GameObserver {
      * @return {@code true} when user actions should be temporarily ignored
      */
     public boolean isBusy() {
-        return isAnimating || !moveQueue.isEmpty();
+        return inputLocked || isAnimating || !moveQueue.isEmpty();
+    }
+
+    /**
+     * Locks user input while the controller owns the current session.
+     *
+     * @param inputLocked {@code true} to reject mouse and keyboard moves
+     */
+    public void setInputLocked(boolean inputLocked) {
+        this.inputLocked = inputLocked;
+        repaint();
     }
 
     private void playQueuedMove() {
