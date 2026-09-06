@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
@@ -267,5 +268,89 @@ class SaveManagerTest {
         assertNotNull(saved);
         assertEquals(29, saved.moves);
         assertEquals(120_000, saved.timeMs);
+    }
+
+    @Test
+    void scopedRecordsSeparateDifficultyAndMapLegacyOnlyToClassic() throws Exception {
+        String oldValue = System.getProperty(SaveManager.DATA_DIR_PROPERTY);
+        System.setProperty(SaveManager.DATA_DIR_PROPERTY, tempDir.getAbsolutePath());
+        try {
+            File legacy = new File(tempDir, "klotski_records.json");
+            String legacyJson = "{\n  \"3\": {\"moves\": 20, \"timeMs\": 9000}\n}\n";
+            Files.writeString(legacy.toPath(), legacyJson, StandardCharsets.UTF_8);
+
+            SaveManager.BestRecord classic = SaveManager.getBestRecord(3, PuzzleDifficulty.CLASSIC);
+            assertNotNull(classic);
+            assertEquals(20, classic.moves);
+            assertNull(SaveManager.getBestRecord(3, PuzzleDifficulty.RELAXED));
+
+            SaveManager.recordBest(3, PuzzleDifficulty.RELAXED, 12, 5000);
+            assertEquals(12, SaveManager.getBestRecord(3, PuzzleDifficulty.RELAXED).moves);
+            assertEquals(20, SaveManager.getBestRecord(3, PuzzleDifficulty.CLASSIC).moves);
+
+            SaveManager.recordBest(3, PuzzleDifficulty.CLASSIC, 18, 8000);
+            assertEquals(18, SaveManager.getBestRecord(3, PuzzleDifficulty.CLASSIC).moves);
+            assertEquals(legacyJson, Files.readString(legacy.toPath(), StandardCharsets.UTF_8));
+            assertTrue(new File(tempDir, "klotski_records_v2.json").exists());
+
+            SaveManager.recordBest(3, PuzzleDifficulty.CLASSIC, 18, 7000);
+            assertEquals(7000, SaveManager.getBestRecord(3, PuzzleDifficulty.CLASSIC).timeMs);
+            SaveManager.recordBest(3, PuzzleDifficulty.CLASSIC, 19, 1);
+            assertEquals(7000, SaveManager.getBestRecord(3, PuzzleDifficulty.CLASSIC).timeMs);
+        } finally {
+            restoreDataDirectoryProperty(oldValue);
+        }
+    }
+
+    @Test
+    void completionHistoryAndStatisticsAreExactlyOnceAndAssistedSafe() {
+        String oldValue = System.getProperty(SaveManager.DATA_DIR_PROPERTY);
+        System.setProperty(SaveManager.DATA_DIR_PROPERTY, tempDir.getAbsolutePath());
+        try {
+            assertTrue(SaveManager.recordCompletion("player-run", 4, PuzzleDifficulty.CHALLENGE,
+                    11, 2200, false, 100));
+            assertFalse(SaveManager.recordCompletion("player-run", 4, PuzzleDifficulty.CHALLENGE,
+                    11, 2200, false, 101));
+            assertTrue(SaveManager.recordCompletion("assist-run", 4, PuzzleDifficulty.CHALLENGE,
+                    4, 900, true, 102));
+
+            SaveManager.CompletionStats stats = SaveManager.getCompletionStats(
+                    4, PuzzleDifficulty.CHALLENGE);
+            assertEquals(1, stats.playerCompletions);
+            assertEquals(1, stats.assistedCompletions);
+            assertEquals(11, stats.playerMoves);
+            assertEquals(2200, stats.playerTimeMs);
+
+            SaveManager.CompletionStats overall = SaveManager.getOverallCompletionStats();
+            assertEquals(1, overall.playerCompletions);
+            assertEquals(1, overall.assistedCompletions);
+            SaveManager.CompletionRecord[] history = SaveManager.getCompletionHistory();
+            assertEquals(2, history.length);
+            assertEquals("assist-run", history[0].id);
+            assertTrue(history[0].assisted);
+            assertFalse(history[1].assisted);
+        } finally {
+            restoreDataDirectoryProperty(oldValue);
+        }
+    }
+
+    @Test
+    void completionHistoryIsBoundedWithoutLosingLifetimeCountsOrDeduplication() {
+        String oldValue = System.getProperty(SaveManager.DATA_DIR_PROPERTY);
+        System.setProperty(SaveManager.DATA_DIR_PROPERTY, tempDir.getAbsolutePath());
+        try {
+            for (int index = 0; index < 51; index++) {
+                assertTrue(SaveManager.recordCompletion("run-" + index, 3,
+                        PuzzleDifficulty.CLASSIC, index + 1, index + 100, false, index));
+            }
+
+            assertEquals(50, SaveManager.getCompletionHistory().length);
+            assertEquals(51, SaveManager.getCompletionStats(3, PuzzleDifficulty.CLASSIC)
+                    .playerCompletions);
+            assertFalse(SaveManager.recordCompletion("run-0", 3, PuzzleDifficulty.CLASSIC,
+                    99, 99, false, 99));
+        } finally {
+            restoreDataDirectoryProperty(oldValue);
+        }
     }
 }

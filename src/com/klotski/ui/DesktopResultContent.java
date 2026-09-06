@@ -14,22 +14,31 @@ final class DesktopResultContent {
 
     static String resultsMessage(int size, int moves, long timeMs, boolean assisted, boolean newBest,
             SaveManager.BestRecord previousBest, SaveManager.BestRecord currentBest) {
-        return resultsMessage(size, PuzzleDifficulty.CLASSIC, moves, timeMs,
-                assisted, newBest, previousBest, currentBest);
+        return resultsMessageInternal(size, PuzzleDifficulty.CLASSIC, moves, timeMs,
+                assisted, newBest, previousBest, currentBest, false);
     }
 
     static String resultsMessage(int size, PuzzleDifficulty difficulty, int moves, long timeMs,
             boolean assisted, boolean newBest, SaveManager.BestRecord previousBest,
             SaveManager.BestRecord currentBest) {
-        String subtitle = assisted ? "Solved with assist." : "Puzzle solved.";
+        return resultsMessageInternal(size, difficulty, moves, timeMs,
+                assisted, newBest, previousBest, currentBest, true);
+    }
+
+    private static String resultsMessageInternal(int size, PuzzleDifficulty difficulty, int moves,
+            long timeMs, boolean assisted, boolean newBest, SaveManager.BestRecord previousBest,
+            SaveManager.BestRecord currentBest, boolean includeDifficultyInRecordText) {
+        PuzzleDifficulty selected = difficulty == null ? PuzzleDifficulty.CLASSIC : difficulty;
+        String recordText = recordText(assisted, newBest, previousBest, currentBest,
+                includeDifficultyInRecordText);
         return String.join("\n",
-                subtitle,
+                assisted ? "Solved with assist." : "Puzzle solved.",
                 "",
                 size + "x" + size + " Puzzle",
-                "Difficulty: " + difficultyLabel(difficulty),
+                "Difficulty: " + difficultyLabel(selected),
                 formatMoves(moves) + "   Time: " + (timeMs / 1000) + "s",
                 "",
-                recordText(assisted, newBest, previousBest, currentBest));
+                recordText);
     }
 
     private static String difficultyLabel(PuzzleDifficulty difficulty) {
@@ -46,13 +55,16 @@ final class DesktopResultContent {
     }
 
     private static String recordText(boolean assisted, boolean newBest,
-            SaveManager.BestRecord previousBest, SaveManager.BestRecord currentBest) {
+            SaveManager.BestRecord previousBest, SaveManager.BestRecord currentBest,
+            boolean includeDifficulty) {
         if (assisted) {
             return "Assist result not saved. Player best: " + formatRecord(previousBest);
         }
         if (newBest) {
             return previousBest == null
-                    ? "First player record for this size."
+                    ? includeDifficulty
+                            ? "First player record for this size and difficulty."
+                            : "First player record for this size."
                     : "New best. Previous best: " + formatRecord(previousBest);
         }
         return "Best remains: " + formatRecord(currentBest);

@@ -53,4 +53,13 @@ class DesktopResultContentTest {
 
         assertTrue(text.contains("Difficulty: Challenge"));
     }
+
+    @Test
+    void scopedFirstRecordNamesSizeAndDifficulty() {
+        String text = DesktopResultContent.resultsMessage(5, PuzzleDifficulty.RELAXED,
+                8, 12_000, false, true, null,
+                new SaveManager.BestRecord(8, 12_000));
+
+        assertTrue(text.contains("First player record for this size and difficulty."));
+    }
 }
