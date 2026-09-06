@@ -65,6 +65,9 @@ public class MainFrame extends JFrame implements GameObserver {
     /** True while a solver owns the current session. */
     private boolean solverRunning;
 
+    /** Home summary for the independent normal save slots. */
+    private JLabel continueSummaryLabel;
+
     /**
      * Creates and shows the desktop application window.
      */
@@ -84,6 +87,12 @@ public class MainFrame extends JFrame implements GameObserver {
             public void windowDeactivated(WindowEvent event) {
                 windowActive = false;
                 syncGameTimerState();
+                autosaveCurrentGameIfSafe();
+            }
+
+            @Override
+            public void windowClosing(WindowEvent event) {
+                autosaveCurrentGameIfSafe();
             }
         });
 
@@ -191,7 +200,10 @@ public class MainFrame extends JFrame implements GameObserver {
 
         JMenuItem exitItem = new JMenuItem("Exit");
         exitItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, KeyEvent.CTRL_DOWN_MASK));
-        exitItem.addActionListener(e -> System.exit(0));
+        exitItem.addActionListener(e -> {
+            autosaveCurrentGameIfSafe();
+            System.exit(0);
+        });
         gameMenu.add(exitItem);
 
         menuBar.add(gameMenu);
@@ -274,6 +286,10 @@ public class MainFrame extends JFrame implements GameObserver {
         panel.add(sizePanel, gbc);
 
         panel.add(createHomeButton("Continue / Load", this::loadGame), nextHomeRow(gbc));
+        continueSummaryLabel = new JLabel("", SwingConstants.CENTER);
+        continueSummaryLabel.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        continueSummaryLabel.setForeground(new Color(86, 96, 108));
+        panel.add(continueSummaryLabel, nextHomeRow(gbc));
         panel.add(createHomeButton("How to Play", () -> showHelpDialog("How to Play", DesktopHelpContent.howToPlay())),
                 nextHomeRow(gbc));
         panel.add(createHomeButton("Practice Tutorial",
@@ -315,6 +331,7 @@ public class MainFrame extends JFrame implements GameObserver {
         if (solverRunning) {
             return;
         }
+        autosaveCurrentGameIfSafe();
         clearMovableHint();
         model.removeObserver(this);
         model = DesktopGameFactory.create(size, difficulty);
@@ -460,11 +477,35 @@ public class MainFrame extends JFrame implements GameObserver {
         if (solverRunning) {
             return;
         }
-        runWithPausedTimer(this::loadGameWhilePaused);
+        autosaveCurrentGameIfSafe();
+        runWithPausedTimer(() -> {
+            SaveManager.SaveMetadata[] saves = SaveManager.getAllSaveMetadata();
+            if (saves.length == 0) {
+                showMessageDialog("No save file found.", "SlideDo", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+            int selected = saves.length == 1 ? 0 : chooseSavedGame(saves);
+            if (selected >= 0) {
+                loadGameWhilePaused(saves[selected].size);
+            }
+        });
     }
 
-    private void loadGameWhilePaused() {
-        SaveManager.SaveData data = SaveManager.loadGame();
+    private int chooseSavedGame(SaveManager.SaveMetadata[] saves) {
+        Object[] options = new Object[saves.length];
+        for (int index = 0; index < saves.length; index++) {
+            SaveManager.SaveMetadata metadata = saves[index];
+            options[index] = metadata.size + "x" + metadata.size + " · "
+                    + difficultyLabel(metadata.difficulty) + " · "
+                    + metadata.moves + " moves · " + (metadata.elapsedMs / 1000) + "s";
+        }
+        return showOptionDialog("Choose a saved game to continue.", "Saved Games",
+                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
+                null, options, options[0]);
+    }
+
+    private void loadGameWhilePaused(int size) {
+        SaveManager.SaveData data = SaveManager.loadGame(size);
         if (data != null) {
             clearMovableHint();
             if (model.getSize() != data.size) {
@@ -634,10 +675,14 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void showHome() {
+        if (showingGame) {
+            autosaveCurrentGameIfSafe();
+        }
         showingGame = false;
         clearMovableHint();
         syncGameTimerState();
         contentLayout.show(contentPanel, HOME_CARD);
+        updateHomeSaveSummary();
         statusLabel.setText("Home | New Game, Continue, How to Play, Records, Preferences");
     }
 
@@ -647,6 +692,33 @@ public class MainFrame extends JFrame implements GameObserver {
         syncGameTimerState();
         updateStatus();
         SwingUtilities.invokeLater(() -> boardPanel.requestFocusInWindow());
+    }
+
+    private void updateHomeSaveSummary() {
+        if (continueSummaryLabel == null) {
+            return;
+        }
+        SaveManager.SaveMetadata[] saves = SaveManager.getAllSaveMetadata();
+        if (saves.length == 0) {
+            continueSummaryLabel.setText("No saved games yet.");
+            return;
+        }
+        if (saves.length == 1) {
+            SaveManager.SaveMetadata metadata = saves[0];
+            continueSummaryLabel.setText("Saved: " + metadata.size + "x" + metadata.size
+                    + " · " + difficultyLabel(metadata.difficulty) + " · "
+                    + metadata.moves + " moves · " + (metadata.elapsedMs / 1000) + "s");
+            return;
+        }
+        continueSummaryLabel.setText(saves.length + " independent saved games available.");
+    }
+
+    private boolean autosaveCurrentGameIfSafe() {
+        if (model == null || !DesktopAutosavePolicy.shouldAutosave(
+                showingGame, boardPanel != null && boardPanel.isBusy(), solverRunning)) {
+            return false;
+        }
+        return runWithPausedTimer(() -> SaveManager.autosaveGame(model));
     }
 
     private void syncGameTimerState() {

@@ -69,6 +69,14 @@ class DesktopSessionContractTest {
     }
 
     @Test
+    void autosaveRunsOnlyForAStableVisiblePlayerSession() {
+        assertTrue(DesktopAutosavePolicy.shouldAutosave(true, false, false));
+        assertFalse(DesktopAutosavePolicy.shouldAutosave(false, false, false));
+        assertFalse(DesktopAutosavePolicy.shouldAutosave(true, true, false));
+        assertFalse(DesktopAutosavePolicy.shouldAutosave(true, false, true));
+    }
+
+    @Test
     void solverInputLockMakesTheDesktopBoardBusy() {
         GameModel model = DesktopGameFactory.create(3, PuzzleDifficulty.CLASSIC, 17L);
         BoardPanel board = new BoardPanel(model);

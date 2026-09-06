@@ -7,7 +7,13 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -15,31 +21,54 @@ import java.util.regex.Pattern;
 /**
  * Persists desktop game state and best records.
  * <p>
- * New saves use a small JSON format, including completed and redo action
- * histories, so the data remains portable across Java desktop and Android.
- * The loader also accepts the legacy serialized
- * {@code klotski_save.dat} file to avoid breaking older local saves.
+ * New saves use one small JSON slot per supported board size, including
+ * completed and redo action histories, so the data remains portable across
+ * Java desktop and Android. Replacements are atomic and leave recoverable
+ * siblings when the platform cannot complete a write. The loader also accepts
+ * the legacy single JSON and serialized {@code klotski_save.dat} files without
+ * deleting them or overwriting a newer size slot.
  * </p>
  */
 public class SaveManager {
     /** Optional JVM property used by tests and portable desktop packages. */
     public static final String DATA_DIR_PROPERTY = "slidedo.data.dir";
 
+    private static final int CURRENT_SAVE_VERSION = 3;
+    private static final int MIN_SUPPORTED_SIZE = 3;
+    private static final int MAX_SUPPORTED_SIZE = 5;
+    private static final String SAVE_FILE_PREFIX = "klotski_save_";
+    private static final String SAVE_FILE_SUFFIX = ".json";
     private static final String SAVE_FILE = "klotski_save.json";
     private static final String LEGACY_SAVE_FILE = "klotski_save.dat";
     private static final String RECORDS_FILE = "klotski_records.json";
+    private static final String ATOMIC_TEMP_SUFFIX = ".tmp";
+    private static final String ATOMIC_BACKUP_SUFFIX = ".bak";
 
     private SaveManager() {
     }
 
     /**
-     * Writes the current game state to the default desktop save file.
+     * Writes the current game state to the independent slot for its board size.
      *
      * @param model game model to persist
      * @return {@code true} when the save file was written successfully
      */
     public static boolean saveGame(GameModel model) {
-        return saveGame(model, new File(getDataDirectory(), SAVE_FILE));
+        if (model == null || !isSupportedSize(model.getSize())) {
+            return false;
+        }
+        return saveGame(model, getSaveFile(model.getSize()));
+    }
+
+    /**
+     * Persists an active game at a lifecycle boundary without changing the
+     * manual Save command's semantics.
+     *
+     * @param model game model to persist
+     * @return {@code true} when the autosave slot was written successfully
+     */
+    public static boolean autosaveGame(GameModel model) {
+        return saveGame(model);
     }
 
     /**
@@ -50,6 +79,9 @@ public class SaveManager {
      * @return {@code true} when the save file was written successfully
      */
     static boolean saveGame(GameModel model, File saveFile) {
+        if (model == null || saveFile == null) {
+            return false;
+        }
         SaveData data = new SaveData();
         data.grid = model.getGridCopy();
         data.initialGrid = model.getInitialGridCopy();
@@ -65,25 +97,71 @@ public class SaveManager {
         data.redoHistory = model.getEncodedRedoHistory();
 
         try {
-            writeText(saveFile, toJson(data));
+            writeTextAtomic(saveFile, toJson(data));
             return true;
         } catch (IOException e) {
-            e.printStackTrace();
             return false;
         }
     }
 
     /**
-     * Loads the default desktop save file.
+     * Loads the newest valid independent desktop save.
      *
      * @return parsed save data, or {@code null} when no valid save exists
      */
     public static SaveData loadGame() {
-        SaveData data = loadGame(new File(getDataDirectory(), SAVE_FILE), new File(getDataDirectory(), LEGACY_SAVE_FILE));
-        if (data != null) {
-            return data;
+        migrateLegacySaves();
+        SaveData newest = null;
+        for (int size = MIN_SUPPORTED_SIZE; size <= MAX_SUPPORTED_SIZE; size++) {
+            SaveData candidate = loadSlot(size);
+            if (candidate != null && (newest == null || candidate.updatedAt > newest.updatedAt)) {
+                newest = candidate;
+            }
         }
-        return loadGame(new File(SAVE_FILE), new File(LEGACY_SAVE_FILE));
+        if (newest != null) {
+            return newest;
+        }
+        return loadLegacyFallback();
+    }
+
+    /**
+     * Loads the independent save slot for one supported board size.
+     *
+     * @param size supported square board size
+     * @return parsed save data, or {@code null} when the slot is absent/invalid
+     */
+    public static SaveData loadGame(int size) {
+        if (!isSupportedSize(size)) {
+            return null;
+        }
+        migrateLegacySaves();
+        return loadSlot(size);
+    }
+
+    /**
+     * Returns metadata for every valid normal save, ordered by board size.
+     *
+     * @return independent save summaries for the Home Continue chooser
+     */
+    public static SaveMetadata[] getAllSaveMetadata() {
+        migrateLegacySaves();
+        List<SaveMetadata> metadata = new ArrayList<>();
+        for (int size = MIN_SUPPORTED_SIZE; size <= MAX_SUPPORTED_SIZE; size++) {
+            SaveData data = loadSlot(size);
+            if (data != null) {
+                metadata.add(new SaveMetadata(data));
+            }
+        }
+        return metadata.toArray(new SaveMetadata[0]);
+    }
+
+    /**
+     * Indicates whether at least one valid normal save exists.
+     *
+     * @return {@code true} when a Continue choice is available
+     */
+    public static boolean hasSavedGame() {
+        return getAllSaveMetadata().length > 0;
     }
 
     /**
@@ -94,15 +172,10 @@ public class SaveManager {
      * @return parsed save data, or {@code null} when no valid save exists
      */
     static SaveData loadGame(File saveFile, File legacySaveFile) {
-        if (saveFile.exists()) {
-            try {
-                return normalizeSaveData(fromJson(readText(saveFile)));
-            } catch (IOException | IllegalArgumentException e) {
-                e.printStackTrace();
-                return null;
-            }
+        SaveData data = readJsonWithRecovery(saveFile);
+        if (data != null) {
+            return data;
         }
-
         return loadLegacyGame(legacySaveFile);
     }
 
@@ -118,13 +191,6 @@ public class SaveManager {
                 total += read;
             }
             return new String(bytes, 0, total, StandardCharsets.UTF_8);
-        }
-    }
-
-    private static void writeText(File file, String text) throws IOException {
-        ensureParentDirectory(file);
-        try (FileOutputStream fos = new FileOutputStream(file)) {
-            fos.write(text.getBytes(StandardCharsets.UTF_8));
         }
     }
 
@@ -194,26 +260,145 @@ public class SaveManager {
     }
 
     private static SaveData loadLegacyGame(File file) {
-        if (!file.exists()) {
+        if (file == null || !file.exists()) {
             return null;
         }
 
         try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
-            SaveData data = (SaveData) ois.readObject();
+            Object value = ois.readObject();
+            if (!(value instanceof SaveData)) {
+                return null;
+            }
+            SaveData data = (SaveData) value;
             if (data.initialGrid == null) {
                 data.initialGrid = data.grid;
             }
             return normalizeSaveData(data);
-        } catch (IOException | ClassNotFoundException e) {
-            e.printStackTrace();
+        } catch (IOException | ClassNotFoundException | RuntimeException e) {
             return null;
         }
+    }
+
+    private static void migrateLegacySaves() {
+        File dataDirectory = getDataDirectory();
+        for (File legacyFile : legacyCandidates(dataDirectory)) {
+            SaveData legacy = legacyFile.getName().endsWith(".dat")
+                    ? loadLegacyGame(legacyFile)
+                    : readJsonWithRecovery(legacyFile);
+            if (legacy == null || !isSupportedSize(legacy.size)) {
+                continue;
+            }
+
+            File target = getSaveFile(legacy.size);
+            SaveData current = readJsonWithRecovery(target);
+            if (current != null && current.updatedAt >= legacy.updatedAt) {
+                continue;
+            }
+            try {
+                writeTextAtomic(target, toJson(legacy));
+            } catch (IOException ignored) {
+                // The original legacy file remains untouched for a later retry.
+            }
+        }
+    }
+
+    private static SaveData loadLegacyFallback() {
+        File dataDirectory = getDataDirectory();
+        for (File legacyFile : legacyCandidates(dataDirectory)) {
+            SaveData data = legacyFile.getName().endsWith(".dat")
+                    ? loadLegacyGame(legacyFile)
+                    : readJsonWithRecovery(legacyFile);
+            if (data != null) {
+                return data;
+            }
+        }
+        return null;
+    }
+
+    private static List<File> legacyCandidates(File dataDirectory) {
+        List<File> candidates = new ArrayList<>();
+        addUnique(candidates, new File(dataDirectory, SAVE_FILE));
+        addUnique(candidates, new File(dataDirectory, LEGACY_SAVE_FILE));
+        addUnique(candidates, new File(SAVE_FILE));
+        addUnique(candidates, new File(LEGACY_SAVE_FILE));
+        return candidates;
+    }
+
+    private static void addUnique(List<File> files, File candidate) {
+        try {
+            String path = candidate.getCanonicalPath();
+            for (File existing : files) {
+                if (existing.getCanonicalPath().equals(path)) {
+                    return;
+                }
+            }
+        } catch (IOException ignored) {
+            for (File existing : files) {
+                if (existing.equals(candidate)) {
+                    return;
+                }
+            }
+        }
+        files.add(candidate);
+    }
+
+    private static SaveData loadSlot(int size) {
+        SaveData data = readJsonWithRecovery(getSaveFile(size));
+        if (data != null && data.size == size) {
+            return data;
+        }
+        File rootSlot = new File(saveFileName(size));
+        if (!sameFile(rootSlot, getSaveFile(size))) {
+            data = readJsonWithRecovery(rootSlot);
+        }
+        return data != null && data.size == size ? data : null;
+    }
+
+    private static SaveData readJsonWithRecovery(File file) {
+        if (file == null) {
+            return null;
+        }
+        File[] candidates = {
+                file,
+                new File(file.getPath() + ATOMIC_TEMP_SUFFIX),
+                new File(file.getPath() + ATOMIC_BACKUP_SUFFIX)
+        };
+        for (File candidate : candidates) {
+            if (!candidate.exists() || candidate.isDirectory()) {
+                continue;
+            }
+            try {
+                SaveData data = normalizeSaveData(fromJson(readText(candidate)));
+                if (data != null) {
+                    return data;
+                }
+            } catch (IOException | IllegalArgumentException | IllegalStateException ignored) {
+                // A partial/current file can fall back to its recoverable sibling.
+            }
+        }
+        return null;
+    }
+
+    private static boolean sameFile(File first, File second) {
+        try {
+            return first.getCanonicalFile().equals(second.getCanonicalFile());
+        } catch (IOException ignored) {
+            return first.equals(second);
+        }
+    }
+
+    private static String saveFileName(int size) {
+        return SAVE_FILE_PREFIX + size + SAVE_FILE_SUFFIX;
+    }
+
+    private static File getSaveFile(int size) {
+        return new File(getDataDirectory(), saveFileName(size));
     }
 
     private static String toJson(SaveData data) {
         StringBuilder sb = new StringBuilder();
         sb.append("{\n");
-        sb.append("  \"version\": 2,\n");
+        sb.append("  \"version\": ").append(CURRENT_SAVE_VERSION).append(",\n");
         sb.append("  \"size\": ").append(data.size).append(",\n");
         sb.append("  \"moveCount\": ").append(data.moveCount).append(",\n");
         sb.append("  \"elapsedTime\": ").append(data.elapsedTime).append(",\n");
@@ -231,15 +416,19 @@ public class SaveManager {
 
     private static SaveData fromJson(String json) {
         SaveData data = new SaveData();
+        long version = optionalLongField(json, "version", 1);
+        if (version > CURRENT_SAVE_VERSION) {
+            throw new IllegalArgumentException("Unsupported save version: " + version);
+        }
         data.size = intField(json, "size");
-        data.moveCount = intField(json, "moveCount");
-        data.elapsedTime = longField(json, "elapsedTime");
+        data.moveCount = (int) optionalLongField(json, "moveCount", 0);
+        data.elapsedTime = optionalLongField(json, "elapsedTime", 0);
         data.updatedAt = optionalLongField(json, "updatedAt", 0);
         data.active = optionalBooleanField(json, "active", false);
         data.solved = optionalBooleanField(json, "solved", false);
         data.difficulty = PuzzleDifficulty.fromId(optionalStringField(json, "difficulty", null));
         data.grid = gridField(json, "grid", data.size);
-        data.initialGrid = gridField(json, "initialGrid", data.size);
+        data.initialGrid = optionalGridField(json, "initialGrid", data.size);
         data.actionHistory = optionalStringField(json, "actionHistory", "");
         data.redoHistory = optionalStringField(json, "redoHistory", "");
         return data;
@@ -247,12 +436,15 @@ public class SaveManager {
 
     private static SaveData normalizeSaveData(SaveData data) {
         if (data == null || data.grid == null) {
-            return data;
+            return null;
         }
         if (data.size <= 0) {
             data.size = data.grid.length;
         }
-        if (data.initialGrid == null) {
+        if (!isValidGrid(data.grid, data.size)) {
+            return null;
+        }
+        if (data.initialGrid == null || !isValidGrid(data.initialGrid, data.size)) {
             data.initialGrid = data.grid;
         }
         if (data.difficulty == null) {
@@ -269,6 +461,12 @@ public class SaveManager {
         data.active = !data.solved && (data.active || data.updatedAt == 0);
         if (data.updatedAt < 0) {
             data.updatedAt = 0;
+        }
+        if (data.moveCount < 0) {
+            data.moveCount = 0;
+        }
+        if (data.elapsedTime < 0) {
+            data.elapsedTime = 0;
         }
         return data;
     }
@@ -321,6 +519,9 @@ public class SaveManager {
     }
 
     private static int[][] gridField(String json, String key, int size) {
+        if (!isSupportedSize(size)) {
+            throw new IllegalArgumentException("Unsupported saved board size: " + size);
+        }
         int keyIndex = json.indexOf("\"" + key + "\"");
         if (keyIndex < 0) {
             throw new IllegalArgumentException("Missing JSON grid: " + key);
@@ -340,6 +541,13 @@ public class SaveManager {
             }
         }
         return grid;
+    }
+
+    private static int[][] optionalGridField(String json, String key, int size) {
+        if (!json.contains("\"" + key + "\"")) {
+            return null;
+        }
+        return gridField(json, key, size);
     }
 
     private static int findMatchingBracket(String text, int start) {
@@ -396,9 +604,9 @@ public class SaveManager {
 
         try {
             ensureParentDirectory(file);
-            writeText(file, sb.toString());
+            writeTextAtomic(file, sb.toString());
         } catch (IOException e) {
-            e.printStackTrace();
+            // Records remain unchanged when an atomic replacement fails.
         }
     }
 
@@ -406,6 +614,31 @@ public class SaveManager {
         File parent = file.getParentFile();
         if (parent != null && !parent.exists() && !parent.mkdirs()) {
             throw new IOException("Could not create directory: " + parent);
+        }
+    }
+
+    private static void writeTextAtomic(File file, String text) throws IOException {
+        ensureParentDirectory(file);
+        Path target = file.toPath();
+        Path temporary = target.resolveSibling(file.getName() + ATOMIC_TEMP_SUFFIX);
+        Path backup = target.resolveSibling(file.getName() + ATOMIC_BACKUP_SUFFIX);
+        try {
+            try (FileOutputStream output = new FileOutputStream(temporary.toFile())) {
+                output.write(text.getBytes(StandardCharsets.UTF_8));
+                output.flush();
+                output.getFD().sync();
+            }
+            if (Files.exists(target) && !Files.isDirectory(target)) {
+                Files.copy(target, backup, StandardCopyOption.REPLACE_EXISTING);
+            }
+            try {
+                Files.move(temporary, target,
+                        StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            } catch (AtomicMoveNotSupportedException unsupported) {
+                Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            Files.deleteIfExists(temporary);
         }
     }
 
@@ -443,6 +676,66 @@ public class SaveManager {
             }
         }
         return true;
+    }
+
+    private static boolean isValidGrid(int[][] grid, int size) {
+        if (size < 2 || grid == null || grid.length != size) {
+            return false;
+        }
+        boolean[] seen = new boolean[size * size];
+        for (int row = 0; row < size; row++) {
+            if (grid[row] == null || grid[row].length != size) {
+                return false;
+            }
+            for (int col = 0; col < size; col++) {
+                int value = grid[row][col];
+                if (value < 0 || value >= seen.length || seen[value]) {
+                    return false;
+                }
+                seen[value] = true;
+            }
+        }
+        return true;
+    }
+
+    private static boolean isSupportedSize(int size) {
+        return size >= MIN_SUPPORTED_SIZE && size <= MAX_SUPPORTED_SIZE;
+    }
+
+    /**
+     * Immutable summary of one independent normal save slot.
+     */
+    public static final class SaveMetadata {
+        /** Last durable write time in milliseconds since the epoch. */
+        public final long updatedAt;
+
+        /** Board width and height. */
+        public final int size;
+
+        /** Counted actions in the saved run. */
+        public final int moves;
+
+        /** Active-play elapsed milliseconds. */
+        public final long elapsedMs;
+
+        /** Whether the saved puzzle can still be played. */
+        public final boolean active;
+
+        /** Whether the saved puzzle has been solved. */
+        public final boolean solved;
+
+        /** Scramble preset retained by the saved puzzle. */
+        public final PuzzleDifficulty difficulty;
+
+        private SaveMetadata(SaveData data) {
+            updatedAt = data.updatedAt;
+            size = data.size;
+            moves = data.moveCount;
+            elapsedMs = data.elapsedTime;
+            active = data.active;
+            solved = data.solved;
+            difficulty = data.difficulty == null ? PuzzleDifficulty.CLASSIC : data.difficulty;
+        }
     }
 
     /**
