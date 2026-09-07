@@ -553,7 +553,7 @@ class SaveManagerTest {
             normal.scramble(PuzzleDifficulty.CHALLENGE, 401L);
             assertTrue(SaveManager.saveGame(normal));
             GameModel daily = DailyChallenge.forDate(LocalDate.now().minusDays(1)).createGame();
-            assertTrue(daily.move(Direction.UP));
+            assertTrue(moveOneStep(daily));
             assertTrue(SaveManager.saveDailyGame(LocalDate.now().minusDays(1).toString(), daily, false));
 
             SaveManager.FavoritePuzzle favorite = SaveManager.saveFavorite(normal, "  Saved board  ", 11L);
@@ -564,7 +564,7 @@ class SaveManagerTest {
             assertEquals("Renamed", SaveManager.getFavoritePuzzle(favorite.id).label);
 
             GameModel practice = favorite.createGame();
-            assertTrue(practice.move(Direction.UP));
+            assertTrue(moveOneStep(practice));
             assertTrue(SaveManager.saveFavoriteRun(favorite.id, practice, true));
             SaveManager.SaveData restoredPractice = SaveManager.loadFavoriteRun(favorite.id);
             assertNotNull(restoredPractice);
@@ -736,5 +736,200 @@ class SaveManagerTest {
         } finally {
             restoreDataDirectoryProperty(oldValue);
         }
+    }
+
+    @Test
+    void importedLegacySaveSuppressesExternalRootOtherSizeButMigratesImportedSource()
+            throws Exception {
+        File source = new File(tempDir, "imported-save-source");
+        File target = new File(tempDir, "imported-save-target");
+        File externalRoot = new File(tempDir, "external-root");
+        assertTrue(source.mkdirs());
+        assertTrue(target.mkdirs());
+        assertTrue(externalRoot.mkdirs());
+        writeLegacyJson(new File(source, "klotski_save.json"), 3, 3, 10L);
+        writeLegacySerialized(new File(externalRoot, "klotski_save.dat"), 4, 44, 20L);
+
+        String archive = DesktopPersonalDataArchive.exportArchive(source, 800L);
+        DesktopPersonalDataArchive.restoreArchive(archive, target);
+        assertTrue(new File(target, SaveManager.PROJECT_ROOT_FALLBACK_SUPPRESSION_FILE).isFile());
+        String postRestoreArchive = DesktopPersonalDataArchive.exportArchive(
+                target, externalRoot, 804L);
+        assertFalse(postRestoreArchive.contains("klotski_save.dat"),
+                "future exports must not re-import suppressed process-root legacy data");
+
+        String oldValue = System.getProperty(SaveManager.DATA_DIR_PROPERTY);
+        System.setProperty(SaveManager.DATA_DIR_PROPERTY, target.getAbsolutePath());
+        try {
+            SaveManager.SaveData[] loaded = SaveManager.withProjectRootFallbackForTests(
+                    externalRoot, () -> new SaveManager.SaveData[] {
+                            SaveManager.loadGame(3), SaveManager.loadGame(4)});
+            assertNotNull(loaded[0]);
+            assertEquals(3, loaded[0].size);
+            assertNull(loaded[1], "an unrelated process-root size must stay suppressed");
+            assertTrue(new File(target, "klotski_save_3.json").isFile(),
+                    "the imported data-directory legacy source still migrates normally");
+        } finally {
+            restoreDataDirectoryProperty(oldValue);
+        }
+    }
+
+    @Test
+    void importedLegacySaveWinsOverNewerConflictingRootLegacyAndSuppressionSurvivesSave()
+            throws Exception {
+        File source = new File(tempDir, "same-size-source");
+        File target = new File(tempDir, "same-size-target");
+        File externalRoot = new File(tempDir, "same-size-root");
+        assertTrue(source.mkdirs());
+        assertTrue(target.mkdirs());
+        assertTrue(externalRoot.mkdirs());
+        writeLegacyJson(new File(source, "klotski_save.json"), 3, 3, 10L);
+        writeLegacyJson(new File(externalRoot, "klotski_save.json"), 3, 99, 9999L);
+
+        DesktopPersonalDataArchive.restoreArchive(
+                DesktopPersonalDataArchive.exportArchive(source, 801L), target);
+        String oldValue = System.getProperty(SaveManager.DATA_DIR_PROPERTY);
+        System.setProperty(SaveManager.DATA_DIR_PROPERTY, target.getAbsolutePath());
+        try {
+            SaveManager.SaveData imported = SaveManager.withProjectRootFallbackForTests(
+                    externalRoot, () -> SaveManager.loadGame(3));
+            assertNotNull(imported);
+            assertEquals(3, imported.moveCount);
+
+            GameModel later = new GameModel(3);
+            later.scramble(PuzzleDifficulty.CHALLENGE, 802L);
+            assertTrue(SaveManager.saveGame(later));
+            assertTrue(new File(target, SaveManager.PROJECT_ROOT_FALLBACK_SUPPRESSION_FILE).isFile());
+            SaveManager.SaveData afterSave = SaveManager.withProjectRootFallbackForTests(
+                    externalRoot, () -> SaveManager.loadGame(3));
+            assertEquals(later.getMoveCount(), afterSave.moveCount);
+        } finally {
+            restoreDataDirectoryProperty(oldValue);
+        }
+    }
+
+    @Test
+    void ordinaryRootLegacyMigrationRemainsWhenNoRestoreBoundaryExists() throws Exception {
+        File target = new File(tempDir, "ordinary-root-target");
+        File externalRoot = new File(tempDir, "ordinary-root-source");
+        assertTrue(target.mkdirs());
+        assertTrue(externalRoot.mkdirs());
+        writeLegacySerialized(new File(externalRoot, "klotski_save.dat"), 4, 44, 20L);
+
+        String oldValue = System.getProperty(SaveManager.DATA_DIR_PROPERTY);
+        System.setProperty(SaveManager.DATA_DIR_PROPERTY, target.getAbsolutePath());
+        try {
+            SaveManager.SaveData loaded = SaveManager.withProjectRootFallbackForTests(
+                    externalRoot, () -> SaveManager.loadGame(4));
+            assertNotNull(loaded);
+            assertEquals(44, loaded.moveCount);
+            assertTrue(new File(target, "klotski_save_4.json").isFile());
+        } finally {
+            restoreDataDirectoryProperty(oldValue);
+        }
+    }
+
+    @Test
+    void importedLegacyRecordsSuppressExternalRootRecordsButOrdinaryFallbackRemains()
+            throws Exception {
+        File source = new File(tempDir, "imported-records-source");
+        File target = new File(tempDir, "imported-records-target");
+        File externalRoot = new File(tempDir, "imported-records-root");
+        assertTrue(source.mkdirs());
+        assertTrue(target.mkdirs());
+        assertTrue(externalRoot.mkdirs());
+        Files.writeString(new File(source, "klotski_records.json").toPath(),
+                "{\n  \"3\": {\"moves\": 20, \"timeMs\": 9000}\n}\n",
+                StandardCharsets.UTF_8);
+        Files.writeString(new File(externalRoot, "klotski_records.json").toPath(),
+                "{\n  \"3\": {\"moves\": 1, \"timeMs\": 2},\n"
+                        + "  \"4\": {\"moves\": 1, \"timeMs\": 2}\n}\n",
+                StandardCharsets.UTF_8);
+
+        DesktopPersonalDataArchive.restoreArchive(
+                DesktopPersonalDataArchive.exportArchive(source, 803L), target);
+        String oldValue = System.getProperty(SaveManager.DATA_DIR_PROPERTY);
+        System.setProperty(SaveManager.DATA_DIR_PROPERTY, target.getAbsolutePath());
+        try {
+            SaveManager.BestRecord imported = SaveManager.withProjectRootFallbackForTests(
+                    externalRoot, () -> SaveManager.getBestRecord(3, PuzzleDifficulty.CLASSIC));
+            assertNotNull(imported);
+            assertEquals(20, imported.moves);
+            assertEquals(9000, imported.timeMs,
+                    "an imported same-size record remains authoritative over a newer root candidate");
+            SaveManager.BestRecord suppressed = SaveManager.withProjectRootFallbackForTests(
+                    externalRoot, () -> SaveManager.getBestRecord(4, PuzzleDifficulty.CLASSIC));
+            assertNull(suppressed);
+        } finally {
+            restoreDataDirectoryProperty(oldValue);
+        }
+
+        File ordinaryTarget = new File(tempDir, "ordinary-records-target");
+        assertTrue(ordinaryTarget.mkdirs());
+        oldValue = System.getProperty(SaveManager.DATA_DIR_PROPERTY);
+        System.setProperty(SaveManager.DATA_DIR_PROPERTY, ordinaryTarget.getAbsolutePath());
+        try {
+            SaveManager.BestRecord fallback = SaveManager.withProjectRootFallbackForTests(
+                    externalRoot, () -> SaveManager.getBestRecord(4, PuzzleDifficulty.CLASSIC));
+            assertNotNull(fallback);
+            assertEquals(1, fallback.moves);
+        } finally {
+            restoreDataDirectoryProperty(oldValue);
+        }
+    }
+
+    @Test
+    void malformedProjectRootSuppressionMarkerInvalidatesManagedDirectory() throws Exception {
+        File directory = new File(tempDir, "malformed-boundary");
+        assertTrue(directory.mkdirs());
+        Files.writeString(new File(directory, SaveManager.PROJECT_ROOT_FALLBACK_SUPPRESSION_FILE)
+                .toPath(), "not-suppressed\n", StandardCharsets.UTF_8);
+        assertFalse(SaveManager.validatePersonalDataDirectory(directory));
+    }
+
+    private static void writeLegacyJson(File file, int size, int moves, long updatedAt)
+            throws Exception {
+        String grid = size == 3
+                ? "[[1,2,3],[4,5,6],[7,0,8]]"
+                : "[[1,2,3,4],[5,6,7,8],[9,10,11,12],[13,14,0,15]]";
+        Files.writeString(file.toPath(), "{\n"
+                + "  \"version\": 1,\n"
+                + "  \"size\": " + size + ",\n"
+                + "  \"moveCount\": " + moves + ",\n"
+                + "  \"elapsedTime\": 7000,\n"
+                + "  \"updatedAt\": " + updatedAt + ",\n"
+                + "  \"grid\": " + grid + "\n"
+                + "}\n", StandardCharsets.UTF_8);
+    }
+
+    private static void writeLegacySerialized(File file, int size, int moves, long updatedAt)
+            throws Exception {
+        SaveManager.SaveData payload = new SaveManager.SaveData();
+        payload.size = size;
+        payload.grid = size == 4
+                ? new int[][] {{1, 2, 3, 4}, {5, 6, 7, 8},
+                        {9, 10, 11, 12}, {13, 14, 0, 15}}
+                : new int[][] {{1, 2, 3}, {4, 5, 6}, {7, 0, 8}};
+        payload.initialGrid = payload.grid;
+        payload.moveCount = moves;
+        payload.elapsedTime = 4321L;
+        payload.updatedAt = updatedAt;
+        payload.active = true;
+        try (ObjectOutputStream output = new ObjectOutputStream(new FileOutputStream(file))) {
+            output.writeObject(payload);
+        }
+    }
+
+    private static boolean moveOneStep(GameModel model) {
+        if (model.getEmptyRow() > 0) {
+            return model.move(Direction.UP);
+        }
+        if (model.getEmptyRow() + 1 < model.getSize()) {
+            return model.move(Direction.DOWN);
+        }
+        if (model.getEmptyCol() > 0) {
+            return model.move(Direction.LEFT);
+        }
+        return model.move(Direction.RIGHT);
     }
 }

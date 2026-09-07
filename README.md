@@ -177,7 +177,8 @@ dist/desktop/SlideDo-<version>.zip
 When a JDK with `jpackage` is available, the script also creates a Windows
 app-image under `dist/desktop/app-image/SlideDo`. The ZIP includes
 `SlideDo.jar`, `SlideDo.bat`, a tester-ready package README with runtime
-requirements, smoke-test prompts, known limits, and the matching release notes.
+requirements, smoke-test prompts, backup/restore replacement semantics, known
+limits, and the matching release notes. The ZIP is intentionally unsigned.
 
 ### Desktop Controls
 
@@ -192,6 +193,7 @@ requirements, smoke-test prompts, known limits, and the matching release notes.
 | Review completed and Redo actions | `Game > Move History` |
 | Save | `Ctrl + S` |
 | Load | `Ctrl + O` |
+| Export or restore personal data | `Preferences > Export Personal Data` / `Restore Personal Data` |
 | Exit | `Ctrl + Q` |
 
 ### Desktop Save Files
@@ -220,7 +222,28 @@ klotski_favorite_<identity>.json     (isolated Favorite Practice save)
 klotski_personal_preferences.json    (trend scope and weekly goal)
 klotski_continuous_meta.json         (Continuous aggregate)
 klotski_continuous_current.json      (Continuous current puzzle)
+klotski_project_root_fallback_suppressed.marker
+                                      (post-restore project-root legacy boundary)
 ```
+
+Preferences can export these managed Desktop namespaces, including legacy
+save sources, assisted markers, reset masks, and recovery-safe logical state,
+to a versioned `SlideDo-backup-YYYY-MM-DD.json` document. Restore validates the
+whole archive before an explicit confirmation and then performs a full
+replacement: absent managed entries are deleted, stale legacy fallback is
+masked by durable reset and project-root-boundary markers, and unrelated files
+in the data directory are preserved. Recovery siblings are resolved logically
+by canonical -> `.tmp` -> `.bak` precedence. A cleanup warning means the
+target restore succeeded and the retained transaction directory is shown for
+inspection; a rollback failure retains the previous snapshot, invalidates
+stale Preferences editors, and locks gameplay and controller persistence until
+restart or owner-led recovery instead of claiming ordinary success. Imported
+data-directory legacy files remain migratable without combining with unrelated
+project-root legacy files, while ordinary pre-archive root migration remains
+available. Invalid or cancelled restores do not change the existing state;
+managed/recovery/legacy-fallback path collisions are rejected before export or
+restore. The format is Desktop specific and local; it is not a cloud backup or
+a promise of Android archive interchange.
 
 For portable test or beta builds, set the JVM property
 `slidedo.data.dir=<path>` to override the directory. Continue lists valid
@@ -229,8 +252,8 @@ normal slots with size, difficulty, moves, and active elapsed time. Older
 into the matching size slot without deleting the source or replacing a newer
 slot. A failed or interrupted replacement leaves the previous JSON, a `.tmp`
 candidate, or a `.bak` recovery copy available for the next load. Legacy files
-in the project root remain a read-only fallback, and records/statistics/daily
-state stay in
+in the project root remain a read-only fallback until a restore establishes the
+durable project-root boundary, and records/statistics/daily state stay in
 the established user-data directory. Legacy size-only records are mapped to
 Classic without rewriting the source; new completion samples are deduplicated
 by run id, keep assisted results visible in history/statistics, and never let
@@ -689,12 +712,16 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
   Tutorial, Quick Reminder, localized critical controls, themes, sound, and
   explicit reset domains. Desktop now also exposes native Swing per-cell
   keyboard/accessibility controls, visible focus order, contrast-safe themes,
-  and a scrollable/resizable Home and learning layout. Strategic hints, full
-  backup/archive, screen-reader certification, and release qualification remain
-  separately scoped. Stage 7's production-equivalent app-image review passed
-  the default-scale keyboard/focus, dialog, theme, and persistence subset; the
-  exact ZIP `SlideDo.bat` launch and 125%/150% Windows keyboard/DPI checks
-  remain pending. Screen-reader certification is not claimed.
+  a scrollable/resizable Home and learning layout, and a versioned full
+  personal-data archive with validated replacement and rollback. Screen-reader
+  certification and release qualification remain separately scoped. Stage 7's
+  production-equivalent app-image review passed the default-scale
+  keyboard/focus, dialog, theme, and persistence subset, and the owner-reported
+  ZIP/DPI/mouse gate remains recorded in the readiness document. This Stage 8
+  qualification records the owner-reported extracted-package GUI/DPI,
+  backup/restore, collision, relaunch, and 100%/125%/150% scaling gate as PASS
+  on 2026-09-08; Codex did not execute the GUI tests, and screen-reader
+  certification is not claimed.
 - Save files now include release-readiness metadata and desktop saves now live in the user-data directory.
 - Signed Android release APK/AAB and desktop ZIP/app-image packaging scripts are available.
 - Desktop public beta readiness notes and local package checks are tracked in

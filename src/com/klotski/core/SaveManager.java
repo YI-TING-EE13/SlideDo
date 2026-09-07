@@ -26,6 +26,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -57,6 +58,10 @@ public class SaveManager {
     private static final String SCOPED_RECORDS_FILE = "klotski_records_v2.json";
     private static final String RECORDS_RESET_FILE = "klotski_records_reset.marker";
     private static final String SAVED_GAMES_RESET_FILE = "klotski_saved_games_reset.marker";
+    /** Durable boundary that suppresses only process-root legacy fallback. */
+    static final String PROJECT_ROOT_FALLBACK_SUPPRESSION_FILE =
+            "klotski_project_root_fallback_suppressed.marker";
+    private static final String PROJECT_ROOT_FALLBACK_SUPPRESSION_VALUE = "suppressed";
     private static final String STATISTICS_FILE = "klotski_statistics.json";
     private static final String DAILY_SAVE_PREFIX = "klotski_daily_";
     private static final String DAILY_SAVE_SUFFIX = ".json";
@@ -77,7 +82,36 @@ public class SaveManager {
     private static final String ATOMIC_TEMP_SUFFIX = ".tmp";
     private static final String ATOMIC_BACKUP_SUFFIX = ".bak";
 
+    /** Optional deterministic root-fallback location used by headless tests. */
+    private static final ThreadLocal<File> PROJECT_ROOT_FALLBACK_OVERRIDE = new ThreadLocal<>();
+
     private SaveManager() {
+    }
+
+    /**
+     * Runs a loader with an explicit process-root fallback directory.
+     * <p>This narrow seam keeps provenance tests out of the repository's real
+     * working directory and is package-private by design.</p>
+     */
+    static <T> T withProjectRootFallbackForTests(File fallbackDirectory, Supplier<T> action) {
+        if (action == null) {
+            throw new IllegalArgumentException("Fallback test action is missing.");
+        }
+        File previous = PROJECT_ROOT_FALLBACK_OVERRIDE.get();
+        if (fallbackDirectory == null) {
+            PROJECT_ROOT_FALLBACK_OVERRIDE.remove();
+        } else {
+            PROJECT_ROOT_FALLBACK_OVERRIDE.set(fallbackDirectory);
+        }
+        try {
+            return action.get();
+        } finally {
+            if (previous == null) {
+                PROJECT_ROOT_FALLBACK_OVERRIDE.remove();
+            } else {
+                PROJECT_ROOT_FALLBACK_OVERRIDE.set(previous);
+            }
+        }
     }
 
     /**
@@ -102,6 +136,12 @@ public class SaveManager {
      *
      * @param model game model to persist
      * @param assisted whether this run is no longer eligible for a player best
+     * <p>A durable {@code klotski_saved_games_reset.marker}, created by an
+     * explicit reset or a full archive restore without imported legacy source,
+     * is intentionally retained after later canonical saves. This prevents a
+     * project-root legacy fallback from reappearing while normal slots remain
+     * independently usable.</p>
+     *
      * @return {@code true} when the save file was written successfully
      */
     public static boolean saveGame(GameModel model, boolean assisted) {
@@ -109,9 +149,6 @@ public class SaveManager {
             return false;
         }
         boolean saved = saveGame(model, getSaveFile(model.getSize()), assisted);
-        if (saved) {
-            deleteFile(new File(getDataDirectory(), SAVED_GAMES_RESET_FILE));
-        }
         return saved;
     }
 
@@ -1241,6 +1278,403 @@ public class SaveManager {
         return loadNormalLegacyGame(legacySaveFile);
     }
 
+    /**
+     * Validates a Desktop personal-data directory without migrating or
+     * rewriting any source file. The archive service uses this against an
+     * isolated candidate directory before replacement, and against a stable
+     * source before export. The JVM data-directory property is scoped to this
+     * synchronized call so the existing public loaders validate every mode
+     * through their normal semantic paths.
+     *
+     * @param directory candidate Desktop data directory
+     * <p>Presence relationships are part of the contract: Continuous metadata
+     * and current state must appear together, and an assistance sidecar cannot
+     * exist without both owners. The archive resolver presents logical
+     * canonical candidates here, so callers can qualify recovery siblings
+     * without mutating the source directory.</p>
+     *
+     * @return whether every present managed file is structurally and
+     *         semantically valid
+     */
+    static synchronized boolean validatePersonalDataDirectory(File directory) {
+        if (directory == null || !directory.isDirectory()) {
+            return directory != null && !directory.exists();
+        }
+        String previous = System.getProperty(DATA_DIR_PROPERTY);
+        System.setProperty(DATA_DIR_PROPERTY, directory.getAbsolutePath());
+        try {
+            File[] files = directory.listFiles();
+            if (files == null) {
+                return false;
+            }
+            for (File file : files) {
+                String name = file.getName();
+                if (DesktopPersonalDataArchive.isManagedName(name)
+                        && !name.endsWith(ATOMIC_TEMP_SUFFIX)
+                        && !name.endsWith(ATOMIC_BACKUP_SUFFIX)
+                        && (!file.isFile() || file.length() > DesktopPersonalDataArchive.MAX_ENTRY_BYTES)) {
+                    return false;
+                }
+            }
+
+            for (int size = MIN_SUPPORTED_SIZE; size <= MAX_SUPPORTED_SIZE; size++) {
+                File slot = new File(directory, saveFileName(size));
+                if (slot.exists() && !isValidSaveJsonFile(slot, false)) {
+                    return false;
+                }
+            }
+            File legacyJson = new File(directory, SAVE_FILE);
+            if (legacyJson.exists() && !isValidSaveJsonFile(legacyJson, true)) {
+                return false;
+            }
+            File legacySerialized = new File(directory, LEGACY_SAVE_FILE);
+            if (legacySerialized.exists() && loadLegacyGame(legacySerialized) == null) {
+                return false;
+            }
+
+            File scopedRecords = new File(directory, SCOPED_RECORDS_FILE);
+            if (scopedRecords.exists() && !isValidScopedRecordsFile(scopedRecords)) {
+                return false;
+            }
+            File legacyRecords = new File(directory, RECORDS_FILE);
+            if (legacyRecords.exists() && !isValidLegacyRecordsFile(legacyRecords)) {
+                return false;
+            }
+            File statistics = new File(directory, STATISTICS_FILE);
+            if (statistics.exists() && !isValidCompletionStoreFile(statistics)) {
+                return false;
+            }
+            if (!validateResetMarker(new File(directory, RECORDS_RESET_FILE))
+                    || !validateResetMarker(new File(directory, SAVED_GAMES_RESET_FILE))
+                    || !validateProjectRootFallbackMarker(new File(directory,
+                            PROJECT_ROOT_FALLBACK_SUPPRESSION_FILE))) {
+                return false;
+            }
+
+            File dailyProgress = new File(directory, DAILY_PROGRESS_FILE);
+            if (dailyProgress.exists()) {
+                try {
+                    String json = readText(dailyProgress);
+                    if (!hasField(json, "completedDates") || !hasField(json, "currentStreak")
+                            || !hasField(json, "bestStreak")) {
+                        return false;
+                    }
+                    DailyProgressState state = dailyProgressFromJson(json);
+                    for (String dateId : state.completedDates) {
+                        if (parseDailyDate(dateId) == null) {
+                            return false;
+                        }
+                    }
+                } catch (IOException | RuntimeException exception) {
+                    return false;
+                }
+            }
+            if (!validateDailyFiles(directory)) {
+                return false;
+            }
+
+            File favorites = new File(directory, FAVORITES_FILE);
+            if (favorites.exists() && !isValidFavoritesFile(favorites)) {
+                return false;
+            }
+            if (!validateFavoriteRunFiles(directory)) {
+                return false;
+            }
+
+            File preferences = new File(directory, PERSONAL_PREFERENCES_FILE);
+            if (preferences.exists() && !isValidPreferencesFile(preferences)) {
+                return false;
+            }
+            File continuousMeta = new File(directory, CONTINUOUS_META_FILE);
+            File continuousCurrent = new File(directory, CONTINUOUS_CURRENT_FILE);
+            File continuousAssisted = new File(directory,
+                    CONTINUOUS_CURRENT_FILE + CONTINUOUS_ASSISTED_SUFFIX);
+            if (continuousMeta.exists() != continuousCurrent.exists()) {
+                return false;
+            }
+            if (continuousMeta.exists() && loadContinuousGame() == null) {
+                return false;
+            }
+            if (continuousAssisted.exists()
+                    && (!continuousCurrent.exists() || !continuousMeta.exists()
+                            || !isBooleanMarker(continuousAssisted))) {
+                return false;
+            }
+            return true;
+        } finally {
+            if (previous == null) {
+                System.clearProperty(DATA_DIR_PROPERTY);
+            } else {
+                System.setProperty(DATA_DIR_PROPERTY, previous);
+            }
+        }
+    }
+
+    private static boolean isValidSaveJsonFile(File file, boolean legacy) {
+        try {
+            String json = readText(file);
+            if (json == null || !json.trim().startsWith("{") || !json.trim().endsWith("}")) {
+                return false;
+            }
+            SaveData data = normalizeSaveData(fromJson(json));
+            if (data == null || !isSupportedSize(data.size)) {
+                return false;
+            }
+            long version = optionalLongField(json, "version", -1);
+            if (!legacy && (version < 1 || version > CURRENT_SAVE_VERSION)) {
+                return false;
+            }
+            if (!legacy && version >= CURRENT_SAVE_VERSION && !hasBooleanField(json, "assisted")) {
+                return false;
+            }
+            if (!legacy && version >= CURRENT_SAVE_VERSION
+                    && (!hasField(json, "actionHistory") || !hasField(json, "redoHistory"))) {
+                return false;
+            }
+            if (!legacy && hasField(json, "difficulty")
+                    && !isDifficultyId(optionalStringField(json, "difficulty", null))) {
+                return false;
+            }
+            GameModel reconstructed = new GameModel(data.size);
+            reconstructed.loadState(data);
+            if (!legacy && version >= CURRENT_SAVE_VERSION
+                    && (!data.actionHistory.equals(reconstructed.getEncodedActionHistory())
+                            || !data.redoHistory.equals(reconstructed.getEncodedRedoHistory()))) {
+                return false;
+            }
+            return true;
+        } catch (IOException | RuntimeException exception) {
+            return false;
+        }
+    }
+
+    private static boolean isValidScopedRecordsFile(File file) {
+        try {
+            return validateRecordJson(readText(file), true);
+        } catch (IOException | RuntimeException exception) {
+            return false;
+        }
+    }
+
+    private static boolean isValidLegacyRecordsFile(File file) {
+        try {
+            return validateRecordJson(readText(file), false);
+        } catch (IOException | RuntimeException exception) {
+            return false;
+        }
+    }
+
+    private static boolean validateRecordJson(String json, boolean scoped) {
+        if (json == null) {
+            return false;
+        }
+        String compact = json.replaceAll("\\s+", "");
+        if (compact.equals("{}")) {
+            return true;
+        }
+        String entryKey = scoped ? "[345]:(?:relaxed|classic|challenge)" : "[345]";
+        String entryPattern = "\\\"(" + entryKey + ")\\\":\\{\\\"moves\\\":(\\d+),\\\"timeMs\\\":(\\d+)\\}";
+        Matcher whole = Pattern.compile("^\\{(" + entryPattern + "(?:," + entryPattern + ")*)\\}$")
+                .matcher(compact);
+        if (!whole.matches()) {
+            return false;
+        }
+        Set<String> keys = new java.util.HashSet<>();
+        Matcher entries = Pattern.compile(entryPattern).matcher(whole.group(1));
+        int count = 0;
+        while (entries.find()) {
+            if (!keys.add(entries.group(1))) {
+                return false;
+            }
+            Integer.parseInt(entries.group(2));
+            Long.parseLong(entries.group(3));
+            count++;
+        }
+        return count > 0;
+    }
+
+    private static boolean isValidCompletionStoreFile(File file) {
+        try {
+            String json = readText(file);
+            if (!json.trim().startsWith("{") || !json.trim().endsWith("}")) {
+                return false;
+            }
+            if (optionalLongField(json, "version", -1) != 1
+                    || !hasField(json, "recordedIds") || !hasField(json, "history")
+                    || !hasField(json, "stats")) {
+                return false;
+            }
+            completionStoreFromJson(json);
+            return true;
+        } catch (IOException | RuntimeException exception) {
+            return false;
+        }
+    }
+
+    private static boolean validateResetMarker(File file) {
+        if (!file.exists()) {
+            return true;
+        }
+        return isBooleanOrResetMarker(file, "reset");
+    }
+
+    private static boolean validateProjectRootFallbackMarker(File file) {
+        if (!file.exists()) {
+            return true;
+        }
+        try {
+            return PROJECT_ROOT_FALLBACK_SUPPRESSION_VALUE.equals(readText(file).trim());
+        } catch (IOException exception) {
+            return false;
+        }
+    }
+
+    private static boolean isBooleanOrResetMarker(File file, String resetValue) {
+        try {
+            String value = readText(file).trim();
+            return resetValue.equals(value);
+        } catch (IOException exception) {
+            return false;
+        }
+    }
+
+    private static boolean isBooleanMarker(File file) {
+        try {
+            String value = readText(file).trim();
+            return "true".equals(value) || "false".equals(value);
+        } catch (IOException exception) {
+            return false;
+        }
+    }
+
+    private static boolean validateDailyFiles(File directory) {
+        File[] files = directory.listFiles();
+        if (files == null) {
+            return false;
+        }
+        for (File file : files) {
+            String name = file.getName();
+            if (!name.startsWith(DAILY_SAVE_PREFIX) || name.equals(DAILY_PROGRESS_FILE)
+                    || name.endsWith(DAILY_ASSISTED_SUFFIX)) {
+                if (name.startsWith(DAILY_SAVE_PREFIX) && name.endsWith(DAILY_ASSISTED_SUFFIX)
+                        && (!new File(directory, name.substring(0, name.length()
+                                - DAILY_ASSISTED_SUFFIX.length()) + DAILY_SAVE_SUFFIX).exists()
+                                || !isBooleanMarker(file))) {
+                    return false;
+                }
+                continue;
+            }
+            if (!name.endsWith(DAILY_SAVE_SUFFIX)) {
+                return false;
+            }
+            String dateId = name.substring(DAILY_SAVE_PREFIX.length(),
+                    name.length() - DAILY_SAVE_SUFFIX.length());
+            LocalDate date;
+            try {
+                date = LocalDate.parse(dateId);
+            } catch (DateTimeParseException exception) {
+                return false;
+            }
+            if (date.isAfter(LocalDate.now())) {
+                return false;
+            }
+            try {
+                SaveData data = normalizeSaveData(fromJson(readText(file)));
+                DailyChallenge challenge = DailyChallenge.forDate(date);
+                if (data == null || !matchesDailyIdentity(data.size, data.difficulty,
+                        data.initialGrid, challenge)) {
+                    return false;
+                }
+            } catch (IOException | RuntimeException exception) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean isValidFavoritesFile(File file) {
+        try {
+            String json = readText(file);
+            if (!json.trim().startsWith("[") || !json.trim().endsWith("]")) {
+                return false;
+            }
+            int objects = 0;
+            Matcher matcher = Pattern.compile("\\{(.*?)\\}", Pattern.DOTALL).matcher(json);
+            while (matcher.find()) {
+                objects++;
+            }
+            return parseFavorites(json).size() == objects;
+        } catch (IOException | RuntimeException exception) {
+            return false;
+        }
+    }
+
+    private static boolean validateFavoriteRunFiles(File directory) {
+        File[] files = directory.listFiles();
+        if (files == null) {
+            return false;
+        }
+        for (File file : files) {
+            String name = file.getName();
+            if (!name.startsWith(FAVORITE_RUN_PREFIX)) {
+                continue;
+            }
+            if (name.endsWith(FAVORITE_ASSISTED_SUFFIX)) {
+                String id = name.substring(FAVORITE_RUN_PREFIX.length(),
+                        name.length() - FAVORITE_ASSISTED_SUFFIX.length());
+                if (!isValidFavoriteId(id)
+                        || !new File(directory, FAVORITE_RUN_PREFIX + id + FAVORITE_RUN_SUFFIX).exists()
+                        || !isBooleanMarker(file)) {
+                    return false;
+                }
+                continue;
+            }
+            if (!name.endsWith(FAVORITE_RUN_SUFFIX)) {
+                return false;
+            }
+            String id = name.substring(FAVORITE_RUN_PREFIX.length(),
+                    name.length() - FAVORITE_RUN_SUFFIX.length());
+            if (!isValidFavoriteId(id)) {
+                return false;
+            }
+            try {
+                FavoritePuzzle favorite = getFavoritePuzzle(id);
+                SaveData data = normalizeSaveData(fromJson(readText(file)));
+                if (favorite == null || data == null || data.difficulty != favorite.difficulty
+                        || !Arrays.deepEquals(data.initialGrid, favorite.initialGrid)) {
+                    return false;
+                }
+            } catch (IOException | RuntimeException exception) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean isValidPreferencesFile(File file) {
+        try {
+            String json = readText(file);
+            if (!json.trim().startsWith("{") || !json.trim().endsWith("}")) {
+                return false;
+            }
+            String[] required = {"weeklyGoalTarget", "trendSize", "trendDifficulty",
+                    "reducedMotion", "soundEnabled", "theme", "languageTag", "onboardingSeen"};
+            for (String key : required) {
+                if (!hasField(json, key)) {
+                    return false;
+                }
+            }
+            PersonalPreferences preferences = personalPreferencesFromJson(json);
+            return WeeklyGoalProgress.isValidTarget(preferences.weeklyGoalTarget)
+                    && isSupportedSize(preferences.trendSize)
+                    && preferences.trendDifficulty != null
+                    && normalizeDesktopTheme(preferences.theme) != null
+                    && normalizeDesktopLanguage(preferences.languageTag) != null;
+        } catch (IOException | RuntimeException exception) {
+            return false;
+        }
+    }
+
     private static String readText(File file) throws IOException {
         try (FileInputStream fis = new FileInputStream(file)) {
             byte[] bytes = new byte[(int) file.length()];
@@ -1405,7 +1839,10 @@ public class SaveManager {
         if (record != null) {
             return record;
         }
-        File rootFile = new File(SCOPED_RECORDS_FILE);
+        if (isRecordsReset() || isProjectRootFallbackSuppressed()) {
+            return null;
+        }
+        File rootFile = new File(projectRootFallbackDirectory(), SCOPED_RECORDS_FILE);
         if (!sameFile(dataFile, rootFile)) {
             return loadScopedRecords(rootFile).get(recordScopeKey(size, difficulty));
         }
@@ -1420,7 +1857,10 @@ public class SaveManager {
         if (record != null) {
             return record;
         }
-        File rootFile = new File(RECORDS_FILE);
+        if (isRecordsReset() || isProjectRootFallbackSuppressed()) {
+            return null;
+        }
+        File rootFile = new File(projectRootFallbackDirectory(), RECORDS_FILE);
         if (!sameFile(rootFile, new File(getDataDirectory(), RECORDS_FILE))) {
             return getBestRecord(rootFile, size);
         }
@@ -1435,11 +1875,28 @@ public class SaveManager {
         return new File(getDataDirectory(), SAVED_GAMES_RESET_FILE).isFile();
     }
 
+    private static boolean isProjectRootFallbackSuppressed() {
+        return isProjectRootFallbackSuppressed(getDataDirectory());
+    }
+
+    static boolean isProjectRootFallbackSuppressed(File dataDirectory) {
+        return dataDirectory != null
+                && new File(dataDirectory, PROJECT_ROOT_FALLBACK_SUPPRESSION_FILE).isFile();
+    }
+
+    private static File projectRootFallbackDirectory() {
+        File override = PROJECT_ROOT_FALLBACK_OVERRIDE.get();
+        return override == null ? new File(".") : override;
+    }
+
     private static Map<String, BestRecord> loadScopedRecordsForWrite(File target) {
         if (target.exists()) {
             return loadScopedRecords(target);
         }
-        File rootFile = new File(SCOPED_RECORDS_FILE);
+        if (isProjectRootFallbackSuppressed()) {
+            return new HashMap<>();
+        }
+        File rootFile = new File(projectRootFallbackDirectory(), SCOPED_RECORDS_FILE);
         if (!sameFile(target, rootFile) && rootFile.exists()) {
             return loadScopedRecords(rootFile);
         }
@@ -1608,9 +2065,9 @@ public class SaveManager {
 
     private static CompletionStore loadCompletionStore() {
         File file = new File(getDataDirectory(), STATISTICS_FILE);
-        File rootFile = new File(STATISTICS_FILE);
+        File rootFile = new File(projectRootFallbackDirectory(), STATISTICS_FILE);
         CompletionStore store = loadCompletionStore(file);
-        if (store.hasData() || sameFile(file, rootFile)) {
+        if (store.hasData() || sameFile(file, rootFile) || isProjectRootFallbackSuppressed()) {
             return store;
         }
         return loadCompletionStore(rootFile);
@@ -1717,8 +2174,11 @@ public class SaveManager {
         List<File> candidates = new ArrayList<>();
         addUnique(candidates, new File(dataDirectory, SAVE_FILE));
         addUnique(candidates, new File(dataDirectory, LEGACY_SAVE_FILE));
-        addUnique(candidates, new File(SAVE_FILE));
-        addUnique(candidates, new File(LEGACY_SAVE_FILE));
+        if (!isProjectRootFallbackSuppressed()) {
+            File fallbackDirectory = projectRootFallbackDirectory();
+            addUnique(candidates, new File(fallbackDirectory, SAVE_FILE));
+            addUnique(candidates, new File(fallbackDirectory, LEGACY_SAVE_FILE));
+        }
         return candidates;
     }
 
@@ -1745,7 +2205,10 @@ public class SaveManager {
         if (data != null && data.size == size) {
             return data;
         }
-        File rootSlot = new File(saveFileName(size));
+        if (isSavedGamesReset() || isProjectRootFallbackSuppressed()) {
+            return null;
+        }
+        File rootSlot = new File(projectRootFallbackDirectory(), saveFileName(size));
         if (!sameFile(rootSlot, getSaveFile(size))) {
             data = readNormalJsonWithRecovery(rootSlot);
         }
@@ -2037,6 +2500,16 @@ public class SaveManager {
 
     private static boolean hasBooleanField(String json, String key) {
         return Pattern.compile("\"" + key + "\"\\s*:\\s*(true|false)").matcher(json).find();
+    }
+
+    private static boolean hasField(String json, String key) {
+        return Pattern.compile("\"" + Pattern.quote(key) + "\"\\s*:").matcher(json).find();
+    }
+
+    private static boolean isDifficultyId(String value) {
+        return PuzzleDifficulty.RELAXED.getId().equalsIgnoreCase(value)
+                || PuzzleDifficulty.CLASSIC.getId().equalsIgnoreCase(value)
+                || PuzzleDifficulty.CHALLENGE.getId().equalsIgnoreCase(value);
     }
 
     private static String optionalStringField(String json, String key, String fallback) {

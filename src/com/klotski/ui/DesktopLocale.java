@@ -73,7 +73,12 @@ public final class DesktopLocale {
             "chooseLanguageDescription", "chooseThemeDescription", "reducedMotionDescription",
             "soundDescription", "resetSavedDescription", "resetRecordsDescription",
             "preferencesAccessibleDescription", "savedGamesCleared", "savedGamesClearFailure",
-            "recordsCleared", "recordsClearFailure", "statusRunning", "statusBest", "statusReducedMotion",
+            "recordsCleared", "recordsClearFailure", "backupExport", "backupRestore",
+            "backupExportDescription", "backupRestoreDescription", "backupFileFilter", "backupExported",
+            "backupRestored", "backupExportFailure", "backupRestoreFailure", "backupInvalid",
+            "backupRestoreConfirm", "backupBusy", "backupRestoreCleanupWarning",
+            "backupRestoreRecoveryRequired", "recoveryRequiredStatus",
+            "statusRunning", "statusBest", "statusReducedMotion",
             "statusDaily", "statusFavorite", "statusSolved", "statusFavoriteSolved", "bestNone",
             "lastPuzzleSummary", "puzzleSolved", "puzzleTitle", "difficultyLabel", "timeLabel",
             "noRecord", "favoritePuzzleTitle", "favoriteResultIsolation", "homeIndependentSaves"
@@ -401,6 +406,21 @@ public final class DesktopLocale {
         values.put("resetSavedDescription", "Delete saved-game domains after explicit confirmation.");
         values.put("resetRecordsDescription", "Delete records, completion statistics, and daily streak state after explicit confirmation.");
         values.put("preferencesAccessibleDescription", "Choose language, theme, sound, reduced motion, or reset one persisted domain.");
+        values.put("backupExport", "Export Personal Data");
+        values.put("backupRestore", "Restore Personal Data");
+        values.put("backupExportDescription", "Write a versioned local backup of all Desktop personal data.");
+        values.put("backupRestoreDescription", "Replace all managed Desktop personal data from a validated local backup.");
+        values.put("backupFileFilter", "SlideDo JSON backup (*.json)");
+        values.put("backupExported", "Personal data backup exported.");
+        values.put("backupRestored", "Personal data restored. The current Desktop session was reloaded.");
+        values.put("backupExportFailure", "Personal data backup could not be exported.");
+        values.put("backupRestoreFailure", "Personal data could not be restored; the previous state was retained.");
+        values.put("backupInvalid", "The selected backup is invalid or unsupported. No data was changed.");
+        values.put("backupRestoreConfirm", "Restore this backup as a full replacement? Managed Desktop saves, records, history, settings, Daily, Favorites, and Continuous data will be replaced.");
+        values.put("backupBusy", "Wait for the current board animation or solver operation to finish before using backup.");
+        values.put("backupRestoreCleanupWarning", "Personal data restore succeeded, but cleanup was incomplete. Retained recovery data: %s. You may remove that recovery directory after inspecting it.");
+        values.put("backupRestoreRecoveryRequired", "Personal-data restore could not be completed safely. Automatic rollback was incomplete. Recovery data was retained at: %s\nPrevious snapshot: %s\nFurther automatic saves are disabled until restart or recovery.");
+        values.put("recoveryRequiredStatus", "Personal-data recovery is required. Normal gameplay and automatic saves are disabled.");
         values.put("savedGamesCleared", "Saved-game domains cleared.");
         values.put("savedGamesClearFailure", "Some saved-game files could not be cleared.");
         values.put("recordsCleared", "Records and statistics cleared.");
@@ -533,6 +553,18 @@ public final class DesktopLocale {
         values.put("lastPuzzle", "最後一題"); values.put("nextPuzzle", "下一題"); values.put("endChallenge", "結束挑戰"); values.put("home", "首頁"); values.put("replayPuzzle", "重玩題目"); values.put("newSize", "新大小");
         values.put("favoriteResultsTitle", "收藏練習"); values.put("resultsTitle", "結果"); values.put("continuousResultsTitle", "連續挑戰結果");
         values.put("chooseLanguageDescription", "選擇桌面語言。"); values.put("chooseThemeDescription", "選擇桌面色彩主題。");
+        values.put("backupExport", "匯出個人資料"); values.put("backupRestore", "還原個人資料");
+        values.put("backupExportDescription", "將所有桌面個人資料寫入版本化的本機備份。");
+        values.put("backupRestoreDescription", "使用已驗證的本機備份完整取代桌面管理資料。");
+        values.put("backupFileFilter", "SlideDo JSON 備份 (*.json)");
+        values.put("backupExported", "個人資料備份已匯出。"); values.put("backupRestored", "個人資料已還原。桌面目前工作階段已重新載入。");
+        values.put("backupExportFailure", "無法匯出個人資料備份。"); values.put("backupRestoreFailure", "無法還原個人資料；已保留原本狀態。");
+        values.put("backupInvalid", "選取的備份無效或不受支援，資料未變更。");
+        values.put("backupRestoreConfirm", "要以完整取代方式還原此備份嗎？桌面管理的存檔、紀錄、歷史、設定、每日、收藏與連續挑戰資料都會被取代。");
+        values.put("backupBusy", "請先等待目前棋盤動畫或求解器操作完成，再使用備份功能。");
+        values.put("backupRestoreCleanupWarning", "個人資料已成功還原，但清理未完成。保留的復原資料：%s。檢查後即可移除此復原目錄。");
+        values.put("backupRestoreRecoveryRequired", "個人資料無法安全完成還原。自動回復未完成，已保留復原資料：%s\n還原前快照：%s\n重新啟動或完成復原前，將停用後續自動儲存。");
+        values.put("recoveryRequiredStatus", "需要復原個人資料。一般遊玩與自動儲存已停用。");
         values.put("reducedMotionDescription", "停用棋盤轉場動畫，但不改變拼圖規則。"); values.put("soundDescription", "啟用或停用桌面移動與完成提示音。");
         values.put("resetSavedDescription", "在明確確認後刪除已儲存遊戲範圍。"); values.put("resetRecordsDescription", "在明確確認後刪除紀錄、完成統計與每日連勝狀態。");
         values.put("preferencesAccessibleDescription", "選擇語言、主題、音效、減少動態效果，或重置一個儲存範圍。");
@@ -614,6 +646,18 @@ public final class DesktopLocale {
         values.put("continuousEndSaved", "保存したチャレンジを終了"); values.put("continuousStartPuzzles", "%d問を開始"); values.put("continuousSetupDescription", "固定サイズ／難易度の範囲。通常、デイリー、お気に入り練習とは別に進行します。"); values.put("continuousTitle", "連続チャレンジ"); values.put("continuousScopePrompt", "このチャレンジの固定範囲を選択。"); values.put("continuousScopeTitle", "連続チャレンジの範囲");
         values.put("lastPuzzle", "最後のパズル"); values.put("nextPuzzle", "次のパズル"); values.put("endChallenge", "チャレンジを終了"); values.put("home", "ホーム"); values.put("replayPuzzle", "パズルを再生"); values.put("newSize", "新しいサイズ");
         values.put("favoriteResultsTitle", "お気に入り練習"); values.put("resultsTitle", "結果"); values.put("continuousResultsTitle", "連続チャレンジの結果"); values.put("chooseLanguageDescription", "デスクトップ言語を選択。"); values.put("chooseThemeDescription", "デスクトップのカラーテーマを選択。");
+        values.put("backupExport", "個人データを書き出す"); values.put("backupRestore", "個人データを復元");
+        values.put("backupExportDescription", "すべてのデスクトップ個人データをバージョン付きのローカルバックアップに保存します。");
+        values.put("backupRestoreDescription", "検証済みバックアップで管理対象のデスクトップ個人データを完全に置き換えます。");
+        values.put("backupFileFilter", "SlideDo JSON バックアップ (*.json)");
+        values.put("backupExported", "個人データのバックアップを書き出しました。"); values.put("backupRestored", "個人データを復元しました。現在のデスクトップセッションを再読み込みしました。");
+        values.put("backupExportFailure", "個人データのバックアップを書き出せませんでした。"); values.put("backupRestoreFailure", "個人データを復元できませんでした。以前の状態を保持しました。");
+        values.put("backupInvalid", "選択したバックアップは無効または未対応です。データは変更されていません。");
+        values.put("backupRestoreConfirm", "このバックアップを完全置換として復元しますか？管理対象の保存、記録、履歴、設定、デイリー、お気に入り、連続チャレンジが置き換えられます。");
+        values.put("backupBusy", "バックアップを使う前に、盤面のアニメーションまたはソルバー処理が終わるまで待ってください。");
+        values.put("backupRestoreCleanupWarning", "個人データの復元は成功しましたが、クリーンアップが未完了です。保持された復旧データ：%s。確認後にこの復旧フォルダーを削除できます。");
+        values.put("backupRestoreRecoveryRequired", "個人データを安全に復元できませんでした。自動ロールバックが未完了のため、復旧データを保持しています：%s\n復元前のスナップショット：%s\n再起動または復旧が完了するまで自動保存を無効にします。");
+        values.put("recoveryRequiredStatus", "個人データの復旧が必要です。通常のプレイと自動保存は無効です。");
         values.put("reducedMotionDescription", "パズルのルールを変えずに盤面の遷移アニメーションを無効化。"); values.put("soundDescription", "デスクトップの移動・完了サウンドを有効／無効化。"); values.put("resetSavedDescription", "確認後に保存ゲームの範囲を削除。"); values.put("resetRecordsDescription", "確認後に記録、完了統計、デイリー連勝を削除。"); values.put("preferencesAccessibleDescription", "言語、テーマ、サウンド、動きの軽減、保存範囲のリセットを選択。");
         values.put("savedGamesCleared", "保存ゲームの範囲を削除しました。"); values.put("savedGamesClearFailure", "一部の保存ゲームを削除できませんでした。"); values.put("recordsCleared", "記録と統計を削除しました。"); values.put("recordsClearFailure", "一部の記録ファイルを削除できませんでした。");
         values.put("statusRunning", "手数：%d | 時間：%d秒 | 難易度：%s | %s%s%s%s%s%s%s"); values.put("statusBest", "記録：%s"); values.put("statusReducedMotion", " | 動きを減らす"); values.put("statusDaily", " | デイリー：%s"); values.put("statusFavorite", " | お気に入り練習");
