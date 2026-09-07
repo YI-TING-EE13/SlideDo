@@ -3,11 +3,11 @@
 Status: owner-approved qualification baseline with Stages 1-7 session,
 persistence, records, Daily, Favorites, Trends, Weekly Goal, and Continuous
 behavior plus Desktop learning/preferences/accessibility implemented; automated
-verification is green. The packaged GUI/DPI acceptance record remains NOT RUN
-until a real GUI-capable Windows execution is available; source inspection,
-headless tests, and package creation do not substitute for that gate. Later
-stages remain planning-only. This document records current implementation
-evidence and bounded follow-up work.
+verification is green. The required packaged GUI/DPI gate is recorded as
+owner-reported manual acceptance on 2026-09-07. The PR #25 repair did not
+independently rerun that gate, and screen-reader certification remains NOT
+CLAIMED. Later stages remain planning-only. This document records current
+implementation evidence and bounded follow-up work.
 
 Qualification date: 2026-09-07
 Repository: YI-TING-EE13/SlideDo
@@ -74,8 +74,11 @@ Repair qualification for PR #25 (2026-09-07):
 - Focused tests include `DesktopLocaleCoverageTest`,
   `DesktopMaterialContentTest`, and `SaveManagerTest` cases for JSON/.dat
   solved/unsolved migration, explicit v4 values, and isolated sidecar/meta
-  compatibility. The packaged GUI/DPI record remains NOT RUN until a real
-  GUI-capable Windows execution; no manual acceptance is claimed here.
+  compatibility. The owner-reported 2026-09-07 manual acceptance covers the
+  extracted ZIP launch, 100%/125%/150% scaling, larger-text/adaptive behavior,
+  keyboard/focus behavior, and the pre-Stage-7 mouse contract. This repair did
+  not independently rerun that GUI gate; screen-reader certification remains
+  NOT CLAIMED.
 
 ## Android to Desktop feature-parity matrix
 
@@ -126,14 +129,14 @@ Repair qualification for PR #25 (2026-09-07):
 | L4 | How to Play and learning examples | AndroidLearningContent contains visual Goal, Tap, whole-line, swipe, tools, and records guidance. | Android How-to screen renders localized examples and links to learning surfaces. | DesktopLearningContent/HelpContent documents goal, aligned movement, whole-line one-action history, assist, solver record protection, and exact replay in a native dialog. | PARITY | Content is behaviorally accurate; Swing text replaces Android visual resources without copying Android resource files. | DesktopHelpContentTest plus localized learning-content tests; update this copy when shared contracts change. |
 | L5 | Quick Reminder during play | Android pause menu opens a compact localized reminder without losing the current game. | MainActivity.showQuickReminder is reachable from the Game pause menu and pauses active timing. | Game > Quick Reminder opens the compact localized reminder through `runWithPausedTimer`, then returns to the same board/mode. | PARITY | Reminder is shorter than the full guide and mutates neither model state nor records. | DesktopLearningContentTest and existing DesktopTimerPolicy/modal wiring; manual in-game dialog smoke remains useful. |
 | L6 | Settings and preferences | AndroidGameStore persists language, theme, sound, haptic, reduced motion, onboarding, and reset choices. | AndroidSettingsScreen and MainActivity apply settings, recreate for locale/theme, and expose backup/reset. | SaveManager persists the Desktop subset: language (`en`/`zh-TW`/`ja-JP`), Midnight/Ocean theme, sound feedback, reduced motion, onboarding seen, plus confirmed saved-game and records/statistics resets. | PARITY | Haptics and backup remain platform-specific; presentation changes rebuild Swing controls without changing puzzle rules, saves, or records. | SaveManager preference/reset tests, DesktopLocale/Theme tests, MainFrame compile/Javadocs. |
-| L7 | Visual themes and contrast | AndroidVisualTheme and AndroidColorContrast define Midnight/Day palettes and 4.5:1 button contrast checks. | AndroidUi, AndroidUiPolicy, and KlotskiView apply the selected theme persistently. | DesktopTheme supplies persisted Midnight/Ocean palettes to Home and BoardPanel; numbered tiles and text retain high-contrast colors and theme changes are presentation-only. | PARITY | Desktop palette names are native equivalents; no Android color resource dependency is introduced. | DesktopThemeTest, BoardPanel compile/Javadocs, and manual look-and-feel smoke; formal adaptive contrast/accessibility remains Stage 7. |
+| L7 | Visual themes and contrast | AndroidVisualTheme and AndroidColorContrast define Midnight/Day palettes and 4.5:1 button contrast checks. | AndroidUi, AndroidUiPolicy, and KlotskiView apply the selected theme persistently. | DesktopTheme supplies persisted Midnight/Ocean palettes to Home and BoardPanel; numbered tiles and text retain high-contrast colors and theme changes are presentation-only. | PARITY | Desktop palette names are native equivalents; no Android color resource dependency is introduced. | DesktopThemeTest, BoardPanel compile/Javadocs, and the owner-reported Stage 7 packaged review; screen-reader certification remains NOT CLAIMED. |
 | L8 | Optional sound feedback | Sound is not a shared puzzle rule. | AndroidSoundFeedback and AndroidGameStore provide optional asset-free move, win, and error tones. | SaveManager persists an opt-in sound flag; MainFrame emits native Toolkit move/win beeps only when enabled, with no audio prerequisite. | PARITY | Audio remains presentation-only and cannot change moves, timing, assisted state, or records. | SaveManager preference test and DesktopSoundFeedback compile; audio device behavior remains manual/platform-specific. |
-| L9 | Reduced motion | Presentation-only policy; GameModel timing and actions remain unchanged. | AndroidGameStore persists reduced motion; AndroidMotion, AndroidUiPolicy, and KlotskiView apply it across transitions and board animation. | SaveManager persists reduced motion; MainFrame applies it to BoardPanel and preserves busy/action semantics while preference changes rebuild the native shell. | PARITY | Reduced motion changes animation presentation only; it does not disable input locks or alter rules/records. | SaveManager preference test, BoardPanel API, and desktop compile/Javadocs; full DPI/adaptive coverage remains Stage 7. |
+| L9 | Reduced motion | Presentation-only policy; GameModel timing and actions remain unchanged. | AndroidGameStore persists reduced motion; AndroidMotion, AndroidUiPolicy, and KlotskiView apply it across transitions and board animation. | SaveManager persists reduced motion; MainFrame applies it to BoardPanel and preserves busy/action semantics while preference changes rebuild the native shell. | PARITY | Reduced motion changes animation presentation only; it does not disable input locks or alter rules/records. | SaveManager preference test, BoardPanel API, desktop compile/Javadocs, and the owner-reported Stage 7 adaptive review. |
 | L10 | Localization | Core domain IDs are stable; Android resources carry localized presentation. | AndroidAppLocale and resources support English, Traditional Chinese, and Japanese and persist the selected tag. | DesktopLocale now supplies explicit material-flow keys for Move History, Strategic Hint, Solver Tools/warnings/results/cancellation, assisted results/status, normal Save/Load, Home, Records, Daily, Favorites, Trends/Weekly Goal, Continuous, learning/tutorial, difficulty, preferences, and BoardPanel accessibility semantics in all three supported tags. MainFrame and the Desktop content helpers route audited player-facing copy through this catalog; stable IDs and technical solver/theme names remain English by design. | PARITY | Locale changes rebuild the Swing shell and preserve stable IDs/data; no Android resources or locale-dependent persisted IDs are introduced. | DesktopLocaleCoverageTest requires every registered material key to be explicit and nonblank in each locale; DesktopMaterialContentTest exercises localized save/status, Daily, Favorites, Trends, Continuous, Results, Records, and learning output; MainFrame/helper literal audit is recorded with the repair evidence. |
 | L11 | Full personal backup and restore | AndroidPersonalDataArchive validates a versioned archive and AndroidGameStore replaces all personal preferences only after decode. | MainActivity uses the system picker for export/import and confirms full replacement. | Desktop can manually copy individual JSON files but has no archive, validation, or full replacement flow. | MISSING | Provide a versioned, validated Desktop personal-data archive covering all normal/mode saves, records, stats, history, settings, and favorites. Invalid input must leave existing data untouched. | AndroidGameStoreTest archive cases are the contract reference; add desktop archive round-trip, malformed, and replacement tests. Risk is cross-platform schema compatibility; keep Android implementation out of Desktop and define an explicit shared archive version. |
 | L12 | Reset semantics | AndroidGameStore separates clear saved games, clear records, and full archive replacement while preserving unrelated namespaces as documented. | AndroidSettingsScreen/MainActivity expose reset saved games and reset records with confirmation. | Preferences exposes confirmed `clearSavedGames` and `clearRecords` actions. The first removes normal/Daily/Favorite Practice/Continuous saves but preserves favorites, records, stats, Daily progress, and preferences; the second clears scoped records/statistics/Daily progress, masks legacy records, and preserves active Continuous files. | PARITY | Reset scopes are explicit and tested; legacy record sources are left untouched but cannot resurrect a cleared value. | SaveManager preference/reset test and MainFrame confirmation wiring; full archive replacement remains Stage 8/backup scope. |
-| L13 | Accessibility semantics and playable board | AndroidUiPolicy establishes headings, focus order, 48dp targets, localized descriptions, and KlotskiView virtual per-cell actionable nodes. | AndroidMainActivity, AndroidUi, resource strings, and BoardAccessibilityProvider expose screen-reader movement for movable cells. | BoardPanel exposes one focusable Swing button per cell with accessible names/descriptions, row-major Tab order, Space/Enter activation, arrow-key movement, and visible focus borders; MainFrame labels status, menus, Home actions, and learning controls. | PARTIAL | Desktop uses Swing roles and actionable child controls rather than Android virtual-node APIs. Packaged GUI/keyboard/mouse acceptance is intentionally NOT RUN in this repair; screen-reader certification remains unclaimed. | DesktopAdaptivePolicyTest and DesktopSessionContractTest cover cell counts, names, focusability, and contrast; child-directed mouse regressions are headless-tested; DESKTOP_BETA_READINESS.md records the remaining packaged/manual gate. |
-| L14 | Adaptive and scaled layout | AndroidUiPolicy and ScreenLayout handle compact layouts, large text, safe insets, and 48dp controls. | AndroidAdaptiveUiTest covers compact AVD, large text, both themes, headings, and focus order. | MainFrame has a minimum usable size, a vertically scrollable Home card, resizable learning dialogs, stacked compact size actions, and a BoardPanel that recomputes square cell bounds as the window changes. | PARTIAL | Packaged 100%/125%/150% Windows scaling, larger-text, and adaptive-layout acceptance are NOT RUN in this repair. Swing layout evidence remains separate from Android dp evidence, and screen-reader certification is tracked under L13. | DesktopAdaptivePolicyTest covers minimum size and theme contrast; DESKTOP_BETA_READINESS.md records automated package evidence and the remaining NOT RUN GUI/DPI gate. |
+| L13 | Accessibility semantics and playable board | AndroidUiPolicy establishes headings, focus order, 48dp targets, localized descriptions, and KlotskiView virtual per-cell actionable nodes. | AndroidMainActivity, AndroidUi, resource strings, and BoardAccessibilityProvider expose screen-reader movement for movable cells. | BoardPanel exposes one focusable Swing button per cell with accessible names/descriptions, row-major Tab order, Space/Enter activation, arrow-key movement, and visible focus borders; MainFrame labels status, menus, Home actions, and learning controls. | PARITY | Desktop uses Swing roles and actionable child controls rather than Android virtual-node APIs. Automated Swing tests cover the controls, and the owner-reported 2026-09-07 packaged Windows gate covered keyboard/focus and pre-Stage-7 mouse behavior. This repair did not independently rerun that gate; screen-reader certification remains NOT CLAIMED. | DesktopAdaptivePolicyTest and DesktopSessionContractTest cover cell counts, names, focusability, contrast, and child-directed mouse regressions; DESKTOP_BETA_READINESS.md records the owner-reported manual acceptance separately from automated evidence. |
+| L14 | Adaptive and scaled layout | AndroidUiPolicy and ScreenLayout handle compact layouts, large text, safe insets, and 48dp controls. | AndroidAdaptiveUiTest covers compact AVD, large text, both themes, headings, and focus order. | MainFrame has a minimum usable size, a vertically scrollable Home card, resizable learning dialogs, stacked compact size actions, and a BoardPanel that recomputes square cell bounds as the window changes. | PARITY | The owner-reported 2026-09-07 packaged Windows gate covered 100%, 125%, and 150% scaling plus larger-text/adaptive behavior. This repair did not independently rerun that gate; Swing layout evidence remains separate from Android dp evidence. | DesktopAdaptivePolicyTest covers minimum size and theme contrast; DESKTOP_BETA_READINESS.md records the owner-reported scaling/adaptive acceptance separately from automated package evidence. |
 
 ### Platform-specific mechanics (not direct semantic parity defects)
 
@@ -156,9 +159,9 @@ files:
 
 | Status | Count | Interpretation |
 | --- | ---: | --- |
-| PARITY | 37 | Shared rules, sizes, difficulty/session identity, exact replay, active timer, input outcomes, animation locks, undo/redo, restart, movable and strategic assist, scoped best records, assisted-result protection, Daily, Favorite Practice, Trends/Weekly Goal, Continuous behavior, Move History, Solver Tools, localization, Home routes, learning flows, Quick Reminder, Desktop preferences, themes, sound, and reduced motion are evidenced on both platforms. |
-| PARTIAL | 3 | Accessibility/adaptive manual evidence, package scope, and the remaining non-targeted partial slice remain separate acceptance gates. |
-| MISSING | 1 | Full Desktop backup/archive (L11) remains outside #24; all targeted G14/P9/P10/L10 rows are now qualified. |
+| PARITY | 39 | Shared rules, sizes, difficulty/session identity, exact replay, active timer, input outcomes, animation locks, undo/redo, restart, movable and strategic assist, scoped best records, assisted-result protection, Daily, Favorite Practice, Trends/Weekly Goal, Continuous behavior, Move History, Solver Tools, localization, Home routes, learning flows, Quick Reminder, Desktop preferences, themes, sound, reduced motion, accessibility semantics, playable-board behavior, and adaptive/scaled layout are evidenced on both platforms. |
+| PARTIAL | 1 | Release/package qualification (R1) remains a separate acceptance gate; the owner-reported Stage 7 GUI/DPI gate is recorded above. |
+| MISSING | 1 | Full Desktop backup/archive (L11) remains outside #24 and is tracked by #12; all targeted G14/P9/P10/L10 rows are qualified. |
 | PLATFORM-SPECIFIC | 4 | Android lifecycle, haptics, system picker, and touch/virtual-node mechanics require desktop equivalents rather than copied implementations. |
 
 ### Stage 1 verified implementation
@@ -190,11 +193,13 @@ Highest-risk gaps, in dependency order:
    per-size slot.
 2. P1-P7: progression namespaces and exactly-once completion accounting.
    Normal, daily, favorite-practice, and continuous state must stay isolated.
-3. L11 and L13 remain bounded platform-equivalent work. Desktop accessibility
-   metadata and keyboard actions are implemented, but screen-reader
-   certification is intentionally not claimed.
+3. L11 full personal backup/archive remains missing and is tracked outside this
+   parity repair. Desktop accessibility metadata, keyboard actions, and the
+   owner-reported packaged keyboard/focus/mouse gate are recorded separately
+   from screen-reader certification, which is intentionally not claimed.
 4. R1: packaging evidence is not lifecycle acceptance. Signed installers,
-   store distribution, and manual release gates remain separately governed.
+   store distribution, and the remaining release/package qualification gate
+   remain separately governed.
 
 ## Documentation coverage audit
 
@@ -470,10 +475,13 @@ verified within the approved issue boundary:
 
 The Stage 7 accessibility and adaptive-layout work is implemented within the
 approved issue boundary. Automated verification is green. A production-
-equivalent app-image is now observable through the Windows automation surface;
-its default-scale keyboard, dialog, theme, persistence, and maximize/restore
-flows passed. The exact ZIP batch launch and 125%/150% scaling evidence remain
-pending:
+equivalent app-image is observable through the Windows automation surface; its
+default-scale keyboard, dialog, theme, persistence, and maximize/restore flows
+passed. The owner subsequently reported PASS for the required extracted ZIP
+`SlideDo.bat` launch, 100%/125%/150% scaling, larger-text/adaptive behavior,
+keyboard/focus behavior, and pre-Stage-7 mouse checks on 2026-09-07. The
+owner-reported manual acceptance is separate from automated evidence; the PR
+#25 repair did not independently rerun that gate.
 
 - `BoardPanel` keeps the painted board as the visual source of truth while
   exposing one native Swing `JButton` child per cell. Each child has an
@@ -498,9 +506,8 @@ pending:
   existing session behavior, and mouse events dispatched to the actual child
   controls (including single-action, invalid-input, cursor, drag/release, and
   completion-callback contracts). `DESKTOP_BETA_READINESS.md` records the
-  app-image manual PASS subset, the exact ZIP batch-launch limitation, the
-  125%/150% checks as NOT RUN, and the explicit decision not to claim
-  screen-reader certification.
+  automated evidence and the owner-reported manual acceptance separately;
+  screen-reader certification remains NOT CLAIMED.
 
 The Stage 7 implementation does not add the native file chooser or archive
 format; backup/import remains Stage 8 and remains outside this merge.
@@ -611,10 +618,10 @@ the completion gate below remains historical acceptance context.
 
 ### Stage 7 - Accessibility, adaptive behavior, and platform equivalents
 
-Status: implementation complete with automated verification and a partial
-production-equivalent packaged GUI review; protected merge is blocked until
-the exact ZIP `SlideDo.bat` launch and 125%/150% keyboard/DPI checks run on an
-approved Windows environment. Archive and packaging work remains Stage 8.
+Status: implementation complete with automated verification and owner-reported
+manual acceptance for the packaged GUI/DPI gate on 2026-09-07. The PR #25
+repair did not independently rerun that gate, and screen-reader certification
+remains NOT CLAIMED. Archive and packaging work remains Stage 8.
 
 - Objective: qualify desktop accessibility and resizable/large-font behavior
   without copying Android virtual-node mechanics.
@@ -628,9 +635,11 @@ approved Windows environment. Archive and packaging work remains Stage 8.
 - Verification: focused accessibility/contrast and child-directed mouse
   regression tests, desktop compile, Javadocs, `git diff --check`, and `ci.bat`
   pass. The production-equivalent app-image manual review passed the
-  default-scale keyboard/dialog/theme and persistence subset; the exact ZIP
-  batch launch and 125%/150% resize/DPI checks remain NOT RUN, and screen-reader
-  certification is not claimed.
+  default-scale keyboard/dialog/theme and persistence subset. The owner also
+  reported PASS for the extracted ZIP launch, 100%/125%/150% resize/DPI,
+  larger-text/adaptive, keyboard/focus, and pre-Stage-7 mouse checks on
+  2026-09-07. The PR #25 repair did not independently rerun that gate;
+  screen-reader certification is not claimed.
   Archive/chooser tests belong to Stage 8.
 - Out of scope: Android accessibility rewrites, iOS/tablet claims, archive
   import/export, and visual pixel-diff equivalence.
@@ -700,8 +709,7 @@ approved Windows environment. Archive and packaging work remains Stage 8.
 - At the end of every stage, rerun the relevant matrix rows and update their
   status only from new code/test evidence. A stage is not complete because a
   menu or file exists.
-- Stages 1-6 are implemented and protected-merge verified. Stage 7 code and
-  automated gates are ready, but its protected merge remains pending the
-  packaged GUI checklist. Stage 8 still requires owner-approved archive,
-  package, and clean-artifact lifecycle gates; Stage 9 remains the final
-  contract-led documentation audit.
+- Stages 1-7 are implemented, and their automated evidence plus the
+  owner-reported Stage 7 packaged GUI/DPI acceptance are recorded. Stage 8
+  still requires owner-approved archive, package, and clean-artifact lifecycle
+  gates; Stage 9 remains the final contract-led documentation audit.

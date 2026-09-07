@@ -832,12 +832,14 @@ implementation:
   the policy is presentation-only and cannot alter rules, records, timer, or
   persistence.
 - Focused tests cover board cell accessibility, focusability, minimum-window
-  behavior, known contrast ratios, and theme contrast. The packaged GUI/DPI
-  gate is NOT RUN: a real GUI-capable Windows execution has not yet verified
-  the extracted ZIP launch, keyboard/focus, mouse, larger-text, or
-  100%/125%/150% scaling behavior. Headless tests and package creation remain
-  evidence for implementation only; screen-reader certification is not
-  claimed. Full `ci.bat` passed, while archive/chooser behavior remains Stage
+  behavior, known contrast ratios, and theme contrast. The owner reported PASS
+  for the required 2026-09-07 Windows manual gate: extracted ZIP
+  `SlideDo.bat` launch, 100%/125%/150% scaling, larger-text/adaptive behavior,
+  keyboard/focus behavior, Tab/Shift+Tab, Space/Enter, arrow keys, visible
+  focus, and the pre-Stage-7 mouse click/press/release/drag/swipe, invalid-input
+  no-op, and movable-hover checks. The PR #25 repair did not independently
+  rerun that GUI-capable Windows gate; screen-reader certification remains NOT
+  CLAIMED. Full `ci.bat` passed, while archive/chooser behavior remains Stage
   8.
 
 2026-09-07 Stage 7.5 Desktop functional parity implementation:
@@ -869,7 +871,9 @@ implementation:
   Practice, and Continuous sidecar/meta markers remain authoritative.
 - Focused history, hint non-mutation, assisted-save migration, solver policy,
   localization-coverage, and child-directed mouse/accessibility tests pass.
-  Full packaged GUI/DPI acceptance remains a separate manual gate.
+  The owner-reported 2026-09-07 packaged GUI/DPI acceptance is recorded in
+  `DESKTOP_BETA_READINESS.md`; the PR #25 repair did not independently rerun
+  that gate, and screen-reader certification remains NOT CLAIMED.
 
 ### Completed 2026-05-25 MVP Items
 

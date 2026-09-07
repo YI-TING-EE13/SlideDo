@@ -156,12 +156,16 @@ Automated qualification evidence (2026-09-07):
 - Full repository CI contract: PASS (`ci.bat`, including Android build/lint,
   release/package checks, and desktop readiness file checks).
 
-Manual packaged GUI/DPI Stage 7 acceptance (current repair): NOT RUN.
+Owner-reported manual acceptance (2026-09-07): PASS.
 
-- The required Windows-capable execution of the extracted ZIP through
-  `SlideDo.bat` has not occurred in this repair.
-- The 100%, 125%, and 150% Windows scaling, larger-text/adaptive, keyboard,
-  focus, hover, and pre-Stage-7 mouse checks remain pending as a single manual
-  gate. Headless child-directed regression tests and package creation do not
-  change this status.
+- The owner reported that the extracted ZIP launched through `SlideDo.bat`.
+- The owner reported PASS for 100%, 125%, and 150% Windows scaling, larger-text
+  and adaptive behavior, keyboard and focus behavior, Tab/Shift+Tab,
+  Space/Enter, arrow-key play, and visible focus borders.
+- The owner reported PASS for the pre-Stage-7 mouse contract: click,
+  press/release, drag/swipe, invalid-input no-op, and movable-tile hover
+  affordance.
+- This is owner-reported manual acceptance. The PR #25 repair did not
+  independently rerun the GUI-capable Windows gate, and the record does not
+  add unreported package paths, machine details, screenshots, or timings.
 - Screen-reader certification remains NOT CLAIMED.
