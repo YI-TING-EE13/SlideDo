@@ -832,15 +832,13 @@ implementation:
   the policy is presentation-only and cannot alter rules, records, timer, or
   persistence.
 - Focused tests cover board cell accessibility, focusability, minimum-window
-  behavior, known contrast ratios, and theme contrast. A production-equivalent
-  packaged app-image manual run passed the default-scale keyboard/focus,
-  dialog, theme, persistence, and maximize/restore subset, including a
-  save/exit/relaunch/Continue flow. The exact ZIP `SlideDo.bat` launch and the
-  required 125%/150% Windows scaling checks remain NOT RUN because this host
-  cannot expose that launch through the Windows automation surface or change
-  Windows display scaling under the approved controls; screen-reader
-  certification is not claimed. Full `ci.bat` passed, while archive/chooser
-  behavior remains Stage 8.
+  behavior, known contrast ratios, and theme contrast. The packaged GUI/DPI
+  gate is NOT RUN: a real GUI-capable Windows execution has not yet verified
+  the extracted ZIP launch, keyboard/focus, mouse, larger-text, or
+  100%/125%/150% scaling behavior. Headless tests and package creation remain
+  evidence for implementation only; screen-reader certification is not
+  claimed. Full `ci.bat` passed, while archive/chooser behavior remains Stage
+  8.
 
 2026-09-07 Stage 7.5 Desktop functional parity implementation:
 
@@ -860,6 +858,15 @@ implementation:
 - Desktop material content and BoardPanel accessibility names/descriptions now
   have explicit English, Traditional Chinese, and Japanese catalog entries.
   Stable persistence IDs remain English and locale-independent.
+- The material-flow audit now covers MainFrame and the Home, Daily, Favorite,
+  Trend, Continuous, learning, and Results helpers. Normal Save/Load, status,
+  accessibility descriptions, and dialog actions use explicit catalog keys;
+  technical solver/theme identifiers remain intentionally stable English.
+- Pre-v4 normal-save migration is conservative: an unsolved v1-v3 payload
+  without an `assisted` field remains player-eligible, while a solved payload
+  is treated as assisted because historical Results autosave could not prove
+  player provenance. Explicit v4 values are preserved, and Daily, Favorite
+  Practice, and Continuous sidecar/meta markers remain authoritative.
 - Focused history, hint non-mutation, assisted-save migration, solver policy,
   localization-coverage, and child-directed mouse/accessibility tests pass.
   Full packaged GUI/DPI acceptance remains a separate manual gate.

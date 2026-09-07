@@ -12,9 +12,7 @@ final class DesktopContinuousContent {
 
     static String optionLabel(ContinuousChallenge challenge, int size,
             PuzzleDifficulty difficulty) {
-        return "Resume " + challenge.getCurrentPuzzleNumber() + "/"
-                + challenge.getTargetPuzzles() + " · " + size + "x" + size
-                + " · " + difficultyLabel(difficulty);
+        return optionLabel(challenge, size, difficulty, DesktopLocale.fromTag("en"));
     }
 
     static String optionLabel(ContinuousChallenge challenge, int size,
@@ -26,11 +24,7 @@ final class DesktopContinuousContent {
     }
 
     static String status(ContinuousChallenge challenge) {
-        return "Continuous: " + challenge.getCompletedPuzzles() + "/"
-                + challenge.getTargetPuzzles() + " puzzles · "
-                + challenge.getTotalMoves() + " moves · "
-                + (challenge.getTotalTimeMs() / 1000) + "s · Assisted: "
-                + challenge.getAssistedPuzzles();
+        return status(challenge, DesktopLocale.fromTag("en"));
     }
 
     static String status(ContinuousChallenge challenge, DesktopLocale locale) {
@@ -42,11 +36,7 @@ final class DesktopContinuousContent {
 
     static String result(ContinuousChallenge challenge, int size,
             PuzzleDifficulty difficulty) {
-        return "Continuous Challenge\n\n" + status(challenge) + "\nScope: "
-                + size + "x" + size + " · " + difficultyLabel(difficulty) + "\n\n"
-                + (challenge.isComplete()
-                        ? "Challenge complete."
-                        : "The solved puzzle is retained for resume or Next Puzzle.");
+        return result(challenge, size, difficulty, DesktopLocale.fromTag("en"));
     }
 
     static String result(ContinuousChallenge challenge, int size,
@@ -56,14 +46,6 @@ final class DesktopContinuousContent {
                 difficultyLabel(difficulty, selected),
                 challenge.isComplete() ? selected.text("continuousComplete")
                         : selected.text("continuousRetained"));
-    }
-
-    private static String difficultyLabel(PuzzleDifficulty difficulty) {
-        return switch (difficulty) {
-            case RELAXED -> "Relaxed";
-            case CLASSIC -> "Classic";
-            case CHALLENGE -> "Challenge";
-        };
     }
 
     private static String difficultyLabel(PuzzleDifficulty difficulty, DesktopLocale locale) {

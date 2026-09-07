@@ -11,11 +11,7 @@ final class DesktopFavoriteContent {
     }
 
     static String optionLabel(SaveManager.FavoritePuzzle favorite) {
-        if (favorite == null) {
-            return "Favorite";
-        }
-        return favorite.label + " · " + favorite.size + "x" + favorite.size
-                + " · " + difficultyLabel(favorite.difficulty);
+        return optionLabel(favorite, DesktopLocale.fromTag("en"));
     }
 
     static String optionLabel(SaveManager.FavoritePuzzle favorite, DesktopLocale locale) {
@@ -28,21 +24,12 @@ final class DesktopFavoriteContent {
     }
 
     static String practiceSummary() {
-        return "Favorite Practice is isolated: saves, records, completion history, "
-                + "lifetime statistics, and Daily streaks are not changed.";
+        return practiceSummary(DesktopLocale.fromTag("en"));
     }
 
     static String practiceSummary(DesktopLocale locale) {
         return (locale == null ? DesktopLocale.fromTag("en") : locale)
                 .text("favoritePracticeSummary");
-    }
-
-    private static String difficultyLabel(com.klotski.core.PuzzleDifficulty difficulty) {
-        return switch (difficulty) {
-            case RELAXED -> "Relaxed";
-            case CLASSIC -> "Classic";
-            case CHALLENGE -> "Challenge";
-        };
     }
 
     private static String difficultyLabel(com.klotski.core.PuzzleDifficulty difficulty,

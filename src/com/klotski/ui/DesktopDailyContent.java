@@ -21,13 +21,7 @@ final class DesktopDailyContent {
     }
 
     static String stateLabel(DayState state) {
-        return switch (state) {
-            case COMPLETED -> "Completed";
-            case IN_PROGRESS -> "In progress";
-            case READY -> "Ready";
-            case MISSED -> "Missed";
-            case FUTURE -> "Future date";
-        };
+        return stateLabel(state, DesktopLocale.fromTag("en"));
     }
 
     static String stateLabel(DayState state, DesktopLocale locale) {
@@ -53,19 +47,17 @@ final class DesktopDailyContent {
     }
 
     static String dayAccessibilityText(LocalDate date, DayState state) {
-        return date + ". " + stateLabel(state) + ". Daily 4x4 Classic puzzle.";
+        return dayAccessibilityText(date, state, DesktopLocale.fromTag("en"));
     }
 
     static String dayAccessibilityText(LocalDate date, DayState state, DesktopLocale locale) {
-        return date + ". " + stateLabel(state, locale) + ". "
-                + (locale == null ? DesktopLocale.fromTag("en") : locale).text("dailyPuzzle");
+        DesktopLocale selected = locale == null ? DesktopLocale.fromTag("en") : locale;
+        return selected.format("dailyDayAccessibility", date, stateLabel(state, selected),
+                selected.text("dailyPuzzle"));
     }
 
     static String progressSummary(SaveManager.DailyProgress progress) {
-        if (progress == null) {
-            return "Daily streak: 0 · Best: 0";
-        }
-        return "Daily streak: " + progress.currentStreak + " · Best: " + progress.bestStreak;
+        return progressSummary(progress, DesktopLocale.fromTag("en"));
     }
 
     static String progressSummary(SaveManager.DailyProgress progress, DesktopLocale locale) {

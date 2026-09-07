@@ -94,8 +94,11 @@ public class SaveManager {
      * Writes a normal save while retaining whether the current run has used
      * solver or strategic assistance.
      *
-     * <p>The assistance bit is additive. Older JSON and serialized saves do
-     * not contain it and therefore load as an unassisted run.</p>
+     * <p>The assistance bit is additive. Older unsolved normal saves without
+     * provenance remain eligible; solved pre-v4 normal saves fail closed as
+     * assisted because the historical Results autosave could not prove who
+     * solved them. Isolated Daily, Favorite Practice, and Continuous stores
+     * retain their own sidecar/meta markers.</p>
      *
      * @param model game model to persist
      * @param assisted whether this run is no longer eligible for a player best
@@ -160,6 +163,7 @@ public class SaveManager {
         data.active = model.isGameRunning();
         data.solved = model.isSolved();
         data.assisted = assisted;
+        data.assistedMetadataPresent = true;
         data.difficulty = model.getDifficulty();
         data.actionHistory = model.getEncodedActionHistory();
         data.redoHistory = model.getEncodedRedoHistory();
@@ -1230,11 +1234,11 @@ public class SaveManager {
      * @return parsed save data, or {@code null} when no valid save exists
      */
     static SaveData loadGame(File saveFile, File legacySaveFile) {
-        SaveData data = readJsonWithRecovery(saveFile);
+        SaveData data = readNormalJsonWithRecovery(saveFile);
         if (data != null) {
             return data;
         }
-        return loadLegacyGame(legacySaveFile);
+        return loadNormalLegacyGame(legacySaveFile);
     }
 
     private static String readText(File file) throws IOException {
@@ -1666,6 +1670,10 @@ public class SaveManager {
         }
     }
 
+    private static SaveData loadNormalLegacyGame(File file) {
+        return applyLegacyNormalAssistancePolicy(loadLegacyGame(file));
+    }
+
     private static void migrateLegacySaves() {
         if (isSavedGamesReset()) {
             return;
@@ -1673,14 +1681,14 @@ public class SaveManager {
         File dataDirectory = getDataDirectory();
         for (File legacyFile : legacyCandidates(dataDirectory)) {
             SaveData legacy = legacyFile.getName().endsWith(".dat")
-                    ? loadLegacyGame(legacyFile)
-                    : readJsonWithRecovery(legacyFile);
+                    ? loadNormalLegacyGame(legacyFile)
+                    : readNormalJsonWithRecovery(legacyFile);
             if (legacy == null || !isSupportedSize(legacy.size)) {
                 continue;
             }
 
             File target = getSaveFile(legacy.size);
-            SaveData current = readJsonWithRecovery(target);
+            SaveData current = readNormalJsonWithRecovery(target);
             if (current != null && current.updatedAt >= legacy.updatedAt) {
                 continue;
             }
@@ -1696,8 +1704,8 @@ public class SaveManager {
         File dataDirectory = getDataDirectory();
         for (File legacyFile : legacyCandidates(dataDirectory)) {
             SaveData data = legacyFile.getName().endsWith(".dat")
-                    ? loadLegacyGame(legacyFile)
-                    : readJsonWithRecovery(legacyFile);
+                    ? loadNormalLegacyGame(legacyFile)
+                    : readNormalJsonWithRecovery(legacyFile);
             if (data != null) {
                 return data;
             }
@@ -1733,15 +1741,34 @@ public class SaveManager {
     }
 
     private static SaveData loadSlot(int size) {
-        SaveData data = readJsonWithRecovery(getSaveFile(size));
+        SaveData data = readNormalJsonWithRecovery(getSaveFile(size));
         if (data != null && data.size == size) {
             return data;
         }
         File rootSlot = new File(saveFileName(size));
         if (!sameFile(rootSlot, getSaveFile(size))) {
-            data = readJsonWithRecovery(rootSlot);
+            data = readNormalJsonWithRecovery(rootSlot);
         }
         return data != null && data.size == size ? data : null;
+    }
+
+    /**
+     * Applies the conservative normal-save migration rule. Before schema v4,
+     * a solved Desktop normal save could be written after solver playback
+     * without carrying the in-memory assisted bit. Such a payload cannot be
+     * proven player-eligible, so the loader fails closed by treating it as
+     * assisted. Unsolved legacy normal saves remain unassisted because the
+     * pre-v4 autosave gate rejected solver-owned or busy board sessions.
+     */
+    private static SaveData applyLegacyNormalAssistancePolicy(SaveData data) {
+        if (data != null && !data.assistedMetadataPresent && data.solved) {
+            data.assisted = true;
+        }
+        return data;
+    }
+
+    private static SaveData readNormalJsonWithRecovery(File file) {
+        return applyLegacyNormalAssistancePolicy(readJsonWithRecovery(file));
     }
 
     private static SaveData readJsonWithRecovery(File file) {
@@ -1920,6 +1947,7 @@ public class SaveManager {
         data.active = optionalBooleanField(json, "active", false);
         data.solved = optionalBooleanField(json, "solved", false);
         data.assisted = optionalBooleanField(json, "assisted", false);
+        data.assistedMetadataPresent = hasBooleanField(json, "assisted");
         data.difficulty = PuzzleDifficulty.fromId(optionalStringField(json, "difficulty", null));
         data.grid = gridField(json, "grid", data.size);
         data.initialGrid = optionalGridField(json, "initialGrid", data.size);
@@ -2005,6 +2033,10 @@ public class SaveManager {
     private static boolean optionalBooleanField(String json, String key, boolean fallback) {
         Matcher matcher = Pattern.compile("\"" + key + "\"\\s*:\\s*(true|false)").matcher(json);
         return matcher.find() ? Boolean.parseBoolean(matcher.group(1)) : fallback;
+    }
+
+    private static boolean hasBooleanField(String json, String key) {
+        return Pattern.compile("\"" + key + "\"\\s*:\\s*(true|false)").matcher(json).find();
     }
 
     private static String optionalStringField(String json, String key, String fallback) {
@@ -2578,9 +2610,17 @@ public class SaveManager {
 
         /**
          * Whether solver or strategic assistance was used in this run.
-         * Missing values in legacy saves default to {@code false}.
+         * Missing values in unsolved legacy normal saves default to
+         * {@code false}; solved legacy normal saves without provenance fail
+         * closed as assisted by the normal-save loader.
          */
         public boolean assisted;
+
+        /**
+         * Whether the source JSON explicitly carried the additive assisted
+         * field. This is transient provenance used only during migration.
+         */
+        public transient boolean assistedMetadataPresent;
 
         /** Scramble-intensity preset, defaulting to Classic for legacy saves. */
         public PuzzleDifficulty difficulty;
