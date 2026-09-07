@@ -84,10 +84,15 @@ if errorlevel 1 exit /b 1
     echo   Continuous, records, history, statistics, settings, and reset masks.
     echo - Unmanaged files in the data directory are preserved; invalid backups
     echo   make no change. Legacy Desktop saves remain non-destructively loadable.
+    echo - Each restore records a project-root legacy boundary: imported
+    echo   data-directory legacy files can migrate, but unrelated root legacy
+    echo   files cannot be combined with the restored state.
     echo - Export rejects managed, recovery, legacy-fallback, and active-restore
     echo   transaction paths. Recovery resolution follows primary, .tmp, .bak.
-    echo - If rollback itself fails, the previous snapshot remains in a recovery
-    echo   directory for manual restoration; cleanup warnings are reported.
+    echo - If cleanup is incomplete after a valid restore, the retained
+    echo   transaction directory is reported for inspection. If rollback itself
+    echo   fails, the previous snapshot remains in a recovery directory for
+    echo   manual restoration and gameplay/controller persistence is locked.
     echo - Data is local and owner-controlled; there is no cloud backup.
     echo.
     echo What to test:

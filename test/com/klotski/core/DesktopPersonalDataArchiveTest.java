@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -203,6 +204,41 @@ class DesktopPersonalDataArchiveTest {
         assertArrayEquals(legacy.grid, restored.grid);
         assertTrue(new File(target, "klotski_save.dat").isFile());
         assertFalse(new File(target, "klotski_saved_games_reset.marker").exists());
+    }
+
+    @Test
+    void restoreRegistersProjectRootBoundaryAndFutureExportCarriesIt() throws Exception {
+        File source = new File(tempDir, "boundary-source");
+        File target = new File(tempDir, "boundary-target");
+        assertTrue(source.mkdirs());
+        assertTrue(target.mkdirs());
+        GameModel model = new GameModel(3);
+        model.scramble(PuzzleDifficulty.CLASSIC, 715L);
+        assertTrue(SaveManager.saveGame(model, new File(source, "klotski_save_3.json")));
+
+        String archive = DesktopPersonalDataArchive.exportArchive(source, 715L);
+        DesktopPersonalDataArchive.restoreArchive(archive, target);
+        File marker = new File(target, SaveManager.PROJECT_ROOT_FALLBACK_SUPPRESSION_FILE);
+        assertTrue(marker.isFile());
+        assertTrue(DesktopPersonalDataArchive.isManagedName(
+                SaveManager.PROJECT_ROOT_FALLBACK_SUPPRESSION_FILE));
+        assertTrue(DesktopPersonalDataArchive.exportArchive(target, 716L)
+                .contains(SaveManager.PROJECT_ROOT_FALLBACK_SUPPRESSION_FILE));
+    }
+
+    @Test
+    void malformedProjectRootBoundaryIsRejectedBeforeRestoreMutation() throws Exception {
+        File source = new File(tempDir, "malformed-boundary-source");
+        File target = new File(tempDir, "malformed-boundary-target");
+        assertTrue(source.mkdirs());
+        assertTrue(target.mkdirs());
+        Files.writeString(new File(source, SaveManager.PROJECT_ROOT_FALLBACK_SUPPRESSION_FILE)
+                .toPath(), "wrong\n", StandardCharsets.UTF_8);
+        Files.writeString(new File(target, "notes.txt").toPath(), "untouched",
+                StandardCharsets.UTF_8);
+
+        assertThrows(IOException.class, () -> DesktopPersonalDataArchive.exportArchive(source, 717L));
+        assertEquals("untouched", Files.readString(new File(target, "notes.txt").toPath()));
     }
 
     @Test
@@ -582,6 +618,36 @@ class DesktopPersonalDataArchiveTest {
         assertThrows(java.io.IOException.class,
                 () -> DesktopPersonalDataArchive.restoreArchive(archive, target));
         assertEquals("previous", Files.readString(previous.toPath()));
+        assertEquals(0, Files.list(tempDir.toPath()).filter(path ->
+                path.getFileName().toString().startsWith(".slidedo-restore-")).count());
+    }
+
+    @Test
+    void projectRootBoundaryIsIncludedInRollbackSnapshot() throws Exception {
+        File source = new File(tempDir, "boundary-rollback-source");
+        File target = new File(tempDir, "boundary-rollback-target");
+        assertTrue(source.mkdirs());
+        assertTrue(target.mkdirs());
+        GameModel model = new GameModel(3);
+        model.scramble(PuzzleDifficulty.CLASSIC, 718L);
+        assertTrue(SaveManager.saveGame(model, new File(source, "klotski_save_3.json")));
+        Files.writeString(new File(target, SaveManager.PROJECT_ROOT_FALLBACK_SUPPRESSION_FILE).toPath(),
+                "suppressed\n", StandardCharsets.UTF_8);
+        String archive = DesktopPersonalDataArchive.exportArchive(source, 718L);
+
+        DesktopPersonalDataArchive.setFailureInjectorForTests(new DesktopPersonalDataArchive.FailureInjector() {
+            @Override
+            public void beforeWrite(String entryName) {
+            }
+
+            @Override
+            public void beforeValidation() throws java.io.IOException {
+                throw new java.io.IOException("injected final validation failure");
+            }
+        });
+        assertThrows(IOException.class, () -> DesktopPersonalDataArchive.restoreArchive(archive, target));
+        assertEquals("suppressed\n", Files.readString(new File(target,
+                SaveManager.PROJECT_ROOT_FALLBACK_SUPPRESSION_FILE).toPath()));
         assertEquals(0, Files.list(tempDir.toPath()).filter(path ->
                 path.getFileName().toString().startsWith(".slidedo-restore-")).count());
     }

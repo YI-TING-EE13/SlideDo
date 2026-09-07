@@ -222,6 +222,8 @@ klotski_favorite_<identity>.json     (isolated Favorite Practice save)
 klotski_personal_preferences.json    (trend scope and weekly goal)
 klotski_continuous_meta.json         (Continuous aggregate)
 klotski_continuous_current.json      (Continuous current puzzle)
+klotski_project_root_fallback_suppressed.marker
+                                      (post-restore project-root legacy boundary)
 ```
 
 Preferences can export these managed Desktop namespaces, including legacy
@@ -229,14 +231,19 @@ save sources, assisted markers, reset masks, and recovery-safe logical state,
 to a versioned `SlideDo-backup-YYYY-MM-DD.json` document. Restore validates the
 whole archive before an explicit confirmation and then performs a full
 replacement: absent managed entries are deleted, stale legacy fallback is
-masked by a durable reset marker, and unrelated files in the data directory are
-preserved. Recovery siblings are resolved logically by canonical -> `.tmp` ->
-`.bak` precedence, and a rollback failure retains the previous snapshot for
-manual recovery instead of claiming ordinary success. Invalid or cancelled
-restores do not change the existing state; managed/recovery/legacy-fallback
-path collisions are rejected before export or restore. The format is Desktop
-specific and local; it is not a cloud backup or a promise of Android archive
-interchange.
+masked by durable reset and project-root-boundary markers, and unrelated files
+in the data directory are preserved. Recovery siblings are resolved logically
+by canonical -> `.tmp` -> `.bak` precedence. A cleanup warning means the
+target restore succeeded and the retained transaction directory is shown for
+inspection; a rollback failure retains the previous snapshot, invalidates
+stale Preferences editors, and locks gameplay and controller persistence until
+restart or owner-led recovery instead of claiming ordinary success. Imported
+data-directory legacy files remain migratable without combining with unrelated
+project-root legacy files, while ordinary pre-archive root migration remains
+available. Invalid or cancelled restores do not change the existing state;
+managed/recovery/legacy-fallback path collisions are rejected before export or
+restore. The format is Desktop specific and local; it is not a cloud backup or
+a promise of Android archive interchange.
 
 For portable test or beta builds, set the JVM property
 `slidedo.data.dir=<path>` to override the directory. Continue lists valid
@@ -245,8 +252,8 @@ normal slots with size, difficulty, moves, and active elapsed time. Older
 into the matching size slot without deleting the source or replacing a newer
 slot. A failed or interrupted replacement leaves the previous JSON, a `.tmp`
 candidate, or a `.bak` recovery copy available for the next load. Legacy files
-in the project root remain a read-only fallback, and records/statistics/daily
-state stay in
+in the project root remain a read-only fallback until a restore establishes the
+durable project-root boundary, and records/statistics/daily state stay in
 the established user-data directory. Legacy size-only records are mapped to
 Classic without rewriting the source; new completion samples are deduplicated
 by run id, keep assisted results visible in history/statistics, and never let

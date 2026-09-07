@@ -71,6 +71,8 @@ public final class DesktopPersonalDataArchive {
     private static final String SCOPED_RECORDS = "klotski_records_v2.json";
     private static final String RECORDS_RESET = "klotski_records_reset.marker";
     private static final String SAVED_GAMES_RESET = "klotski_saved_games_reset.marker";
+    private static final String PROJECT_ROOT_FALLBACK_SUPPRESSION =
+            SaveManager.PROJECT_ROOT_FALLBACK_SUPPRESSION_FILE;
     private static final String STATISTICS = "klotski_statistics.json";
     private static final String DAILY_PREFIX = "klotski_daily_";
     private static final String DAILY_PROGRESS = "klotski_daily_progress.json";
@@ -296,7 +298,8 @@ public final class DesktopPersonalDataArchive {
             File dataDirectory, File fallbackDirectory) throws IOException {
         Map<String, List<SourceCandidate>> candidates = new TreeMap<>();
         collectSourceCandidates(candidates, dataDirectory, null, 0);
-        if (fallbackDirectory != null && !sameFile(dataDirectory, fallbackDirectory)) {
+        if (fallbackDirectory != null && !sameFile(dataDirectory, fallbackDirectory)
+                && !SaveManager.isProjectRootFallbackSuppressed(dataDirectory)) {
             collectSourceCandidates(candidates, fallbackDirectory,
                     Set.of(LEGACY_FALLBACK_NAMES), 100);
         }
@@ -852,6 +855,7 @@ public final class DesktopPersonalDataArchive {
                 "klotski_save_[345].json",
                 "klotski_save.json / klotski_save.dat (legacy)",
                 "klotski_records.json / klotski_records_v2.json / reset markers",
+                PROJECT_ROOT_FALLBACK_SUPPRESSION + " (post-restore legacy-root boundary)",
                 "klotski_statistics.json",
                 "klotski_daily_YYYY-MM-DD.json / .assisted / progress",
                 "klotski_favorites.json",
@@ -992,6 +996,7 @@ public final class DesktopPersonalDataArchive {
         if (name.equals(LEGACY_JSON) || name.equals(LEGACY_SERIALIZED)
                 || name.equals(RECORDS) || name.equals(SCOPED_RECORDS)
                 || name.equals(RECORDS_RESET) || name.equals(SAVED_GAMES_RESET)
+                || name.equals(PROJECT_ROOT_FALLBACK_SUPPRESSION)
                 || name.equals(STATISTICS) || name.equals(DAILY_PROGRESS)
                 || name.equals(FAVORITES) || name.equals(PREFERENCES)
                 || name.equals(CONTINUOUS_META) || name.equals(CONTINUOUS_CURRENT)
@@ -1021,6 +1026,12 @@ public final class DesktopPersonalDataArchive {
         if (!desired.containsKey(RECORDS)) {
             desired.putIfAbsent(RECORDS_RESET, "reset\n".getBytes(StandardCharsets.UTF_8));
         }
+        // Every restore establishes a provenance boundary. Imported legacy
+        // files in the target data directory remain eligible for migration,
+        // while unrelated process-root legacy files cannot be combined with
+        // the restored state.
+        desired.putIfAbsent(PROJECT_ROOT_FALLBACK_SUPPRESSION,
+                "suppressed\n".getBytes(StandardCharsets.UTF_8));
     }
 
     private static void writeCandidate(Path directory, Map<String, byte[]> entries,

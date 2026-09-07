@@ -878,25 +878,31 @@ implementation:
   `origin/main` baseline. `DesktopPersonalDataArchive` uses the explicit
   Desktop-only `slidedo-desktop-personal-data` version-1 format with bounded
   128-character identifiers, deterministic SHA-256-checked entries for
-  normal, project-root/data-dir legacy fallback, Daily, Favorite, Continuous, records/statistics,
-  preferences, assisted markers, and reset masks. Full replacement validates an isolated candidate, removes absent
-  managed state, preserves unmanaged files, masks stale legacy fallback with a
-  durable saved-games marker, and rolls back from a recoverable snapshot on
-  failure. Logical export resolution follows canonical -> `.tmp` -> `.bak`
-  loader precedence, and Continuous metadata/current/assisted presence is
-  validated bidirectionally. Legacy-only profiles are retained without
-  destructive migration.
+  normal, project-root/data-dir legacy fallback, Daily, Favorite, Continuous,
+  records/statistics, preferences, assisted markers, reset masks, and the
+  post-restore project-root fallback boundary. Full replacement validates an
+  isolated candidate, removes absent managed state, preserves unmanaged files,
+  masks stale legacy fallback with durable markers, and rolls back from a
+  recoverable snapshot on failure. Logical export resolution follows
+  canonical -> `.tmp` -> `.bak` loader precedence, and Continuous
+  metadata/current/assisted presence is validated bidirectionally. Legacy-only
+  profiles are retained without destructive migration; imported data-directory
+  legacy files remain migratable without combining with unrelated project-root
+  files, while ordinary pre-archive root migration remains compatible.
 - Preferences now exposes localized, keyboard-reachable Export Personal Data
   and Restore Personal Data controls. Export/Restore paths reject managed,
   recovery, legacy-fallback, and active-transaction collisions; owner archives
   use a sibling temporary write. Restore validates before confirmation, blocks
   during animation/solver ownership, and invalidates the pre-restore
-  Preferences editor generation before rebuilding MainFrame state. Headless
-  archive, collision, recovery, Continuous, rollback, cleanup-warning, and
-  stale-editor tests pass. A failed rollback retains the transaction and
-  previous snapshot and reports recovery required. The extracted-package
-  GUI/DPI run remains exactly `MANUAL PACKAGE GATE PENDING` for this
-  qualification.
+  Preferences editor generation before rebuilding MainFrame state. A cleanup
+  warning is treated as a successful target restore with a retained path
+  warning; a failed rollback retains the transaction and previous snapshot,
+  invalidates the editor, disables gameplay, and suppresses manual,
+  lifecycle, mode, Preferences, and export persistence until recovery.
+  Headless archive, collision, provenance, Continuous, rollback,
+  cleanup-warning, recovery-policy, and stale-editor tests pass. The
+  extracted-package GUI/DPI run remains exactly
+  `MANUAL PACKAGE GATE PENDING` for this qualification.
 
 ### Completed 2026-05-25 MVP Items
 

@@ -66,6 +66,12 @@ What to test:
   restore the backup after the explicit full-replacement confirmation.
 - Confirm an invalid backup and a cancelled restore leave all managed data
   unchanged, while an unrelated data-directory file remains present.
+- A cleanup-warning restore must reload the valid target and name the retained
+  transaction directory; a recovery-required rollback must retain both the
+  transaction and previous snapshot and disable further gameplay/persistence.
+- After an archive restore, an imported data-directory legacy save or record
+  may migrate in place, but unrelated project-root legacy files must not be
+  combined with it. Ordinary pre-archive root migration remains supported.
 
 Known limits:
 - The beta ZIP is not a signed installer.
@@ -94,6 +100,9 @@ Run this checklist from the final extracted ZIP, not from the development tree.
 - Export rejects managed/recovery/legacy-fallback path collisions and writes
   through an atomic sibling temporary file; a safe unmanaged backup inside the
   data directory remains after restore.
+- A successful restore reloads the imported state; cleanup-warning and
+  recovery-required outcomes remain distinct, with retained recovery paths
+  shown to the owner and no stale-session autosave after either boundary.
 - How to Play and Practice Tutorial text match Android's teaching flow.
 - Solver-assisted completion does not replace player records.
 
@@ -185,8 +194,9 @@ Automated qualification evidence (2026-09-07):
 - Automated Swing/archive contract checks: PASS (focused JUnit, desktop
   compile, and Javadoc gates), including recovery-source precedence, collision
   policy, Continuous bidirectional validation, rollback write/delete/final-
-  validation/rollback-failure seams, cleanup-warning retention, and stale
-  Preferences-editor invalidation.
+  validation/rollback-failure seams, cleanup-warning retention, stale
+  Preferences-editor invalidation, project-root/data-dir legacy provenance,
+  and recovery-required persistence policy.
 - Full repository CI contract: PASS (`ci.bat`, including Android build/lint,
   release/package checks, and desktop readiness file checks).
 

@@ -98,6 +98,15 @@ public class MainFrame extends JFrame implements GameObserver {
     /** Prevents an active session from recreating a save immediately after reset. */
     private boolean savedGamesReset;
 
+    /** Fail-safe lock entered when archive rollback cannot restore the old state. */
+    private boolean personalDataRecoveryRequired;
+
+    /** Retained transaction directory shown to the owner after recovery failure. */
+    private File retainedRecoveryDirectory;
+
+    /** Retained pre-restore snapshot shown to the owner after recovery failure. */
+    private File retainedPreviousSnapshotDirectory;
+
     /** Persisted desktop palette. */
     private DesktopTheme desktopTheme;
 
@@ -251,6 +260,9 @@ public class MainFrame extends JFrame implements GameObserver {
         JMenuItem saveItem = new JMenuItem(text("save"));
         saveItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, KeyEvent.CTRL_DOWN_MASK));
         saveItem.addActionListener(e -> {
+            if (rejectWhenRecoveryRequired()) {
+                return;
+            }
             if (solverRunning) {
                 return;
             }
@@ -469,8 +481,37 @@ public class MainFrame extends JFrame implements GameObserver {
         statusLabel.setForeground(desktopTheme.getHomeTitle());
     }
 
+    private boolean persistenceAllowed() {
+        return DesktopRestoreOutcomePolicy.allowsPersistence(personalDataRecoveryRequired);
+    }
+
+    private boolean gameplayAllowed() {
+        return DesktopRestoreOutcomePolicy.allowsGameplay(personalDataRecoveryRequired);
+    }
+
+    private void showRecoveryRequiredNotice() {
+        String recovery = retainedRecoveryDirectory == null
+                ? "" : retainedRecoveryDirectory.getAbsolutePath();
+        String previous = retainedPreviousSnapshotDirectory == null
+                ? "" : retainedPreviousSnapshotDirectory.getAbsolutePath();
+        showMessageDialog(desktopLocale.format("backupRestoreRecoveryRequired",
+                        recovery, previous),
+                text("backupRestore"), JOptionPane.ERROR_MESSAGE);
+    }
+
+    private boolean rejectWhenRecoveryRequired() {
+        if (!personalDataRecoveryRequired) {
+            return false;
+        }
+        showRecoveryRequiredNotice();
+        return true;
+    }
+
     private void startNewGame(int size) {
-        if (solverRunning) {
+        if (!gameplayAllowed() || solverRunning) {
+            if (!gameplayAllowed()) {
+                showRecoveryRequiredNotice();
+            }
             return;
         }
         PuzzleDifficulty difficulty = chooseDifficulty(size);
@@ -480,7 +521,10 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void startNewGame(int size, PuzzleDifficulty difficulty) {
-        if (solverRunning) {
+        if (!gameplayAllowed() || solverRunning) {
+            if (!gameplayAllowed()) {
+                showRecoveryRequiredNotice();
+            }
             return;
         }
         autosaveCurrentGameIfSafe();
@@ -539,7 +583,10 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void replayCurrentPuzzle() {
-        if (model == null || solverRunning) {
+        if (!gameplayAllowed() || model == null || solverRunning) {
+            if (!gameplayAllowed()) {
+                showRecoveryRequiredNotice();
+            }
             return;
         }
         clearMovableHint();
@@ -558,7 +605,7 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void restartCurrentGame() {
-        if (!showingGame || solverRunning) {
+        if (!gameplayAllowed() || !showingGame || solverRunning) {
             return;
         }
         if (boardPanel.isBusy()) {
@@ -573,7 +620,7 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void undoMove() {
-        if (!showingGame || solverRunning) {
+        if (!gameplayAllowed() || !showingGame || solverRunning) {
             return;
         }
         if (boardPanel.isBusy()) {
@@ -585,7 +632,7 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void redoMove() {
-        if (!showingGame || solverRunning || boardPanel.isBusy()) {
+        if (!gameplayAllowed() || !showingGame || solverRunning || boardPanel.isBusy()) {
             return;
         }
         clearMovableHint();
@@ -614,7 +661,10 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void loadGame() {
-        if (solverRunning) {
+        if (!gameplayAllowed() || solverRunning) {
+            if (!gameplayAllowed()) {
+                showRecoveryRequiredNotice();
+            }
             return;
         }
         autosaveCurrentGameIfSafe();
@@ -644,6 +694,9 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void loadGameWhilePaused(int size) {
+        if (!gameplayAllowed()) {
+            return;
+        }
         SaveManager.SaveData data = SaveManager.loadGame(size);
         if (data != null) {
             savedGamesReset = false;
@@ -672,7 +725,7 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private boolean saveCurrentGame() {
-        if (model == null || savedGamesReset) {
+        if (!persistenceAllowed() || model == null || savedGamesReset) {
             return false;
         }
         if (activeContinuousChallenge != null) {
@@ -818,7 +871,10 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void startDailyChallenge(LocalDate date) {
-        if (solverRunning || date == null || date.isAfter(LocalDate.now())) {
+        if (!gameplayAllowed() || solverRunning || date == null || date.isAfter(LocalDate.now())) {
+            if (!gameplayAllowed()) {
+                showRecoveryRequiredNotice();
+            }
             return;
         }
         DailyChallenge challenge = DailyChallenge.forDate(date);
@@ -849,7 +905,7 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void runSolver(Solver solver) {
-        if (!showingGame || solverRunning) {
+        if (!gameplayAllowed() || !showingGame || solverRunning) {
             return;
         }
         if (boardPanel.isBusy()) {
@@ -931,7 +987,8 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void showMovableTiles() {
-        if (!showingGame || boardPanel.isBusy() || !model.isGameRunning() || model.isSolved()) {
+        if (!gameplayAllowed() || !showingGame || boardPanel.isBusy()
+                || !model.isGameRunning() || model.isSolved()) {
             return;
         }
 
@@ -964,7 +1021,7 @@ public class MainFrame extends JFrame implements GameObserver {
      * the additive marker before the player can continue.
      */
     private void showStrategicHint() {
-        if (!showingGame || solverRunning || boardPanel.isBusy()
+        if (!gameplayAllowed() || !showingGame || solverRunning || boardPanel.isBusy()
                 || !model.isGameRunning() || model.isSolved()) {
             return;
         }
@@ -1005,6 +1062,9 @@ public class MainFrame extends JFrame implements GameObserver {
 
     /** Shows the first-run learning path and remembers completion separately from saves. */
     private void showOnboardingDialog() {
+        if (rejectWhenRecoveryRequired()) {
+            return;
+        }
         List<DesktopLearningContent.OnboardingPage> pages =
                 DesktopLearningContent.onboardingPages(desktopLocale);
         JDialog dialog = new JDialog(this, text("beginnerGuide"), true);
@@ -1074,15 +1134,27 @@ public class MainFrame extends JFrame implements GameObserver {
             }
         });
         skip.addActionListener(event -> {
+            if (!persistenceAllowed()) {
+                dialog.dispose();
+                return;
+            }
             SaveManager.markOnboardingSeen();
             dialog.dispose();
         });
         practice.addActionListener(event -> {
+            if (!persistenceAllowed()) {
+                dialog.dispose();
+                return;
+            }
             SaveManager.markOnboardingSeen();
             dialog.dispose();
             SwingUtilities.invokeLater(this::showPracticeTutorialDialog);
         });
         start.addActionListener(event -> {
+            if (!persistenceAllowed()) {
+                dialog.dispose();
+                return;
+            }
             SaveManager.markOnboardingSeen();
             dialog.dispose();
             startNewGame(3, PuzzleDifficulty.CLASSIC);
@@ -1090,7 +1162,9 @@ public class MainFrame extends JFrame implements GameObserver {
         dialog.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosed(WindowEvent event) {
-                SaveManager.markOnboardingSeen();
+                if (persistenceAllowed()) {
+                    SaveManager.markOnboardingSeen();
+                }
             }
         });
         refresh.run();
@@ -1106,6 +1180,9 @@ public class MainFrame extends JFrame implements GameObserver {
 
     /** Opens an isolated interactive two-step practice board without recording a game. */
     private void showPracticeTutorialDialog() {
+        if (rejectWhenRecoveryRequired()) {
+            return;
+        }
         GameModel tutorialModel = new GameModel(3);
         tutorialModel.loadState(new int[][] {{1, 2, 3}, {4, 0, 6}, {7, 5, 8}}, 0);
         DesktopTutorialProgress progress = new DesktopTutorialProgress();
@@ -1238,6 +1315,9 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void saveCurrentAsFavorite() {
+        if (rejectWhenRecoveryRequired()) {
+            return;
+        }
         String defaultLabel = model == null ? text("favoriteDefaultLabel") : model.getSize() + "x"
                 + model.getSize() + " " + difficultyLabel(model.getDifficulty());
         String label = runWithPausedTimer(() -> JOptionPane.showInputDialog(this,
@@ -1253,6 +1333,9 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void showFavoriteActions(SaveManager.FavoritePuzzle favorite) {
+        if (rejectWhenRecoveryRequired()) {
+            return;
+        }
         Object[] options = {text("favoriteReplay"), text("favoriteRename"),
                 text("favoriteDelete"), text("favoriteCancel")};
         int choice = showOptionDialog(DesktopFavoriteContent.optionLabel(favorite, desktopLocale) + "\n\n"
@@ -1273,6 +1356,9 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void renameFavorite(SaveManager.FavoritePuzzle favorite) {
+        if (rejectWhenRecoveryRequired()) {
+            return;
+        }
         String label = runWithPausedTimer(() -> JOptionPane.showInputDialog(this,
                 text("favoriteRenamePrompt"), favorite.label));
         if (label != null && !SaveManager.renameFavorite(favorite.id, label)) {
@@ -1282,7 +1368,10 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void startFavoritePractice(SaveManager.FavoritePuzzle favorite) {
-        if (solverRunning || favorite == null) {
+        if (!gameplayAllowed() || solverRunning || favorite == null) {
+            if (!gameplayAllowed()) {
+                showRecoveryRequiredNotice();
+            }
             return;
         }
         autosaveCurrentGameIfSafe();
@@ -1330,6 +1419,9 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void showTrendScopeDialog() {
+        if (rejectWhenRecoveryRequired()) {
+            return;
+        }
         PuzzleDifficulty[] difficulties = PuzzleDifficulty.values();
         Object[] options = new Object[9];
         int selected = 0;
@@ -1354,6 +1446,9 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void showWeeklyGoalDialog() {
+        if (rejectWhenRecoveryRequired()) {
+            return;
+        }
         String value = runWithPausedTimer(() -> JOptionPane.showInputDialog(this,
                 text("weeklyGoalPrompt"),
                 String.valueOf(SaveManager.getWeeklyGoalTarget())));
@@ -1371,7 +1466,10 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void showContinuousDialog() {
-        if (solverRunning) {
+        if (!gameplayAllowed() || solverRunning) {
+            if (!gameplayAllowed()) {
+                showRecoveryRequiredNotice();
+            }
             return;
         }
         SaveManager.ContinuousGame saved = SaveManager.loadContinuousGame();
@@ -1408,6 +1506,9 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void chooseContinuousScope(int target) {
+        if (rejectWhenRecoveryRequired()) {
+            return;
+        }
         String[] options = new String[9];
         PuzzleDifficulty[] difficulties = PuzzleDifficulty.values();
         int selected = 0;
@@ -1432,7 +1533,10 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void startContinuousChallenge(int size, PuzzleDifficulty difficulty, int target) {
-        if (solverRunning || !ContinuousChallenge.isSupportedTarget(target)) {
+        if (!gameplayAllowed() || solverRunning || !ContinuousChallenge.isSupportedTarget(target)) {
+            if (!gameplayAllowed()) {
+                showRecoveryRequiredNotice();
+            }
             return;
         }
         autosaveCurrentGameIfSafe();
@@ -1458,6 +1562,9 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void resumeContinuousChallenge() {
+        if (rejectWhenRecoveryRequired()) {
+            return;
+        }
         SaveManager.ContinuousGame saved = SaveManager.loadContinuousGame();
         if (saved == null || saved.challenge.isComplete()) {
             SaveManager.clearContinuousGame();
@@ -1488,7 +1595,7 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void startNextContinuousPuzzle() {
-        if (solverRunning || activeContinuousChallenge == null
+        if (!gameplayAllowed() || solverRunning || activeContinuousChallenge == null
                 || activeContinuousChallenge.isComplete()) {
             return;
         }
@@ -1510,6 +1617,9 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void endContinuousChallenge() {
+        if (rejectWhenRecoveryRequired()) {
+            return;
+        }
         SaveManager.clearContinuousGame();
         activeContinuousChallenge = null;
         continuousDifficulty = null;
@@ -1521,6 +1631,9 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void showResultsDialog(int moves, long timeMs) {
+        if (!gameplayAllowed()) {
+            return;
+        }
         if (activeDailyDateId != null && model != null && model.isSolved()) {
             saveCurrentGame();
         }
@@ -1567,6 +1680,9 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void showContinuousResultsDialog(int moves, long timeMs) {
+        if (!gameplayAllowed()) {
+            return;
+        }
         if (model != null && model.isSolved()) {
             saveCurrentGame();
         }
@@ -1590,7 +1706,7 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void showPreferencesDialog() {
-        if (solverRunning) {
+        if (rejectWhenRecoveryRequired() || solverRunning) {
             return;
         }
         long editorGeneration = preferencesEditorGuard.openEditor();
@@ -1623,6 +1739,9 @@ public class MainFrame extends JFrame implements GameObserver {
         setAccessibleDescription(resetSaved, text("resetSaved"),
                 text("resetSavedDescription"));
         resetSaved.addActionListener(event -> {
+            if (rejectWhenRecoveryRequired()) {
+                return;
+            }
             int answer = showConfirmDialog(text("resetSavedConfirm"), text("resetSaved"),
                     JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
             if (answer == JOptionPane.YES_OPTION) {
@@ -1637,6 +1756,9 @@ public class MainFrame extends JFrame implements GameObserver {
         setAccessibleDescription(resetRecords, text("resetRecords"),
                 text("resetRecordsDescription"));
         resetRecords.addActionListener(event -> {
+            if (rejectWhenRecoveryRequired()) {
+                return;
+            }
             int answer = showConfirmDialog(text("resetRecordsConfirm"), text("resetRecords"),
                     JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
             if (answer == JOptionPane.YES_OPTION) {
@@ -1676,6 +1798,7 @@ public class MainFrame extends JFrame implements GameObserver {
         int result = showConfirmDialog(panel, text("preferences"),
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (result == JOptionPane.OK_OPTION
+                && persistenceAllowed()
                 && preferencesEditorGuard.mayCommit(editorGeneration)) {
             String selectedLanguage = (String) languageBox.getSelectedItem();
             String selectedTheme = (String) themeBox.getSelectedItem();
@@ -1702,6 +1825,10 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private boolean backupInputIsStable() {
+        if (personalDataRecoveryRequired) {
+            showRecoveryRequiredNotice();
+            return false;
+        }
         if (solverRunning || boardPanel == null || boardPanel.isBusy()) {
             showMessageDialog(text("backupBusy"), text("preferences"), JOptionPane.INFORMATION_MESSAGE);
             return false;
@@ -1731,6 +1858,10 @@ public class MainFrame extends JFrame implements GameObserver {
             try {
                 // Choose the destination first so a chooser cancel is a true
                 // no-op. Only an approved export may flush the stable session.
+                if (personalDataRecoveryRequired) {
+                    showRecoveryRequiredNotice();
+                    return;
+                }
                 if (showingGame && !autosaveCurrentGameIfSafe()) {
                     showMessageDialog(text("backupExportFailure"), text("backupExport"),
                             JOptionPane.WARNING_MESSAGE);
@@ -1774,10 +1905,25 @@ public class MainFrame extends JFrame implements GameObserver {
                     return;
                 }
                 DesktopPersonalDataArchive.restoreArchive(archive);
-                preferencesEditorGuard.markPersonalDataRestored();
-                reconcileAfterPersonalDataRestore();
+                reconcileSuccessfulRestore(DesktopRestoreOutcomePolicy.Outcome.NORMAL_SUCCESS);
                 showMessageDialog(text("backupRestored"), text("backupRestore"),
                         JOptionPane.INFORMATION_MESSAGE);
+            } catch (DesktopPersonalDataArchive.RestoreCleanupWarningException warning) {
+                // The target is valid. Reconcile it before displaying the
+                // warning so stale controller state cannot autosave over it.
+                DesktopRestoreOutcomePolicy.Outcome outcome =
+                        DesktopRestoreOutcomePolicy.classify(warning);
+                reconcileSuccessfulRestore(outcome);
+                showMessageDialog(desktopLocale.format("backupRestoreCleanupWarning",
+                                warning.getRecoveryDirectory().getAbsolutePath()),
+                        text("backupRestore"), JOptionPane.WARNING_MESSAGE);
+            } catch (DesktopPersonalDataArchive.RestoreRecoveryRequiredException failure) {
+                DesktopRestoreOutcomePolicy.Outcome outcome =
+                        DesktopRestoreOutcomePolicy.classify(failure);
+                if (DesktopRestoreOutcomePolicy.shouldLockPersistence(outcome)) {
+                    enterPersonalDataRecoveryRequired(failure);
+                }
+                showRecoveryRequiredNotice();
             } catch (IllegalArgumentException exception) {
                 showMessageDialog(text("backupInvalid"), text("backupRestore"),
                         JOptionPane.WARNING_MESSAGE);
@@ -1786,6 +1932,58 @@ public class MainFrame extends JFrame implements GameObserver {
                         JOptionPane.WARNING_MESSAGE);
             }
         });
+    }
+
+    private void reconcileSuccessfulRestore(DesktopRestoreOutcomePolicy.Outcome outcome) {
+        if (!DesktopRestoreOutcomePolicy.shouldReconcile(outcome)) {
+            return;
+        }
+        preferencesEditorGuard.markPersonalDataRestored();
+        reconcileAfterPersonalDataRestore();
+    }
+
+    /**
+     * Places the process in a fail-safe state when archive rollback cannot
+     * restore the previous managed snapshot. The retained transaction and
+     * snapshot are never deleted by the controller.
+     */
+    private void enterPersonalDataRecoveryRequired(
+            DesktopPersonalDataArchive.RestoreRecoveryRequiredException failure) {
+        personalDataRecoveryRequired = true;
+        retainedRecoveryDirectory = failure.getRecoveryDirectory();
+        retainedPreviousSnapshotDirectory = failure.getPreviousSnapshotDirectory();
+        preferencesEditorGuard.markPersonalDataRestored();
+        if (solverWorker != null && !solverWorker.isDone()) {
+            solverWorker.cancel(true);
+        }
+        solverWorker = null;
+        solverRunning = false;
+        if (model != null) {
+            model.removeObserver(this);
+            model.pauseTimer();
+        }
+        if (boardPanel != null) {
+            boardPanel.setInputLocked(true);
+        }
+        activeDailyDateId = null;
+        activeFavoriteId = null;
+        activeContinuousChallenge = null;
+        continuousDifficulty = null;
+        continuousSize = 0;
+        assistedSolveActive = false;
+        completedAssisted = false;
+        pendingResultMessage = null;
+        completionTracker.reset();
+        showingGame = false;
+        clearMovableHint();
+        setTitle(text("windowTitle"));
+        if (contentLayout != null && contentPanel != null) {
+            contentLayout.show(contentPanel, HOME_CARD);
+        }
+        if (statusLabel != null) {
+            statusLabel.setText(text("recoveryRequiredStatus"));
+        }
+        syncGameTimerState();
     }
 
     /**
@@ -1872,6 +2070,14 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void showGame() {
+        if (!gameplayAllowed()) {
+            showingGame = false;
+            if (contentLayout != null && contentPanel != null) {
+                contentLayout.show(contentPanel, HOME_CARD);
+            }
+            syncGameTimerState();
+            return;
+        }
         showingGame = true;
         contentLayout.show(contentPanel, GAME_CARD);
         syncGameTimerState();
@@ -1899,7 +2105,7 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private boolean autosaveCurrentGameIfSafe() {
-        if (model == null || !DesktopAutosavePolicy.shouldAutosave(
+        if (!persistenceAllowed() || model == null || !DesktopAutosavePolicy.shouldAutosave(
                 showingGame, boardPanel != null && boardPanel.isBusy(), solverRunning)) {
             return false;
         }
@@ -2012,6 +2218,9 @@ public class MainFrame extends JFrame implements GameObserver {
 
     @Override
     public void onGameWon(int moves, long timeMs) {
+        if (!gameplayAllowed()) {
+            return;
+        }
         syncGameTimerState();
         DesktopSoundFeedback.playWin(soundEnabled);
         if (!completionTracker.claim()) {

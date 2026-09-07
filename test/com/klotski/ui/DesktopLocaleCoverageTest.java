@@ -29,4 +29,18 @@ class DesktopLocaleCoverageTest {
             assertTrue(locale.format("cellTileName", 7, 2, 3).contains("7"), tag);
         }
     }
+
+    @Test
+    void restoreOutcomeMessagesExplainSuccessWarningAndRetainedPaths() {
+        for (String tag : DesktopLocale.supportedTags()) {
+            DesktopLocale locale = DesktopLocale.fromTag(tag);
+            String warning = locale.format("backupRestoreCleanupWarning", "C:\\recovery");
+            String failure = locale.format("backupRestoreRecoveryRequired",
+                    "C:\\recovery", "C:\\previous");
+            assertTrue(warning.contains("recovery"), tag);
+            assertTrue(failure.contains("recovery"), tag);
+            assertTrue(failure.contains("previous"), tag);
+            assertFalse(failure.contains("Exception"), tag);
+        }
+    }
 }

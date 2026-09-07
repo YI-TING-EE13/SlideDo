@@ -26,6 +26,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -57,6 +58,10 @@ public class SaveManager {
     private static final String SCOPED_RECORDS_FILE = "klotski_records_v2.json";
     private static final String RECORDS_RESET_FILE = "klotski_records_reset.marker";
     private static final String SAVED_GAMES_RESET_FILE = "klotski_saved_games_reset.marker";
+    /** Durable boundary that suppresses only process-root legacy fallback. */
+    static final String PROJECT_ROOT_FALLBACK_SUPPRESSION_FILE =
+            "klotski_project_root_fallback_suppressed.marker";
+    private static final String PROJECT_ROOT_FALLBACK_SUPPRESSION_VALUE = "suppressed";
     private static final String STATISTICS_FILE = "klotski_statistics.json";
     private static final String DAILY_SAVE_PREFIX = "klotski_daily_";
     private static final String DAILY_SAVE_SUFFIX = ".json";
@@ -77,7 +82,36 @@ public class SaveManager {
     private static final String ATOMIC_TEMP_SUFFIX = ".tmp";
     private static final String ATOMIC_BACKUP_SUFFIX = ".bak";
 
+    /** Optional deterministic root-fallback location used by headless tests. */
+    private static final ThreadLocal<File> PROJECT_ROOT_FALLBACK_OVERRIDE = new ThreadLocal<>();
+
     private SaveManager() {
+    }
+
+    /**
+     * Runs a loader with an explicit process-root fallback directory.
+     * <p>This narrow seam keeps provenance tests out of the repository's real
+     * working directory and is package-private by design.</p>
+     */
+    static <T> T withProjectRootFallbackForTests(File fallbackDirectory, Supplier<T> action) {
+        if (action == null) {
+            throw new IllegalArgumentException("Fallback test action is missing.");
+        }
+        File previous = PROJECT_ROOT_FALLBACK_OVERRIDE.get();
+        if (fallbackDirectory == null) {
+            PROJECT_ROOT_FALLBACK_OVERRIDE.remove();
+        } else {
+            PROJECT_ROOT_FALLBACK_OVERRIDE.set(fallbackDirectory);
+        }
+        try {
+            return action.get();
+        } finally {
+            if (previous == null) {
+                PROJECT_ROOT_FALLBACK_OVERRIDE.remove();
+            } else {
+                PROJECT_ROOT_FALLBACK_OVERRIDE.set(previous);
+            }
+        }
     }
 
     /**
@@ -1311,7 +1345,9 @@ public class SaveManager {
                 return false;
             }
             if (!validateResetMarker(new File(directory, RECORDS_RESET_FILE))
-                    || !validateResetMarker(new File(directory, SAVED_GAMES_RESET_FILE))) {
+                    || !validateResetMarker(new File(directory, SAVED_GAMES_RESET_FILE))
+                    || !validateProjectRootFallbackMarker(new File(directory,
+                            PROJECT_ROOT_FALLBACK_SUPPRESSION_FILE))) {
                 return false;
             }
 
@@ -1480,6 +1516,17 @@ public class SaveManager {
             return true;
         }
         return isBooleanOrResetMarker(file, "reset");
+    }
+
+    private static boolean validateProjectRootFallbackMarker(File file) {
+        if (!file.exists()) {
+            return true;
+        }
+        try {
+            return PROJECT_ROOT_FALLBACK_SUPPRESSION_VALUE.equals(readText(file).trim());
+        } catch (IOException exception) {
+            return false;
+        }
     }
 
     private static boolean isBooleanOrResetMarker(File file, String resetValue) {
@@ -1792,10 +1839,10 @@ public class SaveManager {
         if (record != null) {
             return record;
         }
-        if (isRecordsReset()) {
+        if (isRecordsReset() || isProjectRootFallbackSuppressed()) {
             return null;
         }
-        File rootFile = new File(SCOPED_RECORDS_FILE);
+        File rootFile = new File(projectRootFallbackDirectory(), SCOPED_RECORDS_FILE);
         if (!sameFile(dataFile, rootFile)) {
             return loadScopedRecords(rootFile).get(recordScopeKey(size, difficulty));
         }
@@ -1810,7 +1857,10 @@ public class SaveManager {
         if (record != null) {
             return record;
         }
-        File rootFile = new File(RECORDS_FILE);
+        if (isRecordsReset() || isProjectRootFallbackSuppressed()) {
+            return null;
+        }
+        File rootFile = new File(projectRootFallbackDirectory(), RECORDS_FILE);
         if (!sameFile(rootFile, new File(getDataDirectory(), RECORDS_FILE))) {
             return getBestRecord(rootFile, size);
         }
@@ -1825,11 +1875,28 @@ public class SaveManager {
         return new File(getDataDirectory(), SAVED_GAMES_RESET_FILE).isFile();
     }
 
+    private static boolean isProjectRootFallbackSuppressed() {
+        return isProjectRootFallbackSuppressed(getDataDirectory());
+    }
+
+    static boolean isProjectRootFallbackSuppressed(File dataDirectory) {
+        return dataDirectory != null
+                && new File(dataDirectory, PROJECT_ROOT_FALLBACK_SUPPRESSION_FILE).isFile();
+    }
+
+    private static File projectRootFallbackDirectory() {
+        File override = PROJECT_ROOT_FALLBACK_OVERRIDE.get();
+        return override == null ? new File(".") : override;
+    }
+
     private static Map<String, BestRecord> loadScopedRecordsForWrite(File target) {
         if (target.exists()) {
             return loadScopedRecords(target);
         }
-        File rootFile = new File(SCOPED_RECORDS_FILE);
+        if (isProjectRootFallbackSuppressed()) {
+            return new HashMap<>();
+        }
+        File rootFile = new File(projectRootFallbackDirectory(), SCOPED_RECORDS_FILE);
         if (!sameFile(target, rootFile) && rootFile.exists()) {
             return loadScopedRecords(rootFile);
         }
@@ -1998,9 +2065,9 @@ public class SaveManager {
 
     private static CompletionStore loadCompletionStore() {
         File file = new File(getDataDirectory(), STATISTICS_FILE);
-        File rootFile = new File(STATISTICS_FILE);
+        File rootFile = new File(projectRootFallbackDirectory(), STATISTICS_FILE);
         CompletionStore store = loadCompletionStore(file);
-        if (store.hasData() || sameFile(file, rootFile)) {
+        if (store.hasData() || sameFile(file, rootFile) || isProjectRootFallbackSuppressed()) {
             return store;
         }
         return loadCompletionStore(rootFile);
@@ -2107,8 +2174,11 @@ public class SaveManager {
         List<File> candidates = new ArrayList<>();
         addUnique(candidates, new File(dataDirectory, SAVE_FILE));
         addUnique(candidates, new File(dataDirectory, LEGACY_SAVE_FILE));
-        addUnique(candidates, new File(SAVE_FILE));
-        addUnique(candidates, new File(LEGACY_SAVE_FILE));
+        if (!isProjectRootFallbackSuppressed()) {
+            File fallbackDirectory = projectRootFallbackDirectory();
+            addUnique(candidates, new File(fallbackDirectory, SAVE_FILE));
+            addUnique(candidates, new File(fallbackDirectory, LEGACY_SAVE_FILE));
+        }
         return candidates;
     }
 
@@ -2135,10 +2205,10 @@ public class SaveManager {
         if (data != null && data.size == size) {
             return data;
         }
-        if (isSavedGamesReset()) {
+        if (isSavedGamesReset() || isProjectRootFallbackSuppressed()) {
             return null;
         }
-        File rootSlot = new File(saveFileName(size));
+        File rootSlot = new File(projectRootFallbackDirectory(), saveFileName(size));
         if (!sameFile(rootSlot, getSaveFile(size))) {
             data = readNormalJsonWithRecovery(rootSlot);
         }
