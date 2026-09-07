@@ -667,7 +667,7 @@ Desktop/Android feature parity matrix:
 | Settings / preferences | Persistent English, Traditional Chinese, and Japanese language selection, haptic feedback, reduced motion, reset all saved games, and reset records. | Persistent English/Traditional Chinese/Japanese critical controls, Midnight/Ocean theme, sound, reduced motion, onboarding flag, and confirmed scoped resets. | Haptics and full backup remain Android/platform-specific; Desktop rebuilds its Swing shell on locale/theme changes. | Android locale/store/settings instrumentation; desktop SaveManager preference/reset and locale/theme tests. |
 | Records | Per-size local best records, fewer moves then lower time, solver-assisted protection, and player-facing policy explanation. | Per-size local best records with the same comparison, solver-assisted protection, and policy explanation. | Aligned. | Android records/results instrumentation; desktop result and records tests. |
 | Results | Full Results screen with exact-board Replay Puzzle, New Size, Home, record status, and assisted wording. | Android-style Results dialog with Play Again, New Size, Home, record status, and assisted wording. | Android now replays the same starting board for the Personal Play roadmap; desktop retains its new-puzzle action. | Android replay/results instrumentation; desktop results copy tests. |
-| Accessibility | Screen and section headings, explicit game traversal order, 48dp action targets, localized board summaries, and per-cell virtual accessibility nodes with playable movable-tile actions exist. Both themes select button content at 4.5:1 or better. | Basic Swing labels/dialog text exist, but no full assistive-tech audit. | Android automated semantics are substantially reinforced; both platforms still need broader manual assistive-technology review before public release. | Android accessibility/adaptive instrumentation, 1.5x font and wide-window acceptance, plus future manual TalkBack/desktop review. |
+| Accessibility | Screen and section headings, explicit game traversal order, 48dp action targets, localized board summaries, and per-cell virtual accessibility nodes with playable movable-tile actions exist. Both themes select button content at 4.5:1 or better. | Swing exposes native per-cell buttons with accessible names/descriptions, row-major focus, Space/Enter actions, arrow-key movement, visible focus borders, labeled dialogs, and a scrollable Home layout. Screen-reader certification remains unclaimed. | Android virtual-node and Swing child-component mechanisms remain platform-specific; both platforms keep separate manual assistive-technology review gates. | Android accessibility/adaptive instrumentation; DesktopAdaptivePolicyTest/DesktopSessionContractTest; packaged 100/125/150% keyboard and resize checklist. |
 | Packaging / release | Debug build, connected tests, signed APK/AAB, Play readiness file check, screenshot smoke workflow. | Desktop ZIP and optional app-image package with user-data paths plus a desktop beta readiness check. | Android still needs real Play upload key and Play Console external assets; desktop package is not a signed installer. | `verify.bat`, `verify-connected.bat`, `verify-release.bat`, manual screenshot smoke, desktop beta smoke checklist. |
 
 Parity conclusion for current beta:
@@ -687,7 +687,7 @@ The narrow MVP parity pass above is historical status, not a claim that the
 completed Android Personal Play program is fully available in Swing. The
 current evidence-based inventory, status matrix, Java documentation audit, and
 bounded implementation roadmap are maintained in
-[DESKTOP_ANDROID_PARITY.md](DESKTOP_ANDROID_PARITY.md). Stages 1-6 below are
+[DESKTOP_ANDROID_PARITY.md](DESKTOP_ANDROID_PARITY.md). Stages 1-7 below are
 owner-approved and implemented; future behavior work requires a new approved
 roadmap stage and a fresh matrix re-check.
 
@@ -806,8 +806,41 @@ implementation:
   progress, masks legacy record fallback, and preserves active Continuous state.
 - Focused tests cover preference round-trip, locale/theme catalogs, onboarding
   and tutorial state, reset-domain isolation, and legacy-record masking. Manual
-  Swing DPI/accessibility smoke remains Stage 7 evidence and is not claimed as
-  executed.
+  Swing DPI/accessibility smoke is recorded in `DESKTOP_BETA_READINESS.md` and
+  remains separate from the automated test evidence.
+
+2026-09-07 Stage 7 accessibility and adaptive-layout implementation:
+
+- `BoardPanel` keeps the custom painting path but overlays one native Swing
+  `JButton` per cell. Cells expose row/column/value names and movement
+  descriptions, support row-major Tab traversal and Space/Enter activation, and
+  show a visible theme-aware focus border. Arrow-key movement remains bound to
+  the shared GameModel path.
+- Stage 7 repair preserves the pre-existing Desktop mouse contract beneath the
+  child controls. `AccessibleCellButton` translates press/release/click/move/
+  drag events back to `BoardPanel` and bypasses default mouse button dispatch,
+  so aligned clicks and drag/release gestures cannot double-trigger the
+  keyboard/action listener. Child-directed regression tests cover cursor
+  affordance, invalid/non-aligned no-op behavior, one-action history, and one
+  completion callback.
+- `MainFrame` labels Home, status, menus, learning/tutorial dialogs, preference
+  controls, and reset actions. Home uses a vertical scroll viewport, size
+  actions stack at narrow widths, learning copy scrolls, and the frame has a
+  460x560 minimum target.
+- `DesktopAdaptivePolicy` centralizes minimum-window/focus-target and contrast
+  checks. Midnight and Ocean tile/home/focus colors meet the tested thresholds;
+  the policy is presentation-only and cannot alter rules, records, timer, or
+  persistence.
+- Focused tests cover board cell accessibility, focusability, minimum-window
+  behavior, known contrast ratios, and theme contrast. A production-equivalent
+  packaged app-image manual run passed the default-scale keyboard/focus,
+  dialog, theme, persistence, and maximize/restore subset, including a
+  save/exit/relaunch/Continue flow. The exact ZIP `SlideDo.bat` launch and the
+  required 125%/150% Windows scaling checks remain NOT RUN because this host
+  cannot expose that launch through the Windows automation surface or change
+  Windows display scaling under the approved controls; screen-reader
+  certification is not claimed. Full `ci.bat` passed, while archive/chooser
+  behavior remains Stage 8.
 
 ### Completed 2026-05-25 MVP Items
 

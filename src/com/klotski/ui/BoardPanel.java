@@ -10,12 +10,17 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.KeyEvent;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
+import javax.swing.border.Border;
 
 /**
  * Swing component that renders the puzzle board and translates desktop input
@@ -76,6 +81,9 @@ public class BoardPanel extends JPanel implements GameObserver {
     /** Render state for every board cell. */
     private Tile[][] tiles;
 
+    /** Transparent keyboard/accessibility controls laid over the painted cells. */
+    private JButton[][] cellControls;
+
     /** Presentation-only highlight mask for assist hints. */
     private boolean[][] highlightedCells;
 
@@ -103,6 +111,9 @@ public class BoardPanel extends JPanel implements GameObserver {
     /** Prevents duplicate movement from the follow-up mouseClicked event. */
     private boolean suppressNextMouseClicked = false;
 
+    /** Parent mouse contract that is also reached by accessible cell controls. */
+    private final MouseAdapter mouseHandler;
+
     /**
      * Creates a board view bound to the supplied model.
      *
@@ -111,11 +122,21 @@ public class BoardPanel extends JPanel implements GameObserver {
     public BoardPanel(GameModel model) {
         this.model = model;
         model.addObserver(this);
+        setLayout(null);
         setBackground(BG_COLOR);
         setFocusable(true);
+        getAccessibleContext().setAccessibleName("Puzzle board");
+        getAccessibleContext().setAccessibleDescription(
+                "Keyboard-accessible sliding puzzle board. Tab between cells and use arrow keys to move the empty cell.");
         setupKeyBindings();
+        addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent event) {
+                layoutAccessibleCells();
+            }
+        });
 
-        MouseAdapter mouseHandler = new MouseAdapter() {
+        mouseHandler = new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
                 requestFocusInWindow();
@@ -211,6 +232,80 @@ public class BoardPanel extends JPanel implements GameObserver {
         initTiles();
     }
 
+    /**
+     * Native Swing control used for keyboard and accessibility semantics.
+     * <p>
+     * The painted board historically owned the desktop mouse contract. A
+     * child button would otherwise become the deepest mouse target and prevent
+     * the parent press/release/click/move path from seeing the gesture. Mouse
+     * events are therefore translated to the parent and the button's default
+     * mouse processing is skipped; keyboard activation still uses the normal
+     * {@link JButton} action path.
+     * </p>
+     */
+    private final class AccessibleCellButton extends JButton {
+        @Override
+        protected void processMouseEvent(MouseEvent event) {
+            switch (event.getID()) {
+                case MouseEvent.MOUSE_PRESSED:
+                case MouseEvent.MOUSE_RELEASED:
+                case MouseEvent.MOUSE_CLICKED:
+                case MouseEvent.MOUSE_ENTERED:
+                case MouseEvent.MOUSE_EXITED:
+                    forwardCellMouseEvent(event);
+                    return;
+                default:
+                    super.processMouseEvent(event);
+            }
+        }
+
+        @Override
+        protected void processMouseMotionEvent(MouseEvent event) {
+            if (event.getID() == MouseEvent.MOUSE_MOVED
+                    || event.getID() == MouseEvent.MOUSE_DRAGGED) {
+                forwardCellMouseEvent(event);
+                return;
+            }
+            super.processMouseMotionEvent(event);
+        }
+    }
+
+    private void forwardCellMouseEvent(MouseEvent event) {
+        MouseEvent parentEvent = SwingUtilities.convertMouseEvent(
+                (Component) event.getSource(), event, this);
+        switch (parentEvent.getID()) {
+            case MouseEvent.MOUSE_PRESSED:
+                mouseHandler.mousePressed(parentEvent);
+                break;
+            case MouseEvent.MOUSE_RELEASED:
+                mouseHandler.mouseReleased(parentEvent);
+                break;
+            case MouseEvent.MOUSE_CLICKED:
+                mouseHandler.mouseClicked(parentEvent);
+                break;
+            case MouseEvent.MOUSE_ENTERED:
+                mouseHandler.mouseEntered(parentEvent);
+                break;
+            case MouseEvent.MOUSE_EXITED:
+                mouseHandler.mouseExited(parentEvent);
+                break;
+            case MouseEvent.MOUSE_MOVED:
+                mouseHandler.mouseMoved(parentEvent);
+                break;
+            case MouseEvent.MOUSE_DRAGGED:
+                mouseHandler.mouseDragged(parentEvent);
+                break;
+            default:
+                break;
+        }
+
+        // Keep a mouse-selected cell as the active keyboard target without
+        // letting the parent contract's focus request steal it back.
+        if (parentEvent.getID() == MouseEvent.MOUSE_PRESSED) {
+            ((Component) event.getSource()).requestFocusInWindow();
+        }
+    }
+
     private void setupKeyBindings() {
         bindKey("moveUp", KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0), Direction.UP);
         bindKey("moveDown", KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, 0), Direction.DOWN);
@@ -219,6 +314,7 @@ public class BoardPanel extends JPanel implements GameObserver {
     }
 
     private void bindKey(String name, KeyStroke keyStroke, Direction dir) {
+        getInputMap(WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(keyStroke, name);
         getInputMap(WHEN_IN_FOCUSED_WINDOW).put(keyStroke, name);
         getActionMap().put(name, new AbstractAction() {
             @Override
@@ -236,6 +332,150 @@ public class BoardPanel extends JPanel implements GameObserver {
                 tiles[r][c] = new Tile(model.getTile(r, c), r, c);
             }
         }
+        rebuildAccessibleCells();
+    }
+
+    private void rebuildAccessibleCells() {
+        if (cellControls != null) {
+            for (JButton[] row : cellControls) {
+                for (JButton cell : row) {
+                    remove(cell);
+                }
+            }
+        }
+        int size = model.getSize();
+        cellControls = new JButton[size][size];
+        for (int row = 0; row < size; row++) {
+            for (int col = 0; col < size; col++) {
+                final int cellRow = row;
+                final int cellCol = col;
+                JButton cell = new AccessibleCellButton();
+                cell.setFocusable(true);
+                cell.setFocusPainted(false);
+                cell.setContentAreaFilled(false);
+                cell.setOpaque(false);
+                cell.setBorderPainted(true);
+                cell.setMargin(new Insets(0, 0, 0, 0));
+                cell.setToolTipText(accessibleCellName(row, col));
+                cell.getAccessibleContext().setAccessibleName(accessibleCellName(row, col));
+                cell.getAccessibleContext().setAccessibleDescription(accessibleCellDescription(row, col));
+                cell.addActionListener(event -> slideLineToTile(cellRow, cellCol));
+                cell.addFocusListener(new FocusAdapter() {
+                    @Override
+                    public void focusGained(FocusEvent event) {
+                        updateCellFocusBorder(cell);
+                    }
+
+                    @Override
+                    public void focusLost(FocusEvent event) {
+                        updateCellFocusBorder(cell);
+                    }
+                });
+                cellControls[row][col] = cell;
+                add(cell);
+                updateCellFocusBorder(cell);
+            }
+        }
+        layoutAccessibleCells();
+        revalidate();
+        repaint();
+    }
+
+    private void updateCellFocusBorder(JButton cell) {
+        Border border = cell.isFocusOwner()
+                ? BorderFactory.createLineBorder(theme.getFocusIndicator(), 3)
+                : BorderFactory.createEmptyBorder(3, 3, 3, 3);
+        cell.setBorder(border);
+    }
+
+    private void updateAccessibleCellState() {
+        if (cellControls == null) {
+            return;
+        }
+        for (int row = 0; row < cellControls.length; row++) {
+            for (int col = 0; col < cellControls[row].length; col++) {
+                JButton cell = cellControls[row][col];
+                cell.setToolTipText(accessibleCellName(row, col));
+                cell.getAccessibleContext().setAccessibleName(accessibleCellName(row, col));
+                cell.getAccessibleContext().setAccessibleDescription(accessibleCellDescription(row, col));
+                updateCellFocusBorder(cell);
+            }
+        }
+    }
+
+    private String accessibleCellName(int row, int col) {
+        int value = model.getTile(row, col);
+        return value == 0
+                ? "Empty cell, row " + (row + 1) + ", column " + (col + 1)
+                : "Tile " + value + ", row " + (row + 1) + ", column " + (col + 1);
+    }
+
+    private String accessibleCellDescription(int row, int col) {
+        if (model.getTile(row, col) == 0) {
+            return "Empty cell. Select another cell or use the arrow keys to move the empty cell.";
+        }
+        return isMovableTile(row, col)
+                ? "Movable tile. Press Space or Enter to slide this aligned tile."
+                : "Tile is not aligned with the empty cell right now.";
+    }
+
+    private int calculateTileSize() {
+        int size = model.getSize();
+        int availableWidth = getWidth() - (size + 1) * TILE_GAP;
+        int availableHeight = getHeight() - (size + 1) * TILE_GAP;
+        return Math.max(0, Math.min(availableWidth / size, availableHeight / size));
+    }
+
+    private void layoutAccessibleCells() {
+        if (cellControls == null || model == null) {
+            return;
+        }
+        int size = model.getSize();
+        int tileSize = calculateTileSize();
+        int boardW = size * tileSize + (size + 1) * TILE_GAP;
+        int boardH = size * tileSize + (size + 1) * TILE_GAP;
+        int startX = (getWidth() - boardW) / 2;
+        int startY = (getHeight() - boardH) / 2;
+        for (int row = 0; row < size; row++) {
+            for (int col = 0; col < size; col++) {
+                JButton cell = cellControls[row][col];
+                int x = startX + TILE_GAP + col * (tileSize + TILE_GAP);
+                int y = startY + TILE_GAP + row * (tileSize + TILE_GAP);
+                cell.setBounds(x, y, tileSize, tileSize);
+                cell.setVisible(tileSize > 0);
+            }
+        }
+    }
+
+    @Override
+    public void doLayout() {
+        layoutAccessibleCells();
+    }
+
+    /**
+     * Requests focus on the first keyboard-accessible board cell.
+     *
+     * @return whether a focus request was submitted
+     */
+    public boolean requestBoardFocus() {
+        if (cellControls != null && cellControls.length > 0
+                && cellControls[0].length > 0) {
+            return cellControls[0][0].requestFocusInWindow();
+        }
+        return requestFocusInWindow();
+    }
+
+    /**
+     * Returns the number of exposed keyboard/accessibility cells.
+     *
+     * @return number of board cell controls
+     */
+    public int getAccessibleCellCount() {
+        return cellControls == null ? 0 : cellControls.length * cellControls.length;
+    }
+
+    JButton getAccessibleCellForTesting(int row, int col) {
+        return cellControls[row][col];
     }
 
     /**
@@ -314,6 +554,13 @@ public class BoardPanel extends JPanel implements GameObserver {
         TILE_TEXT_COLOR = this.theme.getTileText();
         BG_COLOR = this.theme.getBoardBackground();
         setBackground(BG_COLOR);
+        if (cellControls != null) {
+            for (JButton[] row : cellControls) {
+                for (JButton cell : row) {
+                    updateCellFocusBorder(cell);
+                }
+            }
+        }
         repaint();
     }
 
@@ -493,7 +740,7 @@ public class BoardPanel extends JPanel implements GameObserver {
 
         int panelW = getWidth();
         int panelH = getHeight();
-        int tileSize = Math.min((panelW - (size + 1) * TILE_GAP) / size, (panelH - (size + 1) * TILE_GAP) / size);
+        int tileSize = calculateTileSize();
         int boardW = size * tileSize + (size + 1) * TILE_GAP;
         int boardH = size * tileSize + (size + 1) * TILE_GAP;
         int startX = (panelW - boardW) / 2;
@@ -557,6 +804,8 @@ public class BoardPanel extends JPanel implements GameObserver {
                     tiles[r][c].snapTo(r, c);
                 }
             }
+            updateAccessibleCellState();
+            layoutAccessibleCells();
             repaint();
         }
     }
@@ -670,7 +919,7 @@ public class BoardPanel extends JPanel implements GameObserver {
 
         int panelW = getWidth();
         int panelH = getHeight();
-        int tileSize = Math.min((panelW - (size + 1) * TILE_GAP) / size, (panelH - (size + 1) * TILE_GAP) / size);
+        int tileSize = calculateTileSize();
         int boardW = size * tileSize + (size + 1) * TILE_GAP;
         int boardH = size * tileSize + (size + 1) * TILE_GAP;
         int startX = (panelW - boardW) / 2;

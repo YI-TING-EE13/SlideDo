@@ -84,10 +84,40 @@ Run this checklist from the final extracted ZIP, not from the development tree.
 - How to Play and Practice Tutorial text match Android's teaching flow.
 - Solver-assisted completion does not replace player records.
 
+Stage 7 accessibility/adaptive acceptance adds the following checks:
+
+- From Home, use Tab and Shift+Tab to reach the size, Continue, Daily,
+  Favorites, Trends, Continuous, learning, Records, and Preferences actions;
+  the focused action has a visible focus indicator.
+- From a running puzzle, Tab through the row-major board-cell controls, press
+  Space or Enter on an aligned tile, and use arrow keys while a cell has focus.
+  The board, move count, timer, undo/redo, and records follow the same rules as
+  mouse play.
+- Preserve the pre-Stage-7 mouse contract with the overlaid cell controls:
+  aligned click/press/release and drag/swipe gestures reach the BoardPanel path,
+  perform at most one action, non-aligned or invalid interactions remain no-op,
+  and the movable-tile hand cursor remains visible on hover.
+- Open Beginner Guide, Practice Tutorial, How to Play, Quick Reminder, and
+  Preferences without a mouse. Dialog buttons, text areas, combo boxes,
+  checkboxes, and reset confirmations have a reachable focus order.
+- Resize the packaged window at 100%, 125%, and 150% Windows display scaling;
+  use a larger system font where available. Home scrolls vertically instead of
+  clipping actions, learning copy remains readable, and every board cell stays
+  actionable.
+- Toggle Midnight/Ocean theme and reduced motion. Tile text, status text,
+  assist highlights, and focus borders remain readable; puzzle rules, records,
+  and persistence do not change.
+
+Screen-reader certification is not claimed. This checklist verifies Swing
+roles/names, keyboard actions, focus indication, and layout behavior only.
+
 ## Manual Desktop Accessibility Review
 
 - Keyboard shortcuts work for New Game, Undo, Redo, Restart, Save, Load, and
   Exit; `Game > Move History` shows completed and available Redo actions.
+- Pre-Stage-7 mouse behavior remains intact: child-directed aligned clicks and
+  press/release or drag/swipe gestures move once, invalid/non-aligned input is a
+  no-op, and hover still shows the movable-tile cursor.
 - Arrow keys move the empty cell one step.
 - Menu labels and dialog titles are readable at default Windows scaling.
 - Reduced motion removes board transition animation without changing rules.
@@ -109,3 +139,41 @@ Before opening desktop public beta:
 - Confirm the release artifact manifest includes the desktop ZIP SHA-256 hash.
 - Confirm no local save files are included in the ZIP.
 - Publish the beta download page with the tester instructions and known limits.
+
+## Stage 7 Evidence Record
+
+Record the exact package path, Windows display scaling, font setting, and date
+after running the checklist above. The record must identify each check as PASS,
+FAIL, or NOT RUN; do not treat source inspection or a successful CI build as a
+replacement for this packaged desktop review.
+
+Qualification attempts (2026-09-07):
+
+- Package/readiness checks: PASS (`package-desktop.bat` and
+  `check-desktop-beta-readiness.bat`).
+- Automated Swing contract checks: PASS (focused JUnit, desktop compile, and
+  Javadoc gates).
+- Full repository CI contract: PASS (`ci.bat`, including Android build/lint,
+  release/package checks, and desktop readiness file checks).
+- ZIP extraction was verified at `dist/desktop/SlideDo-0.2.0-beta.1`, but its
+  `SlideDo.bat` launch uses the host JDK and did not expose a targetable window
+  through the Windows automation surface. The production-equivalent packaged
+  app-image at
+  `dist/desktop/app-image/SlideDo/SlideDo.exe` was therefore used for the
+  observable manual run below; this is not claimed as a `SlideDo.bat` launch.
+- Packaged app-image manual run at the host's default display scaling: PASS for
+  Home-before-board, 3x3/4x4/5x5 start, visible focus indicators, row-major
+  board Tab and reverse traversal, Enter tile activation, arrow-key movement,
+  whole-line mouse slide as one move, Undo/Redo, Move History, New Game,
+  Restart, Save, exit/relaunch Continue, Load, Preferences focus order,
+  Beginner Guide, Practice Tutorial, How to Play, Quick Reminder, Ocean and
+  Midnight theme readability, and Reduced motion.
+- Packaged app-image manual run at 125% and 150% Windows display scaling:
+  NOT RUN. This host does not provide an approved way to change Windows display
+  scaling during the review; the maximized/restored window was observed, but it
+  is not a substitute for the required 125%/150% checks.
+- Screen-reader certification: NOT RUN and not claimed by Stage 7.
+
+The 125%/150% display-scaling review and a true final-ZIP `SlideDo.bat` launch
+remain required owner-run gates before closing the Desktop beta accessibility
+blocker.

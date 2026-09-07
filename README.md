@@ -682,12 +682,19 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
   a separately approved major migration that begins with Android Studio's
   Upgrade Assistant and its own compatibility and regression stage.
 - Desktop/mobile player-facing parity MVP is complete for Home/start, Records, Preferences, Results, How to Play, Practice Tutorial, and Assist hints.
-- The owner-approved Desktop/Android parity qualification has verified Stages
-  1-6: independent saves/records/Daily/Favorites/Trends/Continuous namespaces,
+- The owner-approved Desktop/Android parity qualification has implemented Stages
+  1-7, with Stages 1-6 protected-merge verified and Stage 7 automated gates
+  green: independent saves/records/Daily/Favorites/Trends/Continuous namespaces,
   persisted Desktop learning preferences, Beginner Guide, interactive Practice
   Tutorial, Quick Reminder, localized critical controls, themes, sound, and
-  explicit reset domains. Strategic hints, full backup/archive, accessibility,
-  adaptive layout, and release qualification remain separately scoped.
+  explicit reset domains. Desktop now also exposes native Swing per-cell
+  keyboard/accessibility controls, visible focus order, contrast-safe themes,
+  and a scrollable/resizable Home and learning layout. Strategic hints, full
+  backup/archive, screen-reader certification, and release qualification remain
+  separately scoped. Stage 7's production-equivalent app-image review passed
+  the default-scale keyboard/focus, dialog, theme, and persistence subset; the
+  exact ZIP `SlideDo.bat` launch and 125%/150% Windows keyboard/DPI checks
+  remain pending. Screen-reader certification is not claimed.
 - Save files now include release-readiness metadata and desktop saves now live in the user-data directory.
 - Signed Android release APK/AAB and desktop ZIP/app-image packaging scripts are available.
 - Desktop public beta readiness notes and local package checks are tracked in
@@ -715,7 +722,10 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
   submission begins; it is intentionally deferred from the current push-ready
   milestone.
 - Publish and review the privacy policy URL before store distribution.
-- Complete the desktop beta manual smoke and accessibility reviews from the extracted ZIP before opening public testing.
+- Complete the desktop beta manual smoke and accessibility reviews from the
+  extracted ZIP before opening public testing. Stage 7 records the keyboard,
+  focus, contrast, and DPI checklist; it does not claim screen-reader
+  certification.
 - Consider moving desktop launch/package tasks fully into Gradle.
 
 ---
