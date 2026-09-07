@@ -102,6 +102,12 @@ public class SaveManager {
      *
      * @param model game model to persist
      * @param assisted whether this run is no longer eligible for a player best
+     * <p>A durable {@code klotski_saved_games_reset.marker}, created by an
+     * explicit reset or a full archive restore without imported legacy source,
+     * is intentionally retained after later canonical saves. This prevents a
+     * project-root legacy fallback from reappearing while normal slots remain
+     * independently usable.</p>
+     *
      * @return {@code true} when the save file was written successfully
      */
     public static boolean saveGame(GameModel model, boolean assisted) {
@@ -109,9 +115,6 @@ public class SaveManager {
             return false;
         }
         boolean saved = saveGame(model, getSaveFile(model.getSize()), assisted);
-        if (saved) {
-            deleteFile(new File(getDataDirectory(), SAVED_GAMES_RESET_FILE));
-        }
         return saved;
     }
 
@@ -1250,6 +1253,12 @@ public class SaveManager {
      * through their normal semantic paths.
      *
      * @param directory candidate Desktop data directory
+     * <p>Presence relationships are part of the contract: Continuous metadata
+     * and current state must appear together, and an assistance sidecar cannot
+     * exist without both owners. The archive resolver presents logical
+     * canonical candidates here, so callers can qualify recovery siblings
+     * without mutating the source directory.</p>
+     *
      * @return whether every present managed file is structurally and
      *         semantically valid
      */
@@ -1342,14 +1351,17 @@ public class SaveManager {
             }
             File continuousMeta = new File(directory, CONTINUOUS_META_FILE);
             File continuousCurrent = new File(directory, CONTINUOUS_CURRENT_FILE);
-            if (continuousMeta.exists()
-                    && (!continuousCurrent.exists() || loadContinuousGame() == null)) {
-                return false;
-            }
             File continuousAssisted = new File(directory,
                     CONTINUOUS_CURRENT_FILE + CONTINUOUS_ASSISTED_SUFFIX);
+            if (continuousMeta.exists() != continuousCurrent.exists()) {
+                return false;
+            }
+            if (continuousMeta.exists() && loadContinuousGame() == null) {
+                return false;
+            }
             if (continuousAssisted.exists()
-                    && (!continuousCurrent.exists() || !isBooleanMarker(continuousAssisted))) {
+                    && (!continuousCurrent.exists() || !continuousMeta.exists()
+                            || !isBooleanMarker(continuousAssisted))) {
                 return false;
             }
             return true;
@@ -1780,6 +1792,9 @@ public class SaveManager {
         if (record != null) {
             return record;
         }
+        if (isRecordsReset()) {
+            return null;
+        }
         File rootFile = new File(SCOPED_RECORDS_FILE);
         if (!sameFile(dataFile, rootFile)) {
             return loadScopedRecords(rootFile).get(recordScopeKey(size, difficulty));
@@ -2119,6 +2134,9 @@ public class SaveManager {
         SaveData data = readNormalJsonWithRecovery(getSaveFile(size));
         if (data != null && data.size == size) {
             return data;
+        }
+        if (isSavedGamesReset()) {
+            return null;
         }
         File rootSlot = new File(saveFileName(size));
         if (!sameFile(rootSlot, getSaveFile(size))) {

@@ -113,6 +113,10 @@ public class MainFrame extends JFrame implements GameObserver {
     /** Number of modal/controller operations that pause active play. */
     private int timerPauseDepth;
 
+    /** Invalidates modal Preferences editors after a successful personal-data restore. */
+    private final DesktopPreferencesEditorGuard preferencesEditorGuard =
+            new DesktopPreferencesEditorGuard();
+
     /** True while a solver owns the current session. */
     private boolean solverRunning;
 
@@ -1589,6 +1593,7 @@ public class MainFrame extends JFrame implements GameObserver {
         if (solverRunning) {
             return;
         }
+        long editorGeneration = preferencesEditorGuard.openEditor();
         JCheckBox reducedMotionBox = new JCheckBox(text("reduceMotion"), reducedMotionEnabled);
         JCheckBox soundBox = new JCheckBox(text("sound"), soundEnabled);
         JComboBox<String> languageBox = new JComboBox<>(DesktopLocale.supportedTags());
@@ -1670,7 +1675,8 @@ public class MainFrame extends JFrame implements GameObserver {
 
         int result = showConfirmDialog(panel, text("preferences"),
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (result == JOptionPane.OK_OPTION) {
+        if (result == JOptionPane.OK_OPTION
+                && preferencesEditorGuard.mayCommit(editorGeneration)) {
             String selectedLanguage = (String) languageBox.getSelectedItem();
             String selectedTheme = (String) themeBox.getSelectedItem();
             boolean changed = !desktopLocale.getTag().equals(selectedLanguage)
@@ -1731,8 +1737,7 @@ public class MainFrame extends JFrame implements GameObserver {
                     return;
                 }
                 String archive = DesktopPersonalDataArchive.exportArchive();
-                Files.writeString(chooser.getSelectedFile().toPath(), archive,
-                        StandardCharsets.UTF_8);
+                DesktopPersonalDataArchive.writeArchive(chooser.getSelectedFile(), archive);
                 showMessageDialog(text("backupExported"), text("backupExport"),
                         JOptionPane.INFORMATION_MESSAGE);
             } catch (IOException | RuntimeException exception) {
@@ -1756,6 +1761,7 @@ public class MainFrame extends JFrame implements GameObserver {
             }
             File selected = chooser.getSelectedFile();
             try {
+                DesktopPersonalDataArchive.validateRestoreSource(selected);
                 if (selected.length() > DesktopPersonalDataArchive.MAX_ARCHIVE_BYTES) {
                     throw new IllegalArgumentException("Backup is too large");
                 }
@@ -1769,6 +1775,7 @@ public class MainFrame extends JFrame implements GameObserver {
                 }
                 DesktopPersonalDataArchive.restoreArchive(archive);
                 reconcileAfterPersonalDataRestore();
+                preferencesEditorGuard.markPersonalDataRestored();
                 showMessageDialog(text("backupRestored"), text("backupRestore"),
                         JOptionPane.INFORMATION_MESSAGE);
             } catch (IllegalArgumentException exception) {

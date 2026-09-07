@@ -91,6 +91,9 @@ Run this checklist from the final extracted ZIP, not from the development tree.
 - Preferences opens and reduced motion can be toggled.
 - Preferences Export Personal Data writes the versioned JSON archive; Restore
   Personal Data validates before confirmation and replaces managed state.
+- Export rejects managed/recovery/legacy-fallback path collisions and writes
+  through an atomic sibling temporary file; a safe unmanaged backup inside the
+  data directory remains after restore.
 - How to Play and Practice Tutorial text match Android's teaching flow.
 - Solver-assisted completion does not replace player records.
 
@@ -179,8 +182,11 @@ Automated qualification evidence (2026-09-07):
 
 - Package/readiness checks: PASS (`package-desktop.bat` and
   `check-desktop-beta-readiness.bat`).
-- Automated Swing contract checks: PASS (focused JUnit, desktop compile, and
-  Javadoc gates).
+- Automated Swing/archive contract checks: PASS (focused JUnit, desktop
+  compile, and Javadoc gates), including recovery-source precedence, collision
+  policy, Continuous bidirectional validation, rollback write/delete/final-
+  validation/rollback-failure seams, cleanup-warning retention, and stale
+  Preferences-editor invalidation.
 - Full repository CI contract: PASS (`ci.bat`, including Android build/lint,
   release/package checks, and desktop readiness file checks).
 

@@ -880,15 +880,23 @@ implementation:
   128-character identifiers, deterministic SHA-256-checked entries for
   normal, project-root/data-dir legacy fallback, Daily, Favorite, Continuous, records/statistics,
   preferences, assisted markers, and reset masks. Full replacement validates an isolated candidate, removes absent
-  managed state, preserves unmanaged files, masks stale legacy fallback, and
-  rolls back from a recoverable snapshot on failure. Legacy-only profiles are
-  retained without destructive migration.
+  managed state, preserves unmanaged files, masks stale legacy fallback with a
+  durable saved-games marker, and rolls back from a recoverable snapshot on
+  failure. Logical export resolution follows canonical -> `.tmp` -> `.bak`
+  loader precedence, and Continuous metadata/current/assisted presence is
+  validated bidirectionally. Legacy-only profiles are retained without
+  destructive migration.
 - Preferences now exposes localized, keyboard-reachable Export Personal Data
-  and Restore Personal Data controls. Restore validates before confirmation,
-  blocks during animation/solver ownership, and rebuilds MainFrame state so an
-  imported archive cannot be overwritten by a stale autosave. Headless archive
-  and rollback tests pass. The extracted-package GUI/DPI run remains exactly
-  `MANUAL PACKAGE GATE PENDING` for this qualification.
+  and Restore Personal Data controls. Export/Restore paths reject managed,
+  recovery, legacy-fallback, and active-transaction collisions; owner archives
+  use a sibling temporary write. Restore validates before confirmation, blocks
+  during animation/solver ownership, and invalidates the pre-restore
+  Preferences editor generation before rebuilding MainFrame state. Headless
+  archive, collision, recovery, Continuous, rollback, cleanup-warning, and
+  stale-editor tests pass. A failed rollback retains the transaction and
+  previous snapshot and reports recovery required. The extracted-package
+  GUI/DPI run remains exactly `MANUAL PACKAGE GATE PENDING` for this
+  qualification.
 
 ### Completed 2026-05-25 MVP Items
 

@@ -93,8 +93,10 @@ Stage 8 archive and release qualification (2026-09-07):
   dated Daily save and assistance marker, Daily progress, Favorites and each
   validated Favorite Practice run/marker, preferences, and Continuous
   metadata/current/assistance. Atomic `.tmp`/`.bak` siblings are classified as
-  managed recovery files but are not exported; when a canonical file is
-  absent, a valid recovery candidate is resolved under its logical basename.
+  managed recovery files but are not exported; each logical entry resolves by
+  the loader's canonical -> `.tmp` -> `.bak` precedence, including when the
+  canonical bytes are corrupt. A valid Continuous snapshot requires coherent
+  metadata/current ownership and a compatible assistance sidecar.
   Generated packages and all unmanaged files are excluded.
 - Decode rejects malformed JSON, unknown fields/entries, duplicate entries,
   traversal/absolute/drive-letter/alternate-separator IDs, unsupported format
@@ -104,11 +106,21 @@ Stage 8 archive and release qualification (2026-09-07):
   records/statistics, reset-marker, and assisted-sidecar checks before any
   replacement.
 - Restore is full replacement of the managed namespace: absent entries and
-  stale recovery siblings are removed, unmanaged files remain, legacy fallback
-  is masked when the archive has no legacy source, and a recoverable previous
-  snapshot is used for rollback on write/delete/rename or final-validation
-  failure. Transaction directories are cleaned. Legacy-only profiles remain
-  loadable and their source files are not rewritten or deleted.
+  stale recovery siblings are removed, unmanaged files remain, and the durable
+  saved-games reset marker masks every external normal-save fallback whenever
+  the archive has no imported legacy source. A recoverable previous snapshot is
+  used for rollback on write/delete/rename or final-validation failure. If
+  rollback fails, the transaction and previous snapshot are retained and a
+  recovery-required exception identifies the location; if post-success cleanup
+  fails, a distinct cleanup warning preserves the recovery directory instead of
+  claiming a clean transaction. Legacy-only profiles remain loadable and their
+  source files are not rewritten or deleted.
+- Export and Restore paths use canonical component comparisons to reject managed
+  files, `.tmp`/`.bak` siblings, project-root legacy fallbacks, and active
+  restore transactions. Owner archives are written through a sibling temporary
+  file before replacement, so an export-write failure cannot mutate managed
+  personal data. A successful restore invalidates any older Preferences editor
+  generation before restored settings are applied.
 - Preferences exposes keyboard-reachable Export Personal Data and Restore
   Personal Data controls. Restore validates before confirmation, treats Cancel
   and invalid input as no-ops, blocks while animation/solver state is busy,
@@ -174,7 +186,7 @@ Stage 8 archive and release qualification (2026-09-07):
 | L8 | Optional sound feedback | Sound is not a shared puzzle rule. | AndroidSoundFeedback and AndroidGameStore provide optional asset-free move, win, and error tones. | SaveManager persists an opt-in sound flag; MainFrame emits native Toolkit move/win beeps only when enabled, with no audio prerequisite. | PARITY | Audio remains presentation-only and cannot change moves, timing, assisted state, or records. | SaveManager preference test and DesktopSoundFeedback compile; audio device behavior remains manual/platform-specific. |
 | L9 | Reduced motion | Presentation-only policy; GameModel timing and actions remain unchanged. | AndroidGameStore persists reduced motion; AndroidMotion, AndroidUiPolicy, and KlotskiView apply it across transitions and board animation. | SaveManager persists reduced motion; MainFrame applies it to BoardPanel and preserves busy/action semantics while preference changes rebuild the native shell. | PARITY | Reduced motion changes animation presentation only; it does not disable input locks or alter rules/records. | SaveManager preference test, BoardPanel API, desktop compile/Javadocs, and the owner-reported Stage 7 adaptive review. |
 | L10 | Localization | Core domain IDs are stable; Android resources carry localized presentation. | AndroidAppLocale and resources support English, Traditional Chinese, and Japanese and persist the selected tag. | DesktopLocale now supplies explicit material-flow keys for Move History, Strategic Hint, Solver Tools/warnings/results/cancellation, assisted results/status, normal Save/Load, Home, Records, Daily, Favorites, Trends/Weekly Goal, Continuous, learning/tutorial, difficulty, preferences, and BoardPanel accessibility semantics in all three supported tags. MainFrame and the Desktop content helpers route audited player-facing copy through this catalog; stable IDs and technical solver/theme names remain English by design. | PARITY | Locale changes rebuild the Swing shell and preserve stable IDs/data; no Android resources or locale-dependent persisted IDs are introduced. | DesktopLocaleCoverageTest requires every registered material key to be explicit and nonblank in each locale; DesktopMaterialContentTest exercises localized save/status, Daily, Favorites, Trends, Continuous, Results, Records, and learning output; MainFrame/helper literal audit is recorded with the repair evidence. |
-| L11 | Full personal backup and restore | AndroidPersonalDataArchive validates a versioned archive and AndroidGameStore replaces all personal preferences only after decode. | MainActivity uses the system picker for export/import and confirms full replacement. | `DesktopPersonalDataArchive` exports a Desktop-specific version-1 archive through Preferences, validates every managed namespace and assisted/reset/legacy dependency, and performs full replacement with stale-state deletion, legacy masks, unmanaged-file preservation, and rollback. MainFrame reloads the normal namespace and rebuilds its controller state after success. | PARITY | Invalid input and Cancel are no-ops. A legacy-only profile remains loadable without deleting its source. The archive deliberately does not claim Android schema interchange; both platforms keep complete but platform-specific local formats. | `DesktopPersonalDataArchiveTest`, `SaveManagerTest`, DesktopLocale coverage, package README/readiness checks, and the Android archive tests as semantic reference. Manual packaged chooser/DPI execution remains a separate open gate. |
+| L11 | Full personal backup and restore | AndroidPersonalDataArchive validates a versioned archive and AndroidGameStore replaces all personal preferences only after decode. | MainActivity uses the system picker for export/import and confirms full replacement. | `DesktopPersonalDataArchive` exports a Desktop-specific version-1 archive through Preferences, resolves logical recovery candidates, validates every managed namespace and assisted/reset/legacy dependency, and performs full replacement with stale-state deletion, durable legacy masks, unmanaged-file preservation, recoverable rollback, collision-safe atomic export, and stale-editor invalidation. MainFrame reloads the normal namespace and rebuilds its controller state after success. | PARITY | Invalid input and Cancel are no-ops. A legacy-only profile remains loadable without deleting its source; rollback failure retains a previous snapshot and reports recovery required. The archive deliberately does not claim Android schema interchange; both platforms keep complete but platform-specific local formats. | `DesktopPersonalDataArchiveTest`, `SaveManagerTest`, `DesktopPreferencesEditorGuardTest`, DesktopLocale coverage, package README/readiness checks, and the Android archive tests as semantic reference. Manual packaged chooser/DPI execution remains a separate open gate. |
 | L12 | Reset semantics | AndroidGameStore separates clear saved games, clear records, and full archive replacement while preserving unrelated namespaces as documented. | AndroidSettingsScreen/MainActivity expose reset saved games and reset records with confirmation. | Preferences exposes confirmed `clearSavedGames` and `clearRecords` actions. The first removes normal/Daily/Favorite Practice/Continuous saves but preserves favorites, records, stats, Daily progress, and preferences; the second clears scoped records/statistics/Daily progress, masks legacy records, and preserves active Continuous files. | PARITY | Reset scopes are explicit and tested; legacy record sources are left untouched but cannot resurrect a cleared value. | SaveManager preference/reset test and MainFrame confirmation wiring; full archive replacement is covered by L11/Stage 8 archive tests. |
 | L13 | Accessibility semantics and playable board | AndroidUiPolicy establishes headings, focus order, 48dp targets, localized descriptions, and KlotskiView virtual per-cell actionable nodes. | AndroidMainActivity, AndroidUi, resource strings, and BoardAccessibilityProvider expose screen-reader movement for movable cells. | BoardPanel exposes one focusable Swing button per cell with accessible names/descriptions, row-major Tab order, Space/Enter activation, arrow-key movement, and visible focus borders; MainFrame labels status, menus, Home actions, and learning controls. | PARITY | Desktop uses Swing roles and actionable child controls rather than Android virtual-node APIs. Automated Swing tests cover the controls, and the owner-reported 2026-09-07 packaged Windows gate covered keyboard/focus and pre-Stage-7 mouse behavior. This repair did not independently rerun that gate; screen-reader certification remains NOT CLAIMED. | DesktopAdaptivePolicyTest and DesktopSessionContractTest cover cell counts, names, focusability, contrast, and child-directed mouse regressions; DESKTOP_BETA_READINESS.md records the owner-reported manual acceptance separately from automated evidence. |
 | L14 | Adaptive and scaled layout | AndroidUiPolicy and ScreenLayout handle compact layouts, large text, safe insets, and 48dp controls. | AndroidAdaptiveUiTest covers compact AVD, large text, both themes, headings, and focus order. | MainFrame has a minimum usable size, a vertically scrollable Home card, resizable learning dialogs, stacked compact size actions, and a BoardPanel that recomputes square cell bounds as the window changes. | PARITY | The owner-reported 2026-09-07 packaged Windows gate covered 100%, 125%, and 150% scaling plus larger-text/adaptive behavior. This repair did not independently rerun that gate; Swing layout evidence remains separate from Android dp evidence. | DesktopAdaptivePolicyTest covers minimum size and theme contrast; DESKTOP_BETA_READINESS.md records the owner-reported scaling/adaptive acceptance separately from automated package evidence. |
@@ -695,19 +707,24 @@ the separate extracted-package GUI/DPI execution remains pending.
 - Objective: synchronize user-facing documentation and qualify the Desktop
   personal-data archive plus ZIP package alongside Android package behavior.
 - Implementation status: the version-1 Desktop archive, explicit namespace
-  registry, bounded codec, inner semantic validation, full replacement,
-  legacy-only preservation, reset masks, rollback transaction, stale-session
-  reconciliation, localized Swing chooser controls, and exact ZIP whitelist
-  are implemented and covered by headless tests/static gates.
+  registry, bounded codec, inner semantic validation, logical recovery
+  resolution, full replacement, durable legacy suppression, legacy-only
+  preservation, recoverable rollback transaction, collision-safe export,
+  stale Preferences-editor invalidation, localized Swing chooser controls, and
+  exact ZIP whitelist are implemented and covered by headless tests/static
+  gates.
 - Behavioral boundary: package launch, user-data paths, migration, update or
   reinstall retention, and platform-specific limitations are documented;
   signing and distribution remain separately approved release decisions.
 - Likely files/components: package-desktop.bat, desktop package templates,
   DESKTOP_BETA_READINESS.md, android release checks, README and final docs.
 - Tests to add/change: fresh install, upgrade/retention, uninstall/reinstall,
-  launch, save migration, accessibility, archive replacement, and rollback
-  checks in a recoverable Windows environment; Android connected evidence
-  remains distinct. Headless archive/rollback tests are complete.
+  launch, save migration, accessibility, archive replacement, recovery-source
+  precedence, collision policy, Continuous cross-file ownership, stale-editor
+  invalidation, and rollback checks in a recoverable Windows environment;
+  Android connected evidence remains distinct. Headless archive/rollback tests
+  are complete for replacement writes, managed deletes, final validation,
+  rollback failure retention, and cleanup warnings.
 - Migration risk: released tags/assets are immutable; use a candidate branch
   and never test destructive uninstall or rollback against the user's live
   data without a recoverable environment.

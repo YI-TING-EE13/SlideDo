@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
@@ -96,18 +97,89 @@ public final class DesktopPersonalDataArchive {
     private DesktopPersonalDataArchive() {
     }
 
-    /**
-     * Hook used only by deterministic package tests to fail one restore write.
-     * Production code leaves it unset.
-     */
+    /** Hook used only by deterministic package tests to fail bounded restore operations. */
     @FunctionalInterface
     interface FailureInjector {
         /** Invoked immediately before a candidate entry is written. */
         void beforeWrite(String entryName) throws IOException;
+
+        /** Invoked immediately before a managed destination entry is deleted. */
+        default void beforeDelete(String entryName) throws IOException {
+        }
+
+        /** Invoked immediately before final post-write validation. */
+        default void beforeValidation() throws IOException {
+        }
+
+        /** Invoked immediately before a rollback delete or write. */
+        default void beforeRollback(String entryName) throws IOException {
+        }
+
+        /** Invoked immediately before transaction cleanup. */
+        default void beforeCleanup() throws IOException {
+        }
     }
 
     static void setFailureInjectorForTests(FailureInjector injector) {
         failureInjector = injector;
+    }
+
+    /** Raised when the old state could not be restored and recovery material was retained. */
+    public static final class RestoreRecoveryRequiredException extends IOException {
+        private static final long serialVersionUID = 1L;
+        /** Retained transaction directory. */
+        private final File recoveryDirectory;
+        /** Retained pre-restore managed snapshot directory. */
+        private final File previousSnapshotDirectory;
+
+        private RestoreRecoveryRequiredException(String message, Path recoveryDirectory,
+                Path previousSnapshotDirectory, IOException originalFailure,
+                IOException rollbackFailure) {
+            super(message, originalFailure);
+            this.recoveryDirectory = recoveryDirectory.toFile();
+            this.previousSnapshotDirectory = previousSnapshotDirectory.toFile();
+            addSuppressed(rollbackFailure);
+        }
+
+        /**
+         * Returns the retained transaction directory containing recovery material.
+         *
+         * @return retained transaction directory
+         */
+        public File getRecoveryDirectory() {
+            return recoveryDirectory;
+        }
+
+        /**
+         * Returns the retained snapshot of the pre-restore managed state.
+         *
+         * @return retained previous snapshot directory
+         */
+        public File getPreviousSnapshotDirectory() {
+            return previousSnapshotDirectory;
+        }
+    }
+
+    /** Raised after a good restore when transaction cleanup could not be completed. */
+    public static final class RestoreCleanupWarningException extends IOException {
+        private static final long serialVersionUID = 1L;
+        /** Retained transaction directory. */
+        private final File recoveryDirectory;
+
+        private RestoreCleanupWarningException(String message, Path recoveryDirectory,
+                IOException cleanupFailure) {
+            super(message, cleanupFailure);
+            this.recoveryDirectory = recoveryDirectory.toFile();
+        }
+
+        /**
+         * Returns the retained transaction directory that may be removed after inspection.
+         *
+         * @return retained transaction directory
+         */
+        public File getRecoveryDirectory() {
+            return recoveryDirectory;
+        }
     }
 
     /**
@@ -169,98 +241,186 @@ public final class DesktopPersonalDataArchive {
         if (dataDirectory.exists() && !dataDirectory.isDirectory()) {
             throw new IOException("Desktop data path is not a directory.");
         }
-        if (dataDirectory.exists() && !SaveManager.validatePersonalDataDirectory(dataDirectory)) {
-            throw new IOException("Desktop data contains an invalid managed state.");
-        }
-
-        Map<String, byte[]> entries = new TreeMap<>();
-        if (dataDirectory.exists()) {
-            File[] files = dataDirectory.listFiles();
-            if (files == null) {
-                throw new IOException("Desktop data directory cannot be listed.");
-            }
-            List<File> sorted = new ArrayList<>();
-            Collections.addAll(sorted, files);
-            sorted.sort(Comparator.comparing(File::getName));
-            for (File file : sorted) {
-                String name = file.getName();
-                if (!isArchiveName(name)) {
-                    continue;
-                }
-                if (!file.isFile() || file.length() > MAX_ENTRY_BYTES) {
-                    throw new IOException("Managed archive entry is not a bounded file: " + name);
-                }
-                entries.put(name, readStableSource(file, name));
-            }
-        }
-        collectLegacyFallbackEntries(entries, dataDirectory, legacyFallbackDirectory);
-        collectRecoveryEntries(entries, dataDirectory, legacyFallbackDirectory);
+        Map<String, byte[]> entries = resolveLogicalEntries(dataDirectory,
+                legacyFallbackDirectory);
+        validateResolvedEntries(entries);
         return encode(entries, createdAt);
     }
 
-    private static void collectLegacyFallbackEntries(Map<String, byte[]> entries,
-            File dataDirectory, File fallbackDirectory) throws IOException {
-        if (fallbackDirectory == null || !fallbackDirectory.exists()) {
-            return;
+    /**
+     * Resolves the same logical canonical names that SaveManager loaders use.
+     * A valid primary wins; an invalid or absent primary falls back to .tmp and
+     * then .bak. Recovery siblings are never emitted as physical archive IDs.
+     */
+    private static Map<String, byte[]> resolveLogicalEntries(File dataDirectory,
+            File fallbackDirectory) throws IOException {
+        Map<String, List<SourceCandidate>> candidates = collectSourceCandidates(
+                dataDirectory, fallbackDirectory);
+        Map<String, byte[]> entries = new TreeMap<>();
+
+        resolveContinuousEntries(candidates, entries);
+        boolean progressed;
+        do {
+            progressed = false;
+            for (Map.Entry<String, List<SourceCandidate>> entry : candidates.entrySet()) {
+                String logicalName = entry.getKey();
+                if (isContinuousName(logicalName) || entries.containsKey(logicalName)) {
+                    continue;
+                }
+                for (SourceCandidate candidate : entry.getValue()) {
+                    byte[] bytes;
+                    try {
+                        bytes = readStableSource(candidate.file, candidate.file.getName());
+                    } catch (IOException exception) {
+                        continue;
+                    }
+                    if (isValidCandidateEntries(entries, logicalName, bytes)) {
+                        entries.put(logicalName, bytes);
+                        progressed = true;
+                        break;
+                    }
+                }
+            }
+        } while (progressed);
+
+        for (Map.Entry<String, List<SourceCandidate>> entry : candidates.entrySet()) {
+            if (!entries.containsKey(entry.getKey())) {
+                throw new IOException("No valid recovery candidate for managed entry: "
+                        + entry.getKey());
+            }
         }
-        if (!fallbackDirectory.isDirectory()) {
-            throw new IOException("Legacy fallback path is not a directory.");
-        }
-        for (String name : LEGACY_FALLBACK_NAMES) {
-            if (entries.containsKey(name)) {
-                continue;
-            }
-            File fallback = new File(fallbackDirectory, name);
-            if (!fallback.isFile() || sameFile(fallback, new File(dataDirectory, name))) {
-                continue;
-            }
-            if (fallback.length() > MAX_ENTRY_BYTES) {
-                throw new IOException("Legacy fallback entry is too large: " + name);
-            }
-            byte[] bytes = readStableSource(fallback, name);
-            if (!isValidCandidateEntries(entries, name, bytes)) {
-                continue;
-            }
-            entries.put(name, bytes);
-        }
+        return entries;
     }
 
-    private static void collectRecoveryEntries(Map<String, byte[]> entries,
+    private static Map<String, List<SourceCandidate>> collectSourceCandidates(
             File dataDirectory, File fallbackDirectory) throws IOException {
-        collectRecoveryEntries(entries, dataDirectory);
+        Map<String, List<SourceCandidate>> candidates = new TreeMap<>();
+        collectSourceCandidates(candidates, dataDirectory, null, 0);
         if (fallbackDirectory != null && !sameFile(dataDirectory, fallbackDirectory)) {
-            collectRecoveryEntries(entries, fallbackDirectory);
+            collectSourceCandidates(candidates, fallbackDirectory,
+                    Set.of(LEGACY_FALLBACK_NAMES), 100);
         }
+        for (List<SourceCandidate> values : candidates.values()) {
+            values.sort(Comparator.comparingInt((SourceCandidate value) -> value.priority)
+                    .thenComparing(value -> value.file.getName()));
+        }
+        return candidates;
     }
 
-    private static void collectRecoveryEntries(Map<String, byte[]> entries, File directory)
-            throws IOException {
-        if (directory == null || !directory.isDirectory()) {
+    private static void collectSourceCandidates(Map<String, List<SourceCandidate>> result,
+            File directory, Set<String> allowedNames, int sourcePriority) throws IOException {
+        if (directory == null || !directory.exists()) {
             return;
+        }
+        if (!directory.isDirectory()) {
+            throw new IOException("Managed data path is not a directory: " + directory);
         }
         File[] files = directory.listFiles();
         if (files == null) {
-            throw new IOException("Recovery source directory cannot be listed.");
+            throw new IOException("Managed data directory cannot be listed: " + directory);
         }
-        List<File> sorted = new ArrayList<>();
-        Collections.addAll(sorted, files);
-        sorted.sort(Comparator.comparing(File::getName));
-        for (String suffix : new String[] {".tmp", ".bak"}) {
-            for (File file : sorted) {
-                String name = file.getName();
-                if (!name.endsWith(suffix) || !file.isFile()) {
-                    continue;
-                }
-                String logicalName = stripRecoverySuffix(name);
-                if (entries.containsKey(logicalName) || !isArchiveName(logicalName)
-                        || file.length() > MAX_ENTRY_BYTES) {
-                    continue;
-                }
-                byte[] bytes = readStableSource(file, name);
-                if (isValidCandidateEntries(entries, logicalName, bytes)) {
-                    entries.put(logicalName, bytes);
+        for (File file : files) {
+            String physicalName = file.getName();
+            String logicalName = stripRecoverySuffix(physicalName);
+            boolean recovery = !physicalName.equals(logicalName);
+            if (!isArchiveName(logicalName)
+                    || (allowedNames != null && !allowedNames.contains(logicalName))) {
+                continue;
+            }
+            if (!file.isFile() || file.length() > MAX_ENTRY_BYTES) {
+                throw new IOException("Managed archive entry is not a bounded file: "
+                        + physicalName);
+            }
+            int suffixPriority = recovery
+                    ? (physicalName.endsWith(".tmp") ? 1 : 2) : 0;
+            result.computeIfAbsent(logicalName, ignored -> new ArrayList<>())
+                    .add(new SourceCandidate(file, sourcePriority + suffixPriority));
+        }
+    }
+
+    private static void resolveContinuousEntries(Map<String, List<SourceCandidate>> candidates,
+            Map<String, byte[]> entries) throws IOException {
+        boolean hasContinuous = candidates.keySet().stream().anyMatch(
+                DesktopPersonalDataArchive::isContinuousName);
+        if (!hasContinuous) {
+            return;
+        }
+        List<SourceCandidate> meta = candidates.getOrDefault(CONTINUOUS_META,
+                Collections.emptyList());
+        List<SourceCandidate> current = candidates.getOrDefault(CONTINUOUS_CURRENT,
+                Collections.emptyList());
+        List<SourceCandidate> assisted = candidates.getOrDefault(
+                CONTINUOUS_CURRENT + ".assisted", Collections.emptyList());
+        List<SourceCandidate> metaOptions = withAbsentOption(meta);
+        List<SourceCandidate> currentOptions = withAbsentOption(current);
+        List<SourceCandidate> assistedOptions = withAbsentOption(assisted);
+        for (SourceCandidate metaCandidate : metaOptions) {
+            for (SourceCandidate currentCandidate : currentOptions) {
+                for (SourceCandidate assistedCandidate : assistedOptions) {
+                    Map<String, byte[]> trial = new TreeMap<>(entries);
+                    addCandidate(trial, CONTINUOUS_META, metaCandidate);
+                    addCandidate(trial, CONTINUOUS_CURRENT, currentCandidate);
+                    addCandidate(trial, CONTINUOUS_CURRENT + ".assisted", assistedCandidate);
+                    if (trial.isEmpty() || !isValidCandidateMap(trial)) {
+                        continue;
+                    }
+                    entries.putAll(trial);
+                    return;
                 }
             }
+        }
+        throw new IOException("Continuous Challenge recovery candidates are inconsistent: "
+                + meta.size() + "/" + current.size() + "/" + assisted.size());
+    }
+
+    private static List<SourceCandidate> withAbsentOption(List<SourceCandidate> candidates) {
+        List<SourceCandidate> result = new ArrayList<>();
+        if (candidates.isEmpty()) {
+            result.add(null);
+        } else {
+            result.addAll(candidates);
+        }
+        return result;
+    }
+
+    private static void addCandidate(Map<String, byte[]> entries, String logicalName,
+            SourceCandidate candidate) throws IOException {
+        if (candidate != null) {
+            entries.put(logicalName, readStableSource(candidate.file, candidate.file.getName()));
+        }
+    }
+
+    private static boolean isContinuousName(String name) {
+        return CONTINUOUS_META.equals(name) || CONTINUOUS_CURRENT.equals(name)
+                || (CONTINUOUS_CURRENT + ".assisted").equals(name);
+    }
+
+    private static boolean isValidCandidateMap(Map<String, byte[]> entries) {
+        Path temporary = null;
+        try {
+            temporary = Files.createTempDirectory("slidedo-logical-validate-");
+            writeCandidate(temporary, entries, false);
+            return SaveManager.validatePersonalDataDirectory(temporary.toFile());
+        } catch (IOException | RuntimeException exception) {
+            return false;
+        } finally {
+            deleteTreeQuietly(temporary);
+        }
+    }
+
+    private static void validateResolvedEntries(Map<String, byte[]> entries) throws IOException {
+        if (!isValidCandidateMap(entries)) {
+            throw new IOException("Desktop data contains an invalid managed state.");
+        }
+    }
+
+    private static final class SourceCandidate {
+        private final File file;
+        private final int priority;
+
+        private SourceCandidate(File file, int priority) {
+            this.file = file;
+            this.priority = priority;
         }
     }
 
@@ -297,7 +457,7 @@ public final class DesktopPersonalDataArchive {
         } catch (IOException | RuntimeException exception) {
             return false;
         } finally {
-            deleteTree(temporary);
+            deleteTreeQuietly(temporary);
         }
     }
 
@@ -320,7 +480,7 @@ public final class DesktopPersonalDataArchive {
         } catch (IOException exception) {
             throw invalid("Archive could not be validated.", exception);
         } finally {
-            deleteTree(temporary);
+            deleteTreeQuietly(temporary);
         }
     }
 
@@ -382,6 +542,9 @@ public final class DesktopPersonalDataArchive {
             snapshotManaged(target, previous);
             snapshotReady = true;
             replaceManaged(target, desired);
+            if (failureInjector != null) {
+                failureInjector.beforeValidation();
+            }
             if (!SaveManager.validatePersonalDataDirectory(target.toFile())) {
                 throw new IOException("Restored personal state failed final validation.");
             }
@@ -393,16 +556,265 @@ public final class DesktopPersonalDataArchive {
                         Files.deleteIfExists(target);
                     }
                 } catch (IOException rollbackFailure) {
-                    failure.addSuppressed(rollbackFailure);
+                    throw new RestoreRecoveryRequiredException(
+                            "Restore failed and rollback is incomplete; manual recovery is "
+                                    + "required from " + previous.toAbsolutePath(),
+                            transaction, previous, asIOException(failure), rollbackFailure);
                 }
+            }
+            try {
+                cleanupTransaction(transaction);
+            } catch (IOException cleanupFailure) {
+                failure.addSuppressed(new RestoreCleanupWarningException(
+                        "Restore transaction cleanup failed; inspect "
+                                + transaction.toAbsolutePath(), transaction, cleanupFailure));
             }
             if (failure instanceof IllegalArgumentException invalidArchive) {
                 throw invalidArchive;
             }
             throw (IOException) failure;
-        } finally {
-            deleteTree(transaction);
         }
+        try {
+            cleanupTransaction(transaction);
+        } catch (IOException cleanupFailure) {
+            throw new RestoreCleanupWarningException(
+                    "Restore succeeded but transaction cleanup is incomplete; inspect "
+                            + transaction.toAbsolutePath(), transaction, cleanupFailure);
+        }
+    }
+
+    private static IOException asIOException(Exception failure) {
+        if (failure instanceof IOException ioFailure) {
+            return ioFailure;
+        }
+        return new IOException(failure.getMessage(), failure);
+    }
+
+    private static void cleanupTransaction(Path transaction) throws IOException {
+        if (failureInjector != null) {
+            failureInjector.beforeCleanup();
+        }
+        deleteTreeOrThrow(transaction);
+    }
+
+    /**
+     * Rejects an Export destination that aliases managed state, a recovery
+     * sibling, a project-root legacy fallback, or an active restore transaction.
+     * Unmanaged files inside the data directory remain valid backup targets.
+     *
+     * @param destination selected owner backup file
+     * @throws IOException when the path cannot be canonicalized
+     * @throws IllegalArgumentException when the destination is unsafe
+     */
+    public static void validateExportDestination(File destination) throws IOException {
+        validateExportDestination(destination, SaveManager.getDataDirectory(), new File("."));
+    }
+
+    static void validateExportDestination(File destination, File dataDirectory,
+            File fallbackDirectory) throws IOException {
+        validateBackupPath(destination, dataDirectory, fallbackDirectory, false);
+    }
+
+    /**
+     * Rejects a Restore source that would be removed or replaced by the target
+     * transaction. The source is otherwise read-only and remains unchanged.
+     *
+     * @param source selected archive file
+     * @throws IOException when the path cannot be canonicalized
+     * @throws IllegalArgumentException when the source aliases managed state
+     */
+    public static void validateRestoreSource(File source) throws IOException {
+        validateRestoreSource(source, SaveManager.getDataDirectory(), new File("."));
+    }
+
+    static void validateRestoreSource(File source, File dataDirectory,
+            File fallbackDirectory) throws IOException {
+        validateBackupPath(source, dataDirectory, fallbackDirectory, true);
+    }
+
+    private static void validateBackupPath(File selected, File dataDirectory,
+            File fallbackDirectory, boolean restoreSource) throws IOException {
+        if (selected == null) {
+            throw new IllegalArgumentException("Backup path is missing.");
+        }
+        Path selectedPath = canonicalPath(selected);
+        if (Files.exists(selectedPath) && Files.isDirectory(selectedPath)) {
+            throw new IllegalArgumentException("Backup path must be a file.");
+        }
+        Path dataPath = canonicalPath(dataDirectory);
+        if (selectedPath.getParent() != null
+                && samePath(selectedPath.getParent(), dataPath)
+                && isManagedName(selectedPath.getFileName().toString())) {
+            throw new IllegalArgumentException("Backup path aliases managed Desktop data: "
+                    + selectedPath.getFileName());
+        }
+        if (dataDirectory != null && dataDirectory.exists()) {
+            File[] files = dataDirectory.listFiles();
+            if (files == null) {
+                throw new IOException("Desktop data directory cannot be listed.");
+            }
+            for (File file : files) {
+                if (isManagedName(file.getName())
+                        && samePath(selectedPath, canonicalPath(file))) {
+                    throw new IllegalArgumentException("Backup path aliases managed Desktop data: "
+                            + file.getName());
+                }
+            }
+        }
+        if (fallbackDirectory != null && fallbackDirectory.exists()) {
+            Path fallbackPath = canonicalPath(fallbackDirectory);
+            if (selectedPath.getParent() != null
+                    && samePath(selectedPath.getParent(), fallbackPath)
+                    && isLegacyFallbackPhysicalName(selectedPath.getFileName().toString())) {
+                throw new IllegalArgumentException(
+                        "Backup path aliases a project-root legacy fallback: "
+                                + selectedPath.getFileName());
+            }
+            for (String name : LEGACY_FALLBACK_NAMES) {
+                for (String suffix : new String[] {"", ".tmp", ".bak"}) {
+                    File file = new File(fallbackDirectory, name + suffix);
+                    if (file.exists() && samePath(selectedPath, canonicalPath(file))) {
+                        throw new IllegalArgumentException(
+                                "Backup path aliases a project-root legacy fallback: "
+                                        + file.getName());
+                    }
+                }
+            }
+        }
+        Path parent = dataPath.getParent();
+        if (parent != null && Files.isDirectory(parent)) {
+            try (var stream = Files.list(parent)) {
+                for (Path candidate : stream.collect(Collectors.toList())) {
+                    if (candidate.getFileName().toString().startsWith(".slidedo-restore-")) {
+                        Path transaction = canonicalPath(candidate.toFile());
+                        if (samePath(selectedPath, transaction)
+                                || isWithin(selectedPath, transaction)) {
+                            throw new IllegalArgumentException(
+                                    "Backup path aliases an active restore transaction.");
+                        }
+                    }
+                }
+            }
+        }
+        if (restoreSource && dataDirectory != null && dataDirectory.exists()
+                && isWithin(selectedPath, dataPath)) {
+            File selectedFile = selectedPath.toFile();
+            if (isManagedName(selectedFile.getName())) {
+                throw new IllegalArgumentException(
+                        "Restore source would be replaced by the restore transaction.");
+            }
+        }
+    }
+
+    /**
+     * Writes an owner backup through a sibling temporary file and atomic replace.
+     *
+     * @param destination external owner backup destination
+     * @param archive validated archive text
+     * @throws IOException when validation, writing, or replacement fails
+     */
+    public static void writeArchive(File destination, String archive) throws IOException {
+        validateExportDestination(destination);
+        validate(archive);
+        writeArchive(destination, archive, SaveManager.getDataDirectory(), new File("."));
+    }
+
+    static void writeArchive(File destination, String archive, File dataDirectory,
+            File fallbackDirectory) throws IOException {
+        validateExportDestination(destination, dataDirectory, fallbackDirectory);
+        if (archive == null || archive.getBytes(StandardCharsets.UTF_8).length > MAX_ARCHIVE_BYTES) {
+            throw new IOException("Backup archive is empty or exceeds the supported size.");
+        }
+        Path target = canonicalPath(destination);
+        Path parent = target.getParent();
+        if (parent == null) {
+            throw new IOException("Backup destination has no parent directory.");
+        }
+        Files.createDirectories(parent);
+        Path temporary = parent.resolve(".slidedo-backup-" + UUID.randomUUID() + ".tmp");
+        try {
+            Files.write(temporary, archive.getBytes(StandardCharsets.UTF_8),
+                    StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+            try {
+                Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE,
+                        StandardCopyOption.REPLACE_EXISTING);
+            } catch (java.nio.file.AtomicMoveNotSupportedException unsupported) {
+                Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            Files.deleteIfExists(temporary);
+        }
+    }
+
+    private static Path canonicalPath(File file) throws IOException {
+        if (file == null) {
+            throw new IOException("Path is missing.");
+        }
+        File canonical = file.getCanonicalFile();
+        Path path = canonical.toPath().toAbsolutePath().normalize();
+        if (Files.exists(path, LinkOption.NOFOLLOW_LINKS)) {
+            try {
+                return path.toRealPath(LinkOption.NOFOLLOW_LINKS);
+            } catch (IOException ignored) {
+                return path;
+            }
+        }
+        return path;
+    }
+
+    private static boolean samePath(Path first, Path second) {
+        try {
+            if (Files.exists(first) && Files.exists(second) && Files.isSameFile(first, second)) {
+                return true;
+            }
+        } catch (IOException ignored) {
+            // Fall back to canonical component comparison.
+        }
+        return equalPathComponents(first, second);
+    }
+
+    private static boolean isWithin(Path path, Path root) {
+        if (samePath(path, root)) {
+            return true;
+        }
+        try {
+            Path relative = root.relativize(path);
+            if (relative.isAbsolute() || relative.getNameCount() == 0) {
+                return false;
+            }
+            return !relative.startsWith("..");
+        } catch (IllegalArgumentException exception) {
+            return equalPathComponents(path, root);
+        }
+    }
+
+    private static boolean equalPathComponents(Path first, Path second) {
+        if (first.getNameCount() != second.getNameCount()
+                || !first.getRoot().toString().equalsIgnoreCase(second.getRoot().toString())) {
+            return false;
+        }
+        for (int index = 0; index < first.getNameCount(); index++) {
+            String left = first.getName(index).toString();
+            String right = second.getName(index).toString();
+            if (isWindows() ? !left.equalsIgnoreCase(right) : !left.equals(right)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean isWindows() {
+        return File.separatorChar == '\\';
+    }
+
+    private static boolean isLegacyFallbackPhysicalName(String name) {
+        for (String logical : LEGACY_FALLBACK_NAMES) {
+            if (logical.equals(name) || (logical + ".tmp").equals(name)
+                    || (logical + ".bak").equals(name)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -599,11 +1011,11 @@ public final class DesktopPersonalDataArchive {
     }
 
     private static void addLegacyMasks(Map<String, byte[]> desired) {
-        boolean hasNormal = desired.keySet().stream().anyMatch(name ->
-                SAVE_PATTERN.matcher(name).matches()
-                        || name.equals(LEGACY_JSON) || name.equals(LEGACY_SERIALIZED));
         boolean hasLegacy = desired.containsKey(LEGACY_JSON) || desired.containsKey(LEGACY_SERIALIZED);
-        if (!hasLegacy && !hasNormal) {
+        // The marker is a durable logical-state boundary: every imported
+        // snapshot without an explicit legacy source must continue to mask
+        // project-root fallback files, including after later canonical saves.
+        if (!hasLegacy) {
             desired.putIfAbsent(SAVED_GAMES_RESET, "reset\n".getBytes(StandardCharsets.UTF_8));
         }
         if (!desired.containsKey(RECORDS)) {
@@ -656,6 +1068,9 @@ public final class DesktopPersonalDataArchive {
                     if (!Files.isRegularFile(path)) {
                         throw new IOException("Managed path is not a regular file: " + path);
                     }
+                    if (failureInjector != null) {
+                        failureInjector.beforeDelete(path.getFileName().toString());
+                    }
                     Files.delete(path);
                 }
             }
@@ -673,6 +1088,9 @@ public final class DesktopPersonalDataArchive {
             for (Path path : stream.collect(Collectors.toList())) {
                 if (isManagedName(path.getFileName().toString())) {
                     if (Files.isRegularFile(path)) {
+                        if (failureInjector != null) {
+                            failureInjector.beforeRollback(path.getFileName().toString());
+                        }
                         Files.delete(path);
                     } else {
                         throw new IOException("Could not remove managed path during rollback: " + path);
@@ -685,6 +1103,9 @@ public final class DesktopPersonalDataArchive {
         }
         try (var stream = Files.list(previous)) {
             for (Path path : stream.collect(Collectors.toList())) {
+                if (failureInjector != null) {
+                    failureInjector.beforeRollback(path.getFileName().toString());
+                }
                 writeRestoreFile(target, path.getFileName().toString(),
                         Files.readAllBytes(path), false);
             }
@@ -749,33 +1170,38 @@ public final class DesktopPersonalDataArchive {
         }
     }
 
-    private static void deleteTree(Path directory) {
+    private static void deleteTreeOrThrow(Path directory) throws IOException {
+        if (directory == null || !Files.exists(directory)) {
+            return;
+        }
+        Files.walkFileTree(directory, new SimpleFileVisitor<>() {
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+                    throws IOException {
+                Files.deleteIfExists(file);
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult postVisitDirectory(Path dir, IOException exception)
+                    throws IOException {
+                if (exception != null) {
+                    throw exception;
+                }
+                Files.deleteIfExists(dir);
+                return FileVisitResult.CONTINUE;
+            }
+        });
+    }
+
+    private static void deleteTreeQuietly(Path directory) {
         if (directory == null || !Files.exists(directory)) {
             return;
         }
         try {
-            Files.walkFileTree(directory, new SimpleFileVisitor<>() {
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
-                        throws IOException {
-                    Files.deleteIfExists(file);
-                    return FileVisitResult.CONTINUE;
-                }
-
-                @Override
-                public FileVisitResult postVisitDirectory(Path dir, IOException exception)
-                        throws IOException {
-                    if (exception != null) {
-                        throw exception;
-                    }
-                    Files.deleteIfExists(dir);
-                    return FileVisitResult.CONTINUE;
-                }
-            });
+            deleteTreeOrThrow(directory);
         } catch (IOException ignored) {
-            // A failed cleanup is deliberately not allowed to turn a completed
-            // restore into a false success. The transaction path is unique and
-            // contains no user data; readiness checks surface leftovers.
+            // Temporary validation directories are not user recovery material.
         }
     }
 

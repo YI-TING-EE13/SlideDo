@@ -229,8 +229,12 @@ save sources, assisted markers, reset masks, and recovery-safe logical state,
 to a versioned `SlideDo-backup-YYYY-MM-DD.json` document. Restore validates the
 whole archive before an explicit confirmation and then performs a full
 replacement: absent managed entries are deleted, stale legacy fallback is
-masked, and unrelated files in the data directory are preserved. Invalid or
-cancelled restores do not change the existing state. The format is Desktop
+masked by a durable reset marker, and unrelated files in the data directory are
+preserved. Recovery siblings are resolved logically by canonical -> `.tmp` ->
+`.bak` precedence, and a rollback failure retains the previous snapshot for
+manual recovery instead of claiming ordinary success. Invalid or cancelled
+restores do not change the existing state; managed/recovery/legacy-fallback
+path collisions are rejected before export or restore. The format is Desktop
 specific and local; it is not a cloud backup or a promise of Android archive
 interchange.
 

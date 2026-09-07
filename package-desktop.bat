@@ -84,6 +84,10 @@ if errorlevel 1 exit /b 1
     echo   Continuous, records, history, statistics, settings, and reset masks.
     echo - Unmanaged files in the data directory are preserved; invalid backups
     echo   make no change. Legacy Desktop saves remain non-destructively loadable.
+    echo - Export rejects managed, recovery, legacy-fallback, and active-restore
+    echo   transaction paths. Recovery resolution follows primary, .tmp, .bak.
+    echo - If rollback itself fails, the previous snapshot remains in a recovery
+    echo   directory for manual restoration; cleanup warnings are reported.
     echo - Data is local and owner-controlled; there is no cloud backup.
     echo.
     echo What to test:
