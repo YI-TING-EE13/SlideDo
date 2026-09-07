@@ -796,8 +796,9 @@ or release behavior changed.
   The repository's supported contract remains JDK 17 / AGP 8.13.2 /
   Gradle 8.14.5 / SDK 36 / build-tools 36.0.0; the existing local helper
   fallback to an installed JDK 25 for Javadoc/package commands was not changed
-  because Stage 9 is documentation-only. Exact final-head GitHub Actions JDK
-  17 checks remain pending until this branch is pushed. Public distribution and
+  because Stage 9 is documentation-only. GitHub Actions run `34150736345` on
+  the pushed JDK 17 final head passed its `Verify build and release readiness`
+  job, including the local CI gate and artifact upload. Public distribution and
   signing remain deferred.
 
 ## Program guardrails and re-qualification
