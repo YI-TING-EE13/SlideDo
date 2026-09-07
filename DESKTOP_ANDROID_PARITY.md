@@ -459,8 +459,11 @@ pending:
   exposing one native Swing `JButton` child per cell. Each child has an
   accessible name/description, row-major Tab traversal, Space/Enter activation,
   a visible theme-aware focus border, and the existing arrow-key move bindings.
-  The child action still calls `GameModel.slideLineTo`; it does not duplicate
-  puzzle rules.
+  `AccessibleCellButton` translates its mouse events back to the established
+  `BoardPanel` press/release/click/move/swipe path and bypasses default mouse
+  button dispatch, so the keyboard/action path remains available without a
+  duplicate mouse action. The child action still calls
+  `GameModel.slideLineTo`; it does not duplicate puzzle rules.
 - `MainFrame` labels the status, Home, menus, learning dialogs, tutorial board,
   preference controls, and reset actions for Swing accessibility. Home uses a
   vertical scroll viewport, compact size actions, and a predictable first
@@ -472,7 +475,9 @@ pending:
   touching model, timer, records, or persistence semantics.
 - Focused tests cover the nine/16/25-cell accessibility surface, cell names and
   focusability, minimum-window policy, known contrast ratios, theme contrast,
-  and existing session behavior. `DESKTOP_BETA_READINESS.md` records the
+  existing session behavior, and mouse events dispatched to the actual child
+  controls (including single-action, invalid-input, cursor, drag/release, and
+  completion-callback contracts). `DESKTOP_BETA_READINESS.md` records the
   app-image manual PASS subset, the exact ZIP batch-launch limitation, the
   125%/150% checks as NOT RUN, and the explicit decision not to claim
   screen-reader certification.
@@ -600,11 +605,12 @@ approved Windows environment. Archive and packaging work remains Stage 8.
 - Implemented components: BoardPanel cell controls, MainFrame focus and dialog
   metadata, DesktopAdaptivePolicy, contrast-safe DesktopTheme palettes, and
   the documented beta accessibility checklist.
-- Verification: focused accessibility/contrast tests, desktop compile,
-  Javadocs, `git diff --check`, and `ci.bat` pass. The production-equivalent
-  app-image manual review passed the default-scale keyboard/dialog/theme and
-  persistence subset; the exact ZIP batch launch and 125%/150% resize/DPI
-  checks remain NOT RUN, and screen-reader certification is not claimed.
+- Verification: focused accessibility/contrast and child-directed mouse
+  regression tests, desktop compile, Javadocs, `git diff --check`, and `ci.bat`
+  pass. The production-equivalent app-image manual review passed the
+  default-scale keyboard/dialog/theme and persistence subset; the exact ZIP
+  batch launch and 125%/150% resize/DPI checks remain NOT RUN, and screen-reader
+  certification is not claimed.
   Archive/chooser tests belong to Stage 8.
 - Out of scope: Android accessibility rewrites, iOS/tablet claims, archive
   import/export, and visual pixel-diff equivalence.

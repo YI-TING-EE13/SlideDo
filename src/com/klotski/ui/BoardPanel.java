@@ -111,6 +111,9 @@ public class BoardPanel extends JPanel implements GameObserver {
     /** Prevents duplicate movement from the follow-up mouseClicked event. */
     private boolean suppressNextMouseClicked = false;
 
+    /** Parent mouse contract that is also reached by accessible cell controls. */
+    private final MouseAdapter mouseHandler;
+
     /**
      * Creates a board view bound to the supplied model.
      *
@@ -133,7 +136,7 @@ public class BoardPanel extends JPanel implements GameObserver {
             }
         });
 
-        MouseAdapter mouseHandler = new MouseAdapter() {
+        mouseHandler = new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
                 requestFocusInWindow();
@@ -229,6 +232,80 @@ public class BoardPanel extends JPanel implements GameObserver {
         initTiles();
     }
 
+    /**
+     * Native Swing control used for keyboard and accessibility semantics.
+     * <p>
+     * The painted board historically owned the desktop mouse contract. A
+     * child button would otherwise become the deepest mouse target and prevent
+     * the parent press/release/click/move path from seeing the gesture. Mouse
+     * events are therefore translated to the parent and the button's default
+     * mouse processing is skipped; keyboard activation still uses the normal
+     * {@link JButton} action path.
+     * </p>
+     */
+    private final class AccessibleCellButton extends JButton {
+        @Override
+        protected void processMouseEvent(MouseEvent event) {
+            switch (event.getID()) {
+                case MouseEvent.MOUSE_PRESSED:
+                case MouseEvent.MOUSE_RELEASED:
+                case MouseEvent.MOUSE_CLICKED:
+                case MouseEvent.MOUSE_ENTERED:
+                case MouseEvent.MOUSE_EXITED:
+                    forwardCellMouseEvent(event);
+                    return;
+                default:
+                    super.processMouseEvent(event);
+            }
+        }
+
+        @Override
+        protected void processMouseMotionEvent(MouseEvent event) {
+            if (event.getID() == MouseEvent.MOUSE_MOVED
+                    || event.getID() == MouseEvent.MOUSE_DRAGGED) {
+                forwardCellMouseEvent(event);
+                return;
+            }
+            super.processMouseMotionEvent(event);
+        }
+    }
+
+    private void forwardCellMouseEvent(MouseEvent event) {
+        MouseEvent parentEvent = SwingUtilities.convertMouseEvent(
+                (Component) event.getSource(), event, this);
+        switch (parentEvent.getID()) {
+            case MouseEvent.MOUSE_PRESSED:
+                mouseHandler.mousePressed(parentEvent);
+                break;
+            case MouseEvent.MOUSE_RELEASED:
+                mouseHandler.mouseReleased(parentEvent);
+                break;
+            case MouseEvent.MOUSE_CLICKED:
+                mouseHandler.mouseClicked(parentEvent);
+                break;
+            case MouseEvent.MOUSE_ENTERED:
+                mouseHandler.mouseEntered(parentEvent);
+                break;
+            case MouseEvent.MOUSE_EXITED:
+                mouseHandler.mouseExited(parentEvent);
+                break;
+            case MouseEvent.MOUSE_MOVED:
+                mouseHandler.mouseMoved(parentEvent);
+                break;
+            case MouseEvent.MOUSE_DRAGGED:
+                mouseHandler.mouseDragged(parentEvent);
+                break;
+            default:
+                break;
+        }
+
+        // Keep a mouse-selected cell as the active keyboard target without
+        // letting the parent contract's focus request steal it back.
+        if (parentEvent.getID() == MouseEvent.MOUSE_PRESSED) {
+            ((Component) event.getSource()).requestFocusInWindow();
+        }
+    }
+
     private void setupKeyBindings() {
         bindKey("moveUp", KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0), Direction.UP);
         bindKey("moveDown", KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, 0), Direction.DOWN);
@@ -272,7 +349,7 @@ public class BoardPanel extends JPanel implements GameObserver {
             for (int col = 0; col < size; col++) {
                 final int cellRow = row;
                 final int cellCol = col;
-                JButton cell = new JButton();
+                JButton cell = new AccessibleCellButton();
                 cell.setFocusable(true);
                 cell.setFocusPainted(false);
                 cell.setContentAreaFilled(false);

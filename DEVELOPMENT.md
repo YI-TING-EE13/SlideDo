@@ -816,6 +816,13 @@ implementation:
   descriptions, support row-major Tab traversal and Space/Enter activation, and
   show a visible theme-aware focus border. Arrow-key movement remains bound to
   the shared GameModel path.
+- Stage 7 repair preserves the pre-existing Desktop mouse contract beneath the
+  child controls. `AccessibleCellButton` translates press/release/click/move/
+  drag events back to `BoardPanel` and bypasses default mouse button dispatch,
+  so aligned clicks and drag/release gestures cannot double-trigger the
+  keyboard/action listener. Child-directed regression tests cover cursor
+  affordance, invalid/non-aligned no-op behavior, one-action history, and one
+  completion callback.
 - `MainFrame` labels Home, status, menus, learning/tutorial dialogs, preference
   controls, and reset actions. Home uses a vertical scroll viewport, size
   actions stack at narrow widths, learning copy scrolls, and the frame has a

@@ -7,6 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.klotski.core.GameModel;
 import com.klotski.core.PuzzleDifficulty;
+import java.awt.Cursor;
+import java.awt.Point;
+import java.awt.event.MouseEvent;
+import javax.swing.JButton;
 import org.junit.jupiter.api.Test;
 
 class DesktopSessionContractTest {
@@ -113,6 +117,159 @@ class DesktopSessionContractTest {
             BoardPanel board = new BoardPanel(new GameModel(size));
             assertEquals(size * size, board.getAccessibleCellCount());
         }
+    }
+
+    @Test
+    void mouseMoveDispatchedToAccessibleCellPreservesParentCursorAffordance() {
+        GameModel model = activeModel();
+        BoardPanel board = configuredBoard(model);
+        Point tile = movableTile(model);
+        JButton cell = board.getAccessibleCellForTesting(tile.x, tile.y);
+
+        dispatchMouse(cell, MouseEvent.MOUSE_MOVED, centerOf(cell), 0, MouseEvent.NOBUTTON);
+
+        assertEquals(Cursor.HAND_CURSOR, board.getCursor().getType());
+    }
+
+    @Test
+    void mouseGestureDispatchedToAccessibleCellPerformsOnePressAction() {
+        GameModel model = activeModel();
+        BoardPanel board = configuredBoard(model);
+        Point tile = movableTile(model);
+        JButton cell = board.getAccessibleCellForTesting(tile.x, tile.y);
+        Point center = centerOf(cell);
+        int startingMoves = model.getMoveCount();
+
+        dispatchMouse(cell, MouseEvent.MOUSE_PRESSED, center,
+                MouseEvent.BUTTON1_DOWN_MASK, MouseEvent.BUTTON1);
+        assertEquals(startingMoves + 1, model.getMoveCount(),
+                "the existing press-triggered mouse contract must reach the parent path");
+
+        Point dragged = new Point(center.x + 40, center.y);
+        dispatchMouse(cell, MouseEvent.MOUSE_DRAGGED, dragged,
+                MouseEvent.BUTTON1_DOWN_MASK, MouseEvent.BUTTON1);
+        dispatchMouse(cell, MouseEvent.MOUSE_RELEASED, dragged, 0, MouseEvent.BUTTON1);
+        dispatchMouse(cell, MouseEvent.MOUSE_CLICKED, dragged, 0, MouseEvent.BUTTON1);
+
+        assertEquals(startingMoves + 1, model.getMoveCount(),
+                "child mouse dispatch must not duplicate the existing action");
+        assertEquals(1, model.getActionHistory().size());
+        assertFalse(model.canRedo());
+    }
+
+    @Test
+    void childMouseGestureReportsOneCompletionWithoutDuplicateCallback() {
+        GameModel model = new GameModel(3);
+        model.scramble(1);
+        BoardPanel board = configuredBoard(model);
+        int[] winDialogs = {0};
+        board.setWinDialogHandler((parent, moves, timeMs) -> winDialogs[0]++);
+        Point tile = solvingTile(model);
+        JButton cell = board.getAccessibleCellForTesting(tile.x, tile.y);
+        Point center = centerOf(cell);
+
+        dispatchMouse(cell, MouseEvent.MOUSE_PRESSED, center,
+                MouseEvent.BUTTON1_DOWN_MASK, MouseEvent.BUTTON1);
+        dispatchMouse(cell, MouseEvent.MOUSE_RELEASED, center, 0, MouseEvent.BUTTON1);
+        dispatchMouse(cell, MouseEvent.MOUSE_CLICKED, center, 0, MouseEvent.BUTTON1);
+
+        assertTrue(model.isSolved());
+        assertEquals(1, model.getMoveCount());
+        assertEquals(1, model.getActionHistory().size());
+        assertEquals(1, winDialogs[0]);
+    }
+
+    @Test
+    void nonAlignedMouseGestureDispatchedToAccessibleCellRemainsNoOp() {
+        GameModel model = activeModel();
+        BoardPanel board = configuredBoard(model);
+        Point tile = nonAlignedTile(model);
+        JButton cell = board.getAccessibleCellForTesting(tile.x, tile.y);
+        Point center = centerOf(cell);
+        Point dragged = new Point(center.x + 40, center.y);
+        int startingEmptyRow = model.getEmptyRow();
+        int startingEmptyCol = model.getEmptyCol();
+
+        dispatchMouse(cell, MouseEvent.MOUSE_PRESSED, center,
+                MouseEvent.BUTTON1_DOWN_MASK, MouseEvent.BUTTON1);
+        dispatchMouse(cell, MouseEvent.MOUSE_DRAGGED, dragged,
+                MouseEvent.BUTTON1_DOWN_MASK, MouseEvent.BUTTON1);
+        dispatchMouse(cell, MouseEvent.MOUSE_RELEASED, dragged, 0, MouseEvent.BUTTON1);
+        dispatchMouse(cell, MouseEvent.MOUSE_CLICKED, dragged, 0, MouseEvent.BUTTON1);
+
+        assertEquals(0, model.getMoveCount());
+        assertEquals(startingEmptyRow, model.getEmptyRow());
+        assertEquals(startingEmptyCol, model.getEmptyCol());
+    }
+
+    @Test
+    void accessibleCellActionStillPerformsOneKeyboardStyleActivation() {
+        GameModel model = activeModel();
+        BoardPanel board = configuredBoard(model);
+        Point tile = movableTile(model);
+
+        board.getAccessibleCellForTesting(tile.x, tile.y).doClick();
+
+        assertEquals(1, model.getMoveCount());
+        assertEquals(tile.x, model.getEmptyRow());
+        assertEquals(tile.y, model.getEmptyCol());
+    }
+
+    private static GameModel activeModel() {
+        return DesktopGameFactory.create(3, PuzzleDifficulty.CLASSIC, 17L);
+    }
+
+    private static Point movableTile(GameModel model) {
+        int row = model.getEmptyRow();
+        int col = model.getEmptyCol();
+        if (col > 0) {
+            return new Point(row, col - 1);
+        }
+        if (col + 1 < model.getSize()) {
+            return new Point(row, col + 1);
+        }
+        if (row > 0) {
+            return new Point(row - 1, col);
+        }
+        return new Point(row + 1, col);
+    }
+
+    private static Point solvingTile(GameModel model) {
+        if (model.getEmptyRow() < model.getSize() - 1) {
+            return new Point(model.getEmptyRow() + 1, model.getEmptyCol());
+        }
+        return new Point(model.getEmptyRow(), model.getEmptyCol() + 1);
+    }
+
+    private static Point nonAlignedTile(GameModel model) {
+        for (int row = 0; row < model.getSize(); row++) {
+            for (int col = 0; col < model.getSize(); col++) {
+                if (row != model.getEmptyRow() && col != model.getEmptyCol()
+                        && model.getTile(row, col) != 0) {
+                    return new Point(row, col);
+                }
+            }
+        }
+        throw new AssertionError("active test board must have a non-aligned tile");
+    }
+
+    private static BoardPanel configuredBoard(GameModel model) {
+        BoardPanel board = new BoardPanel(model);
+        board.setReducedMotion(true);
+        board.setSize(DesktopAdaptivePolicy.MINIMUM_WINDOW_WIDTH,
+                DesktopAdaptivePolicy.MINIMUM_WINDOW_HEIGHT);
+        board.doLayout();
+        return board;
+    }
+
+    private static Point centerOf(JButton cell) {
+        return new Point(cell.getWidth() / 2, cell.getHeight() / 2);
+    }
+
+    private static void dispatchMouse(JButton cell, int id, Point point,
+            int modifiersEx, int button) {
+        cell.dispatchEvent(new MouseEvent(cell, id, 1L, modifiersEx,
+                point.x, point.y, 1, false, button));
     }
 
     private static void assertGridEquals(GameModel expected, GameModel actual) {

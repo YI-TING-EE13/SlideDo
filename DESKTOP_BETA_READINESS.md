@@ -93,6 +93,10 @@ Stage 7 accessibility/adaptive acceptance adds the following checks:
   Space or Enter on an aligned tile, and use arrow keys while a cell has focus.
   The board, move count, timer, undo/redo, and records follow the same rules as
   mouse play.
+- Preserve the pre-Stage-7 mouse contract with the overlaid cell controls:
+  aligned click/press/release and drag/swipe gestures reach the BoardPanel path,
+  perform at most one action, non-aligned or invalid interactions remain no-op,
+  and the movable-tile hand cursor remains visible on hover.
 - Open Beginner Guide, Practice Tutorial, How to Play, Quick Reminder, and
   Preferences without a mouse. Dialog buttons, text areas, combo boxes,
   checkboxes, and reset confirmations have a reachable focus order.
@@ -111,6 +115,9 @@ roles/names, keyboard actions, focus indication, and layout behavior only.
 
 - Keyboard shortcuts work for New Game, Undo, Redo, Restart, Save, Load, and
   Exit; `Game > Move History` shows completed and available Redo actions.
+- Pre-Stage-7 mouse behavior remains intact: child-directed aligned clicks and
+  press/release or drag/swipe gestures move once, invalid/non-aligned input is a
+  no-op, and hover still shows the movable-tile cursor.
 - Arrow keys move the empty cell one step.
 - Menu labels and dialog titles are readable at default Windows scaling.
 - Reduced motion removes board transition animation without changing rules.
