@@ -825,10 +825,15 @@ implementation:
   the policy is presentation-only and cannot alter rules, records, timer, or
   persistence.
 - Focused tests cover board cell accessibility, focusability, minimum-window
-  behavior, known contrast ratios, and theme contrast. The packaged manual
-  keyboard/DPI checklist is tracked separately and is NOT RUN on the current
-  headless host; screen-reader certification is not claimed. Full `ci.bat`
-  passed, while archive/chooser behavior remains Stage 8.
+  behavior, known contrast ratios, and theme contrast. A production-equivalent
+  packaged app-image manual run passed the default-scale keyboard/focus,
+  dialog, theme, persistence, and maximize/restore subset, including a
+  save/exit/relaunch/Continue flow. The exact ZIP `SlideDo.bat` launch and the
+  required 125%/150% Windows scaling checks remain NOT RUN because this host
+  cannot expose that launch through the Windows automation surface or change
+  Windows display scaling under the approved controls; screen-reader
+  certification is not claimed. Full `ci.bat` passed, while archive/chooser
+  behavior remains Stage 8.
 
 ### Completed 2026-05-25 MVP Items
 

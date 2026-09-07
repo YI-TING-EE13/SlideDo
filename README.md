@@ -691,8 +691,10 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
   keyboard/accessibility controls, visible focus order, contrast-safe themes,
   and a scrollable/resizable Home and learning layout. Strategic hints, full
   backup/archive, screen-reader certification, and release qualification remain
-  separately scoped. Stage 7's packaged manual keyboard/DPI review is pending
-  on a GUI-capable Windows host; screen-reader certification is not claimed.
+  separately scoped. Stage 7's production-equivalent app-image review passed
+  the default-scale keyboard/focus, dialog, theme, and persistence subset; the
+  exact ZIP `SlideDo.bat` launch and 125%/150% Windows keyboard/DPI checks
+  remain pending. Screen-reader certification is not claimed.
 - Save files now include release-readiness metadata and desktop saves now live in the user-data directory.
 - Signed Android release APK/AAB and desktop ZIP/app-image packaging scripts are available.
 - Desktop public beta readiness notes and local package checks are tracked in

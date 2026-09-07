@@ -3,9 +3,11 @@
 Status: owner-approved qualification baseline with Stages 1-7 session,
 persistence, records, Daily, Favorites, Trends, Weekly Goal, and Continuous
 behavior plus Desktop learning/preferences/accessibility implemented; automated
-verification is green and the packaged manual accessibility/DPI gate remains
-pending on a GUI-capable Windows host. Later stages remain planning-only. This
-document records current implementation evidence and bounded follow-up work.
+verification is green and a production-equivalent packaged GUI review has
+covered the default-scale keyboard/dialog/theme/persistence flows. The exact
+ZIP `SlideDo.bat` launch and 125%/150% Windows scaling evidence remain pending.
+Later stages remain planning-only. This document records current
+implementation evidence and bounded follow-up work.
 
 Qualification date: 2026-09-07
 Repository: YI-TING-EE13/SlideDo
@@ -110,8 +112,8 @@ namespace isolation, and solver-assisted record protection.
 | L10 | Localization | Core domain IDs are stable; Android resources carry localized presentation. | AndroidAppLocale and resources support English, Traditional Chinese, and Japanese and persist the selected tag. | DesktopLocale persists all three tags and localizes critical menus, Home routes, onboarding, help, reminders, and preference controls; several legacy mode/result detail strings remain English until the later documentation/accessibility stage. | PARTIAL | Locale changes rebuild the Swing shell and preserve stable IDs/data. No Android resources are used; remaining non-critical detail copy is explicitly tracked rather than claimed as full localization. | DesktopLocaleTest and localized learning tests; remaining strings are a bounded follow-up, not a data/migration risk. |
 | L11 | Full personal backup and restore | AndroidPersonalDataArchive validates a versioned archive and AndroidGameStore replaces all personal preferences only after decode. | MainActivity uses the system picker for export/import and confirms full replacement. | Desktop can manually copy individual JSON files but has no archive, validation, or full replacement flow. | MISSING | Provide a versioned, validated Desktop personal-data archive covering all normal/mode saves, records, stats, history, settings, and favorites. Invalid input must leave existing data untouched. | AndroidGameStoreTest archive cases are the contract reference; add desktop archive round-trip, malformed, and replacement tests. Risk is cross-platform schema compatibility; keep Android implementation out of Desktop and define an explicit shared archive version. |
 | L12 | Reset semantics | AndroidGameStore separates clear saved games, clear records, and full archive replacement while preserving unrelated namespaces as documented. | AndroidSettingsScreen/MainActivity expose reset saved games and reset records with confirmation. | Preferences exposes confirmed `clearSavedGames` and `clearRecords` actions. The first removes normal/Daily/Favorite Practice/Continuous saves but preserves favorites, records, stats, Daily progress, and preferences; the second clears scoped records/statistics/Daily progress, masks legacy records, and preserves active Continuous files. | PARITY | Reset scopes are explicit and tested; legacy record sources are left untouched but cannot resurrect a cleared value. | SaveManager preference/reset test and MainFrame confirmation wiring; full archive replacement remains Stage 8/backup scope. |
-| L13 | Accessibility semantics and playable board | AndroidUiPolicy establishes headings, focus order, 48dp targets, localized descriptions, and KlotskiView virtual per-cell actionable nodes. | AndroidMainActivity, AndroidUi, resource strings, and BoardAccessibilityProvider expose screen-reader movement for movable cells. | BoardPanel exposes one focusable Swing button per cell with accessible names/descriptions, row-major Tab order, Space/Enter activation, arrow-key movement, and visible focus borders; MainFrame labels status, menus, Home actions, and learning controls. | PARTIAL | Desktop uses Swing roles and actionable child controls rather than Android virtual-node APIs. Screen-reader certification remains unclaimed; the code/test contract is implemented but the packaged keyboard/focus review is pending on a GUI-capable host. | DesktopAdaptivePolicyTest and DesktopSessionContractTest cover cell counts, names, focusability, and contrast; DESKTOP_BETA_READINESS.md records the NOT RUN Windows keyboard/accessibility checklist. |
-| L14 | Adaptive and scaled layout | AndroidUiPolicy and ScreenLayout handle compact layouts, large text, safe insets, and 48dp controls. | AndroidAdaptiveUiTest covers compact AVD, large text, both themes, headings, and focus order. | MainFrame has a minimum usable size, a vertically scrollable Home card, resizable learning dialogs, stacked compact size actions, and a BoardPanel that recomputes square cell bounds as the window changes. | PARTIAL | Desktop implementation is ready for the documented 100/125/150% Windows scaling checklist and larger-font scenarios without changing rules, records, or persistence; the packaged observation is still pending. Swing layout evidence remains separate from Android dp evidence. | DesktopAdaptivePolicyTest covers minimum size and theme contrast; the packaged manual resize/DPI checklist is recorded as NOT RUN in DESKTOP_BETA_READINESS.md. |
+| L13 | Accessibility semantics and playable board | AndroidUiPolicy establishes headings, focus order, 48dp targets, localized descriptions, and KlotskiView virtual per-cell actionable nodes. | AndroidMainActivity, AndroidUi, resource strings, and BoardAccessibilityProvider expose screen-reader movement for movable cells. | BoardPanel exposes one focusable Swing button per cell with accessible names/descriptions, row-major Tab order, Space/Enter activation, arrow-key movement, and visible focus borders; MainFrame labels status, menus, Home actions, and learning controls. | PARTIAL | Desktop uses Swing roles and actionable child controls rather than Android virtual-node APIs. The production-equivalent packaged run passed keyboard focus, board actions, and dialog reachability at the host default scale; screen-reader certification and exact ZIP `SlideDo.bat` launch remain unclaimed. | DesktopAdaptivePolicyTest and DesktopSessionContractTest cover cell counts, names, focusability, and contrast; DESKTOP_BETA_READINESS.md records the app-image PASS subset and the remaining NOT RUN gates. |
+| L14 | Adaptive and scaled layout | AndroidUiPolicy and ScreenLayout handle compact layouts, large text, safe insets, and 48dp controls. | AndroidAdaptiveUiTest covers compact AVD, large text, both themes, headings, and focus order. | MainFrame has a minimum usable size, a vertically scrollable Home card, resizable learning dialogs, stacked compact size actions, and a BoardPanel that recomputes square cell bounds as the window changes. | PARTIAL | Desktop implementation passed the observable default-scale and maximize/restore packaged review without changing rules, records, or persistence; the required 125%/150% Windows scaling and larger-font review remains pending. Swing layout evidence remains separate from Android dp evidence. | DesktopAdaptivePolicyTest covers minimum size and theme contrast; DESKTOP_BETA_READINESS.md records the exact observed subset and the 125%/150% checks as NOT RUN. |
 
 ### Platform-specific mechanics (not direct semantic parity defects)
 
@@ -447,8 +449,11 @@ verified within the approved issue boundary:
 ### Stage 7 implementation and automated verification
 
 The Stage 7 accessibility and adaptive-layout work is implemented within the
-approved issue boundary. Automated verification is green; the required manual
-packaged review remains pending because the current host is headless:
+approved issue boundary. Automated verification is green. A production-
+equivalent app-image is now observable through the Windows automation surface;
+its default-scale keyboard, dialog, theme, persistence, and maximize/restore
+flows passed. The exact ZIP batch launch and 125%/150% scaling evidence remain
+pending:
 
 - `BoardPanel` keeps the painted board as the visual source of truth while
   exposing one native Swing `JButton` child per cell. Each child has an
@@ -468,8 +473,9 @@ packaged review remains pending because the current host is headless:
 - Focused tests cover the nine/16/25-cell accessibility surface, cell names and
   focusability, minimum-window policy, known contrast ratios, theme contrast,
   and existing session behavior. `DESKTOP_BETA_READINESS.md` records the
-  packaged Windows keyboard/DPI checklist as NOT RUN on the current host and
-  explicitly does not claim screen-reader certification.
+  app-image manual PASS subset, the exact ZIP batch-launch limitation, the
+  125%/150% checks as NOT RUN, and the explicit decision not to claim
+  screen-reader certification.
 
 The Stage 7 implementation does not add the native file chooser or archive
 format; backup/import remains Stage 8 and remains outside this merge.
@@ -580,9 +586,10 @@ the completion gate below remains historical acceptance context.
 
 ### Stage 7 - Accessibility, adaptive behavior, and platform equivalents
 
-Status: implementation complete with automated verification; protected merge is
-blocked until the packaged manual keyboard/DPI checklist runs on a GUI-capable
-Windows host. Archive and packaging work remains Stage 8.
+Status: implementation complete with automated verification and a partial
+production-equivalent packaged GUI review; protected merge is blocked until
+the exact ZIP `SlideDo.bat` launch and 125%/150% keyboard/DPI checks run on an
+approved Windows environment. Archive and packaging work remains Stage 8.
 
 - Objective: qualify desktop accessibility and resizable/large-font behavior
   without copying Android virtual-node mechanics.
@@ -594,10 +601,11 @@ Windows host. Archive and packaging work remains Stage 8.
   metadata, DesktopAdaptivePolicy, contrast-safe DesktopTheme palettes, and
   the documented beta accessibility checklist.
 - Verification: focused accessibility/contrast tests, desktop compile,
-  Javadocs, `git diff --check`, and `ci.bat` pass. The packaged manual
-  keyboard/resize checklist is NOT RUN on the current headless host;
-  screen-reader certification is not claimed. Archive/chooser tests belong to
-  Stage 8.
+  Javadocs, `git diff --check`, and `ci.bat` pass. The production-equivalent
+  app-image manual review passed the default-scale keyboard/dialog/theme and
+  persistence subset; the exact ZIP batch launch and 125%/150% resize/DPI
+  checks remain NOT RUN, and screen-reader certification is not claimed.
+  Archive/chooser tests belong to Stage 8.
 - Out of scope: Android accessibility rewrites, iOS/tablet claims, archive
   import/export, and visual pixel-diff equivalence.
 - Completion gate: a reproducible desktop evidence bundle demonstrates
