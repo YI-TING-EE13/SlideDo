@@ -21,12 +21,17 @@ final class DesktopDailyContent {
     }
 
     static String stateLabel(DayState state) {
+        return stateLabel(state, DesktopLocale.fromTag("en"));
+    }
+
+    static String stateLabel(DayState state, DesktopLocale locale) {
+        DesktopLocale selected = locale == null ? DesktopLocale.fromTag("en") : locale;
         return switch (state) {
-            case COMPLETED -> "Completed";
-            case IN_PROGRESS -> "In progress";
-            case READY -> "Ready";
-            case MISSED -> "Missed";
-            case FUTURE -> "Future date";
+            case COMPLETED -> selected.text("dailyCompleted");
+            case IN_PROGRESS -> selected.text("dailyInProgress");
+            case READY -> selected.text("dailyReady");
+            case MISSED -> selected.text("dailyMissed");
+            case FUTURE -> selected.text("dailyFuture");
         };
     }
 
@@ -42,13 +47,24 @@ final class DesktopDailyContent {
     }
 
     static String dayAccessibilityText(LocalDate date, DayState state) {
-        return date + ". " + stateLabel(state) + ". Daily 4x4 Classic puzzle.";
+        return dayAccessibilityText(date, state, DesktopLocale.fromTag("en"));
+    }
+
+    static String dayAccessibilityText(LocalDate date, DayState state, DesktopLocale locale) {
+        DesktopLocale selected = locale == null ? DesktopLocale.fromTag("en") : locale;
+        return selected.format("dailyDayAccessibility", date, stateLabel(state, selected),
+                selected.text("dailyPuzzle"));
     }
 
     static String progressSummary(SaveManager.DailyProgress progress) {
+        return progressSummary(progress, DesktopLocale.fromTag("en"));
+    }
+
+    static String progressSummary(SaveManager.DailyProgress progress, DesktopLocale locale) {
+        DesktopLocale selected = locale == null ? DesktopLocale.fromTag("en") : locale;
         if (progress == null) {
-            return "Daily streak: 0 · Best: 0";
+            return selected.format("dailyProgress", 0, 0);
         }
-        return "Daily streak: " + progress.currentStreak + " · Best: " + progress.bestStreak;
+        return selected.format("dailyProgress", progress.currentStreak, progress.bestStreak);
     }
 }

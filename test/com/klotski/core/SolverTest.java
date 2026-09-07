@@ -1,6 +1,7 @@
 package com.klotski.core;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -42,6 +43,19 @@ class SolverTest {
             assertTrue(model.move(direction), solver.getName());
         }
         assertTrue(model.isSolved(), solver.getName());
+    }
+
+    @Test
+    void solversHonorCooperativeCancellationBeforeSearchBegins() {
+        Thread.currentThread().interrupt();
+        try {
+            GameModel model = new GameModel(3);
+            for (Solver solver : solvers().toList()) {
+                assertNull(solver.solve(model), solver.getName());
+            }
+        } finally {
+            Thread.interrupted();
+        }
     }
 
     @Test

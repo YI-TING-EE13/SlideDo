@@ -327,6 +327,10 @@ final class AndroidGameStore {
      * daily save slots.
      */
     void saveFavoriteRun(String favoriteId, GameModel model, long elapsedMs) {
+        saveFavoriteRun(favoriteId, model, elapsedMs, false);
+    }
+
+    void saveFavoriteRun(String favoriteId, GameModel model, long elapsedMs, boolean assisted) {
         FavoritePuzzle favorite = findFavorite(favoriteId);
         if (favorite == null || model == null) {
             return;
@@ -346,6 +350,7 @@ final class AndroidGameStore {
                 System.currentTimeMillis(), model.isGameRunning(), model.isSolved(),
                 model.getDifficulty(), model.getEncodedActionHistory(),
                 model.getEncodedRedoHistory());
+        editor.putBoolean(favoriteRunPrefix(favorite.id) + KEY_ASSISTED, assisted);
         editor.apply();
     }
 
@@ -883,6 +888,7 @@ final class AndroidGameStore {
         data.updatedAt = prefs.getLong(prefix + KEY_UPDATED_AT, 0);
         data.solved = prefs.getBoolean(prefix + KEY_SOLVED, false);
         data.active = prefs.getBoolean(prefix + KEY_ACTIVE, false);
+        data.assisted = prefs.getBoolean(prefix + KEY_ASSISTED, false);
         data.difficulty = PuzzleDifficulty.fromId(prefs.getString(prefix + KEY_DIFFICULTY, null));
         data.actionHistory = prefs.getString(prefix + KEY_ACTION_HISTORY, "");
         data.redoHistory = prefs.getString(prefix + KEY_REDO_HISTORY, "");
@@ -911,6 +917,7 @@ final class AndroidGameStore {
                     legacy.moveCount, legacy.elapsedTime, legacy.updatedAt,
                     legacy.active, legacy.solved, legacy.difficulty,
                     legacy.actionHistory, legacy.redoHistory);
+            editor.putBoolean(targetPrefix + KEY_ASSISTED, legacy.assisted);
         }
         removeSave(editor, "");
         editor.commit();

@@ -2321,7 +2321,7 @@ public class MainActivity extends Activity implements GameObserver {
             store.saveContinuousGame(model, elapsed, assistedSolveActive,
                     activeContinuousChallenge);
         } else if (activeFavoriteId != null) {
-            store.saveFavoriteRun(activeFavoriteId, model, elapsed);
+            store.saveFavoriteRun(activeFavoriteId, model, elapsed, assistedSolveActive);
         } else if (activeDailyDateId == null) {
             store.saveGame(model, elapsed, assistedSolveActive);
         } else {
@@ -2395,7 +2395,7 @@ public class MainActivity extends Activity implements GameObserver {
         attachModel(new GameModel(data.size));
         model.loadState(data);
         lastWinTimeMs = model.isSolved() ? data.elapsedTime : -1;
-        assistedSolveActive = false;
+        assistedSolveActive = data.assisted;
         currentResult = null;
         activeDailyDateId = null;
         activeFavoriteId = favoriteId;

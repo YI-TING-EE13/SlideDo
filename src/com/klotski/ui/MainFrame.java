@@ -72,6 +72,15 @@ public class MainFrame extends JFrame implements GameObserver {
     /** Tracks whether desktop assist highlights are currently visible. */
     private boolean movableHintActive;
 
+    /** Tracks whether the currently displayed highlight is a strategic hint. */
+    private boolean strategicHintActive;
+
+    /** Tile number shown in the strategic-hint status copy, or {@code -1}. */
+    private int strategicHintTile = -1;
+
+    /** Empty-cell direction selected by the current strategic hint. */
+    private Direction strategicHintDirection;
+
     /** Tracks whether the board card is visible. */
     private boolean showingGame;
 
@@ -102,6 +111,9 @@ public class MainFrame extends JFrame implements GameObserver {
     /** True while a solver owns the current session. */
     private boolean solverRunning;
 
+    /** Active background solver task; cancellation is cooperative. */
+    private SwingWorker<List<Direction>, Void> solverWorker;
+
     /** Home summary for the independent normal save slots. */
     private JLabel continueSummaryLabel;
 
@@ -117,7 +129,7 @@ public class MainFrame extends JFrame implements GameObserver {
         reducedMotionEnabled = SaveManager.isReducedMotionEnabled();
         soundEnabled = SaveManager.isSoundEnabled();
 
-        setTitle("Number Klotski - Java Edition");
+        setTitle(text("windowTitle"));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(600, 700);
         setMinimumSize(DesktopAdaptivePolicy.minimumWindowSize());
@@ -147,6 +159,7 @@ public class MainFrame extends JFrame implements GameObserver {
 
         boardPanel = new BoardPanel(model);
         boardPanel.setTheme(desktopTheme);
+        boardPanel.setLocale(desktopLocale);
         boardPanel.setReducedMotion(reducedMotionEnabled);
         boardPanel.setWinDialogHandler((parent, moves, timeMs) -> showResultsDialog(moves, timeMs));
 
@@ -155,13 +168,12 @@ public class MainFrame extends JFrame implements GameObserver {
         contentPanel.add(createHomePanel(), HOME_CARD);
         contentPanel.add(boardPanel, GAME_CARD);
 
-        statusLabel = new JLabel("Moves: 0 | Time: 0s");
+        statusLabel = new JLabel(text("statusInitial"));
         statusLabel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         statusLabel.setFont(new Font("Monospaced", Font.BOLD, 14));
         statusLabel.setOpaque(true);
-        statusLabel.getAccessibleContext().setAccessibleName("Game status");
-        statusLabel.getAccessibleContext().setAccessibleDescription(
-                "Current moves, elapsed time, difficulty, and record status.");
+        statusLabel.getAccessibleContext().setAccessibleName(text("statusAccessibleName"));
+        statusLabel.getAccessibleContext().setAccessibleDescription(text("statusAccessibleDescription"));
         applyStatusTheme();
 
         setLayout(new BorderLayout());
@@ -185,12 +197,12 @@ public class MainFrame extends JFrame implements GameObserver {
 
     private void setupMenu() {
         JMenuBar menuBar = new JMenuBar();
-        menuBar.getAccessibleContext().setAccessibleName("SlideDo menu bar");
+        menuBar.getAccessibleContext().setAccessibleName(text("menuBarAccessibleName"));
 
         // Game Menu
         JMenu gameMenu = new JMenu(text("game"));
         gameMenu.setMnemonic(KeyEvent.VK_G);
-        setAccessibleDescription(gameMenu, text("game"), "Open game creation, save, reset, and navigation commands.");
+        setAccessibleDescription(gameMenu, text("game"), text("menuGameDescription"));
 
         JMenuItem newGame3 = new JMenuItem(text("new3"));
         newGame3.addActionListener(e -> startNewGame(3));
@@ -234,14 +246,13 @@ public class MainFrame extends JFrame implements GameObserver {
                 return;
             }
             if (!showingGame) {
-                showMessageDialog("Start or load a game first.",
-                        "Save Game", JOptionPane.INFORMATION_MESSAGE);
+                showMessageDialog(text("startOrLoadFirst"), text("save"), JOptionPane.INFORMATION_MESSAGE);
                 return;
             }
             runWithPausedTimer(() -> {
                 boolean saved = saveCurrentGame();
-                showMessageDialog(saved ? "Game saved." : "Could not save game.",
-                        "Save Game", JOptionPane.INFORMATION_MESSAGE);
+                showMessageDialog(saved ? text("saveSuccess") : text("saveFailure"),
+                        text("save"), JOptionPane.INFORMATION_MESSAGE);
             });
         });
         gameMenu.add(saveItem);
@@ -294,38 +305,46 @@ public class MainFrame extends JFrame implements GameObserver {
         // Assist Menu
         JMenu assistMenu = new JMenu(text("assist"));
         assistMenu.setMnemonic(KeyEvent.VK_A);
-        setAccessibleDescription(assistMenu, text("assist"), "Open presentation-only assistance commands.");
+        setAccessibleDescription(assistMenu, text("assist"), text("menuAssistDescription"));
 
         JMenuItem showMovableItem = new JMenuItem(text("showMovable"));
         showMovableItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, KeyEvent.CTRL_DOWN_MASK));
         showMovableItem.addActionListener(e -> showMovableTiles());
         assistMenu.add(showMovableItem);
 
+        JMenuItem strategicHintItem = new JMenuItem(text("strategicHint"));
+        strategicHintItem.addActionListener(e -> showStrategicHint());
+        assistMenu.add(strategicHintItem);
+
         menuBar.add(assistMenu);
 
         // Solver Menu
-        JMenu solverMenu = new JMenu(text("solver"));
+        JMenu solverMenu = new JMenu(text("solverTools"));
         solverMenu.setMnemonic(KeyEvent.VK_S);
-        setAccessibleDescription(solverMenu, text("solver"), "Open solver commands.");
+        setAccessibleDescription(solverMenu, text("solverTools"), text("menuSolverDescription"));
 
-        JMenuItem bfsItem = new JMenuItem("Solve with BFS (Best for 3x3)");
+        JMenuItem bfsItem = new JMenuItem(text("solverBfs"));
         bfsItem.addActionListener(e -> runSolver(new BfsSolver()));
         solverMenu.add(bfsItem);
 
-        JMenuItem aStarItem = new JMenuItem("Solve with A* (Best for 4x4+)");
+        JMenuItem aStarItem = new JMenuItem(text("solverAStar"));
         aStarItem.addActionListener(e -> runSolver(new AStarSolver()));
         solverMenu.add(aStarItem);
 
-        JMenuItem idaStarItem = new JMenuItem("Solve with IDA* (Mobile-friendly core)");
+        JMenuItem idaStarItem = new JMenuItem(text("solverIdaStar"));
         idaStarItem.addActionListener(e -> runSolver(new IdaStarSolver()));
         solverMenu.add(idaStarItem);
+
+        JMenuItem cancelSolverItem = new JMenuItem(text("solverCancel"));
+        cancelSolverItem.addActionListener(e -> cancelSolver());
+        solverMenu.add(cancelSolverItem);
 
         menuBar.add(solverMenu);
 
         // Help Menu
         JMenu helpMenu = new JMenu(text("help"));
         helpMenu.setMnemonic(KeyEvent.VK_H);
-        setAccessibleDescription(helpMenu, text("help"), "Open learning and help commands.");
+        setAccessibleDescription(helpMenu, text("help"), text("menuHelpDescription"));
 
         JMenuItem howToPlayItem = new JMenuItem(text("howToPlay"));
         howToPlayItem.addActionListener(e -> showHelpDialog(text("howToPlay"), DesktopHelpContent.howToPlay(desktopLocale)));
@@ -348,9 +367,8 @@ public class MainFrame extends JFrame implements GameObserver {
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBorder(BorderFactory.createEmptyBorder(36, 48, 36, 48));
         panel.setBackground(desktopTheme.getHomeBackground());
-        panel.getAccessibleContext().setAccessibleName("SlideDo Home");
-        panel.getAccessibleContext().setAccessibleDescription(
-                "Choose a puzzle size, continue a saved game, open learning, or open settings.");
+        panel.getAccessibleContext().setAccessibleName(text("homeAccessibleName"));
+        panel.getAccessibleContext().setAccessibleDescription(text("homeAccessibleDescription"));
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
@@ -403,9 +421,8 @@ public class MainFrame extends JFrame implements GameObserver {
                 ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scroll.setBorder(BorderFactory.createEmptyBorder());
         scroll.getViewport().setBackground(desktopTheme.getHomeBackground());
-        scroll.getAccessibleContext().setAccessibleName("SlideDo Home");
-        scroll.getAccessibleContext().setAccessibleDescription(
-                "Scrollable Home actions for puzzle modes, learning, records, and preferences.");
+        scroll.getAccessibleContext().setAccessibleName(text("homeAccessibleName"));
+        scroll.getAccessibleContext().setAccessibleDescription(text("homeScrollAccessibleDescription"));
         return scroll;
     }
 
@@ -425,7 +442,7 @@ public class MainFrame extends JFrame implements GameObserver {
         button.setMinimumSize(new Dimension(DesktopAdaptivePolicy.MINIMUM_FOCUS_TARGET * 3,
                 DesktopAdaptivePolicy.MINIMUM_FOCUS_TARGET));
         button.getAccessibleContext().setAccessibleName(text);
-        button.getAccessibleContext().setAccessibleDescription("Activate " + text + ".");
+        button.getAccessibleContext().setAccessibleDescription(desktopLocale.format("buttonActivate", text));
         button.addActionListener(e -> action.run());
         return button;
     }
@@ -482,13 +499,13 @@ public class MainFrame extends JFrame implements GameObserver {
         PuzzleDifficulty[] difficulties = PuzzleDifficulty.values();
         for (int index = 0; index < difficulties.length; index++) {
             PuzzleDifficulty difficulty = difficulties[index];
-            options[index] = difficultyLabel(difficulty) + " — "
-                    + difficulty.scrambleMovesForSize(size) + " scramble moves";
+            options[index] = desktopLocale.format("scrambleMoves", difficultyLabel(difficulty),
+                    difficulty.scrambleMovesForSize(size));
         }
 
         int choice = showOptionDialog(
-                "Choose a difficulty for the " + size + "x" + size + " puzzle.",
-                "Difficulty",
+                desktopLocale.format("difficultyChooserPrompt", size, size),
+                text("difficultyTitle"),
                 JOptionPane.DEFAULT_OPTION,
                 JOptionPane.QUESTION_MESSAGE,
                 null,
@@ -502,9 +519,9 @@ public class MainFrame extends JFrame implements GameObserver {
 
     private String difficultyLabel(PuzzleDifficulty difficulty) {
         return switch (difficulty) {
-            case RELAXED -> "Relaxed";
-            case CLASSIC -> "Classic";
-            case CHALLENGE -> "Challenge";
+            case RELAXED -> text("difficultyRelaxed");
+            case CLASSIC -> text("difficultyClassic");
+            case CHALLENGE -> text("difficultyChallenge");
         };
     }
 
@@ -522,8 +539,9 @@ public class MainFrame extends JFrame implements GameObserver {
         model = createReplayModel(model);
         model.addObserver(this);
         boardPanel.setModel(model);
-        assistedSolveActive = false;
-        completedAssisted = false;
+        // Restart is the same puzzle/run. Assistance must not be laundered
+        // into a player-eligible completion by restoring initialGrid.
+        assistedSolveActive = completedAssisted;
         completionTracker.reset();
         pendingResultMessage = null;
         solverRunning = false;
@@ -539,8 +557,7 @@ public class MainFrame extends JFrame implements GameObserver {
         }
         clearMovableHint();
         model.restartCurrentGame();
-        assistedSolveActive = false;
-        completedAssisted = false;
+        // Restart preserves the assisted marker for this same puzzle/run.
         completionTracker.reset();
         syncGameTimerState();
         updateStatus();
@@ -572,42 +589,18 @@ public class MainFrame extends JFrame implements GameObserver {
             return;
         }
         if (!showingGame) {
-            showMessageDialog("Start or load a game first.",
-                    "Move History", JOptionPane.INFORMATION_MESSAGE);
+            showMessageDialog(text("startOrLoadFirst"), text("history"), JOptionPane.INFORMATION_MESSAGE);
             return;
         }
         runWithPausedTimer(() -> {
             List<MoveAction> history = model.getActionHistory();
             List<MoveAction> redo = model.getRedoHistory();
-            if (history.isEmpty() && redo.isEmpty()) {
-                showMessageDialog("No moves yet. Your current run history will appear here.",
-                        "Move History", JOptionPane.INFORMATION_MESSAGE);
-                return;
-            }
-
-            StringBuilder text = new StringBuilder();
-            text.append(history.size()).append(" completed actions · ")
-                    .append(redo.size()).append(" available to redo");
-            if (history.isEmpty()) {
-                text.append("\n\nAll completed actions are currently undone.");
-            }
-            int first = Math.max(0, history.size() - 50);
-            if (first > 0) {
-                text.append("\n\nShowing the latest 50 actions.");
-            }
-            for (int index = first; index < history.size(); index++) {
-                MoveAction action = history.get(index);
-                text.append("\n").append(index + 1).append(". Empty ")
-                        .append(action.getDirection().name().toLowerCase());
-                if (action.getSteps() > 1) {
-                    text.append(" x ").append(action.getSteps()).append(" (one move)");
-                }
-            }
+            String text = DesktopHistoryContent.format(history, redo, desktopLocale);
             JTextArea historyText = new JTextArea(text.toString(), 18, 36);
             historyText.setEditable(false);
             historyText.setCaretPosition(0);
             showMessageDialog(new JScrollPane(historyText),
-                    "Move History", JOptionPane.INFORMATION_MESSAGE);
+                    DesktopHistoryContent.title(desktopLocale), JOptionPane.INFORMATION_MESSAGE);
         });
     }
 
@@ -619,7 +612,7 @@ public class MainFrame extends JFrame implements GameObserver {
         runWithPausedTimer(() -> {
             SaveManager.SaveMetadata[] saves = SaveManager.getAllSaveMetadata();
             if (saves.length == 0) {
-                showMessageDialog("No save file found.", "SlideDo", JOptionPane.INFORMATION_MESSAGE);
+                showMessageDialog(text("noSaveFile"), text("windowTitle"), JOptionPane.INFORMATION_MESSAGE);
                 return;
             }
             int selected = saves.length == 1 ? 0 : chooseSavedGame(saves);
@@ -633,11 +626,10 @@ public class MainFrame extends JFrame implements GameObserver {
         Object[] options = new Object[saves.length];
         for (int index = 0; index < saves.length; index++) {
             SaveManager.SaveMetadata metadata = saves[index];
-            options[index] = metadata.size + "x" + metadata.size + " · "
-                    + difficultyLabel(metadata.difficulty) + " · "
-                    + metadata.moves + " moves · " + (metadata.elapsedMs / 1000) + "s";
+            options[index] = desktopLocale.format("savedGameSummary", metadata.size, metadata.size,
+                    difficultyLabel(metadata.difficulty), metadata.moves, metadata.elapsedMs / 1000);
         }
-        return showOptionDialog("Choose a saved game to continue.", "Saved Games",
+        return showOptionDialog(text("savedGameChooserPrompt"), text("savedGamesTitle"),
                 JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
                 null, options, options[0]);
     }
@@ -658,15 +650,15 @@ public class MainFrame extends JFrame implements GameObserver {
             activeFavoriteId = null;
             activeContinuousChallenge = null;
             continuousDifficulty = null;
-            assistedSolveActive = false;
-            completedAssisted = false;
+            assistedSolveActive = data.assisted;
+            completedAssisted = data.solved && data.assisted;
             completionTracker.reset();
             pendingResultMessage = null;
             solverRunning = false;
             showGame();
-            showMessageDialog("Game loaded!", "SlideDo", JOptionPane.INFORMATION_MESSAGE);
+            showMessageDialog(text("gameLoaded"), text("windowTitle"), JOptionPane.INFORMATION_MESSAGE);
         } else {
-            showMessageDialog("No save file found.", "SlideDo", JOptionPane.INFORMATION_MESSAGE);
+            showMessageDialog(text("noSaveFile"), text("windowTitle"), JOptionPane.INFORMATION_MESSAGE);
         }
     }
 
@@ -686,7 +678,8 @@ public class MainFrame extends JFrame implements GameObserver {
             boolean assisted = assistedSolveActive || (model.isSolved() && completedAssisted);
             return SaveManager.saveDailyGame(activeDailyDateId, model, assisted);
         }
-        return SaveManager.saveGame(model);
+        boolean assisted = assistedSolveActive || (model.isSolved() && completedAssisted);
+        return SaveManager.saveGame(model, assisted);
     }
 
     private void showDailyCalendarDialog() {
@@ -705,7 +698,7 @@ public class MainFrame extends JFrame implements GameObserver {
     private void showDailyCalendarDialog(DailyCalendarMonth calendar) {
         dailyCalendarMonth = calendar.getMonth();
         LocalDate today = LocalDate.now();
-        JDialog dialog = new JDialog(this, "Daily Calendar", true);
+        JDialog dialog = new JDialog(this, text("daily"), true);
         dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
         dialog.setContentPane(createDailyCalendarPanel(dialog, calendar, today));
         dialog.pack();
@@ -719,9 +712,10 @@ public class MainFrame extends JFrame implements GameObserver {
         panel.setBorder(BorderFactory.createEmptyBorder(16, 16, 12, 16));
 
         JPanel heading = new JPanel(new BorderLayout(0, 4));
-        JLabel title = new JLabel("Daily Calendar", SwingConstants.CENTER);
+        JLabel title = new JLabel(text("daily"), SwingConstants.CENTER);
         title.setFont(new Font("SansSerif", Font.BOLD, 22));
-        JLabel subtitle = new JLabel("4x4 Classic · choose today or replay an earlier offline puzzle.",
+        JLabel subtitle = new JLabel(desktopLocale.format("dailyCalendarSubtitle", 4, 4,
+                text("difficultyClassic")),
                 SwingConstants.CENTER);
         subtitle.setFont(new Font("SansSerif", Font.PLAIN, 13));
         heading.add(title, BorderLayout.NORTH);
@@ -730,7 +724,7 @@ public class MainFrame extends JFrame implements GameObserver {
 
         JPanel calendarBody = new JPanel(new BorderLayout(0, 8));
         JPanel monthNavigation = new JPanel(new BorderLayout(8, 0));
-        JButton previous = new JButton("Previous");
+        JButton previous = new JButton(text("previous"));
         previous.setEnabled(true);
         previous.addActionListener(event -> {
             dialog.dispose();
@@ -740,7 +734,7 @@ public class MainFrame extends JFrame implements GameObserver {
         });
         JLabel month = new JLabel(calendar.getMonthId(), SwingConstants.CENTER);
         month.setFont(new Font("SansSerif", Font.BOLD, 16));
-        JButton next = new JButton("Next");
+        JButton next = new JButton(text("next"));
         next.setEnabled(calendar.canGoNext());
         next.addActionListener(event -> {
             dialog.dispose();
@@ -754,7 +748,8 @@ public class MainFrame extends JFrame implements GameObserver {
         calendarBody.add(monthNavigation, BorderLayout.NORTH);
 
         JPanel grid = new JPanel(new GridLayout(0, 7, 4, 4));
-        String[] weekdays = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+        String[] weekdays = {text("weekdaySun"), text("weekdayMon"), text("weekdayTue"),
+                text("weekdayWed"), text("weekdayThu"), text("weekdayFri"), text("weekdaySat")};
         for (String weekday : weekdays) {
             JLabel label = new JLabel(weekday, SwingConstants.CENTER);
             label.setFont(new Font("SansSerif", Font.BOLD, 12));
@@ -766,9 +761,9 @@ public class MainFrame extends JFrame implements GameObserver {
         for (LocalDate date : calendar.getDates()) {
             DesktopDailyContent.DayState state = dailyDayState(date, today);
             JButton day = new JButton(DesktopDailyContent.dayButtonText(date, state));
-            day.setToolTipText(DesktopDailyContent.dayAccessibilityText(date, state));
+            day.setToolTipText(DesktopDailyContent.dayAccessibilityText(date, state, desktopLocale));
             day.getAccessibleContext().setAccessibleName(
-                    DesktopDailyContent.dayAccessibilityText(date, state));
+                    DesktopDailyContent.dayAccessibilityText(date, state, desktopLocale));
             day.setEnabled(state != DesktopDailyContent.DayState.FUTURE);
             day.setForeground(state == DesktopDailyContent.DayState.COMPLETED
                     ? new Color(35, 120, 70) : Color.DARK_GRAY);
@@ -780,7 +775,7 @@ public class MainFrame extends JFrame implements GameObserver {
         }
         calendarBody.add(grid, BorderLayout.CENTER);
 
-        JLabel legend = new JLabel("+ Completed   ~ In progress   ! Missed   · Future",
+        JLabel legend = new JLabel(text("dailyLegend"),
                 SwingConstants.CENTER);
         legend.setFont(new Font("SansSerif", Font.PLAIN, 12));
         calendarBody.add(legend, BorderLayout.SOUTH);
@@ -788,8 +783,8 @@ public class MainFrame extends JFrame implements GameObserver {
 
         JPanel footer = new JPanel(new BorderLayout(8, 0));
         SaveManager.DailyProgress progress = SaveManager.getDailyProgress(today.toString());
-        JLabel streak = new JLabel(DesktopDailyContent.progressSummary(progress));
-        JButton close = new JButton("Back");
+        JLabel streak = new JLabel(DesktopDailyContent.progressSummary(progress, desktopLocale));
+        JButton close = new JButton(text("back"));
         close.addActionListener(event -> dialog.dispose());
         footer.add(streak, BorderLayout.CENTER);
         footer.add(close, BorderLayout.EAST);
@@ -852,64 +847,78 @@ public class MainFrame extends JFrame implements GameObserver {
             return;
         }
         clearMovableHint();
-        if (model.getSize() >= 4 && solver instanceof BfsSolver) {
-            int choice = showConfirmDialog(
-                    "BFS on 4x4 or larger may crash or freeze. Continue?",
-                    "Warning", JOptionPane.YES_NO_OPTION);
-            if (choice != JOptionPane.YES_OPTION)
+        String warningKey = DesktopSolverPolicy.warningKey(solver, model.getSize());
+        if (warningKey != null) {
+            int choice = showConfirmDialog(desktopLocale.text(warningKey),
+                    text("warning"), JOptionPane.YES_NO_OPTION);
+            if (choice != JOptionPane.YES_OPTION) {
                 return;
-        }
-        if (model.getSize() > 4 && solver instanceof AStarSolver) {
-            int choice = showConfirmDialog(
-                    "A* on 5x5 can be very slow or memory-heavy. Continue?",
-                    "Warning", JOptionPane.YES_NO_OPTION);
-            if (choice != JOptionPane.YES_OPTION)
-                return;
-        }
-        if (model.getSize() > 4 && solver instanceof IdaStarSolver) {
-            int choice = showConfirmDialog(
-                    "IDA* on 5x5 can take a long time. Continue?",
-                    "Warning", JOptionPane.YES_NO_OPTION);
-            if (choice != JOptionPane.YES_OPTION)
-                return;
+            }
         }
 
         solverRunning = true;
         boardPanel.setInputLocked(true);
         syncGameTimerState();
-        new SwingWorker<List<Direction>, Void>() {
+        setTitle(text("solver") + " — " + solver.getName());
+        final GameModel solveModel = model;
+        solverWorker = new SwingWorker<List<Direction>, Void>() {
             @Override
             protected List<Direction> doInBackground() throws Exception {
-                setTitle("Solving with " + solver.getName() + "...");
-                return solver.solve(model);
+                return solver.solve(solveModel);
             }
 
             @Override
             protected void done() {
                 try {
+                    if (isCancelled()) {
+                        showMessageDialog(desktopLocale.text("solverCancelled"),
+                                text("solver"), JOptionPane.INFORMATION_MESSAGE);
+                        return;
+                    }
                     List<Direction> solution = get();
                     if (solution != null) {
                         int choice = showConfirmDialog(
-                            "Solution found: " + solution.size() + " moves.\nAnimate it now?",
-                                "Solution", JOptionPane.YES_NO_OPTION);
+                                desktopLocale.format("solverFound", solution.size()),
+                                text("solver"), JOptionPane.YES_NO_OPTION);
                         if (choice == JOptionPane.YES_OPTION) {
                             assistedSolveActive = true;
                             boardPanel.enqueueMoves(solution);
                         }
                     } else {
-                        showMessageDialog("No solution found or timed out.",
-                                "Solver", JOptionPane.INFORMATION_MESSAGE);
+                        showMessageDialog(desktopLocale.text("solverNoSolution"),
+                                text("solver"), JOptionPane.INFORMATION_MESSAGE);
                     }
-                } catch (Exception e) {
-                    e.printStackTrace();
+                } catch (java.util.concurrent.CancellationException ignored) {
+                    showMessageDialog(desktopLocale.text("solverCancelled"),
+                            text("solver"), JOptionPane.INFORMATION_MESSAGE);
+                } catch (InterruptedException exception) {
+                    Thread.currentThread().interrupt();
+                    showMessageDialog(desktopLocale.text("solverCancelled"),
+                            text("solver"), JOptionPane.INFORMATION_MESSAGE);
+                } catch (java.util.concurrent.ExecutionException exception) {
+                    showMessageDialog(desktopLocale.text("solverError"),
+                            text("solver"), JOptionPane.WARNING_MESSAGE);
                 } finally {
                     boardPanel.setInputLocked(false);
                     solverRunning = false;
+                    solverWorker = null;
                     syncGameTimerState();
-                    setTitle("Number Klotski - Java Edition");
+                    setTitle(text("windowTitle"));
                 }
             }
-        }.execute();
+        };
+        solverWorker.execute();
+    }
+
+    /**
+     * Requests cooperative solver cancellation. The worker owns only a copied
+     * search state; it never mutates the live GameModel until playback is
+     * explicitly accepted on the EDT.
+     */
+    private void cancelSolver() {
+        if (solverWorker != null && !solverWorker.isDone()) {
+            solverWorker.cancel(true);
+        }
     }
 
     private void showMovableTiles() {
@@ -940,8 +949,38 @@ public class MainFrame extends JFrame implements GameObserver {
         }
     }
 
+    /**
+     * Shows the shared deterministic strategic suggestion without moving the
+     * model. Requesting the hint immediately marks this run assisted and saves
+     * the additive marker before the player can continue.
+     */
+    private void showStrategicHint() {
+        if (!showingGame || solverRunning || boardPanel.isBusy()
+                || !model.isGameRunning() || model.isSolved()) {
+            return;
+        }
+        StrategicHint.Hint hint = StrategicHint.choose(model);
+        if (hint == null) {
+            showMessageDialog(desktopLocale.text("strategicHintUnavailable"),
+                    desktopLocale.text("strategicHint"), JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        boolean[][] highlights = new boolean[model.getSize()][model.getSize()];
+        highlights[hint.getRow()][hint.getCol()] = true;
+        strategicHintActive = true;
+        strategicHintTile = hint.getTile();
+        strategicHintDirection = hint.getDirection();
+        assistedSolveActive = true;
+        saveCurrentGame();
+        boardPanel.setHighlightedCells(highlights);
+        updateStatus();
+    }
+
     private void clearMovableHint() {
         movableHintActive = false;
+        strategicHintActive = false;
+        strategicHintTile = -1;
+        strategicHintDirection = null;
         if (boardPanel != null) {
             boardPanel.clearHighlights();
         }
@@ -973,8 +1012,8 @@ public class MainFrame extends JFrame implements GameObserver {
         body.setFont(new Font("SansSerif", Font.PLAIN, 15));
         body.setRows(5);
         body.setColumns(34);
-        body.getAccessibleContext().setAccessibleName("Beginner guide text");
-        body.getAccessibleContext().setAccessibleDescription("Current learning page.");
+        body.getAccessibleContext().setAccessibleName(text("beginnerGuideTextName"));
+        body.getAccessibleContext().setAccessibleDescription(text("learningPageDescription"));
         JLabel progress = new JLabel("", SwingConstants.CENTER);
         JPanel footer = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 0));
         JButton back = new JButton(text("back"));
@@ -997,11 +1036,11 @@ public class MainFrame extends JFrame implements GameObserver {
         content.add(bottom, BorderLayout.SOUTH);
         dialog.setContentPane(content);
         dialog.getAccessibleContext().setAccessibleName(text("beginnerGuide"));
-        setAccessibleDescription(back, text("back"), "Show the previous learning page.");
-        setAccessibleDescription(next, text("next"), "Show the next learning page.");
-        setAccessibleDescription(skip, text("skip"), "Close the guide and mark onboarding as seen.");
-        setAccessibleDescription(practice, text("practiceTutorial"), "Open the isolated practice tutorial.");
-        setAccessibleDescription(start, text("start"), "Start a normal 3x3 puzzle.");
+        setAccessibleDescription(back, text("back"), text("learningPreviousDescription"));
+        setAccessibleDescription(next, text("next"), text("learningNextDescription"));
+        setAccessibleDescription(skip, text("skip"), text("learningSkipDescription"));
+        setAccessibleDescription(practice, text("practiceTutorial"), text("learningPracticeDescription"));
+        setAccessibleDescription(start, text("start"), text("learningStartDescription"));
         dialog.getRootPane().setDefaultButton(next);
 
         int[] index = {0};
@@ -1065,7 +1104,7 @@ public class MainFrame extends JFrame implements GameObserver {
         tutorialBoard.setTheme(desktopTheme);
         tutorialBoard.setReducedMotion(reducedMotionEnabled);
         tutorialBoard.setPreferredSize(new Dimension(420, 420));
-        tutorialBoard.getAccessibleContext().setAccessibleName("Practice tutorial board");
+        tutorialBoard.getAccessibleContext().setAccessibleName(text("practiceBoardName"));
         tutorialBoard.setWinDialogHandler((parent, moves, timeMs) -> { });
 
         JDialog dialog = new JDialog(this, text("practiceTutorial"), true);
@@ -1090,18 +1129,18 @@ public class MainFrame extends JFrame implements GameObserver {
         panel.add(south, BorderLayout.SOUTH);
         dialog.setContentPane(panel);
         dialog.getAccessibleContext().setAccessibleName(text("practiceTutorial"));
-        setAccessibleDescription(reset, text("resetLesson"), "Restart the isolated tutorial board.");
-        setAccessibleDescription(start, text("startTutorialPuzzle"), "Leave the tutorial and start a normal 3x3 puzzle.");
-        setAccessibleDescription(close, text("close"), "Close the practice tutorial.");
+        setAccessibleDescription(reset, text("resetLesson"), text("tutorialResetDescription"));
+        setAccessibleDescription(start, text("startTutorialPuzzle"), text("tutorialStartDescription"));
+        setAccessibleDescription(close, text("close"), text("tutorialCloseDescription"));
         dialog.getRootPane().setDefaultButton(close);
 
         Runnable refresh = () -> {
             instruction.setText(DesktopLearningContent.practiceTutorial(desktopLocale)
                     .split("\\n", 2)[0]);
             String step = switch (progress.getStep()) {
-                case FIRST_MOVE -> "1 / 2: make an adjacent move";
-                case WHOLE_LINE -> "2 / 2: try a farther aligned tile";
-                case COMPLETE -> "Complete: you can start a normal puzzle.";
+                case FIRST_MOVE -> text("tutorialFirstMove");
+                case WHOLE_LINE -> text("tutorialWholeLine");
+                case COMPLETE -> text("tutorialComplete");
             };
             state.setText(step);
         };
@@ -1154,8 +1193,8 @@ public class MainFrame extends JFrame implements GameObserver {
                 stats[row][column] = SaveManager.getCompletionStats(size, difficulties[column]);
             }
         }
-        String message = DesktopHomeContent.recordsSummary(records, stats);
-        showMessageDialog(message, "Records", JOptionPane.INFORMATION_MESSAGE);
+        String message = DesktopHomeContent.recordsSummary(records, stats, desktopLocale);
+        showMessageDialog(message, text("records"), JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void showFavoritesDialog() {
@@ -1168,18 +1207,18 @@ public class MainFrame extends JFrame implements GameObserver {
         Object[] options = new Object[favorites.length + (canSaveCurrent ? 1 : 0)];
         int offset = canSaveCurrent ? 1 : 0;
         if (canSaveCurrent) {
-            options[0] = "Save current puzzle as Favorite";
+            options[0] = text("saveCurrentFavorite");
         }
         for (int index = 0; index < favorites.length; index++) {
-            options[index + offset] = DesktopFavoriteContent.optionLabel(favorites[index]);
+            options[index + offset] = DesktopFavoriteContent.optionLabel(favorites[index], desktopLocale);
         }
         if (options.length == 0) {
-            showMessageDialog("No favorites saved yet. Start a normal puzzle to save one.\n\n"
-                    + DesktopFavoriteContent.practiceSummary(), "Favorites",
+            showMessageDialog(desktopLocale.format("noFavorites",
+                    DesktopFavoriteContent.practiceSummary(desktopLocale)), text("favorites"),
                     JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        int choice = showOptionDialog(DesktopFavoriteContent.practiceSummary(), "Favorites",
+        int choice = showOptionDialog(DesktopFavoriteContent.practiceSummary(desktopLocale), text("favorites"),
                 JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE, null,
                 options, options[0]);
         if (canSaveCurrent && choice == 0) {
@@ -1190,24 +1229,25 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void saveCurrentAsFavorite() {
-        String defaultLabel = model == null ? "Favorite" : model.getSize() + "x"
+        String defaultLabel = model == null ? text("favoriteDefaultLabel") : model.getSize() + "x"
                 + model.getSize() + " " + difficultyLabel(model.getDifficulty());
         String label = runWithPausedTimer(() -> JOptionPane.showInputDialog(this,
-                "Name this exact starting puzzle (up to 40 characters).",
+                text("favoriteNamePrompt"),
                 defaultLabel));
         if (label == null) {
             return;
         }
         SaveManager.FavoritePuzzle saved = SaveManager.saveFavorite(model, label);
-        showMessageDialog(saved == null ? "Favorite could not be saved."
-                        : "Favorite saved: " + saved.label,
-                "Favorites", JOptionPane.INFORMATION_MESSAGE);
+        showMessageDialog(saved == null ? text("favoriteSaveFailure")
+                        : desktopLocale.format("favoriteSaveSuccess", saved.label),
+                text("favorites"), JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void showFavoriteActions(SaveManager.FavoritePuzzle favorite) {
-        Object[] options = {"Replay Favorite", "Rename", "Delete", "Cancel"};
-        int choice = showOptionDialog(DesktopFavoriteContent.optionLabel(favorite) + "\n\n"
-                        + DesktopFavoriteContent.practiceSummary(), "Favorite",
+        Object[] options = {text("favoriteReplay"), text("favoriteRename"),
+                text("favoriteDelete"), text("favoriteCancel")};
+        int choice = showOptionDialog(DesktopFavoriteContent.optionLabel(favorite, desktopLocale) + "\n\n"
+                        + DesktopFavoriteContent.practiceSummary(desktopLocale), text("favorites"),
                 JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE, null,
                 options, options[0]);
         if (choice == 0) {
@@ -1215,8 +1255,8 @@ public class MainFrame extends JFrame implements GameObserver {
         } else if (choice == 1) {
             renameFavorite(favorite);
         } else if (choice == 2) {
-            int confirm = showConfirmDialog("Delete this favorite and its practice save?",
-                    "Delete Favorite", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+            int confirm = showConfirmDialog(text("favoriteDeletePrompt"),
+                    text("favoriteDeleteTitle"), JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
             if (confirm == JOptionPane.YES_OPTION) {
                 SaveManager.removeFavorite(favorite.id);
             }
@@ -1225,9 +1265,9 @@ public class MainFrame extends JFrame implements GameObserver {
 
     private void renameFavorite(SaveManager.FavoritePuzzle favorite) {
         String label = runWithPausedTimer(() -> JOptionPane.showInputDialog(this,
-                "New favorite label (up to 40 characters).", favorite.label));
+                text("favoriteRenamePrompt"), favorite.label));
         if (label != null && !SaveManager.renameFavorite(favorite.id, label)) {
-            showMessageDialog("Favorite label was not changed.", "Favorites",
+            showMessageDialog(text("favoriteRenameFailure"), text("favorites"),
                     JOptionPane.WARNING_MESSAGE);
         }
     }
@@ -1239,15 +1279,19 @@ public class MainFrame extends JFrame implements GameObserver {
         autosaveCurrentGameIfSafe();
         savedGamesReset = false;
         clearMovableHint();
+        SaveManager.SaveData saved = SaveManager.loadFavoriteRun(favorite.id);
         model.removeObserver(this);
-        model = favorite.createGame();
+        model = saved == null || saved.solved ? favorite.createGame() : new GameModel(saved.size);
         model.addObserver(this);
         boardPanel.setModel(model);
+        if (saved != null && !saved.solved) {
+            model.loadState(saved);
+        }
         activeDailyDateId = null;
         activeFavoriteId = favorite.id;
         activeContinuousChallenge = null;
         continuousDifficulty = null;
-        assistedSolveActive = false;
+        assistedSolveActive = saved != null && !saved.solved && saved.assisted;
         completedAssisted = false;
         completionTracker.reset();
         pendingResultMessage = null;
@@ -1261,13 +1305,13 @@ public class MainFrame extends JFrame implements GameObserver {
         }
         int size = SaveManager.getTrendSize();
         PuzzleDifficulty difficulty = SaveManager.getTrendDifficulty();
-        Object[] options = {"Change Scope", "Set Weekly Goal", "Close"};
+        Object[] options = {text("trendChangeScope"), text("trendSetGoal"), text("trendClose")};
         int choice = showOptionDialog(
                 DesktopTrendContent.summary(size, difficulty,
                         SaveManager.getPersonalTrend(size, difficulty),
                         SaveManager.getWeeklyGoalProgress(LocalDate.now(),
-                                java.time.ZoneId.systemDefault(), size, difficulty)),
-                "Trends / Weekly Goal", JOptionPane.DEFAULT_OPTION,
+                                java.time.ZoneId.systemDefault(), size, difficulty), desktopLocale),
+                text("trends"), JOptionPane.DEFAULT_OPTION,
                 JOptionPane.INFORMATION_MESSAGE, null, options, options[0]);
         if (choice == 0) {
             showTrendScopeDialog();
@@ -1283,15 +1327,15 @@ public class MainFrame extends JFrame implements GameObserver {
         for (int size = 3; size <= 5; size++) {
             for (int index = 0; index < difficulties.length; index++) {
                 options[(size - 3) * difficulties.length + index] =
-                        DesktopTrendContent.scopeLabel(size, difficulties[index]);
+                        DesktopTrendContent.scopeLabel(size, difficulties[index], desktopLocale);
                 if (size == SaveManager.getTrendSize()
                         && difficulties[index] == SaveManager.getTrendDifficulty()) {
                     selected = (size - 3) * difficulties.length + index;
                 }
             }
         }
-        int choice = showOptionDialog("Choose the size and difficulty used by Trends and Weekly Goal.",
-                "Trend Scope", JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
+        int choice = showOptionDialog(text("trendScopePrompt"), text("trendScopeTitle"),
+                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
                 null, options, options[selected]);
         if (choice >= 0) {
             SaveManager.setTrendSize(3 + choice / difficulties.length);
@@ -1302,7 +1346,7 @@ public class MainFrame extends JFrame implements GameObserver {
 
     private void showWeeklyGoalDialog() {
         String value = runWithPausedTimer(() -> JOptionPane.showInputDialog(this,
-                "Weekly player-completion target (1-50).",
+                text("weeklyGoalPrompt"),
                 String.valueOf(SaveManager.getWeeklyGoalTarget())));
         if (value == null) {
             return;
@@ -1313,8 +1357,7 @@ public class MainFrame extends JFrame implements GameObserver {
             }
             showTrendsDialog();
         } catch (NumberFormatException exception) {
-            showMessageDialog("Weekly goal must be a whole number from 1 through 50.",
-                    "Weekly Goal", JOptionPane.WARNING_MESSAGE);
+            showMessageDialog(text("weeklyGoalInvalid"), text("weeklyGoalTitle"), JOptionPane.WARNING_MESSAGE);
         }
     }
 
@@ -1333,15 +1376,14 @@ public class MainFrame extends JFrame implements GameObserver {
         int offset = 0;
         if (resumable) {
             options[0] = DesktopContinuousContent.optionLabel(saved.challenge, saved.size,
-                    saved.difficulty);
-            options[1] = "End saved challenge";
+                    saved.difficulty, desktopLocale);
+            options[1] = text("continuousEndSaved");
             offset = 2;
         }
         for (int index = 0; index < targets.length; index++) {
-            options[index + offset] = "Start " + targets[index] + " puzzles";
+            options[index + offset] = desktopLocale.format("continuousStartPuzzles", targets[index]);
         }
-        int choice = showOptionDialog("One fixed size/difficulty scope; progress is isolated from normal, "
-                        + "Daily, and Favorite Practice saves.", "Continuous Challenge",
+        int choice = showOptionDialog(text("continuousSetupDescription"), text("continuousTitle"),
                 JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null,
                 options, options[0]);
         if (choice < 0) {
@@ -1363,7 +1405,7 @@ public class MainFrame extends JFrame implements GameObserver {
         for (int size = 3; size <= 5; size++) {
             for (int index = 0; index < difficulties.length; index++) {
                 options[(size - 3) * difficulties.length + index] =
-                        DesktopTrendContent.scopeLabel(size, difficulties[index]);
+                        DesktopTrendContent.scopeLabel(size, difficulties[index], desktopLocale);
                 if (size == (model == null ? 4 : model.getSize())
                         && difficulties[index] == (model == null
                                 ? PuzzleDifficulty.CLASSIC : model.getDifficulty())) {
@@ -1371,8 +1413,8 @@ public class MainFrame extends JFrame implements GameObserver {
                 }
             }
         }
-        int choice = showOptionDialog("Choose the fixed scope for this challenge.",
-                "Continuous Scope", JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
+        int choice = showOptionDialog(text("continuousScopePrompt"), text("continuousScopeTitle"),
+                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
                 null, options, options[selected]);
         if (choice >= 0) {
             startContinuousChallenge(3 + choice / difficulties.length,
@@ -1478,11 +1520,11 @@ public class MainFrame extends JFrame implements GameObserver {
                 saveCurrentGame();
                 String message = pendingResultMessage == null
                         ? DesktopResultContent.favoritePracticeMessage(
-                                model.getSize(), model.getDifficulty(), moves, timeMs)
+                                desktopLocale, model.getSize(), model.getDifficulty(), moves, timeMs)
                         : pendingResultMessage;
                 pendingResultMessage = null;
-                Object[] options = {"Replay Favorite", "Favorites", "Home"};
-                int choice = showOptionDialog(message, "Favorite Practice",
+                Object[] options = {text("favoriteReplay"), text("favorites"), text("home")};
+                int choice = showOptionDialog(message, text("favoriteResultsTitle"),
                         JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE,
                         null, options, options[0]);
                 if (choice == 0) {
@@ -1503,8 +1545,8 @@ public class MainFrame extends JFrame implements GameObserver {
                 : pendingResultMessage;
         pendingResultMessage = null;
 
-        Object[] options = {"Replay Puzzle", "New Size", "Home"};
-        int choice = showOptionDialog(message, "Results",
+        Object[] options = {text("replayPuzzle"), text("newSize"), text("home")};
+        int choice = showOptionDialog(message, text("resultsTitle"),
                 JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE,
                 null, options, options[0]);
 
@@ -1520,12 +1562,13 @@ public class MainFrame extends JFrame implements GameObserver {
             saveCurrentGame();
         }
         String message = DesktopContinuousContent.result(activeContinuousChallenge,
-                continuousSize, continuousDifficulty) + "\n\nLast puzzle: "
-                + DesktopResultContent.formatMoves(moves) + " · " + (timeMs / 1000) + "s";
+                continuousSize, continuousDifficulty, desktopLocale) + "\n\n"
+                + desktopLocale.format("lastPuzzleSummary",
+                        DesktopResultContent.formatMoves(moves, desktopLocale), timeMs / 1000);
         Object[] options = activeContinuousChallenge.isComplete()
-                ? new Object[] {"End Challenge", "Home"}
-                : new Object[] {"Next Puzzle", "End Challenge", "Home"};
-        int choice = showOptionDialog(message, "Continuous Results",
+                ? new Object[] {text("endChallenge"), text("home")}
+                : new Object[] {text("nextPuzzle"), text("endChallenge"), text("home")};
+        int choice = showOptionDialog(message, text("continuousResultsTitle"),
                 JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE,
                 null, options, options[0]);
         if (!activeContinuousChallenge.isComplete() && choice == 0) {
@@ -1544,12 +1587,12 @@ public class MainFrame extends JFrame implements GameObserver {
         languageBox.setSelectedItem(desktopLocale.getTag());
         JComboBox<String> themeBox = new JComboBox<>(new String[] {"midnight", "ocean"});
         themeBox.setSelectedItem(desktopTheme.getId());
-        setAccessibleDescription(languageBox, text("language"), "Choose the desktop language.");
-        setAccessibleDescription(themeBox, text("theme"), "Choose the desktop color theme.");
+        setAccessibleDescription(languageBox, text("language"), text("chooseLanguageDescription"));
+        setAccessibleDescription(themeBox, text("theme"), text("chooseThemeDescription"));
         setAccessibleDescription(reducedMotionBox, text("reduceMotion"),
-                "Disable board transition animation without changing puzzle rules.");
+                text("reducedMotionDescription"));
         setAccessibleDescription(soundBox, text("sound"),
-                "Enable or disable desktop move and completion feedback.");
+                text("soundDescription"));
 
         JPanel choices = new JPanel(new GridLayout(0, 2, 8, 8));
         JLabel languageLabel = new JLabel(text("language"));
@@ -1565,27 +1608,27 @@ public class MainFrame extends JFrame implements GameObserver {
 
         JButton resetSaved = new JButton(text("resetSaved"));
         setAccessibleDescription(resetSaved, text("resetSaved"),
-                "Delete saved-game domains after explicit confirmation.");
+                text("resetSavedDescription"));
         resetSaved.addActionListener(event -> {
             int answer = showConfirmDialog(text("resetSavedConfirm"), text("resetSaved"),
                     JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
             if (answer == JOptionPane.YES_OPTION) {
                 boolean cleared = SaveManager.clearSavedGames();
                 savedGamesReset = true;
-                showMessageDialog(cleared ? "Saved-game domains cleared." : "Some saved-game files could not be cleared.",
+                showMessageDialog(cleared ? text("savedGamesCleared") : text("savedGamesClearFailure"),
                         text("resetSaved"), cleared ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
                 updateHomeSaveSummary();
             }
         });
         JButton resetRecords = new JButton(text("resetRecords"));
         setAccessibleDescription(resetRecords, text("resetRecords"),
-                "Delete records, completion statistics, and daily streak state after explicit confirmation.");
+                text("resetRecordsDescription"));
         resetRecords.addActionListener(event -> {
             int answer = showConfirmDialog(text("resetRecordsConfirm"), text("resetRecords"),
                     JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
             if (answer == JOptionPane.YES_OPTION) {
                 boolean cleared = SaveManager.clearRecords();
-                showMessageDialog(cleared ? "Records and statistics cleared." : "Some record files could not be cleared.",
+                showMessageDialog(cleared ? text("recordsCleared") : text("recordsClearFailure"),
                         text("resetRecords"), cleared ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.WARNING_MESSAGE);
             }
         });
@@ -1594,14 +1637,13 @@ public class MainFrame extends JFrame implements GameObserver {
         resets.add(resetRecords);
 
         JPanel panel = new JPanel(new BorderLayout(0, 10));
-        JLabel description = new JLabel(DesktopHomeContent.preferencesDescription());
-        description.getAccessibleContext().setAccessibleName("Preferences description");
+        JLabel description = new JLabel(DesktopHomeContent.preferencesDescription(desktopLocale));
+        description.getAccessibleContext().setAccessibleName(text("preferences"));
         panel.add(description, BorderLayout.NORTH);
         panel.add(choices, BorderLayout.CENTER);
         panel.add(resets, BorderLayout.SOUTH);
         panel.getAccessibleContext().setAccessibleName(text("preferences"));
-        panel.getAccessibleContext().setAccessibleDescription(
-                "Choose language, theme, sound, reduced motion, or reset one persisted domain.");
+        panel.getAccessibleContext().setAccessibleDescription(text("preferencesAccessibleDescription"));
 
         int result = showConfirmDialog(panel, text("preferences"),
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
@@ -1620,6 +1662,7 @@ public class MainFrame extends JFrame implements GameObserver {
             desktopTheme = DesktopTheme.fromId(selectedTheme);
             boardPanel.setReducedMotion(reducedMotionEnabled);
             boardPanel.setTheme(desktopTheme);
+            boardPanel.setLocale(desktopLocale);
             applyStatusTheme();
             if (changed) {
                 rebuildLocalizedWindow();
@@ -1692,12 +1735,12 @@ public class MainFrame extends JFrame implements GameObserver {
         }
         if (saves.length == 1) {
             SaveManager.SaveMetadata metadata = saves[0];
-            continueSummaryLabel.setText("Saved: " + metadata.size + "x" + metadata.size
-                    + " · " + difficultyLabel(metadata.difficulty) + " · "
-                    + metadata.moves + " moves · " + (metadata.elapsedMs / 1000) + "s");
+            continueSummaryLabel.setText(desktopLocale.format("savedGameSummary", metadata.size,
+                    metadata.size, difficultyLabel(metadata.difficulty), metadata.moves,
+                    metadata.elapsedMs / 1000));
             return;
         }
-        continueSummaryLabel.setText(saves.length + " independent saved games available.");
+        continueSummaryLabel.setText(desktopLocale.format("homeIndependentSaves", saves.length));
     }
 
     private boolean autosaveCurrentGameIfSafe() {
@@ -1774,16 +1817,27 @@ public class MainFrame extends JFrame implements GameObserver {
         if (showingGame && model.isGameRunning()) {
             long elapsed = model.getElapsedTime() / 1000;
             SaveManager.BestRecord best = SaveManager.getBestRecord(model.getSize(), model.getDifficulty());
-            String bestText = best == null ? "Best: --" : "Best: " + best.format();
-            String hintText = movableHintActive ? " | Hint: highlighted tiles can slide into the empty cell" : "";
-            String motionText = reducedMotionEnabled ? " | Reduced motion" : "";
-            String dailyText = activeDailyDateId == null ? "" : " | Daily: " + activeDailyDateId;
-            String favoriteText = activeFavoriteId == null ? "" : " | Favorite Practice";
+            String bestText = desktopLocale.format("statusBest", best == null
+                    ? desktopLocale.text("bestNone")
+                    : desktopLocale.format("recordFormat", best.moves, best.timeMs / 1000));
+            String separator = text("statusSeparator");
+            String hintText = movableHintActive && !strategicHintActive
+                    ? separator + text("showMovable") : "";
+            if (strategicHintActive) {
+                hintText = separator + desktopLocale.format("strategicHintStatus",
+                        strategicHintTile, desktopLocale.text("direction."
+                                + strategicHintDirection.name().toLowerCase()));
+            }
+            String motionText = reducedMotionEnabled ? text("statusReducedMotion") : "";
+            String dailyText = activeDailyDateId == null ? ""
+                    : desktopLocale.format("statusDaily", activeDailyDateId);
+            String favoriteText = activeFavoriteId == null ? "" : text("statusFavorite");
             String continuousText = activeContinuousChallenge == null ? ""
-                    : " | " + DesktopContinuousContent.status(activeContinuousChallenge);
-            statusLabel.setText(String.format("Moves: %d | Time: %ds | Difficulty: %s | %s%s%s%s%s%s",
-                    model.getMoveCount(), elapsed, difficultyLabel(model.getDifficulty()),
-                    bestText, hintText, motionText, dailyText, favoriteText, continuousText));
+                    : separator + DesktopContinuousContent.status(activeContinuousChallenge, desktopLocale);
+            String assistedText = assistedSolveActive ? separator + text("assistedRun") : "";
+            statusLabel.setText(desktopLocale.format("statusRunning", model.getMoveCount(), elapsed,
+                    difficultyLabel(model.getDifficulty()), bestText, hintText, motionText,
+                    dailyText, favoriteText, continuousText, assistedText));
         }
     }
 
@@ -1815,10 +1869,10 @@ public class MainFrame extends JFrame implements GameObserver {
             assistedSolveActive = false;
             completedAssisted = assisted;
             pendingResultMessage = DesktopResultContent.favoritePracticeMessage(
-                    size, difficulty, moves, timeMs);
+                    desktopLocale, size, difficulty, moves, timeMs);
             saveCurrentGame();
-            statusLabel.setText(String.format("Favorite solved! Moves: %d | Time: %ds | Difficulty: %s",
-                    moves, timeMs / 1000, difficultyLabel(difficulty)));
+            statusLabel.setText(desktopLocale.format("statusFavoriteSolved", moves, timeMs / 1000,
+                    difficultyLabel(difficulty)));
             return;
         }
         SaveManager.recordCompletion(completionTracker.runId(), size, difficulty,
@@ -1840,18 +1894,19 @@ public class MainFrame extends JFrame implements GameObserver {
         assistedSolveActive = false;
         completedAssisted = assisted;
         pendingResultMessage = DesktopResultContent.resultsMessage(
-                size, difficulty, moves, timeMs,
+                desktopLocale, size, difficulty, moves, timeMs,
                 assisted, newBest, previousBest, best);
         if (activeDailyDateId != null) {
             pendingResultMessage += "\n" + DesktopDailyContent.progressSummary(
-                    SaveManager.getDailyProgress(LocalDate.now().toString()));
+                    SaveManager.getDailyProgress(LocalDate.now().toString()), desktopLocale);
         }
         if (activeContinuousChallenge != null) {
             saveCurrentGame();
         }
-        String bestText = best == null ? "--" : best.format();
-        statusLabel.setText(String.format("Solved! Moves: %d | Time: %ds | Difficulty: %s | Best: %s",
-                moves, timeMs / 1000, difficultyLabel(difficulty), bestText));
+        String bestText = best == null ? desktopLocale.text("bestNone")
+                : desktopLocale.format("recordFormat", best.moves, best.timeMs / 1000);
+        statusLabel.setText(desktopLocale.format("statusSolved", moves, timeMs / 1000,
+                difficultyLabel(difficulty), bestText));
         // BoardPanel invokes the Results dialog after the final animation ends.
     }
 

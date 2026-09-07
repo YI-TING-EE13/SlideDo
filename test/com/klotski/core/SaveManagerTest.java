@@ -73,6 +73,138 @@ class SaveManagerTest {
     }
 
     @Test
+    void assistedNormalSaveRoundTripsAndUnsolvedLegacyPayloadRemainsEligible() throws Exception {
+        GameModel model = new GameModel(3);
+        model.loadState(new int[][] {{1, 2, 3}, {4, 0, 6}, {7, 5, 8}}, 0);
+        File saveFile = new File(tempDir, "assisted.json");
+        File legacyFile = new File(tempDir, "legacy.dat");
+
+        assertTrue(SaveManager.saveGame(model, saveFile, true));
+        SaveManager.SaveData saved = SaveManager.loadGame(saveFile, legacyFile);
+        assertTrue(saved.assisted);
+
+        GameModel unassistedModel = new GameModel(3);
+        unassistedModel.loadState(new int[][] {{1, 2, 3}, {4, 0, 6}, {7, 5, 8}}, 0);
+        File unassistedFile = new File(tempDir, "unassisted-v4.json");
+        assertTrue(SaveManager.saveGame(unassistedModel, unassistedFile, false));
+        assertFalse(SaveManager.loadGame(unassistedFile, legacyFile).assisted,
+                "an explicit v4 false marker remains player-eligible");
+
+        Files.writeString(saveFile.toPath(),
+                "{\"version\":3,\"size\":3,\"grid\":[[1,2,3],[4,0,6],[7,5,8]]}");
+        SaveManager.SaveData legacy = SaveManager.loadGame(saveFile, legacyFile);
+        assertNotNull(legacy);
+        assertFalse(legacy.assisted, "an unsolved legacy run has no ambiguous completion provenance");
+    }
+
+    @Test
+    void solvedPreV4NormalSaveFailsClosedWithoutRewritingSource() throws Exception {
+        File saveFile = new File(tempDir, "legacy-solved.json");
+        File legacyFile = new File(tempDir, "missing.dat");
+        String legacyJson = "{\n"
+                + "  \"version\": 3,\n"
+                + "  \"size\": 3,\n"
+                + "  \"moveCount\": 12,\n"
+                + "  \"elapsedTime\": 4200,\n"
+                + "  \"solved\": true,\n"
+                + "  \"grid\": [[1,2,3],[4,5,6],[7,8,0]],\n"
+                + "  \"initialGrid\": [[1,2,3],[4,5,6],[7,0,8]]\n"
+                + "}\n";
+        Files.writeString(saveFile.toPath(), legacyJson, StandardCharsets.UTF_8);
+
+        SaveManager.SaveData loaded = SaveManager.loadGame(saveFile, legacyFile);
+
+        assertNotNull(loaded);
+        assertTrue(loaded.solved);
+        assertTrue(loaded.assisted,
+                "a solved pre-v4 normal save has ambiguous assisted provenance and must fail closed");
+        assertEquals(legacyJson, Files.readString(saveFile.toPath(), StandardCharsets.UTF_8),
+                "eligibility qualification must not rewrite the source save");
+    }
+
+    @Test
+    void serializedSolvedPreV4NormalSaveAlsoFailsClosed() throws Exception {
+        File saveFile = new File(tempDir, "legacy-solved.dat");
+        File missingJson = new File(tempDir, "missing.json");
+        SaveManager.SaveData payload = new SaveManager.SaveData();
+        payload.size = 3;
+        payload.grid = new int[][] {{1, 2, 3}, {4, 5, 6}, {7, 8, 0}};
+        payload.initialGrid = new int[][] {{1, 2, 3}, {4, 5, 6}, {7, 0, 8}};
+        payload.solved = true;
+        payload.active = false;
+        try (ObjectOutputStream output = new ObjectOutputStream(new FileOutputStream(saveFile))) {
+            output.writeObject(payload);
+        }
+
+        SaveManager.SaveData loaded = SaveManager.loadGame(missingJson, saveFile);
+        assertNotNull(loaded);
+        assertTrue(loaded.solved);
+        assertTrue(loaded.assisted);
+    }
+
+    @Test
+    void sidecarAssistanceMarkersRemainAuthoritativeForIsolatedNamespaces() throws Exception {
+        String oldValue = System.getProperty(SaveManager.DATA_DIR_PROPERTY);
+        System.setProperty(SaveManager.DATA_DIR_PROPERTY, tempDir.getAbsolutePath());
+        try {
+            LocalDate date = LocalDate.now().minusDays(3);
+            GameModel daily = DailyChallenge.forDate(date).createGame();
+            assertTrue(SaveManager.saveDailyGame(date.toString(), daily, true));
+            removeAssistedField(new File(tempDir, "klotski_daily_" + date + ".json"));
+            assertFalse(SaveManager.loadDailyGame(date.toString()).assisted);
+            assertTrue(SaveManager.isDailyGameAssisted(date.toString()));
+
+            GameModel favoriteModel = new GameModel(3);
+            favoriteModel.scramble(PuzzleDifficulty.CLASSIC, 81L);
+            SaveManager.FavoritePuzzle favorite = SaveManager.saveFavorite(favoriteModel, "sidecar", 81L);
+            assertNotNull(favorite);
+            assertTrue(SaveManager.saveFavoriteRun(favorite.id, favorite.createGame(), true));
+            removeAssistedField(new File(tempDir, "klotski_favorite_" + favorite.id + ".json"));
+            assertFalse(SaveManager.loadFavoriteRun(favorite.id).assisted);
+            assertTrue(SaveManager.isFavoriteRunAssisted(favorite.id));
+
+            ContinuousChallenge challenge = ContinuousChallenge.start(3);
+            GameModel continuous = new GameModel(3);
+            continuous.scramble(PuzzleDifficulty.CLASSIC, 82L);
+            assertTrue(SaveManager.saveContinuousGame(continuous, challenge, true));
+            removeAssistedField(new File(tempDir, "klotski_continuous_current.json"));
+            SaveManager.ContinuousGame restored = SaveManager.loadContinuousGame();
+            assertNotNull(restored);
+            assertTrue(restored.assisted,
+                    "continuous metadata and sidecar remain authoritative without payload field");
+        } finally {
+            restoreDataDirectoryProperty(oldValue);
+        }
+    }
+
+    private static void removeAssistedField(File file) throws Exception {
+        String json = Files.readString(file.toPath(), StandardCharsets.UTF_8);
+        String withoutField = json.replaceAll("\\s*\\\"assisted\\\"\\s*:\\s*(?:true|false),?", "");
+        Files.writeString(file.toPath(), withoutField, StandardCharsets.UTF_8);
+    }
+
+    @Test
+    void migratedSolvedPreV4NormalSaveRemainsAssistedOnReplayMetadata() throws Exception {
+        String oldValue = System.getProperty(SaveManager.DATA_DIR_PROPERTY);
+        System.setProperty(SaveManager.DATA_DIR_PROPERTY, tempDir.getAbsolutePath());
+        try {
+            File legacy = new File(tempDir, "klotski_save.json");
+            String legacyJson = "{\"version\":3,\"size\":3,\"solved\":true,"
+                    + "\"grid\":[[1,2,3],[4,5,6],[7,8,0]]}\n";
+            Files.writeString(legacy.toPath(), legacyJson, StandardCharsets.UTF_8);
+
+            SaveManager.SaveData migrated = SaveManager.loadGame(3);
+            assertNotNull(migrated);
+            assertTrue(migrated.assisted);
+            assertTrue(SaveManager.loadGame(3).assisted,
+                    "reloading the migrated run must not make the legacy result player-eligible");
+            assertEquals(legacyJson, Files.readString(legacy.toPath(), StandardCharsets.UTF_8));
+        } finally {
+            restoreDataDirectoryProperty(oldValue);
+        }
+    }
+
+    @Test
     void defaultSavePathUsesConfiguredUserDataDirectory() {
         String oldValue = System.getProperty(SaveManager.DATA_DIR_PROPERTY);
         System.setProperty(SaveManager.DATA_DIR_PROPERTY, tempDir.getAbsolutePath());

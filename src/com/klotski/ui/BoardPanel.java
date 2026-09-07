@@ -69,6 +69,9 @@ public class BoardPanel extends JPanel implements GameObserver {
     /** Active desktop palette. */
     private DesktopTheme theme = DesktopTheme.MIDNIGHT;
 
+    /** Presentation locale for board accessibility copy and fallback dialogs. */
+    private DesktopLocale locale = DesktopLocale.fromTag("en");
+
     /** Indicates whether a tile or line animation is currently active. */
     private boolean isAnimating = false;
 
@@ -125,9 +128,8 @@ public class BoardPanel extends JPanel implements GameObserver {
         setLayout(null);
         setBackground(BG_COLOR);
         setFocusable(true);
-        getAccessibleContext().setAccessibleName("Puzzle board");
-        getAccessibleContext().setAccessibleDescription(
-                "Keyboard-accessible sliding puzzle board. Tab between cells and use arrow keys to move the empty cell.");
+        getAccessibleContext().setAccessibleName(locale.text("boardAccessibleName"));
+        getAccessibleContext().setAccessibleDescription(locale.text("boardAccessibleDescription"));
         setupKeyBindings();
         addComponentListener(new ComponentAdapter() {
             @Override
@@ -406,17 +408,17 @@ public class BoardPanel extends JPanel implements GameObserver {
     private String accessibleCellName(int row, int col) {
         int value = model.getTile(row, col);
         return value == 0
-                ? "Empty cell, row " + (row + 1) + ", column " + (col + 1)
-                : "Tile " + value + ", row " + (row + 1) + ", column " + (col + 1);
+                ? locale.format("cellEmptyName", row + 1, col + 1)
+                : locale.format("cellTileName", value, row + 1, col + 1);
     }
 
     private String accessibleCellDescription(int row, int col) {
         if (model.getTile(row, col) == 0) {
-            return "Empty cell. Select another cell or use the arrow keys to move the empty cell.";
+            return locale.text("cellEmptyDescription");
         }
         return isMovableTile(row, col)
-                ? "Movable tile. Press Space or Enter to slide this aligned tile."
-                : "Tile is not aligned with the empty cell right now.";
+                ? locale.text("cellMovableDescription")
+                : locale.text("cellNotAlignedDescription");
     }
 
     private int calculateTileSize() {
@@ -561,6 +563,21 @@ public class BoardPanel extends JPanel implements GameObserver {
                 }
             }
         }
+        repaint();
+    }
+
+    /**
+     * Applies the selected desktop locale to board accessibility semantics.
+     * This changes presentation strings only and leaves the model untouched.
+     *
+     * @param locale locale to use, defaulting to English when null
+     */
+    public void setLocale(DesktopLocale locale) {
+        this.locale = locale == null ? DesktopLocale.fromTag("en") : locale;
+        getAccessibleContext().setAccessibleName(this.locale.text("boardAccessibleName"));
+        getAccessibleContext().setAccessibleDescription(
+                this.locale.text("boardAccessibleDescription"));
+        updateAccessibleCellState();
         repaint();
     }
 
@@ -904,8 +921,8 @@ public class BoardPanel extends JPanel implements GameObserver {
             return;
         }
         JOptionPane.showMessageDialog(this,
-                "Congratulations! You won in " + moves + " moves.\nTime: " + (timeMs / 1000) + "s",
-                "Winner!", JOptionPane.INFORMATION_MESSAGE);
+                locale.format("winMessage", moves, timeMs / 1000),
+                locale.text("winTitle"), JOptionPane.INFORMATION_MESSAGE);
     }
 
     @Override

@@ -44,6 +44,9 @@ public class BfsSolver implements Solver {
      */
     @Override
     public List<Direction> solve(GameModel startState) {
+        if (Thread.currentThread().isInterrupted()) {
+            return null;
+        }
         if (startState.getSize() <= PACKED_MAX_SIZE) {
             return solvePacked(startState);
         }
@@ -67,6 +70,9 @@ public class BfsSolver implements Solver {
         long deadline = System.nanoTime() + TIME_LIMIT_NANOS;
         int expanded = 0;
         while (!queue.isEmpty()) {
+            if (Thread.currentThread().isInterrupted()) {
+                return null;
+            }
             if ((expanded++ & 1023) == 0 && System.nanoTime() - deadline > 0) {
                 System.out.println("BFS timed out!");
                 return null;
@@ -106,6 +112,9 @@ public class BfsSolver implements Solver {
         long deadline = System.nanoTime() + TIME_LIMIT_NANOS;
         int expanded = 0;
         while (!queue.isEmpty()) {
+            if (Thread.currentThread().isInterrupted()) {
+                return null;
+            }
             if ((expanded++ & 1023) == 0 && System.nanoTime() - deadline > 0) {
                 System.out.println("BFS timed out!");
                 return null;

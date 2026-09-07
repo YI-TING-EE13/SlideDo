@@ -42,6 +42,9 @@ public class IdaStarSolver implements Solver {
      */
     @Override
     public List<Direction> solve(GameModel startState) {
+        if (Thread.currentThread().isInterrupted()) {
+            return null;
+        }
         size = startState.getSize();
         int[][] grid = startState.getGridCopy();
         board = new int[size * size];
@@ -80,7 +83,8 @@ public class IdaStarSolver implements Solver {
      * @return {@link #FOUND}, the next bound to try, or {@link #INF} on timeout
      */
     private int search(int depth, int bound, Direction previousMove) {
-        if (System.currentTimeMillis() - startTime > TIME_LIMIT_MS) {
+        if (Thread.currentThread().isInterrupted()
+                || System.currentTimeMillis() - startTime > TIME_LIMIT_MS) {
             timedOut = true;
             return INF;
         }
@@ -121,6 +125,9 @@ public class IdaStarSolver implements Solver {
             path.remove(path.size() - 1);
             emptyIndex = oldEmpty;
             swap(emptyIndex, nextEmpty);
+            if (timedOut) {
+                return INF;
+            }
         }
 
         return min;

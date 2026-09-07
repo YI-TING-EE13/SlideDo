@@ -832,15 +832,48 @@ implementation:
   the policy is presentation-only and cannot alter rules, records, timer, or
   persistence.
 - Focused tests cover board cell accessibility, focusability, minimum-window
-  behavior, known contrast ratios, and theme contrast. A production-equivalent
-  packaged app-image manual run passed the default-scale keyboard/focus,
-  dialog, theme, persistence, and maximize/restore subset, including a
-  save/exit/relaunch/Continue flow. The exact ZIP `SlideDo.bat` launch and the
-  required 125%/150% Windows scaling checks remain NOT RUN because this host
-  cannot expose that launch through the Windows automation surface or change
-  Windows display scaling under the approved controls; screen-reader
-  certification is not claimed. Full `ci.bat` passed, while archive/chooser
-  behavior remains Stage 8.
+  behavior, known contrast ratios, and theme contrast. The owner reported PASS
+  for the required 2026-09-07 Windows manual gate: extracted ZIP
+  `SlideDo.bat` launch, 100%/125%/150% scaling, larger-text/adaptive behavior,
+  keyboard/focus behavior, Tab/Shift+Tab, Space/Enter, arrow keys, visible
+  focus, and the pre-Stage-7 mouse click/press/release/drag/swipe, invalid-input
+  no-op, and movable-hover checks. The PR #25 repair did not independently
+  rerun that GUI-capable Windows gate; screen-reader certification remains NOT
+  CLAIMED. Full `ci.bat` passed, while archive/chooser behavior remains Stage
+  8.
+
+2026-09-07 Stage 7.5 Desktop functional parity implementation:
+
+- Move History keeps the existing depth-counted modal timer pause and now uses
+  a deterministic localized formatter for completed/Redo counts, empty-cell
+  direction wording, one-action whole-line wording, and the latest 50 actions.
+- Desktop Assist now exposes the shared `StrategicHint` service. Hint
+  computation is non-mutating, marks the current run assisted before play can
+  continue, and persists an additive `assisted` field in normal saves while
+  retaining existing Daily/Favorite/Continuous marker compatibility. Restart,
+  Continue, relaunch, and Favorite Practice resume paths do not launder that
+  eligibility; genuinely new puzzles still clear it.
+- Solver Tools are grouped under one localized menu with size/resource
+  warnings, input locking, background-only search, explicit failure/cancel
+  guidance, and cooperative cancellation. BFS, A*, and IDA* check interruption
+  without forced thread termination; only accepted playback marks assistance.
+- Desktop material content and BoardPanel accessibility names/descriptions now
+  have explicit English, Traditional Chinese, and Japanese catalog entries.
+  Stable persistence IDs remain English and locale-independent.
+- The material-flow audit now covers MainFrame and the Home, Daily, Favorite,
+  Trend, Continuous, learning, and Results helpers. Normal Save/Load, status,
+  accessibility descriptions, and dialog actions use explicit catalog keys;
+  technical solver/theme identifiers remain intentionally stable English.
+- Pre-v4 normal-save migration is conservative: an unsolved v1-v3 payload
+  without an `assisted` field remains player-eligible, while a solved payload
+  is treated as assisted because historical Results autosave could not prove
+  player provenance. Explicit v4 values are preserved, and Daily, Favorite
+  Practice, and Continuous sidecar/meta markers remain authoritative.
+- Focused history, hint non-mutation, assisted-save migration, solver policy,
+  localization-coverage, and child-directed mouse/accessibility tests pass.
+  The owner-reported 2026-09-07 packaged GUI/DPI acceptance is recorded in
+  `DESKTOP_BETA_READINESS.md`; the PR #25 repair did not independently rerun
+  that gate, and screen-reader certification remains NOT CLAIMED.
 
 ### Completed 2026-05-25 MVP Items
 

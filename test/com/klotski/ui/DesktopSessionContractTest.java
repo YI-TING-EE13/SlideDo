@@ -120,6 +120,21 @@ class DesktopSessionContractTest {
     }
 
     @Test
+    void boardAccessibilityCopyFollowsSelectedLocaleWithoutChangingCells() {
+        BoardPanel board = new BoardPanel(new GameModel(3));
+        board.setLocale(DesktopLocale.fromTag("zh-TW"));
+
+        assertEquals("拼圖棋盤", board.getAccessibleContext().getAccessibleName());
+        assertTrue(board.getAccessibleCellForTesting(0, 0)
+                .getAccessibleContext().getAccessibleName().contains("方塊 1"));
+
+        board.setLocale(DesktopLocale.fromTag("ja-JP"));
+        assertEquals("パズル盤面", board.getAccessibleContext().getAccessibleName());
+        assertTrue(board.getAccessibleCellForTesting(2, 2)
+                .getAccessibleContext().getAccessibleName().contains("空白"));
+    }
+
+    @Test
     void mouseMoveDispatchedToAccessibleCellPreservesParentCursorAffordance() {
         GameModel model = activeModel();
         BoardPanel board = configuredBoard(model);

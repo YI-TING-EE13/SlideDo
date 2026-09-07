@@ -3,6 +3,7 @@ package com.klotski.core;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -46,5 +47,29 @@ class StrategicHintTest {
         assertEquals(first.getDirection(), second.getDirection());
         assertEquals(first.getTile(), second.getTile());
         assertEquals(0, model.getMoveCount());
+    }
+
+    @Test
+    void hintPreservesHistoryRedoElapsedAndPuzzleIdentity() {
+        GameModel model = new GameModel(3);
+        model.loadState(new int[][] {{1, 2, 3}, {4, 0, 6}, {7, 5, 8}}, 0);
+        assertTrue(model.move(Direction.DOWN));
+        assertTrue(model.undo());
+        model.pauseTimer();
+        int[][] beforeGrid = model.getGridCopy();
+        int[][] beforeInitial = model.getInitialGridCopy();
+        int moves = model.getMoveCount();
+        long elapsed = model.getElapsedTime();
+        int history = model.getActionHistory().size();
+        int redo = model.getRedoHistory().size();
+
+        assertNotNull(StrategicHint.choose(model));
+
+        assertArrayEquals(beforeGrid, model.getGridCopy());
+        assertArrayEquals(beforeInitial, model.getInitialGridCopy());
+        assertEquals(moves, model.getMoveCount());
+        assertEquals(elapsed, model.getElapsedTime());
+        assertEquals(history, model.getActionHistory().size());
+        assertEquals(redo, model.getRedoHistory().size());
     }
 }

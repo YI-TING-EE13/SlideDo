@@ -147,7 +147,7 @@ after running the checklist above. The record must identify each check as PASS,
 FAIL, or NOT RUN; do not treat source inspection or a successful CI build as a
 replacement for this packaged desktop review.
 
-Qualification attempts (2026-09-07):
+Automated qualification evidence (2026-09-07):
 
 - Package/readiness checks: PASS (`package-desktop.bat` and
   `check-desktop-beta-readiness.bat`).
@@ -155,25 +155,17 @@ Qualification attempts (2026-09-07):
   Javadoc gates).
 - Full repository CI contract: PASS (`ci.bat`, including Android build/lint,
   release/package checks, and desktop readiness file checks).
-- ZIP extraction was verified at `dist/desktop/SlideDo-0.2.0-beta.1`, but its
-  `SlideDo.bat` launch uses the host JDK and did not expose a targetable window
-  through the Windows automation surface. The production-equivalent packaged
-  app-image at
-  `dist/desktop/app-image/SlideDo/SlideDo.exe` was therefore used for the
-  observable manual run below; this is not claimed as a `SlideDo.bat` launch.
-- Packaged app-image manual run at the host's default display scaling: PASS for
-  Home-before-board, 3x3/4x4/5x5 start, visible focus indicators, row-major
-  board Tab and reverse traversal, Enter tile activation, arrow-key movement,
-  whole-line mouse slide as one move, Undo/Redo, Move History, New Game,
-  Restart, Save, exit/relaunch Continue, Load, Preferences focus order,
-  Beginner Guide, Practice Tutorial, How to Play, Quick Reminder, Ocean and
-  Midnight theme readability, and Reduced motion.
-- Packaged app-image manual run at 125% and 150% Windows display scaling:
-  NOT RUN. This host does not provide an approved way to change Windows display
-  scaling during the review; the maximized/restored window was observed, but it
-  is not a substitute for the required 125%/150% checks.
-- Screen-reader certification: NOT RUN and not claimed by Stage 7.
 
-The 125%/150% display-scaling review and a true final-ZIP `SlideDo.bat` launch
-remain required owner-run gates before closing the Desktop beta accessibility
-blocker.
+Owner-reported manual acceptance (2026-09-07): PASS.
+
+- The owner reported that the extracted ZIP launched through `SlideDo.bat`.
+- The owner reported PASS for 100%, 125%, and 150% Windows scaling, larger-text
+  and adaptive behavior, keyboard and focus behavior, Tab/Shift+Tab,
+  Space/Enter, arrow-key play, and visible focus borders.
+- The owner reported PASS for the pre-Stage-7 mouse contract: click,
+  press/release, drag/swipe, invalid-input no-op, and movable-tile hover
+  affordance.
+- This is owner-reported manual acceptance. The PR #25 repair did not
+  independently rerun the GUI-capable Windows gate, and the record does not
+  add unreported package paths, machine details, screenshots, or timings.
+- Screen-reader certification remains NOT CLAIMED.
