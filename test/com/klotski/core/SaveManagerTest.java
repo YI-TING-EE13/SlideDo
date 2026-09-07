@@ -842,7 +842,8 @@ class SaveManagerTest {
                 "{\n  \"3\": {\"moves\": 20, \"timeMs\": 9000}\n}\n",
                 StandardCharsets.UTF_8);
         Files.writeString(new File(externalRoot, "klotski_records.json").toPath(),
-                "{\n  \"4\": {\"moves\": 1, \"timeMs\": 2}\n}\n",
+                "{\n  \"3\": {\"moves\": 1, \"timeMs\": 2},\n"
+                        + "  \"4\": {\"moves\": 1, \"timeMs\": 2}\n}\n",
                 StandardCharsets.UTF_8);
 
         DesktopPersonalDataArchive.restoreArchive(
@@ -854,6 +855,8 @@ class SaveManagerTest {
                     externalRoot, () -> SaveManager.getBestRecord(3, PuzzleDifficulty.CLASSIC));
             assertNotNull(imported);
             assertEquals(20, imported.moves);
+            assertEquals(9000, imported.timeMs,
+                    "an imported same-size record remains authoritative over a newer root candidate");
             SaveManager.BestRecord suppressed = SaveManager.withProjectRootFallbackForTests(
                     externalRoot, () -> SaveManager.getBestRecord(4, PuzzleDifficulty.CLASSIC));
             assertNull(suppressed);
