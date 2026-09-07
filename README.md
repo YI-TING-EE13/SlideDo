@@ -718,8 +718,10 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
   production-equivalent app-image review passed the default-scale
   keyboard/focus, dialog, theme, and persistence subset, and the owner-reported
   ZIP/DPI/mouse gate remains recorded in the readiness document. This Stage 8
-  qualification leaves the extracted-package GUI/DPI run as
-  `MANUAL PACKAGE GATE PENDING`; screen-reader certification is not claimed.
+  qualification records the owner-reported extracted-package GUI/DPI,
+  backup/restore, collision, relaunch, and 100%/125%/150% scaling gate as PASS
+  on 2026-09-08; Codex did not execute the GUI tests, and screen-reader
+  certification is not claimed.
 - Save files now include release-readiness metadata and desktop saves now live in the user-data directory.
 - Signed Android release APK/AAB and desktop ZIP/app-image packaging scripts are available.
 - Desktop public beta readiness notes and local package checks are tracked in

@@ -4,13 +4,12 @@ Status: owner-approved qualification baseline with Stages 1-7 session,
 persistence, records, Daily, Favorites, Trends, Weekly Goal, and Continuous
 behavior plus Desktop learning/preferences/accessibility implemented; Desktop
 Stage 8 archive and package qualification is implemented with automated
-evidence. The required packaged GUI/DPI gate is recorded as owner-reported
-manual acceptance on 2026-09-07; this Stage 8 run did not independently rerun
-it, and the separate package GUI gate remains MANUAL PACKAGE GATE PENDING.
-Screen-reader certification remains NOT CLAIMED. This document records
+evidence and the required extracted-package GUI/DPI gate is recorded as
+owner-reported manual acceptance on 2026-09-08. Codex did not execute the GUI
+tests. Screen-reader certification remains NOT CLAIMED. This document records
 current implementation evidence and bounded follow-up work.
 
-Qualification date: 2026-09-07
+Qualification date: 2026-09-08
 Repository: YI-TING-EE13/SlideDo
 Authoritative branch: main
 Expected and observed origin/main at Stage 8 start: 4762999889acbb0ef89d5783ed42baaee57ebdf9
@@ -130,8 +129,20 @@ Stage 8 archive and release qualification (2026-09-07):
 - Automated package checks enforce the exact four-file ZIP whitelist and the
   generated README documents launch, Java 17+, user-data location, backup
   replacement semantics, local owner-controlled scope, solver limits, and the
-  unsigned ZIP limitation. `MANUAL PACKAGE GATE PENDING` remains open until a
-  real extracted Windows GUI/DPI execution.
+  unsigned ZIP limitation.
+- Owner-reported final packaged-Windows acceptance (2026-09-08) is PASS for
+  the final extracted ZIP candidate: clean `SlideDo.bat` launch outside the
+  development tree; an isolated Windows APPDATA/profile; visible and
+  keyboard-reachable Export/Restore controls with working Space/Enter,
+  chooser-open, and cancellation behavior; valid export without disturbing
+  active state; explicit full-replacement restore with restored preferences and
+  save state, removal of post-backup state, and no stale Preferences writeback;
+  relaunch retention; invalid-archive and chooser-cancel no-mutation
+  behavior; managed-path collision rejection without overwriting the normal
+  save; and usable, visible, non-overlapping backup controls, focus, and
+  chooser at 100%, 125%, and 150% Windows scaling. No exact temporary profile
+  path is claimed. This is owner-reported evidence, not Codex GUI execution;
+  the accepted Stage 7 board/mouse evidence remains separate.
 
 ## Android to Desktop feature-parity matrix
 
@@ -186,7 +197,7 @@ Stage 8 archive and release qualification (2026-09-07):
 | L8 | Optional sound feedback | Sound is not a shared puzzle rule. | AndroidSoundFeedback and AndroidGameStore provide optional asset-free move, win, and error tones. | SaveManager persists an opt-in sound flag; MainFrame emits native Toolkit move/win beeps only when enabled, with no audio prerequisite. | PARITY | Audio remains presentation-only and cannot change moves, timing, assisted state, or records. | SaveManager preference test and DesktopSoundFeedback compile; audio device behavior remains manual/platform-specific. |
 | L9 | Reduced motion | Presentation-only policy; GameModel timing and actions remain unchanged. | AndroidGameStore persists reduced motion; AndroidMotion, AndroidUiPolicy, and KlotskiView apply it across transitions and board animation. | SaveManager persists reduced motion; MainFrame applies it to BoardPanel and preserves busy/action semantics while preference changes rebuild the native shell. | PARITY | Reduced motion changes animation presentation only; it does not disable input locks or alter rules/records. | SaveManager preference test, BoardPanel API, desktop compile/Javadocs, and the owner-reported Stage 7 adaptive review. |
 | L10 | Localization | Core domain IDs are stable; Android resources carry localized presentation. | AndroidAppLocale and resources support English, Traditional Chinese, and Japanese and persist the selected tag. | DesktopLocale now supplies explicit material-flow keys for Move History, Strategic Hint, Solver Tools/warnings/results/cancellation, assisted results/status, normal Save/Load, Home, Records, Daily, Favorites, Trends/Weekly Goal, Continuous, learning/tutorial, difficulty, preferences, and BoardPanel accessibility semantics in all three supported tags. MainFrame and the Desktop content helpers route audited player-facing copy through this catalog; stable IDs and technical solver/theme names remain English by design. | PARITY | Locale changes rebuild the Swing shell and preserve stable IDs/data; no Android resources or locale-dependent persisted IDs are introduced. | DesktopLocaleCoverageTest requires every registered material key to be explicit and nonblank in each locale; DesktopMaterialContentTest exercises localized save/status, Daily, Favorites, Trends, Continuous, Results, Records, and learning output; MainFrame/helper literal audit is recorded with the repair evidence. |
-| L11 | Full personal backup and restore | AndroidPersonalDataArchive validates a versioned archive and AndroidGameStore replaces all personal preferences only after decode. | MainActivity uses the system picker for export/import and confirms full replacement. | `DesktopPersonalDataArchive` exports a Desktop-specific version-1 archive through Preferences, resolves logical recovery candidates, validates every managed namespace and assisted/reset/legacy dependency, and performs full replacement with stale-state deletion, durable legacy masks, an archived project-root fallback boundary, unmanaged-file preservation, recoverable rollback, collision-safe atomic export, and stale-editor invalidation. MainFrame treats ordinary restore and cleanup-warning restore as successful imports that reconcile state; rollback failure enters a localized recovery-required fail-safe that retains recovery paths and disables gameplay and all controller persistence. | PARITY | Invalid input and Cancel are no-ops. A legacy-only profile remains loadable and migratable from the restored data directory without combining with process-root legacy files; ordinary pre-archive root migration remains available. Cleanup warnings name retained transaction data without claiming failure; rollback failure retains a previous snapshot and reports recovery required without deleting it. The archive deliberately does not claim Android schema interchange; both platforms keep complete but platform-specific local formats. | `DesktopPersonalDataArchiveTest`, `SaveManagerTest`, `DesktopPreferencesEditorGuardTest`, `DesktopRestoreOutcomePolicyTest`, DesktopLocale coverage, package README/readiness checks, and the Android archive tests as semantic reference. Manual packaged chooser/DPI execution remains a separate open gate. |
+| L11 | Full personal backup and restore | AndroidPersonalDataArchive validates a versioned archive and AndroidGameStore replaces all personal preferences only after decode. | MainActivity uses the system picker for export/import and confirms full replacement. | `DesktopPersonalDataArchive` exports a Desktop-specific version-1 archive through Preferences, resolves logical recovery candidates, validates every managed namespace and assisted/reset/legacy dependency, and performs full replacement with stale-state deletion, durable legacy masks, an archived project-root fallback boundary, unmanaged-file preservation, recoverable rollback, collision-safe atomic export, and stale-editor invalidation. MainFrame treats ordinary restore and cleanup-warning restore as successful imports that reconcile state; rollback failure enters a localized recovery-required fail-safe that retains recovery paths and disables gameplay and all controller persistence. | PARITY | Invalid input and Cancel are no-ops. A legacy-only profile remains loadable and migratable from the restored data directory without combining with process-root legacy files; ordinary pre-archive root migration remains available. Cleanup warnings name retained transaction data without claiming failure; rollback failure retains a previous snapshot and reports recovery required without deleting it. The archive deliberately does not claim Android schema interchange; both platforms keep complete but platform-specific local formats. | `DesktopPersonalDataArchiveTest`, `SaveManagerTest`, `DesktopPreferencesEditorGuardTest`, `DesktopRestoreOutcomePolicyTest`, DesktopLocale coverage, package README/readiness checks, Android archive tests as semantic reference, and the owner-reported 2026-09-08 extracted-package backup/restore gate. Screen-reader certification remains NOT CLAIMED. |
 | L12 | Reset semantics | AndroidGameStore separates clear saved games, clear records, and full archive replacement while preserving unrelated namespaces as documented. | AndroidSettingsScreen/MainActivity expose reset saved games and reset records with confirmation. | Preferences exposes confirmed `clearSavedGames` and `clearRecords` actions. The first removes normal/Daily/Favorite Practice/Continuous saves but preserves favorites, records, stats, Daily progress, and preferences; the second clears scoped records/statistics/Daily progress, masks legacy records, and preserves active Continuous files. | PARITY | Reset scopes are explicit and tested; legacy record sources are left untouched but cannot resurrect a cleared value. | SaveManager preference/reset test and MainFrame confirmation wiring; full archive replacement is covered by L11/Stage 8 archive tests. |
 | L13 | Accessibility semantics and playable board | AndroidUiPolicy establishes headings, focus order, 48dp targets, localized descriptions, and KlotskiView virtual per-cell actionable nodes. | AndroidMainActivity, AndroidUi, resource strings, and BoardAccessibilityProvider expose screen-reader movement for movable cells. | BoardPanel exposes one focusable Swing button per cell with accessible names/descriptions, row-major Tab order, Space/Enter activation, arrow-key movement, and visible focus borders; MainFrame labels status, menus, Home actions, and learning controls. | PARITY | Desktop uses Swing roles and actionable child controls rather than Android virtual-node APIs. Automated Swing tests cover the controls, and the owner-reported 2026-09-07 packaged Windows gate covered keyboard/focus and pre-Stage-7 mouse behavior. This repair did not independently rerun that gate; screen-reader certification remains NOT CLAIMED. | DesktopAdaptivePolicyTest and DesktopSessionContractTest cover cell counts, names, focusability, contrast, and child-directed mouse regressions; DESKTOP_BETA_READINESS.md records the owner-reported manual acceptance separately from automated evidence. |
 | L14 | Adaptive and scaled layout | AndroidUiPolicy and ScreenLayout handle compact layouts, large text, safe insets, and 48dp controls. | AndroidAdaptiveUiTest covers compact AVD, large text, both themes, headings, and focus order. | MainFrame has a minimum usable size, a vertically scrollable Home card, resizable learning dialogs, stacked compact size actions, and a BoardPanel that recomputes square cell bounds as the window changes. | PARITY | The owner-reported 2026-09-07 packaged Windows gate covered 100%, 125%, and 150% scaling plus larger-text/adaptive behavior. This repair did not independently rerun that gate; Swing layout evidence remains separate from Android dp evidence. | DesktopAdaptivePolicyTest covers minimum size and theme contrast; DESKTOP_BETA_READINESS.md records the owner-reported scaling/adaptive acceptance separately from automated package evidence. |
@@ -203,7 +214,7 @@ Stage 8 archive and release qualification (2026-09-07):
 
 | ID | Capability | Canonical/shared-core support | Android source of truth | Desktop source and verified current behavior | Status | Required parity; persistence and record semantics | Tests, documentation, dependencies, and risk |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| R1 | Release/package behavior visible to players | Shared core and versioned data contracts must remain compatible across packages. | Android debug/release APK/AAB, Play-readiness checks, connected smoke, and Android README checklist. | Desktop ZIP and optional app-image package with user-data path notes; no signed installer and manual smoke/accessibility remain beta concerns. | PARTIAL | Both packages must launch the qualified flows, preserve user-data locations and migration behavior, and state platform-specific limitations. Signing, store assets, and installer choice remain release governance, not parity implementation. | ci.bat, DESKTOP_BETA_READINESS.md, android README/checklist, package scripts, and manual smoke. Risk is treating package/build evidence as runtime acceptance; require separate desktop and Android lifecycle/accessibility gates. |
+| R1 | Release/package behavior visible to players | Shared core and versioned data contracts must remain compatible across packages. | Android debug/release APK/AAB, Play-readiness checks, connected smoke, and Android README checklist. | Desktop ZIP and optional app-image package with user-data path notes; the final extracted ZIP launch, backup/restore, cancellation/invalid-input, collision, relaunch-retention, and 100%/125%/150% scaling checks were accepted by the owner on 2026-09-08. The package remains unsigned and local. | PARITY | Both packages launch the qualified flows, preserve user-data locations and migration behavior, and state platform-specific limitations. Signing, store assets, and installer/public-distribution choice remain release governance, not parity implementation. | ci.bat, DESKTOP_BETA_READINESS.md, android README/checklist, package scripts, automated archive/package tests, and owner-reported extracted-Windows runtime evidence. Screen-reader certification remains NOT CLAIMED. |
 
 ## Matrix result
 
@@ -212,9 +223,9 @@ files:
 
 | Status | Count | Interpretation |
 | --- | ---: | --- |
-| PARITY | 40 | Shared rules, sizes, difficulty/session identity, exact replay, active timer, input outcomes, animation locks, undo/redo, restart, movable and strategic assist, scoped best records, assisted-result protection, Daily, Favorite Practice, Trends/Weekly Goal, Continuous behavior, Move History, Solver Tools, localization, Home routes, learning flows, Quick Reminder, Desktop preferences, themes, sound, reduced motion, full personal backup/restore, accessibility semantics, playable-board behavior, and adaptive/scaled layout are evidenced on both platforms. |
-| PARTIAL | 1 | Release/package qualification (R1) remains a separate acceptance gate; the owner-reported Stage 7 GUI/DPI gate is recorded above, while the Stage 8 package GUI/DPI execution remains MANUAL PACKAGE GATE PENDING. |
-| MISSING | 0 | No currently counted Android-backed capability is missing a Desktop implementation; the remaining open gate is release/package execution evidence. |
+| PARITY | 41 | Shared rules, sizes, difficulty/session identity, exact replay, active timer, input outcomes, animation locks, undo/redo, restart, movable and strategic assist, scoped best records, assisted-result protection, Daily, Favorite Practice, Trends/Weekly Goal, Continuous behavior, Move History, Solver Tools, localization, Home routes, learning flows, Quick Reminder, Desktop preferences, themes, sound, reduced motion, full personal backup/restore, accessibility semantics, playable-board behavior, adaptive/scaled layout, and owner-accepted extracted-package release behavior are evidenced on both platforms. |
+| PARTIAL | 0 | No counted Android-backed capability remains partially qualified. The R1 extracted-package runtime gate is recorded as owner-reported PASS; signed installers, public distribution, and screen-reader certification remain separate limitations. |
+| MISSING | 0 | No currently counted Android-backed capability is missing a Desktop implementation. |
 | PLATFORM-SPECIFIC | 4 | Android lifecycle, haptics, system picker, and touch/virtual-node mechanics require desktop equivalents rather than copied implementations. |
 
 ### Stage 1 verified implementation
@@ -249,10 +260,10 @@ Highest-risk gaps, in dependency order:
 3. Desktop accessibility metadata, keyboard actions, and the owner-reported
    packaged keyboard/focus/mouse gate are recorded separately from
    screen-reader certification, which is intentionally not claimed.
-4. R1: package build, exact ZIP contents, and static readiness evidence are not
-   lifecycle acceptance. The extracted-package GUI/DPI gate is still
-   MANUAL PACKAGE GATE PENDING; signed installers and store distribution remain
-   separately governed.
+4. R1: package build, exact ZIP contents, static readiness evidence, and the
+   owner-reported extracted-package GUI/DPI gate are recorded separately from
+   Android lifecycle evidence. The owner gate passed on 2026-09-08; signed
+   installers and store distribution remain separately governed.
 
 ## Documentation coverage audit
 
@@ -563,8 +574,10 @@ owner-reported manual acceptance is separate from automated evidence; the PR
   screen-reader certification remains NOT CLAIMED.
 
 The Stage 7 implementation did not add the native file chooser or archive
-format. Stage 8 now supplies the Desktop chooser/archive contract; only the
-separate extracted-package GUI/DPI execution remains open.
+format. Stage 8 now supplies the Desktop chooser/archive contract. The
+owner-reported extracted-package GUI/DPI execution is recorded in the Stage 8
+evidence below; it was not executed by Codex, and screen-reader certification
+remains unclaimed.
 
 ### Stage 3 - Records, results, history, and statistics
 
@@ -676,7 +689,7 @@ Status: implementation complete with automated verification and owner-reported
 manual acceptance for the packaged GUI/DPI gate on 2026-09-07. The PR #25
 repair did not independently rerun that gate, and screen-reader certification
 remains NOT CLAIMED. Stage 8 archive/package implementation is now complete;
-the separate extracted-package GUI/DPI execution remains pending.
+the owner-reported Stage 8 extracted-package gate is recorded separately below.
 
 - Objective: qualify desktop accessibility and resizable/large-font behavior
   without copying Android virtual-node mechanics.
@@ -743,8 +756,10 @@ the separate extracted-package GUI/DPI execution remains pending.
   analytics, ads, and any unapproved release/version changes.
 - Completion gate: owner-approved package and lifecycle evidence is complete,
   documentation is synchronized, and the parity matrix is re-qualified.
-  Current status is automated/archive qualified with
-  **MANUAL PACKAGE GATE PENDING** for the extracted Windows GUI/DPI run.
+  Current status is automated/archive qualified plus owner-reported PASS for
+  the extracted Windows GUI/DPI run on 2026-09-08. Codex did not execute the
+  GUI tests; the package remains unsigned/local and screen-reader certification
+  remains NOT CLAIMED.
 
 ### Stage 9 - Professional Java documentation
 
@@ -783,7 +798,5 @@ the separate extracted-package GUI/DPI execution remains pending.
   status only from new code/test evidence. A stage is not complete because a
   menu or file exists.
 - Stages 1-8 archive/package implementation is recorded with automated
-  evidence plus the owner-reported Stage 7 packaged GUI/DPI acceptance. The
-  extracted Stage 8 package GUI/DPI gate remains
-  MANUAL PACKAGE GATE PENDING; Stage 9 remains the final contract-led
-  documentation audit.
+  evidence plus the owner-reported Stage 7 and Stage 8 packaged GUI/DPI
+  acceptance. Stage 9 remains the final contract-led documentation audit.

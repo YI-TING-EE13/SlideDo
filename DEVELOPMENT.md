@@ -668,7 +668,7 @@ Desktop/Android feature parity matrix:
 | Records | Per-size local best records, fewer moves then lower time, solver-assisted protection, and player-facing policy explanation. | Per-size local best records with the same comparison, solver-assisted protection, and policy explanation. | Aligned. | Android records/results instrumentation; desktop result and records tests. |
 | Results | Full Results screen with exact-board Replay Puzzle, New Size, Home, record status, and assisted wording. | Android-style Results dialog with Play Again, New Size, Home, record status, and assisted wording. | Android now replays the same starting board for the Personal Play roadmap; desktop retains its new-puzzle action. | Android replay/results instrumentation; desktop results copy tests. |
 | Accessibility | Screen and section headings, explicit game traversal order, 48dp action targets, localized board summaries, and per-cell virtual accessibility nodes with playable movable-tile actions exist. Both themes select button content at 4.5:1 or better. | Swing exposes native per-cell buttons with accessible names/descriptions, row-major focus, Space/Enter actions, arrow-key movement, visible focus borders, labeled dialogs, and a scrollable Home layout. Screen-reader certification remains unclaimed. | Android virtual-node and Swing child-component mechanisms remain platform-specific; both platforms keep separate manual assistive-technology review gates. | Android accessibility/adaptive instrumentation; DesktopAdaptivePolicyTest/DesktopSessionContractTest; packaged 100/125/150% keyboard and resize checklist. |
-| Packaging / release | Debug build, connected tests, signed APK/AAB, Play readiness file check, screenshot smoke workflow. | Desktop ZIP and optional app-image package with user-data paths, exact four-file whitelist, generated backup-aware README/release notes, and desktop beta readiness checks. | Android still needs real Play upload key and Play Console external assets; desktop package is not a signed installer and extracted GUI/DPI acceptance remains `MANUAL PACKAGE GATE PENDING`. | `verify.bat`, `verify-connected.bat`, `verify-release.bat`, `package-desktop.bat`, exact-package script, manual screenshot smoke, desktop beta smoke checklist. |
+| Packaging / release | Debug build, connected tests, signed APK/AAB, Play readiness file check, screenshot smoke workflow. | Desktop ZIP and optional app-image package with user-data paths, exact four-file whitelist, generated backup-aware README/release notes, and desktop beta readiness checks. | Android still needs real Play upload key and Play Console external assets; desktop package remains an unsigned local ZIP/app-image, and the owner-reported extracted GUI/DPI acceptance passed on 2026-09-08. | `verify.bat`, `verify-connected.bat`, `verify-release.bat`, `package-desktop.bat`, exact-package script, manual screenshot smoke, desktop beta smoke checklist, and the owner-reported Stage 8 package record. |
 
 Parity conclusion for current beta:
 
@@ -687,7 +687,7 @@ The narrow MVP parity pass above is historical status, not a claim that the
 completed Android Personal Play program is fully available in Swing. The
 current evidence-based inventory, status matrix, Java documentation audit, and
 bounded implementation roadmap are maintained in
-[DESKTOP_ANDROID_PARITY.md](DESKTOP_ANDROID_PARITY.md). Stages 1-7 below are
+[DESKTOP_ANDROID_PARITY.md](DESKTOP_ANDROID_PARITY.md). Stages 1-8 below are
 owner-approved and implemented; future behavior work requires a new approved
 roadmap stage and a fresh matrix re-check.
 
@@ -900,9 +900,40 @@ implementation:
   invalidates the editor, disables gameplay, and suppresses manual,
   lifecycle, mode, Preferences, and export persistence until recovery.
   Headless archive, collision, provenance, Continuous, rollback,
-  cleanup-warning, recovery-policy, and stale-editor tests pass. The
-  extracted-package GUI/DPI run remains exactly
-  `MANUAL PACKAGE GATE PENDING` for this qualification.
+  cleanup-warning, recovery-policy, and stale-editor tests pass. The owner-
+  reported extracted-package GUI/DPI gate is recorded as PASS below; Codex did
+  not execute the GUI tests.
+
+2026-09-08 Stage 8 owner-reported packaged Windows acceptance:
+
+- The owner tested the final extracted `SlideDo-0.2.0-beta.1.zip` candidate
+  outside the development tree. `SlideDo.bat` launched Home without a
+  missing-file or Java startup failure, using an isolated Windows
+  APPDATA/profile rather than the owner's real SlideDo data. No exact
+  temporary profile path is claimed.
+- Preferences exposed visible, keyboard-reachable Export Personal Data and
+  Restore Personal Data controls. Space/Enter interaction worked, the chooser
+  opened normally, and chooser cancellation was safe.
+- A valid archive exported without disturbing active saved state. Full
+  replacement restore showed explicit confirmation, restored preferences and
+  save state, removed state created only after the backup, and prevented stale
+  pre-restore Preferences state from overwriting the restored settings.
+- After closing and relaunching the extracted package, restored preferences
+  and save state remained and stale pre-restore runtime/autosave state did not
+  overwrite the imported profile.
+- Malformed/invalid archives were rejected without changing managed state;
+  restore chooser cancellation was a no-op. Export to a live managed
+  persistence filename was rejected, the existing normal save remained
+  loadable, and backup JSON did not overwrite it.
+- At 100%, 125%, and 150% Windows display scaling, Export/Restore remained
+  visible and usable without relevant clipping or overlap; text, focus, and
+  the file chooser remained usable.
+- This is owner-reported manual acceptance, not Codex GUI execution. The
+  accepted Stage 7 board/mouse/accessibility evidence remains separate;
+  screen-reader certification is still NOT CLAIMED. R1 is promoted to PARITY,
+  the mechanically recounted matrix is 41 PARITY / 0 PARTIAL / 0 MISSING /
+  4 PLATFORM-SPECIFIC (45 total), and no release, tag, publication, or #13
+  documentation cleanup was performed.
 
 ### Completed 2026-05-25 MVP Items
 
