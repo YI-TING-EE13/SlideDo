@@ -32,6 +32,9 @@ public class AStarSolver implements Solver {
      */
     @Override
     public List<Direction> solve(GameModel startState) {
+        if (Thread.currentThread().isInterrupted()) {
+            return null;
+        }
         PriorityQueue<StateNode> openSet = new PriorityQueue<>();
         Set<String> closedSet = new HashSet<>();
         
@@ -41,6 +44,9 @@ public class AStarSolver implements Solver {
         long startTime = System.currentTimeMillis();
         
         while (!openSet.isEmpty()) {
+            if (Thread.currentThread().isInterrupted()) {
+                return null;
+            }
             if (System.currentTimeMillis() - startTime > 5000) {
                 System.out.println("A* timed out!");
                 return null;

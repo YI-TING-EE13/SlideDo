@@ -842,6 +842,28 @@ implementation:
   certification is not claimed. Full `ci.bat` passed, while archive/chooser
   behavior remains Stage 8.
 
+2026-09-07 Stage 7.5 Desktop functional parity implementation:
+
+- Move History keeps the existing depth-counted modal timer pause and now uses
+  a deterministic localized formatter for completed/Redo counts, empty-cell
+  direction wording, one-action whole-line wording, and the latest 50 actions.
+- Desktop Assist now exposes the shared `StrategicHint` service. Hint
+  computation is non-mutating, marks the current run assisted before play can
+  continue, and persists an additive `assisted` field in normal saves while
+  retaining existing Daily/Favorite/Continuous marker compatibility. Restart,
+  Continue, relaunch, and Favorite Practice resume paths do not launder that
+  eligibility; genuinely new puzzles still clear it.
+- Solver Tools are grouped under one localized menu with size/resource
+  warnings, input locking, background-only search, explicit failure/cancel
+  guidance, and cooperative cancellation. BFS, A*, and IDA* check interruption
+  without forced thread termination; only accepted playback marks assistance.
+- Desktop material content and BoardPanel accessibility names/descriptions now
+  have explicit English, Traditional Chinese, and Japanese catalog entries.
+  Stable persistence IDs remain English and locale-independent.
+- Focused history, hint non-mutation, assisted-save migration, solver policy,
+  localization-coverage, and child-directed mouse/accessibility tests pass.
+  Full packaged GUI/DPI acceptance remains a separate manual gate.
+
 ### Completed 2026-05-25 MVP Items
 
 ### 1. Add Android Instrumentation Tests

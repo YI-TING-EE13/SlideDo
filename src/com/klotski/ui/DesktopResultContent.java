@@ -25,6 +25,27 @@ final class DesktopResultContent {
                 assisted, newBest, previousBest, currentBest, true);
     }
 
+    static String resultsMessage(DesktopLocale locale, int size, PuzzleDifficulty difficulty,
+            int moves, long timeMs, boolean assisted, boolean newBest,
+            SaveManager.BestRecord previousBest, SaveManager.BestRecord currentBest) {
+        DesktopLocale selectedLocale = locale == null ? DesktopLocale.fromTag("en") : locale;
+        PuzzleDifficulty selected = difficulty == null ? PuzzleDifficulty.CLASSIC : difficulty;
+        String recordText;
+        if (assisted) {
+            recordText = selectedLocale.format("recordPlayerBest", formatRecord(previousBest));
+        } else if (newBest) {
+            recordText = previousBest == null
+                    ? selectedLocale.text("recordFirst")
+                    : selectedLocale.format("recordNewBest", formatRecord(previousBest));
+        } else {
+            recordText = selectedLocale.format("recordBestRemains", formatRecord(currentBest));
+        }
+        return String.join("\n", assisted ? selectedLocale.text("assistedResult") : "Puzzle solved.",
+                "", size + "x" + size + " Puzzle",
+                "Difficulty: " + difficultyLabel(selected, selectedLocale),
+                formatMoves(moves, selectedLocale) + "   Time: " + (timeMs / 1000) + "s", "", recordText);
+    }
+
     private static String resultsMessageInternal(int size, PuzzleDifficulty difficulty, int moves,
             long timeMs, boolean assisted, boolean newBest, SaveManager.BestRecord previousBest,
             SaveManager.BestRecord currentBest, boolean includeDifficultyInRecordText) {
@@ -64,6 +85,28 @@ final class DesktopResultContent {
                 formatMoves(moves) + "   Time: " + (timeMs / 1000) + "s",
                 "",
                 "Practice result not saved to records, history, statistics, or Daily streaks.");
+    }
+
+    static String favoritePracticeMessage(DesktopLocale locale, int size,
+            PuzzleDifficulty difficulty, int moves, long timeMs) {
+        DesktopLocale selectedLocale = locale == null ? DesktopLocale.fromTag("en") : locale;
+        return String.join("\n", selectedLocale.text("favoriteSolved"), "",
+                size + "x" + size + " Puzzle",
+                "Difficulty: " + difficultyLabel(difficulty, selectedLocale),
+                formatMoves(moves, selectedLocale) + "   Time: " + (timeMs / 1000) + "s", "",
+                selectedLocale.text("favoriteIsolation"));
+    }
+
+    private static String formatMoves(int moves, DesktopLocale locale) {
+        return locale.format(moves == 1 ? "moveSingular" : "movePlural", moves);
+    }
+
+    private static String difficultyLabel(PuzzleDifficulty difficulty, DesktopLocale locale) {
+        return switch (difficulty == null ? PuzzleDifficulty.CLASSIC : difficulty) {
+            case RELAXED -> locale.text("difficultyRelaxed");
+            case CLASSIC -> locale.text("difficultyClassic");
+            case CHALLENGE -> locale.text("difficultyChallenge");
+        };
     }
 
     private static String recordText(boolean assisted, boolean newBest,

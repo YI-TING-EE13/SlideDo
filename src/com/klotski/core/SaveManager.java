@@ -46,7 +46,7 @@ public class SaveManager {
     /** Optional JVM property used by tests and portable desktop packages. */
     public static final String DATA_DIR_PROPERTY = "slidedo.data.dir";
 
-    private static final int CURRENT_SAVE_VERSION = 3;
+    private static final int CURRENT_SAVE_VERSION = 4;
     private static final int MIN_SUPPORTED_SIZE = 3;
     private static final int MAX_SUPPORTED_SIZE = 5;
     private static final String SAVE_FILE_PREFIX = "klotski_save_";
@@ -87,10 +87,25 @@ public class SaveManager {
      * @return {@code true} when the save file was written successfully
      */
     public static boolean saveGame(GameModel model) {
+        return saveGame(model, false);
+    }
+
+    /**
+     * Writes a normal save while retaining whether the current run has used
+     * solver or strategic assistance.
+     *
+     * <p>The assistance bit is additive. Older JSON and serialized saves do
+     * not contain it and therefore load as an unassisted run.</p>
+     *
+     * @param model game model to persist
+     * @param assisted whether this run is no longer eligible for a player best
+     * @return {@code true} when the save file was written successfully
+     */
+    public static boolean saveGame(GameModel model, boolean assisted) {
         if (model == null || !isSupportedSize(model.getSize())) {
             return false;
         }
-        boolean saved = saveGame(model, getSaveFile(model.getSize()));
+        boolean saved = saveGame(model, getSaveFile(model.getSize()), assisted);
         if (saved) {
             deleteFile(new File(getDataDirectory(), SAVED_GAMES_RESET_FILE));
         }
@@ -105,7 +120,18 @@ public class SaveManager {
      * @return {@code true} when the autosave slot was written successfully
      */
     public static boolean autosaveGame(GameModel model) {
-        return saveGame(model);
+        return saveGame(model, false);
+    }
+
+    /**
+     * Persists an active normal run at a lifecycle boundary.
+     *
+     * @param model game model to persist
+     * @param assisted whether this run has used solver or strategic assistance
+     * @return {@code true} when the save file was written successfully
+     */
+    public static boolean autosaveGame(GameModel model, boolean assisted) {
+        return saveGame(model, assisted);
     }
 
     /**
@@ -116,6 +142,10 @@ public class SaveManager {
      * @return {@code true} when the save file was written successfully
      */
     static boolean saveGame(GameModel model, File saveFile) {
+        return saveGame(model, saveFile, false);
+    }
+
+    static boolean saveGame(GameModel model, File saveFile, boolean assisted) {
         if (model == null || saveFile == null) {
             return false;
         }
@@ -129,6 +159,7 @@ public class SaveManager {
         data.updatedAt = System.currentTimeMillis();
         data.active = model.isGameRunning();
         data.solved = model.isSolved();
+        data.assisted = assisted;
         data.difficulty = model.getDifficulty();
         data.actionHistory = model.getEncodedActionHistory();
         data.redoHistory = model.getEncodedRedoHistory();
@@ -237,7 +268,7 @@ public class SaveManager {
             return false;
         }
         File saveFile = getDailySaveFile(date);
-        if (!saveGame(model, saveFile)) {
+        if (!saveGame(model, saveFile, assisted)) {
             return false;
         }
         try {
@@ -287,8 +318,12 @@ public class SaveManager {
      */
     public static boolean isDailyGameAssisted(String dateId) {
         LocalDate date = parseDailyDate(dateId);
-        if (date == null || loadDailyGame(dateId) == null) {
+        SaveData data = date == null ? null : loadDailyGame(dateId);
+        if (data == null) {
             return false;
+        }
+        if (data.assisted) {
+            return true;
         }
         File marker = getDailyAssistedFile(date);
         if (!marker.exists()) {
@@ -525,7 +560,7 @@ public class SaveManager {
             return false;
         }
         File saveFile = getFavoriteRunFile(favorite.id);
-        if (!saveGame(model, saveFile)) {
+        if (!saveGame(model, saveFile, assisted)) {
             return false;
         }
         try {
@@ -562,8 +597,12 @@ public class SaveManager {
      * @return assistance marker value, or {@code false} when absent/invalid
      */
     public static synchronized boolean isFavoriteRunAssisted(String favoriteId) {
-        if (loadFavoriteRun(favoriteId) == null) {
+        SaveData data = loadFavoriteRun(favoriteId);
+        if (data == null) {
             return false;
+        }
+        if (data.assisted) {
+            return true;
         }
         File marker = getFavoriteAssistedFile(favoriteId);
         if (!marker.exists()) {
@@ -590,7 +629,7 @@ public class SaveManager {
                 || model.getDifficulty() == null) {
             return false;
         }
-        if (!saveGame(model, getContinuousCurrentFile())) {
+        if (!saveGame(model, getContinuousCurrentFile(), assisted)) {
             return false;
         }
         StringBuilder json = new StringBuilder("{\n")
@@ -637,7 +676,8 @@ public class SaveManager {
             if (game == null || game.size != size || game.difficulty != difficulty) {
                 return null;
             }
-            boolean assisted = optionalBooleanField(json, "assistedCurrent", false);
+            boolean assisted = optionalBooleanField(json, "assistedCurrent", false)
+                    || game.assisted;
             return new ContinuousGame(game, challenge, size, difficulty, assisted);
         } catch (IOException | IllegalArgumentException | IllegalStateException exception) {
             return null;
@@ -1857,6 +1897,7 @@ public class SaveManager {
         sb.append("  \"updatedAt\": ").append(data.updatedAt).append(",\n");
         sb.append("  \"active\": ").append(data.active).append(",\n");
         sb.append("  \"solved\": ").append(data.solved).append(",\n");
+        sb.append("  \"assisted\": ").append(data.assisted).append(",\n");
         sb.append("  \"difficulty\": \"").append(data.difficulty.getId()).append("\",\n");
         sb.append("  \"grid\": ").append(gridToJson(data.grid)).append(",\n");
         sb.append("  \"initialGrid\": ").append(gridToJson(data.initialGrid)).append(",\n");
@@ -1878,6 +1919,7 @@ public class SaveManager {
         data.updatedAt = optionalLongField(json, "updatedAt", 0);
         data.active = optionalBooleanField(json, "active", false);
         data.solved = optionalBooleanField(json, "solved", false);
+        data.assisted = optionalBooleanField(json, "assisted", false);
         data.difficulty = PuzzleDifficulty.fromId(optionalStringField(json, "difficulty", null));
         data.grid = gridField(json, "grid", data.size);
         data.initialGrid = optionalGridField(json, "initialGrid", data.size);
@@ -2347,6 +2389,9 @@ public class SaveManager {
         /** Scramble preset retained by the saved puzzle. */
         public final PuzzleDifficulty difficulty;
 
+        /** Whether the saved run is ineligible for a player best. */
+        public final boolean assisted;
+
         private SaveMetadata(SaveData data) {
             updatedAt = data.updatedAt;
             size = data.size;
@@ -2355,6 +2400,7 @@ public class SaveManager {
             active = data.active;
             solved = data.solved;
             difficulty = data.difficulty == null ? PuzzleDifficulty.CLASSIC : data.difficulty;
+            assisted = data.assisted;
         }
     }
 
@@ -2529,6 +2575,12 @@ public class SaveManager {
 
         /** Whether the persisted puzzle is solved. */
         public boolean solved;
+
+        /**
+         * Whether solver or strategic assistance was used in this run.
+         * Missing values in legacy saves default to {@code false}.
+         */
+        public boolean assisted;
 
         /** Scramble-intensity preset, defaulting to Classic for legacy saves. */
         public PuzzleDifficulty difficulty;

@@ -73,6 +73,24 @@ class SaveManagerTest {
     }
 
     @Test
+    void assistedNormalSaveRoundTripsAndLegacyPayloadDefaultsSafely() throws Exception {
+        GameModel model = new GameModel(3);
+        model.loadState(new int[][] {{1, 2, 3}, {4, 0, 6}, {7, 5, 8}}, 0);
+        File saveFile = new File(tempDir, "assisted.json");
+        File legacyFile = new File(tempDir, "legacy.dat");
+
+        assertTrue(SaveManager.saveGame(model, saveFile, true));
+        SaveManager.SaveData saved = SaveManager.loadGame(saveFile, legacyFile);
+        assertTrue(saved.assisted);
+
+        Files.writeString(saveFile.toPath(),
+                "{\"version\":3,\"size\":3,\"grid\":[[1,2,3],[4,0,6],[7,5,8]]}");
+        SaveManager.SaveData legacy = SaveManager.loadGame(saveFile, legacyFile);
+        assertNotNull(legacy);
+        assertFalse(legacy.assisted, "missing additive metadata must remain player-safe");
+    }
+
+    @Test
     void defaultSavePathUsesConfiguredUserDataDirectory() {
         String oldValue = System.getProperty(SaveManager.DATA_DIR_PROPERTY);
         System.setProperty(SaveManager.DATA_DIR_PROPERTY, tempDir.getAbsolutePath());
