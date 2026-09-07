@@ -29,3 +29,10 @@ dependencies {
 test {
     useJUnitPlatform()
 }
+
+// The repository contains localized Desktop sources and tests. Make the
+// shared Java/Gradle gate deterministic on Windows runners whose console code
+// page is not UTF-8.
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+}

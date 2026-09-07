@@ -599,6 +599,17 @@ public class GameModel {
     }
 
     /**
+     * Puts a newly reconstructed session into its paused, zero-time state.
+     * This is package-private because only core persistence/identity restore
+     * paths need to establish a deterministic pre-play timer anchor.
+     */
+    void pauseTimerAtZero() {
+        elapsedTimeMs = 0L;
+        timerStartedAtMs = timeSource.getAsLong();
+        timerRunning = false;
+    }
+
+    /**
      * Resumes active-play time accumulation for an unsolved running puzzle.
      * Repeated calls are safe.
      */

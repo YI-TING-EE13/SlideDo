@@ -102,7 +102,7 @@ public final class PuzzleIdentity {
         GameModel model = new GameModel(size);
         model.loadState(data);
         // The platform controller starts timing when the game screen is visible.
-        model.pauseTimer();
+        model.pauseTimerAtZero();
         return model;
     }
 
