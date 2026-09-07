@@ -1774,8 +1774,8 @@ public class MainFrame extends JFrame implements GameObserver {
                     return;
                 }
                 DesktopPersonalDataArchive.restoreArchive(archive);
-                reconcileAfterPersonalDataRestore();
                 preferencesEditorGuard.markPersonalDataRestored();
+                reconcileAfterPersonalDataRestore();
                 showMessageDialog(text("backupRestored"), text("backupRestore"),
                         JOptionPane.INFORMATION_MESSAGE);
             } catch (IllegalArgumentException exception) {
