@@ -3,10 +3,15 @@ package com.klotski.ui;
 import com.klotski.core.*;
 
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
@@ -1581,6 +1586,9 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void showPreferencesDialog() {
+        if (solverRunning) {
+            return;
+        }
         JCheckBox reducedMotionBox = new JCheckBox(text("reduceMotion"), reducedMotionEnabled);
         JCheckBox soundBox = new JCheckBox(text("sound"), soundEnabled);
         JComboBox<String> languageBox = new JComboBox<>(DesktopLocale.supportedTags());
@@ -1636,12 +1644,27 @@ public class MainFrame extends JFrame implements GameObserver {
         resets.add(resetSaved);
         resets.add(resetRecords);
 
+        JButton exportBackup = new JButton(text("backupExport"));
+        setAccessibleDescription(exportBackup, text("backupExport"),
+                text("backupExportDescription"));
+        exportBackup.addActionListener(event -> exportPersonalData());
+        JButton restoreBackup = new JButton(text("backupRestore"));
+        setAccessibleDescription(restoreBackup, text("backupRestore"),
+                text("backupRestoreDescription"));
+        restoreBackup.addActionListener(event -> restorePersonalData());
+        JPanel backupActions = new JPanel(new GridLayout(0, 1, 8, 8));
+        backupActions.add(exportBackup);
+        backupActions.add(restoreBackup);
+
         JPanel panel = new JPanel(new BorderLayout(0, 10));
         JLabel description = new JLabel(DesktopHomeContent.preferencesDescription(desktopLocale));
         description.getAccessibleContext().setAccessibleName(text("preferences"));
         panel.add(description, BorderLayout.NORTH);
         panel.add(choices, BorderLayout.CENTER);
-        panel.add(resets, BorderLayout.SOUTH);
+        JPanel bottomActions = new JPanel(new BorderLayout(0, 8));
+        bottomActions.add(resets, BorderLayout.NORTH);
+        bottomActions.add(backupActions, BorderLayout.SOUTH);
+        panel.add(bottomActions, BorderLayout.SOUTH);
         panel.getAccessibleContext().setAccessibleName(text("preferences"));
         panel.getAccessibleContext().setAccessibleDescription(text("preferencesAccessibleDescription"));
 
@@ -1670,6 +1693,131 @@ public class MainFrame extends JFrame implements GameObserver {
                 updateStatus();
             }
         }
+    }
+
+    private boolean backupInputIsStable() {
+        if (solverRunning || boardPanel == null || boardPanel.isBusy()) {
+            showMessageDialog(text("backupBusy"), text("preferences"), JOptionPane.INFORMATION_MESSAGE);
+            return false;
+        }
+        return true;
+    }
+
+    private JFileChooser createBackupChooser() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle(text("backupExport"));
+        chooser.setFileFilter(new FileNameExtensionFilter(text("backupFileFilter"), "json"));
+        chooser.getAccessibleContext().setAccessibleName(text("backupExport"));
+        chooser.getAccessibleContext().setAccessibleDescription(text("backupExportDescription"));
+        return chooser;
+    }
+
+    private void exportPersonalData() {
+        if (!backupInputIsStable()) {
+            return;
+        }
+        runWithPausedTimer(() -> {
+            JFileChooser chooser = createBackupChooser();
+            chooser.setSelectedFile(new File("SlideDo-backup-" + LocalDate.now() + ".json"));
+            if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+                return;
+            }
+            try {
+                // Choose the destination first so a chooser cancel is a true
+                // no-op. Only an approved export may flush the stable session.
+                if (showingGame && !autosaveCurrentGameIfSafe()) {
+                    showMessageDialog(text("backupExportFailure"), text("backupExport"),
+                            JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+                String archive = DesktopPersonalDataArchive.exportArchive();
+                Files.writeString(chooser.getSelectedFile().toPath(), archive,
+                        StandardCharsets.UTF_8);
+                showMessageDialog(text("backupExported"), text("backupExport"),
+                        JOptionPane.INFORMATION_MESSAGE);
+            } catch (IOException | RuntimeException exception) {
+                showMessageDialog(text("backupExportFailure"), text("backupExport"),
+                        JOptionPane.WARNING_MESSAGE);
+            }
+        });
+    }
+
+    private void restorePersonalData() {
+        if (!backupInputIsStable()) {
+            return;
+        }
+        runWithPausedTimer(() -> {
+            JFileChooser chooser = createBackupChooser();
+            chooser.setDialogTitle(text("backupRestore"));
+            chooser.getAccessibleContext().setAccessibleName(text("backupRestore"));
+            chooser.getAccessibleContext().setAccessibleDescription(text("backupRestoreDescription"));
+            if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
+                return;
+            }
+            File selected = chooser.getSelectedFile();
+            try {
+                if (selected.length() > DesktopPersonalDataArchive.MAX_ARCHIVE_BYTES) {
+                    throw new IllegalArgumentException("Backup is too large");
+                }
+                String archive = Files.readString(selected.toPath(), StandardCharsets.UTF_8);
+                DesktopPersonalDataArchive.validate(archive);
+                int answer = showConfirmDialog(text("backupRestoreConfirm"),
+                        text("backupRestore"), JOptionPane.YES_NO_OPTION,
+                        JOptionPane.WARNING_MESSAGE);
+                if (answer != JOptionPane.YES_OPTION) {
+                    return;
+                }
+                DesktopPersonalDataArchive.restoreArchive(archive);
+                reconcileAfterPersonalDataRestore();
+                showMessageDialog(text("backupRestored"), text("backupRestore"),
+                        JOptionPane.INFORMATION_MESSAGE);
+            } catch (IllegalArgumentException exception) {
+                showMessageDialog(text("backupInvalid"), text("backupRestore"),
+                        JOptionPane.WARNING_MESSAGE);
+            } catch (IOException exception) {
+                showMessageDialog(text("backupRestoreFailure"), text("backupRestore"),
+                        JOptionPane.WARNING_MESSAGE);
+            }
+        });
+    }
+
+    /**
+     * Drops all mode/controller state that could autosave over an imported
+     * archive, then rebuilds the shell from the restored preferences and the
+     * restored normal-save namespace.
+     */
+    private void reconcileAfterPersonalDataRestore() {
+        solverRunning = false;
+        pendingResultMessage = null;
+        clearMovableHint();
+        if (model != null) {
+            model.removeObserver(this);
+        }
+        SaveManager.SaveData restored = SaveManager.loadGame();
+        model = restored == null ? new GameModel(4) : new GameModel(restored.size);
+        model.addObserver(this);
+        if (restored != null) {
+            model.loadState(restored);
+        }
+        boardPanel.setModel(model);
+        activeDailyDateId = null;
+        activeFavoriteId = null;
+        activeContinuousChallenge = null;
+        continuousDifficulty = null;
+        continuousSize = 0;
+        assistedSolveActive = restored != null && restored.assisted;
+        completedAssisted = restored != null && restored.solved && restored.assisted;
+        completionTracker.reset();
+        savedGamesReset = restored == null;
+        showingGame = false;
+        desktopTheme = DesktopTheme.fromId(SaveManager.getDesktopTheme());
+        desktopLocale = DesktopLocale.fromTag(SaveManager.getDesktopLanguageTag());
+        reducedMotionEnabled = SaveManager.isReducedMotionEnabled();
+        soundEnabled = SaveManager.isSoundEnabled();
+        boardPanel.setTheme(desktopTheme);
+        boardPanel.setLocale(desktopLocale);
+        boardPanel.setReducedMotion(reducedMotionEnabled);
+        rebuildLocalizedWindow();
     }
 
     private void rebuildLocalizedWindow() {

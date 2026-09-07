@@ -77,6 +77,15 @@ if errorlevel 1 exit /b 1
     echo For portable testing, run:
     echo   java -Dslidedo.data.dir=PATH_TO_DATA -jar SlideDo.jar
     echo.
+    echo Backup and restore:
+    echo - Preferences ^> Export Personal Data writes a versioned local JSON backup.
+    echo - Preferences ^> Restore Personal Data validates before confirmation.
+    echo - Restore is a full replacement of managed saves, Daily, Favorites,
+    echo   Continuous, records, history, statistics, settings, and reset masks.
+    echo - Unmanaged files in the data directory are preserved; invalid backups
+    echo   make no change. Legacy Desktop saves remain non-destructively loadable.
+    echo - Data is local and owner-controlled; there is no cloud backup.
+    echo.
     echo What to test:
     echo - Start 3x3, 4x4, and 5x5 puzzles from Home.
     echo - Click adjacent and non-adjacent aligned tiles.
@@ -96,7 +105,13 @@ if errorlevel 1 exit /b 1
 copy "%ROOT%\release-notes\%VERSION_NAME%.md" "%PACKAGE_DIR%\RELEASE_NOTES.md" >nul
 if errorlevel 1 exit /b 1
 
+powershell -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\tools\VerifyDesktopPackage.ps1" -PackageDir "%PACKAGE_DIR%"
+if errorlevel 1 exit /b 1
+
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Compress-Archive -Force -Path '%PACKAGE_DIR%\*' -DestinationPath '%ZIP_FILE%'"
+if errorlevel 1 exit /b 1
+
+powershell -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\tools\VerifyDesktopPackage.ps1" -PackageDir "%PACKAGE_DIR%" -ZipPath "%ZIP_FILE%"
 if errorlevel 1 exit /b 1
 
 if /I not "%SKIP_JPACKAGE%"=="1" if defined JPACKAGE_CMD (

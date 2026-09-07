@@ -81,12 +81,16 @@ call :require_text "%PACKAGE_DIR%\README.txt" "Run SlideDo.bat to start the desk
 call :require_text "%PACKAGE_DIR%\README.txt" "Java 17 or newer available on PATH" "desktop Java runtime instruction"
 call :require_text "%PACKAGE_DIR%\README.txt" "Saves and records are stored under" "desktop save location instruction"
 call :require_text "%PACKAGE_DIR%\README.txt" "\SlideDo on Windows." "desktop Windows save directory"
+call :require_text "%PACKAGE_DIR%\README.txt" "Backup and restore:" "desktop backup instruction"
+call :require_text "%PACKAGE_DIR%\README.txt" "full replacement of managed" "desktop backup replacement semantics"
 call :require_text "%PACKAGE_DIR%\README.txt" "What to test:" "desktop package tester checklist"
 call :require_text "%PACKAGE_DIR%\README.txt" "Known limits:" "desktop package known limits"
 call :require_text "%PACKAGE_DIR%\RELEASE_NOTES.md" "# SlideDo %VERSION_NAME%" "desktop package release notes version"
 
 echo [4/5] ZIP contents
 if exist "%ZIP_FILE%" (
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\tools\VerifyDesktopPackage.ps1" -PackageDir "%PACKAGE_DIR%" -ZipPath "%ZIP_FILE%"
+    if errorlevel 1 set "FAIL=1"
     call :require_zip_entry "%ZIP_FILE%" "SlideDo.jar"
     call :require_zip_entry "%ZIP_FILE%" "SlideDo.bat"
     call :require_zip_entry "%ZIP_FILE%" "README.txt"
