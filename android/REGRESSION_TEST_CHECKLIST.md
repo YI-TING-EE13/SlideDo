@@ -329,6 +329,13 @@ reported as passed.
 
 ### 2026-08-24 Personal Play 2.0 Stage 8 Toolchain and CI Maintenance pass
 
+Stage 9 source reconciliation (2026-09-08) counted 331 common localized keys
+in the current `values`, `values-zh-rTW`, and `values-ja-rJP` resource sets.
+The 335-key figure in the dated Stage 7 record below is historical evidence
+from that acceptance snapshot and is intentionally retained rather than
+rewritten. This document remains a reusable checklist; the source count is not
+a new device or TalkBack acceptance claim.
+
 | Evidence | Result |
 | --- | --- |
 | Debug APK SHA-256 | `D19E0B83B34EEA332F05E1BB3CFA85691BA98DE5227A5E87B288DC51C21FAF5F` |

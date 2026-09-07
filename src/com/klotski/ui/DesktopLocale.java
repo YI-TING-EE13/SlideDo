@@ -8,7 +8,10 @@ import java.util.Locale;
 /**
  * Desktop locale catalog for the controls and learning copy needed to finish
  * a normal play session.  It intentionally uses plain Java maps instead of
- * Android resources so the packaged Swing app remains self-contained.
+ * Android resources so the packaged Swing app remains self-contained. Locale
+ * instances are immutable; unsupported tags fall back to English, while
+ * missing non-English keys also fall back per message so a new UI key cannot
+ * make the desktop shell unreadable.
  */
 public final class DesktopLocale {
     private static final String[] SUPPORTED_TAGS = {"en", "zh-TW", "ja-JP"};

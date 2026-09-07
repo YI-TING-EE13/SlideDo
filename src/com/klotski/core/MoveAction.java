@@ -10,6 +10,8 @@ import java.util.Objects;
  * move has one step, while a whole-line slide keeps all of its cells in one
  * action with a larger step count.
  * </p>
+ * <p>The value is immutable so JSON and legacy persistence can round-trip
+ * action order without exposing a mutable model snapshot.</p>
  */
 public final class MoveAction implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -24,6 +26,8 @@ public final class MoveAction implements Serializable {
      *
      * @param direction direction moved by the empty cell
      * @param steps number of cells moved, at least one
+     * @throws NullPointerException when {@code direction} is {@code null}
+     * @throws IllegalArgumentException when {@code steps} is less than one
      */
     public MoveAction(Direction direction, int steps) {
         this.direction = Objects.requireNonNull(direction, "direction");

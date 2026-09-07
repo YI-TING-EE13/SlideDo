@@ -499,7 +499,8 @@ gameplay.
 - Connected Android instrumentation helpers now wait for the foreground app
   window, wait for activity controls to become interactable, use device-level
   board taps, and fall back to direct swipe scrolling for long content.
-- The latest 2026-08-24 dual-AVD Android acceptance covers all 108 tests in one
+- The last recorded dual-AVD Android acceptance on 2026-08-24 covers all 108
+  tests in one
   serial run on each profile: Pixel_7 (Android 15, 1080x2400) passed 108/108 in
   9m19s and `small_phone` (Android 16 / API 36.1, 720x1280) passed 108/108 in
   9m28s, with no failed or skipped tests. The suite
@@ -536,8 +537,10 @@ gameplay.
   distribution checksum, exact AGP/JDK/SDK versions, immutable GitHub Actions
   references, stable AndroidX test dependencies, and scheduled dependency
   review.
-- Latest local `ci.bat` run passed the no-device verification and release
-  readiness gates.
+- The recorded Stage 8 local `ci.bat` gate passed the no-device verification
+  and release-readiness gates; the current branch's verification result is
+  reported by its pull-request checks rather than described as a timeless
+  "latest" run.
 - Android emulator smoke testing for install/launch, Home visibility, whole-line
   movement, undo/redo, Move History, restart, save/load, solver warning dialog,
   portrait/landscape layout, rotation, and background resume.
@@ -651,6 +654,9 @@ Development planning, Git workflow rules, desktop/Android behavior parity, and t
   localization, gameplay, persistence, adaptive UI, and acceptance matrix.
 - [Development record](DEVELOPMENT.md): behavior contracts, staged roadmap, and
   implementation evidence.
+- [Desktop/Android parity qualification](DESKTOP_ANDROID_PARITY.md): the
+  current 45-row semantic matrix, platform-specific boundaries, and evidence
+  rules.
 - [Android store-readiness draft](android/PLAY_STORE_READINESS.md) and
   [desktop beta-readiness draft](DESKTOP_BETA_READINESS.md): deferred public
   distribution requirements.
@@ -736,8 +742,10 @@ Public core, desktop, and Android APIs use English Javadoc/API comments so the s
 - The desktop/Android feature parity matrix is maintained in
   `DEVELOPMENT.md` under the Desktop/Mobile Parity Pass section.
 - Public beta handoff reviews, store screenshots, the privacy-policy URL,
-  download channels, and extracted desktop-package acceptance are deferred
-  until the project owner chooses public distribution.
+  download channels, and signed/public distribution remain deferred until the
+  project owner chooses public distribution. The extracted desktop-package
+  GUI/DPI and backup/restore gate is already recorded as owner-reported PASS in
+  `DESKTOP_BETA_READINESS.md`; Codex did not execute that GUI gate.
 - Broaden TalkBack, larger-font, contrast, physical-device, and tablet/foldable
   acceptance before store submission.
 - Split larger UI/controller code only where it supports a concrete feature or

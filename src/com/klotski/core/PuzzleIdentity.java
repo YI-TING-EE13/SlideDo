@@ -12,6 +12,9 @@ import java.util.Objects;
  * identifier. Platforms can therefore deduplicate local favorites without
  * depending on display labels or mutable play progress.
  * </p>
+ * <p>The identity deliberately uses the immutable starting grid rather than
+ * the model's current grid; replay and Favorite Practice must not reshuffle or
+ * inherit moves, elapsed time, histories, or assisted state.</p>
  */
 public final class PuzzleIdentity {
     private final int size;
@@ -26,6 +29,7 @@ public final class PuzzleIdentity {
      * @param difficulty scramble-intensity label stored with the puzzle
      * @param initialGrid exact starting-grid values
      * @throws IllegalArgumentException when the grid is not a square permutation
+     * @throws NullPointerException when {@code difficulty} is {@code null}
      */
     public PuzzleIdentity(int size, PuzzleDifficulty difficulty, int[][] initialGrid) {
         this.size = size;
@@ -39,6 +43,7 @@ public final class PuzzleIdentity {
      *
      * @param model active or completed puzzle model
      * @return exact identity suitable for a favorite library
+     * @throws NullPointerException when {@code model} is {@code null}
      */
     public static PuzzleIdentity from(GameModel model) {
         Objects.requireNonNull(model, "model");

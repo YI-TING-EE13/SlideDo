@@ -8,7 +8,9 @@ import java.util.Set;
  *
  * <p>The search uses a small fixed-depth lookahead and Manhattan distance. It
  * never changes the supplied {@link GameModel}, so presentation layers can
- * show the suggestion before the player decides whether to use it.</p>
+ * show the suggestion before the player decides whether to use it. Choosing a
+ * hint alone does not mark a run assisted; the owning controller marks
+ * assistance when the player accepts the hint or solver playback.</p>
  */
 public final class StrategicHint {
     private static final int SEARCH_DEPTH = 4;
@@ -22,6 +24,8 @@ public final class StrategicHint {
      * @param model current puzzle model
      * @return a legal deterministic suggestion, or {@code null} when no hint
      *         is available
+     * <b>Implementation note:</b> A {@code null} model and an already solved model both produce
+     *           {@code null}; the method reads a defensive grid copy only.
      */
     public static Hint choose(GameModel model) {
         if (model == null || model.isSolved()) {

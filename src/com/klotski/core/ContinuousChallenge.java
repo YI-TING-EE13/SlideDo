@@ -6,6 +6,9 @@ package com.klotski.core;
  * Individual puzzles keep their own move, time, assisted, and record boundary.
  * This aggregate stores only session progress and totals, so presentation code
  * can resume or summarize a challenge without merging separate puzzle records.
+ * Each call to {@link #completePuzzle(int, long, boolean)} represents one
+ * already-claimed puzzle; persistence/controllers must call it only after
+ * their exactly-once completion guard accepts the result.
  * </p>
  */
 public final class ContinuousChallenge {

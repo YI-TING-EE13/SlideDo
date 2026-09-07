@@ -12,7 +12,9 @@ import java.util.Set;
  * <p>
  * BFS guarantees a shortest solution in an unweighted state graph, but stores
  * every visited state. It is therefore intended for 3x3 puzzles and short
- * debugging scenarios rather than difficult 4x4 or 5x5 boards.
+ * debugging scenarios rather than difficult 4x4 or 5x5 boards. The bounded
+ * search returns {@code null} when interrupted or when its five-second limit
+ * expires; it never changes the supplied model.
  * </p>
  */
 public class BfsSolver implements Solver {
@@ -41,6 +43,7 @@ public class BfsSolver implements Solver {
      *
      * @param startState puzzle state to solve
      * @return shortest move sequence, or {@code null} if the search times out
+     * @throws NullPointerException when {@code startState} is {@code null}
      */
     @Override
     public List<Direction> solve(GameModel startState) {

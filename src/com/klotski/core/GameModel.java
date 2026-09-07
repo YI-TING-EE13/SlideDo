@@ -16,6 +16,12 @@ import java.util.function.LongSupplier;
  * undo/redo stacks, and win detection. It emits observer callbacks but contains no Swing or Android code,
  * which keeps the same rules usable by both desktop and mobile front ends.
  * </p>
+ * <p>
+ * State is mutable and this class is not a cross-thread synchronization
+ * boundary. Callers serialize mutations on their UI/controller thread (or
+ * another single owner thread); observer callbacks run synchronously on the
+ * thread that performs the mutation.
+ * </p>
  */
 public class GameModel {
     private int[][] grid;
@@ -41,6 +47,8 @@ public class GameModel {
      * Creates a model for a square puzzle.
      *
      * @param size board width and height
+     * <b>Implementation note:</b> The constructor starts at the solved board with no active timer;
+     *           callers choose a scramble before presenting a playable session.
      */
     public GameModel(int size) {
         this(size, System::currentTimeMillis);
@@ -156,6 +164,7 @@ public class GameModel {
      * 
      * @param dir direction to move the empty tile
      * @return {@code true} when the move is valid and was executed
+     * @throws NullPointerException when {@code dir} is {@code null}
      */
     public boolean move(Direction dir) {
         return moveInternal(dir, true, true, true, true);
@@ -173,6 +182,9 @@ public class GameModel {
      * @param row selected tile row
      * @param col selected tile column
      * @return {@code true} when a line slide was performed
+     * <b>Implementation note:</b> Invalid coordinates, a diagonal selection, a selected empty
+     *           cell, or an inactive model return {@code false} without adding
+     *           an action or changing the timer.
      */
     public boolean slideLineTo(int row, int col) {
         if (!isGameRunning || !isValid(row, col) || (row == emptyRow && col == emptyCol)) {
@@ -244,6 +256,8 @@ public class GameModel {
      * Restores the previous board snapshot, if one is available.
      *
      * @return {@code true} when a previous move was undone
+     * <b>Implementation note:</b> Undo transfers exactly one completed action to Redo. A whole
+     *           line remains one action, not a series of exposed single steps.
      */
     public boolean undo() {
         if (undoStack.isEmpty() || !isGameRunning) {
@@ -275,6 +289,8 @@ public class GameModel {
      * Reapplies the most recently undone action as one counted move.
      *
      * @return {@code true} when an undone action was restored
+     * <b>Implementation note:</b> Redo restores the saved post-action snapshot and emits the same
+     *           single-step or line-move callback shape as the original action.
      */
     public boolean redo() {
         if (redoStack.isEmpty() || !isGameRunning) {
@@ -448,7 +464,10 @@ public class GameModel {
     /**
      * Registers an observer for model events.
      *
-     * @param observer observer to notify
+     * @param observer non-null observer to notify synchronously after model
+     *        mutations
+     * <b>Implementation note:</b> Registration does not transfer ownership or provide duplicate
+     *           suppression; the caller should register one logical view once.
      */
     public void addObserver(GameObserver observer) {
         observers.add(observer);
@@ -641,6 +660,10 @@ public class GameModel {
      *
      * @param savedGrid persisted grid values
      * @param savedMoveCount persisted move count
+     * <b>Implementation note:</b> This legacy overload treats the supplied grid as the restart
+     *           identity, clears both action histories, and starts elapsed time
+     *           at zero. Use the {@link SaveManager.SaveData} overload when
+     *           persisted timer/history metadata is available.
      */
     public void loadState(int[][] savedGrid, int savedMoveCount) {
         this.size = savedGrid.length;
@@ -664,6 +687,9 @@ public class GameModel {
      * Loads a saved game state from a SaveData object.
      *
      * @param data parsed save payload
+     * <b>Implementation note:</b> Valid action histories are reconstructed from {@code initialGrid}
+     *           and the current grid. Missing or inconsistent legacy histories
+     *           are ignored without replacing the saved board.
      */
     public void loadState(SaveManager.SaveData data) {
         this.size = data.grid.length;

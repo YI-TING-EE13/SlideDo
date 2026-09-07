@@ -40,6 +40,10 @@ import java.util.stream.Collectors;
  * <p>Only the registered logical file names are archived. Temporary atomic
  * siblings, generated packages, IDE files, and every other file in the data
  * directory are outside the archive and are never copied into it.</p>
+ * <p>Restore is a bounded transaction: the archive is validated before a
+ * managed file is replaced, a pre-restore snapshot is retained for rollback,
+ * and typed recovery/cleanup outcomes tell the Desktop controller whether it
+ * may reconcile the live shell or must lock persistence for owner recovery.</p>
  */
 public final class DesktopPersonalDataArchive {
     /** Stable archive format identifier. */
@@ -495,6 +499,10 @@ public final class DesktopPersonalDataArchive {
      * @throws IOException when the replacement fails and the previous state is
      *         restored
      * @throws IllegalArgumentException when the archive is invalid
+     * <b>Implementation note:</b> A recovery-required exception is deliberately distinct from a
+     *           cleanup warning: the former means the target cannot be trusted,
+     *           while the latter means the target is valid and only retained
+     *           transaction material needs inspection.
      */
     public static void restoreArchive(String archive) throws IOException {
         restoreArchive(archive, SaveManager.getDataDirectory());
@@ -507,6 +515,9 @@ public final class DesktopPersonalDataArchive {
      * @param dataDirectory target personal-data directory
      * @throws IOException when the replacement fails
      * @throws IllegalArgumentException when the archive is invalid
+     * <b>Implementation note:</b> The complete target is validated before the transaction is
+     *           cleaned up; unrelated files in the data directory are not
+     *           removed by the managed-namespace replacement.
      */
     public static synchronized void restoreArchive(String archive, File dataDirectory)
             throws IOException {

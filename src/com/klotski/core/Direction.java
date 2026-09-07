@@ -1,10 +1,11 @@
 package com.klotski.core;
 
 /**
- * Represents the four possible directions a tile can move.
+ * Represents the four possible directions in which the empty cell can move.
  * <p>
- * <b>Educational Note:</b> Using an Enum is type-safe and more readable than using integers (0, 1, 2, 3).
- * We can also add methods to the Enum, like getting the opposite direction.
+ * A direction is part of the shared action-history and solver contract: it is
+ * not the visual direction travelled by the numbered tile that is displaced.
+ * Using an enum keeps that convention type-safe for both platform front ends.
  * </p>
  */
 public enum Direction {

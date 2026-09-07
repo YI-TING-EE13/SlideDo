@@ -4,8 +4,11 @@ This is the single source of truth for SlideDo development planning, feature beh
 
 ## Git Workflow
 
-- This project uses local Git history to track development work from 2026-05-25 onward.
-- Do not push to a remote repository until the project owner explicitly asks for it.
+- This project uses Git history and the protected GitHub `main` branch to track
+  development work from 2026-05-25 onward.
+- Work on a feature branch created from the exact `origin/main` baseline. Push
+  that branch only after the project owner explicitly asks for it, then use a
+  pull request for review; never push directly to protected `main`.
 - Commit cohesive changes with clear messages after implementation and verification.
 - Keep generated files, local runtime saves, IDE files, and machine-specific config out of Git.
 - Keep repository line endings stable through `.gitattributes`.
@@ -94,8 +97,9 @@ from an owner-approved stage instead of extending either completed program
 implicitly.
 
 Real Play upload signing is intentionally deferred until store submission. It
-is not required for a local push-ready commit, and no Git remote or push is part
-of the current handoff.
+is not required for a local push-ready commit. A remote feature-branch push and
+pull request are normal workflow steps only when explicitly authorized by the
+project owner; merge and protected-main ownership remain separate gates.
 
 ## Current Project State
 
@@ -110,6 +114,10 @@ SlideDo is a Java number Klotski / sliding puzzle game with:
   wrapper/action checksums, and scheduled Dependabot review.
 - English API comments/Javadocs for public core, desktop, and Android APIs.
 - One-command local verification through `verify.bat`.
+- The final Stage 9 audit covers all 71 Java files in the shared core, Swing UI,
+  and Android source trees. It may improve comments and Javadocs only; it does
+  not change executable behavior, tests, resources, build scripts, CI,
+  dependencies, or the supported toolchain.
 
 Desktop currently supports:
 
@@ -204,7 +212,11 @@ Android currently supports:
 
 ## Behavioral Reference
 
-The shared `GameModel` is the canonical source for puzzle rules. Desktop remains the reference UI for gameplay semantics, while Android should preserve the same outcomes even when the mobile presentation differs.
+The shared `GameModel` and platform-independent core types own shared puzzle and
+domain semantics. Desktop and Android implement platform-specific lifecycle,
+UI, and persistence mechanisms. Parity means equivalent documented outcomes
+and data boundaries; neither UI is a blanket behavioral reference for the
+other.
 
 Core rules:
 
@@ -319,16 +331,16 @@ adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 adb shell am start -n com.klotski.android/.MainActivity
 ```
 
-Public core/desktop Javadocs:
+Public core/desktop Javadocs (use the supported JDK 17 toolchain on PATH):
 
 ```bat
-"C:\Program Files\Java\jdk-25\bin\javadoc.exe" -quiet -public -Xdoclint:all -encoding UTF-8 -charset UTF-8 -d %TEMP%\slidedo-javadocs src\com\klotski\core\*.java src\com\klotski\ui\*.java
+javadoc -quiet -public -Xdoclint:all -encoding UTF-8 -charset UTF-8 -d %TEMP%\slidedo-javadocs src\com\klotski\core\*.java src\com\klotski\ui\*.java
 ```
 
 Android API comments:
 
 ```bat
-"C:\Program Files\Java\jdk-25\bin\javadoc.exe" -quiet -public -Xdoclint:all -encoding UTF-8 -charset UTF-8 -classpath "%LOCALAPPDATA%\Android\Sdk\platforms\android-36\android.jar;src" -sourcepath "android\app\src\main\java;src" -d %TEMP%\slidedo-android-javadocs android\app\src\main\java\com\klotski\android\*.java
+javadoc -quiet -public -Xdoclint:all -encoding UTF-8 -charset UTF-8 -classpath "%LOCALAPPDATA%\Android\Sdk\platforms\android-36\android.jar;src" -sourcepath "android\app\src\main\java;src" -d %TEMP%\slidedo-android-javadocs android\app\src\main\java\com\klotski\android\*.java
 ```
 
 Shared solver performance benchmark:
@@ -588,8 +600,9 @@ protection before the next stage begins.
 
 Shared puzzle rules, deterministic puzzle identity, elapsed milliseconds, save
 compatibility, and assisted-record protection remain core contracts. Android
-may receive the player-facing flow first, but reusable puzzle and persistence
-rules stay outside Android view code.
+and Desktop may expose a player-facing flow at different times, but reusable
+puzzle and persistence rules stay in the shared core or the owning platform
+store rather than in a view.
 
 ### Next Phase: Desktop/Mobile Parity Pass
 
@@ -1303,6 +1316,35 @@ Priority: Low to Medium
 
 ## Development Log
 
+### 2026-09-08 Stage 9 professional Java documentation and final docs sync
+
+- Audited all 71 Java files under `src/com/klotski/core`, `src/com/klotski/ui`,
+  and `android/app/src/main/java/com/klotski/android`. Contract-led Javadocs
+  and comments now describe shared-core ownership, mutation and null/invalid
+  boundaries, action history and timer semantics, persistence/recovery and
+  namespace isolation, assisted-record eligibility, Swing EDT/input-lock and
+  accessibility ownership, Android lifecycle/SharedPreferences/archive
+  boundaries, and non-obvious completion/recovery invariants. No executable
+  Java behavior changed.
+- Synchronized current governance, README, parity, Desktop readiness, Android
+  checklist, Play Store draft, and beta release-note language. Current locale
+  parity is mechanically counted as 331 common keys across English,
+  Traditional Chinese, and Japanese; the dated Stage 7 result of 335 keys is
+  retained as historical evidence. The final matrix remains 41 PARITY, 0
+  PARTIAL, 0 MISSING, and 4 PLATFORM-SPECIFIC (45 total: G7, S1, S2, S3).
+- Required public `-Xdoclint:all` Javadoc gates passed with zero errors and
+  zero warnings. `verify-toolchain.ps1`, `verify.bat`, `package-desktop.bat`,
+  `check-desktop-beta-readiness.bat`, `verify-release.bat`, and `ci.bat` all
+  passed locally, including shared tests, Desktop compile, Android assemble,
+  test APK, lint, package whitelist, release-readiness, and artifact checks.
+  The supported contract remains JDK 17 / AGP 8.13.2 / Gradle 8.14.5 /
+  compile/target SDK 36 / build-tools 36.0.0. The existing local helper
+  fallback to an installed JDK 25 for Javadoc/package commands was not changed
+  because Stage 9 is documentation-only. Exact final-head GitHub Actions JDK
+  17 checks remain pending until this branch is pushed; screen-reader/TalkBack
+  certification, production signing, public distribution, and release
+  publication remain outside this owner-only qualification.
+
 ### 2026-08-24
 
 - Corrected the pinned `setup-android` license-acceptance input from the invalid
@@ -1312,7 +1354,7 @@ Priority: Low to Medium
   CRLF differences are caught consistently before another push.
 
 - Completed a post-Personal Play 2.0 documentation synchronization. Audited the
-  root and Android READMEs, current behavioral reference, regression checklist,
+  root and Android READMEs, current behavior contracts, regression checklist,
   release notes, and deferred distribution checklists against `GameModel`,
   `AndroidGameStore`, desktop controls, build configuration, and CI scripts.
   Corrected the platform-specific persistence description, action-history/Redo

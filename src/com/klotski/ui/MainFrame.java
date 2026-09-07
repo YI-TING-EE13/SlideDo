@@ -23,7 +23,10 @@ import java.util.function.Supplier;
  * The frame wires menus, status text, solver actions, save/load commands,
  * Undo/Redo and move-history presentation, and the {@link BoardPanel}. The
  * rules remain inside {@link GameModel}; this class acts as desktop-specific
- * application glue.
+ * application glue. Swing state, the one-second status timer, autosave, and
+ * solver callbacks are owned by the event-dispatch thread. Completion and
+ * personal-data restore guards prevent duplicate history writes or persistence
+ * after a recovery-required transaction.
  * </p>
  */
 public class MainFrame extends JFrame implements GameObserver {
@@ -140,6 +143,10 @@ public class MainFrame extends JFrame implements GameObserver {
 
     /**
      * Creates and shows the desktop application window.
+     *
+     * <b>Implementation note:</b> Call on the Swing event-dispatch thread. The constructor binds
+     *           model observers, controls, timers, and lifecycle listeners whose
+     *           callbacks are expected to remain on that thread.
      */
     public MainFrame() {
         desktopTheme = DesktopTheme.fromId(SaveManager.getDesktopTheme());
@@ -2202,6 +2209,13 @@ public class MainFrame extends JFrame implements GameObserver {
         }
     }
 
+    /**
+     * Refreshes the board and status after a non-move model mutation.
+     *
+     * <b>Implementation note:</b> The shared model invokes this synchronously on its mutation
+     *           thread; the desktop controller expects that thread to be the
+     *           Swing event-dispatch thread.
+     */
     @Override
     public void onGridChanged() {
         boardPanel.repaint();
@@ -2209,6 +2223,11 @@ public class MainFrame extends JFrame implements GameObserver {
         updateStatus();
     }
 
+    /**
+     * Applies desktop presentation feedback for one completed model action.
+     *
+     * @param dir direction of the empty-cell movement
+     */
     @Override
     public void onMove(Direction dir) {
         clearMovableHint();
@@ -2216,6 +2235,14 @@ public class MainFrame extends JFrame implements GameObserver {
         updateStatus();
     }
 
+    /**
+     * Records and presents one completion after the model reports a solved
+     * board. A run-id claim prevents duplicate callbacks from adding history,
+     * records, daily progress, or continuous totals twice.
+     *
+     * @param moves final move count
+     * @param timeMs final active-play time in milliseconds
+     */
     @Override
     public void onGameWon(int moves, long timeMs) {
         if (!gameplayAllowed()) {

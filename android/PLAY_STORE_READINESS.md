@@ -63,8 +63,9 @@ Full description:
 SlideDo is a focused sliding-number puzzle game built around clear movement,
 quick retries, and satisfying whole-line slides.
 
-Choose 3x3, 4x4, or 5x5 boards, continue saved games, learn the rules through
-guided practice, and track your best records by puzzle size. Tap any tile in the
+Choose 3x3, 4x4, or 5x5 boards, select Relaxed, Classic, or Challenge
+difficulty, continue independent saved games, learn the rules through guided
+practice, and track player records by size and difficulty. Tap any tile in the
 same row or column as the empty space to slide that line in one move. Undo,
 restart, assist hints, and solver playback are available when you want to learn
 or experiment.
@@ -74,9 +75,14 @@ Features:
 - Home, mode select, guided practice, How to Play, settings, records, and results
 - Whole-line slide input that counts as one move
 - Undo, restart, manual save/load, and autosave
-- Local best records by puzzle size
+- Local player best records scoped by puzzle size and difficulty
+- Daily Challenge calendar and history replay with an offline streak
+- Favorite puzzle replay isolated from normal saves and player records
+- Personal trends, custom weekly goals, and Continuous Challenge sessions
+- Move History and Redo with whole-line actions preserved as one entry
 - Assist hints for movable tiles
-- Solver playback for learning and experimentation
+- Solver playback for learning and experimentation, with assisted-run protection
+- Local backup/restore for the app's personal data
 - Haptic and reduced-motion settings
 
 SlideDo stores gameplay state and records locally on your device. The current
