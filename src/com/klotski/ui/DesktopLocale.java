@@ -30,6 +30,11 @@ public final class DesktopLocale {
             "recordsScopeRecord", "preferencesDescription",
             "recordPlayerBest", "recordFirst", "recordFirstSize", "recordNewBest", "recordBestRemains", "moveSingular", "movePlural",
             "difficultyRelaxed", "difficultyClassic", "difficultyChallenge",
+            "game", "assist", "solver", "help", "new3", "new4", "new5", "restart", "undo", "redo",
+            "save", "load", "exit", "showMovable", "howToPlay", "beginnerGuide", "practiceTutorial",
+            "continueLoad", "reduceMotion", "sound", "language", "theme", "close", "back", "next",
+            "previous", "skip", "start", "resetLesson", "startTutorialPuzzle", "resetSavedConfirm",
+            "resetRecordsConfirm", "homeSummary", "noSaves", "firstRunSubtitle",
             "records", "daily", "favorites", "trends", "continuous",
             "preferences", "resetSaved", "resetRecords", "quickReminder",
             "cellEmptyName", "cellTileName", "cellEmptyDescription",
@@ -431,7 +436,7 @@ public final class DesktopLocale {
         values.put("howToPlay", "玩法說明"); values.put("beginnerGuide", "新手指南"); values.put("practiceTutorial", "練習教學"); values.put("continueLoad", "繼續／載入");
         values.put("resetSaved", "重置已儲存遊戲"); values.put("resetRecords", "重置紀錄與統計"); values.put("reduceMotion", "減少動態效果"); values.put("sound", "音效提示");
         values.put("theme", "主題"); values.put("language", "語言"); values.put("close", "關閉"); values.put("back", "返回"); values.put("next", "下一步"); values.put("previous", "上一步"); values.put("skip", "略過"); values.put("start", "開始 3x3");
-        values.put("resetLesson", "重置課程"); values.put("startTutorialPuzzle", "開始 3x3 題目"); values.put("homeSummary", "首頁｜新遊戲、繼續、每日、收藏、趨勢、連續、紀錄"); values.put("noSaves", "目前沒有已儲存的遊戲。"); values.put("firstRunSubtitle", "先學會規則、完成引導移動，再開始遊玩。");
+        values.put("resetLesson", "重置課程"); values.put("startTutorialPuzzle", "開始 3x3 題目"); values.put("resetSavedConfirm", "要清除一般、每日、收藏練習與連續挑戰的儲存嗎？\n收藏標籤、紀錄、統計、每日歷史與偏好設定會保留。"); values.put("resetRecordsConfirm", "要清除最佳紀錄、完成歷史／統計與每日連勝狀態嗎？\n進行中的連續挑戰與偏好設定會保留。"); values.put("homeSummary", "首頁｜新遊戲、繼續、每日、收藏、趨勢、連續、紀錄"); values.put("noSaves", "目前沒有已儲存的遊戲。"); values.put("firstRunSubtitle", "先學會規則、完成引導移動，再開始遊玩。");
         values.put("historyNoMoves", "目前還沒有移動，這一局的記錄會顯示在這裡。");
         values.put("historyCounts", "已完成 %d 個動作 · 可重做 %d 個動作");
         values.put("historyAllUndone", "所有已完成動作目前都已復原。");
@@ -550,7 +555,7 @@ public final class DesktopLocale {
         values.put("records", "記録"); values.put("daily", "デイリーカレンダー"); values.put("favorites", "お気に入り"); values.put("trends", "傾向／週間目標"); values.put("continuous", "連続チャレンジ"); values.put("preferences", "設定"); values.put("quickReminder", "クイックリマインダー"); values.put("exit", "終了");
         values.put("showMovable", "動かせるタイルを表示"); values.put("howToPlay", "遊び方"); values.put("beginnerGuide", "初心者ガイド"); values.put("practiceTutorial", "練習チュートリアル"); values.put("continueLoad", "続き／読み込み");
         values.put("resetSaved", "保存ゲームをリセット"); values.put("resetRecords", "記録と統計をリセット"); values.put("reduceMotion", "動きを減らす"); values.put("sound", "サウンド通知"); values.put("theme", "テーマ"); values.put("language", "言語");
-        values.put("close", "閉じる"); values.put("back", "戻る"); values.put("next", "次へ"); values.put("previous", "前へ"); values.put("skip", "スキップ"); values.put("start", "3x3を開始"); values.put("resetLesson", "レッスンをリセット"); values.put("startTutorialPuzzle", "3x3パズルを開始"); values.put("homeSummary", "ホーム｜新規、続き、デイリー、お気に入り、傾向、連続、記録"); values.put("noSaves", "保存されたゲームはありません。"); values.put("firstRunSubtitle", "ルールを学び、ガイド付きの一手を試してから始めましょう。");
+        values.put("close", "閉じる"); values.put("back", "戻る"); values.put("next", "次へ"); values.put("previous", "前へ"); values.put("skip", "スキップ"); values.put("start", "3x3を開始"); values.put("resetLesson", "レッスンをリセット"); values.put("startTutorialPuzzle", "3x3パズルを開始"); values.put("resetSavedConfirm", "通常、デイリー、お気に入り練習、連続チャレンジの保存を消去しますか？\nお気に入り名、記録、統計、デイリー履歴、設定は保持されます。"); values.put("resetRecordsConfirm", "ベスト記録、完了履歴／統計、デイリー連勝を消去しますか？\n進行中の連続チャレンジと設定は保持されます。"); values.put("homeSummary", "ホーム｜新規、続き、デイリー、お気に入り、傾向、連続、記録"); values.put("noSaves", "保存されたゲームはありません。"); values.put("firstRunSubtitle", "ルールを学び、ガイド付きの一手を試してから始めましょう。");
         values.put("solverTools", "ソルバーツール"); values.put("historyNoMoves", "まだ手順はありません。現在の履歴がここに表示されます。"); values.put("historyCounts", "完了した操作 %d · やり直し可能 %d"); values.put("historyAllUndone", "完了した操作はすべて元に戻されています。"); values.put("historyLatest50", "最新 50 件を表示しています。"); values.put("historyAction", "%d. 空白を%sへ"); values.put("historyWholeLine", "× %d（1手）");
         values.put("warning", "警告");
         values.put("direction.up", "上"); values.put("direction.down", "下"); values.put("direction.left", "左"); values.put("direction.right", "右"); values.put("strategicHint", "戦略ヒント"); values.put("strategicHintUnavailable", "この局面には戦略ヒントがありません。"); values.put("strategicHintStatus", "ヒント：タイル %d を試す（空白が%sへ移動）"); values.put("solverTools", "ソルバーツール"); values.put("solverBfs", "BFSで解く（3x3向け）"); values.put("solverAStar", "A*で解く（4x4以上向け）"); values.put("solverIdaStar", "IDA*で解く（モバイル向けコア）"); values.put("solverCancel", "ソルバーをキャンセル");
