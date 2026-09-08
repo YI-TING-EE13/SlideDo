@@ -41,10 +41,14 @@ import java.util.regex.Pattern;
  * write. The loader also accepts the legacy single JSON and serialized
  * {@code klotski_save.dat} files without deleting them or overwriting a newer
  * size slot.
- * </p>
+ * <p>All files are local owner data; this class does not provide cloud sync or
+ * cross-process locking. Public mutating entry points that share a namespace
+ * are synchronized within the JVM, while callers still own lifecycle ordering
+ * around UI autosave and restore.</p>
  */
 public class SaveManager {
-    /** Optional JVM property used by tests and portable desktop packages. */
+    /** Optional JVM property used by tests and portable desktop packages. The
+     * value selects the local data directory and does not alter file formats. */
     public static final String DATA_DIR_PROPERTY = "slidedo.data.dir";
 
     private static final int CURRENT_SAVE_VERSION = 4;
@@ -142,7 +146,8 @@ public class SaveManager {
      * project-root legacy fallback from reappearing while normal slots remain
      * independently usable.</p>
      *
-     * @return {@code true} when the save file was written successfully
+     * @return {@code true} when the save file was written successfully; false
+     *         for an unsupported/null model or an I/O failure
      */
     public static boolean saveGame(GameModel model, boolean assisted) {
         if (model == null || !isSupportedSize(model.getSize())) {
@@ -217,6 +222,9 @@ public class SaveManager {
      * Loads the newest valid independent desktop save.
      *
      * @return parsed save data, or {@code null} when no valid save exists
+     * <b>Implementation note:</b> Loading may perform conservative legacy migration into an empty
+     *           size slot. It never overwrites a newer valid slot and respects
+     *           the durable saved-games reset boundary.
      */
     public static SaveData loadGame() {
         if (!isSavedGamesReset()) {
@@ -240,6 +248,9 @@ public class SaveManager {
      *
      * @param size supported square board size
      * @return parsed save data, or {@code null} when the slot is absent/invalid
+     * <b>Implementation note:</b> An unsupported size is a no-op returning {@code null}; valid
+     *           slots retain their own difficulty, initial grid, histories, and
+     *           elapsed active-play time.
      */
     public static SaveData loadGame(int size) {
         if (!isSupportedSize(size)) {
@@ -298,6 +309,9 @@ public class SaveManager {
      * @param model daily game model to persist
      * @param assisted whether solver or strategic assistance is active
      * @return {@code true} when the daily save and assistance marker are written
+     * <b>Implementation note:</b> The dated slot is independent from normal, favorite-practice,
+     *           and continuous namespaces. A future or identity-mismatched
+     *           date is rejected without changing any file.
      */
     public static synchronized boolean saveDailyGame(String dateId, GameModel model, boolean assisted) {
         LocalDate date = parseDailyDate(dateId);
@@ -1697,6 +1711,10 @@ public class SaveManager {
      * @param moves final move count
      * @param timeMs elapsed time in milliseconds
      * @return the best record after comparing the submitted result
+     * <b>Implementation note:</b> Records are scoped by size and difficulty. Comparison is fewer
+     *           moves first, then lower active-play time; assisted callers must
+     *           use completion metadata and must not call this player-record
+     *           API for an assisted result.
      */
     public static BestRecord recordBest(int size, int moves, long timeMs) {
         return recordBest(size, PuzzleDifficulty.CLASSIC, moves, timeMs);
@@ -1971,6 +1989,10 @@ public class SaveManager {
      * @param timeMs elapsed time in milliseconds
      * @param assisted whether solver or strategic assistance produced the win
      * @return {@code true} when a new completion sample was persisted
+     * <b>Implementation note:</b> The completion id is the exactly-once boundary. A repeated id
+     *           returns {@code false} and does not increment history or totals;
+     *           assisted samples remain visible but are excluded from player
+     *           best and player-average totals.
      */
     public static boolean recordCompletion(String completionId, int size, PuzzleDifficulty difficulty,
             int moves, long timeMs, boolean assisted) {
@@ -2759,6 +2781,10 @@ public class SaveManager {
      * Returns the desktop user-data directory used for default saves and records.
      *
      * @return directory for desktop user data
+     * <b>Implementation note:</b> The explicit {@link #DATA_DIR_PROPERTY} wins, followed by
+     *           Windows {@code APPDATA}\SlideDo and then
+     *           {@code user.home/.slidedo}. The method does not create the
+     *           directory; the first durable write does so.
      */
     public static File getDataDirectory() {
         String override = System.getProperty(DATA_DIR_PROPERTY);

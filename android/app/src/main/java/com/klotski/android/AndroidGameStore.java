@@ -38,6 +38,11 @@ import java.util.Set;
  * {@link GameModel}; persisted game data is loaded back into the shared model
  * before any gameplay behavior runs.
  * </p>
+ * The store is the Android persistence adapter for the shared core contracts:
+ * its keys are local-device data, its writes are owned by the Activity
+ * lifecycle, and its completion ids provide the exactly-once boundary used by
+ * the history/statistics layer. It is not a cloud-sync or cross-process
+ * consistency service.
  * Synchronous preference commits are deliberate in this store: backup import,
  * reset, save, and Activity recreation flows must know whether durable writes
  * succeeded before reporting success or replacing visible state.
@@ -831,7 +836,7 @@ final class AndroidGameStore {
     }
 
     static boolean isBetterRecord(Best best, int moves, long timeMs) {
-        // Record ranking matches the shared desktop behavior: moves first, then time.
+        // Record ranking follows the shared core contract: moves first, then time.
         return best == null || moves < best.moves || (moves == best.moves && timeMs < best.timeMs);
     }
 

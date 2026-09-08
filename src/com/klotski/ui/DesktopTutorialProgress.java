@@ -3,7 +3,10 @@ package com.klotski.ui;
 import com.klotski.core.GameModel;
 import com.klotski.core.MoveAction;
 
-/** Small state machine used by the interactive desktop practice lesson. */
+/** Small state machine used by the interactive desktop practice lesson.
+ * The lesson observes an isolated model and never writes normal saves,
+ * records, completion history, or daily/continuous progress.
+ */
 public final class DesktopTutorialProgress {
     /** Lesson milestones. */
     public enum Step {
@@ -39,6 +42,8 @@ public final class DesktopTutorialProgress {
      * Advances the lesson from the model's most recent completed action.
      *
      * @param model isolated tutorial model
+     * <b>Implementation note:</b> A null model or a model without a completed action is a no-op;
+     *           this method does not infer progress from a board snapshot.
      */
     public void observe(GameModel model) {
         if (model == null || model.getActionHistory().isEmpty()) {

@@ -12,12 +12,20 @@ SlideDo is a Java number Klotski / sliding puzzle game.
 - Shared core tests: `test/com/klotski/core`
 - Main development record: `DEVELOPMENT.md`
 
-The shared `GameModel` is the canonical source for puzzle rules. Desktop is the behavior reference; Android should preserve the same gameplay outcomes even when the UI differs.
+The shared `GameModel` and the other platform-independent core types own shared
+puzzle and domain semantics. Desktop and Android use platform-specific UI,
+lifecycle, and persistence mechanisms; parity means equivalent documented
+outcomes and data boundaries, not one UI serving as a blanket reference for
+the other.
 
 ## Current Product Direction
 
-The eight-stage Personal Play program for offline, owner-only use is complete.
-Public store submission is not a prerequisite.
+The eight-stage Personal Play program and the eight-stage Personal Play 2.0
+program for offline, owner-only use are complete. The Desktop/Android parity
+qualification through the packaged Stage 8 evidence is also recorded as
+complete for its current scope; Issue #13 is the final contract-led Java API
+and documentation synchronization stage before umbrella Issue #4 review.
+Public store submission is not a prerequisite for this owner-only milestone.
 
 Prioritize:
 
@@ -99,7 +107,10 @@ Keep `GameModel` platform-independent. Navigation and presentation changes belon
 
 ## Git Rules
 
-- Git is initialized locally on branch `main`.
+- Work is developed on a feature branch created from the exact protected
+  `origin/main` baseline. Push the feature branch only when the project owner
+  explicitly asks for it, then use pull-request review; never push directly to
+  protected `main`.
 - Commit cohesive changes after implementation and verification.
 - Do not rewrite history, reset, rebase, squash, or force-push unless explicitly requested.
 - Do not track generated files, local saves, IDE files, or machine-specific config.
@@ -153,16 +164,16 @@ adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 adb shell am start -n com.klotski.android/.MainActivity
 ```
 
-Public core/desktop Javadocs:
+Public core/desktop Javadocs (run with the supported JDK 17 toolchain on PATH):
 
 ```bat
-"C:\Program Files\Java\jdk-25\bin\javadoc.exe" -quiet -public -Xdoclint:all -encoding UTF-8 -charset UTF-8 -d %TEMP%\slidedo-javadocs src\com\klotski\core\*.java src\com\klotski\ui\*.java
+javadoc -quiet -public -Xdoclint:all -encoding UTF-8 -charset UTF-8 -d %TEMP%\slidedo-javadocs src\com\klotski\core\*.java src\com\klotski\ui\*.java
 ```
 
 Android API comments:
 
 ```bat
-"C:\Program Files\Java\jdk-25\bin\javadoc.exe" -quiet -public -Xdoclint:all -encoding UTF-8 -charset UTF-8 -classpath "%LOCALAPPDATA%\Android\Sdk\platforms\android-36\android.jar;src" -sourcepath "android\app\src\main\java;src" -d %TEMP%\slidedo-android-javadocs android\app\src\main\java\com\klotski\android\*.java
+javadoc -quiet -public -Xdoclint:all -encoding UTF-8 -charset UTF-8 -classpath "%LOCALAPPDATA%\Android\Sdk\platforms\android-36\android.jar;src" -sourcepath "android\app\src\main\java;src" -d %TEMP%\slidedo-android-javadocs android\app\src\main\java\com\klotski\android\*.java
 ```
 
 ## Android Manual Smoke Tests

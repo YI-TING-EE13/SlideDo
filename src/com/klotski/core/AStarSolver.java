@@ -8,7 +8,9 @@ import java.util.*;
  * Each node is scored as {@code f(n) = g(n) + h(n)}, where {@code g(n)} is
  * the number of moves from the start and {@code h(n)} is the estimated distance
  * to the goal. This is more directed than BFS, but can still be expensive on
- * hard 4x4 and 5x5 boards.
+ * hard 4x4 and 5x5 boards. The search observes interruption and has a bounded
+ * five-second runtime; a timeout or interruption returns {@code null} without
+ * mutating the supplied model.
  * </p>
  */
 public class AStarSolver implements Solver {
@@ -27,8 +29,10 @@ public class AStarSolver implements Solver {
     /**
      * Attempts to solve a puzzle using an informed priority queue search.
      *
-     * @param startState puzzle state to solve
-     * @return move sequence, or {@code null} if the solver reaches its time limit
+     * @param startState non-null puzzle state to solve
+     * @return move sequence, or {@code null} if the search is interrupted,
+     *         reaches its five-second limit, or exhausts the search without a
+     *         solution
      */
     @Override
     public List<Direction> solve(GameModel startState) {

@@ -6,6 +6,9 @@ package com.klotski.core;
  * Difficulty changes how many valid moves are used to scramble a solved board;
  * it does not change movement rules or claim a guaranteed optimal solution
  * length. Stable IDs are used by save files and platform preferences.
+ * A difficulty is therefore part of save, record, trend, and favorite
+ * identity, while the movement and solved-state rules remain shared and
+ * unchanged.
  * </p>
  */
 public enum PuzzleDifficulty {

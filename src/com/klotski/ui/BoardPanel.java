@@ -28,7 +28,10 @@ import javax.swing.border.Border;
  * <p>
  * The panel owns only view state: tile animation positions, mouse gesture
  * tracking, and queued solver playback. The authoritative board state remains
- * in {@link GameModel}.
+ * in {@link GameModel}. Painted cells retain the historical parent-level mouse
+ * contract; transparent child buttons provide keyboard and accessibility
+ * semantics and explicitly translate their mouse gestures into that one
+ * contract. A child action never adds a second model mutation.
  * </p>
  */
 public class BoardPanel extends JPanel implements GameObserver {
@@ -121,6 +124,10 @@ public class BoardPanel extends JPanel implements GameObserver {
      * Creates a board view bound to the supplied model.
      *
      * @param model initial game model to observe and render
+     * <b>Implementation note:</b> Construction and subsequent input/layout changes belong on the
+     *           Swing event-dispatch thread. The model observer callback is
+     *           synchronous, so callers must use the same UI-thread ownership
+     *           as the surrounding Swing frame.
      */
     public BoardPanel(GameModel model) {
         this.model = model;
@@ -244,6 +251,9 @@ public class BoardPanel extends JPanel implements GameObserver {
      * mouse processing is skipped; keyboard activation still uses the normal
      * {@link JButton} action path.
      * </p>
+     * <p>Forwarding calls the existing adapter exactly once rather than
+     * redispatching a synthetic event through Swing, so a child press/release
+     * cannot also trigger the button's action listener or duplicate a move.</p>
      */
     private final class AccessibleCellButton extends JButton {
         @Override
@@ -273,6 +283,8 @@ public class BoardPanel extends JPanel implements GameObserver {
     }
 
     private void forwardCellMouseEvent(MouseEvent event) {
+        // Direct adapter dispatch preserves the pre-accessibility gesture path;
+        // redispatching would allow the child and parent to process it twice.
         MouseEvent parentEvent = SwingUtilities.convertMouseEvent(
                 (Component) event.getSource(), event, this);
         switch (parentEvent.getID()) {

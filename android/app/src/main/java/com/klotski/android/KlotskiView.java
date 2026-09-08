@@ -33,7 +33,11 @@ import java.util.List;
  * <p>
  * The view renders the current {@link GameModel}, translates taps and swipes
  * into shared model moves, and owns animation state. Puzzle rules remain in
- * the model so Android gestures match the desktop reference behavior.
+ * the platform-independent model, so Android gestures and Desktop input can
+ * be qualified against the same outcome contract without sharing widget code.
+ * All view, accessibility-node, and observer updates are UI-thread-owned;
+ * while an animation or controller lock is active, touch and virtual-node
+ * actions are rejected rather than queued as hidden extra moves.
  * </p>
  */
 public class KlotskiView extends View implements GameObserver {
@@ -105,6 +109,9 @@ public class KlotskiView extends View implements GameObserver {
      *
      * @param context Android context
      * @param model game model to observe and render
+     * <b>Implementation note:</b> The view must be constructed and rebound on the Android UI
+     *           thread because model callbacks invalidate the view and update
+     *           its virtual accessibility tree synchronously.
      */
     public KlotskiView(Context context, GameModel model) {
         super(context);

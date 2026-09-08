@@ -7,6 +7,9 @@ package com.klotski.core;
  * subscribe through this interface and decide how to render grid changes,
  * single-step moves, line slides, and win events.
  * </p>
+ * <p>Callbacks are synchronous and occur on the thread that changed the
+ * model. Swing and Android adapters are responsible for entering their UI
+ * thread before mutating widgets.</p>
  */
 public interface GameObserver {
     /**
@@ -23,6 +26,9 @@ public interface GameObserver {
      * Called when the empty tile moves one cell.
      *
      * @param dir the direction the empty tile moved
+     * <b>Implementation note:</b> The callback follows the model's empty-cell direction
+     *           convention; it is not the visual direction of the numbered
+     *           tile that was displaced.
      */
     void onMove(Direction dir);
 
@@ -31,6 +37,9 @@ public interface GameObserver {
      *
      * @param dir the direction the empty tile moved
      * @param steps number of cells the empty tile moved
+     * <b>Implementation note:</b> The default implementation preserves compatibility for views
+     *           that only animate one-step callbacks. A line-aware view should
+     *           override it to keep the whole-line action atomic visually.
      */
     default void onLineMove(Direction dir, int steps) {
         onMove(dir);
@@ -41,6 +50,9 @@ public interface GameObserver {
      *
      * @param moves the final move count
      * @param timeMs elapsed play time in milliseconds
+     * <b>Implementation note:</b> The model emits this once when it recognizes the solved board;
+     *           controllers that persist results must add their own run-id
+     *           guard when lifecycle recreation could repeat a callback.
      */
     void onGameWon(int moves, long timeMs);
 }

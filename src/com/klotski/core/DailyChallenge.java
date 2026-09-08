@@ -10,6 +10,9 @@ import java.util.Objects;
  * Version 1 uses the local calendar date as the puzzle identity and derives a
  * stable seed from that date. The date source remains a platform concern so
  * tests and front ends can select the intended time zone explicitly.
+ * The date identity is independent from normal, Favorite Practice, and
+ * Continuous save namespaces; historical dates remain reproducible while a
+ * caller is responsible for rejecting future dates.
  * </p>
  */
 public final class DailyChallenge {

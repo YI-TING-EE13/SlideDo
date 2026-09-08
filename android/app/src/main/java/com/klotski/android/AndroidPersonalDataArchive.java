@@ -17,7 +17,8 @@ import java.util.TreeMap;
  *
  * <p>The codec accepts only SharedPreferences-compatible scalar and string-set
  * values. Decoding validates the entire document before callers replace any
- * stored state.</p>
+ * stored state. This is a local-device handoff format, not a Desktop archive
+ * or a cloud-synchronization protocol.</p>
  */
 final class AndroidPersonalDataArchive {
     static final int FORMAT_VERSION = 1;

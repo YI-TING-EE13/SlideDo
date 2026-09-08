@@ -8,7 +8,9 @@ import java.util.List;
  * <p>
  * IDA* searches depth-first while gradually raising an {@code f = g + h}
  * threshold. It uses far less memory than regular A*, making it a better fit
- * for Android and other memory-constrained environments.
+ * for Android and other memory-constrained environments. It observes thread
+ * interruption and its bounded search returns {@code null} after the
+ * fifteen-second limit without changing the supplied model.
  * </p>
  */
 public class IdaStarSolver implements Solver {
@@ -37,8 +39,10 @@ public class IdaStarSolver implements Solver {
     /**
      * Attempts to solve the current board with iterative deepening.
      *
-     * @param startState puzzle state to solve
-     * @return move sequence, or {@code null} when the time limit is reached
+     * @param startState non-null puzzle state to solve
+     * @return move sequence, or {@code null} if the search is interrupted,
+     *         reaches its fifteen-second limit, or finds no solution within
+     *         the iterative-deepening bounds
      */
     @Override
     public List<Direction> solve(GameModel startState) {

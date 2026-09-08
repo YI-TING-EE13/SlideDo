@@ -65,8 +65,12 @@ import java.util.List;
  * The activity owns the mobile app flow and wires the shared {@link GameModel}
  * to Android screens, local persistence, best-record tracking, solver actions,
  * completion results, and offline personal progress. Gameplay rules remain in
- * the shared core so Android behavior stays aligned with the desktop Swing
- * reference.
+ * the shared core so Android behavior stays aligned with the documented
+ * platform-neutral gameplay and persistence outcomes. Desktop and Android own
+ * separate lifecycle and UI mechanisms. Lifecycle callbacks and screen
+ * transitions are UI-thread-owned; save/restore and completion guards are
+ * applied at those boundaries so recreation cannot duplicate a move, result,
+ * history sample, or assisted-state mutation.
  * </p>
  */
 public class MainActivity extends Activity implements GameObserver {

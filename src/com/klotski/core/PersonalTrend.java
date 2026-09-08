@@ -10,6 +10,8 @@ import java.util.List;
  * the class compares equally sized recent and previous windows. Each window
  * contains at most five samples, which keeps the result focused on current
  * personal play rather than mixing incompatible long-term eras.
+ * The caller is responsible for filtering by size, difficulty, and player
+ * eligibility; this value object does not inspect persistence namespaces.
  * </p>
  */
 public final class PersonalTrend {
@@ -62,6 +64,9 @@ public final class PersonalTrend {
      *
      * @param newestFirst player-completed samples in newest-first order
      * @return immutable recent average and comparable trend summary
+     * <b>Implementation note:</b> {@code null} is treated as an empty sample list. A comparison
+     *           is reported only after three recent and three previous samples
+     *           are available.
      */
     public static PersonalTrend summarize(List<Sample> newestFirst) {
         List<Sample> samples = newestFirst == null ? Collections.emptyList() : newestFirst;

@@ -12,6 +12,9 @@ import java.util.Objects;
  * Weeks run from Monday through Sunday. Only completions from the start of the
  * current week through the supplied current date contribute, so future-dated
  * or stale records cannot inflate progress.
+ * The input list is expected to have already been filtered to one
+ * size/difficulty and to player-eligible completions; duplicate dates remain
+ * separate puzzle completions by contract.
  */
 public final class WeeklyGoalProgress {
     /** Minimum configurable weekly player-completion target. */
@@ -51,6 +54,9 @@ public final class WeeklyGoalProgress {
      * @param completionDates player completion dates; duplicate dates count as
      *        separate completed puzzles
      * @return immutable current-week goal progress
+     * @throws NullPointerException when {@code today} is {@code null}
+     * @throws IllegalArgumentException when {@code target} is outside
+     *         {@link #MIN_TARGET} through {@link #MAX_TARGET}
      */
     public static WeeklyGoalProgress calculate(LocalDate today, int target,
             List<LocalDate> completionDates) {
