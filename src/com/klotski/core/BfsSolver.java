@@ -41,9 +41,10 @@ public class BfsSolver implements Solver {
      * primitive visited set. The 5x5 compatibility path retains an array-based
      * representation because its 25 tile values cannot fit in one 64-bit word.</p>
      *
-     * @param startState puzzle state to solve
-     * @return shortest move sequence, or {@code null} if the search times out
-     * @throws NullPointerException when {@code startState} is {@code null}
+     * @param startState non-null puzzle state to solve
+     * @return shortest move sequence, or {@code null} if the search is
+     *         interrupted, reaches its five-second limit, or exhausts the
+     *         reachable states without a solution
      */
     @Override
     public List<Direction> solve(GameModel startState) {

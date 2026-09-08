@@ -1340,11 +1340,13 @@ Priority: Low to Medium
   The supported contract remains JDK 17 / AGP 8.13.2 / Gradle 8.14.5 /
   compile/target SDK 36 / build-tools 36.0.0. The existing local helper
   fallback to an installed JDK 25 for Javadoc/package commands was not changed
-  because Stage 9 is documentation-only. GitHub Actions run `34150736345` on
-  the pushed JDK 17 final head passed its `Verify build and release readiness`
-  job, including the local CI gate and artifact upload. Screen-reader/TalkBack
-  certification, production signing, public distribution, and release
-  publication remain outside this owner-only qualification.
+  because Stage 9 is documentation-only. The first pushed Stage 9 documentation
+  head `97551a479d3473b38220503e985ff35c933ae6ef` passed Actions run
+  `34150736345`; that historical run is not a final-head claim. Exact
+  merge-candidate GitHub Actions status is verified externally from PR #27 after
+  the final documentation commit. Screen-reader/TalkBack certification,
+  production signing, public distribution, and release publication remain
+  outside this owner-only qualification.
 
 ### 2026-08-24
 

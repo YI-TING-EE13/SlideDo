@@ -9,8 +9,11 @@ import java.util.Set;
  * <p>The search uses a small fixed-depth lookahead and Manhattan distance. It
  * never changes the supplied {@link GameModel}, so presentation layers can
  * show the suggestion before the player decides whether to use it. Choosing a
- * hint alone does not mark a run assisted; the owning controller marks
- * assistance when the player accepts the hint or solver playback.</p>
+ * valid hint remains side-effect-free in this helper, but the current Desktop
+ * and Android controller policy marks the run assisted as soon as that hint is
+ * requested and presented. The player does not need to move the suggested tile
+ * or accept it separately; the existing save/mode contract preserves assisted
+ * eligibility and protects player-best records.</p>
  */
 public final class StrategicHint {
     private static final int SEARCH_DEPTH = 4;

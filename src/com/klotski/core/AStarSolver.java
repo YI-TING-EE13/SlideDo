@@ -29,9 +29,10 @@ public class AStarSolver implements Solver {
     /**
      * Attempts to solve a puzzle using an informed priority queue search.
      *
-     * @param startState puzzle state to solve
-     * @return move sequence, or {@code null} if the solver reaches its time limit
-     * @throws NullPointerException when {@code startState} is {@code null}
+     * @param startState non-null puzzle state to solve
+     * @return move sequence, or {@code null} if the search is interrupted,
+     *         reaches its five-second limit, or exhausts the search without a
+     *         solution
      */
     @Override
     public List<Direction> solve(GameModel startState) {

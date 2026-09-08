@@ -39,9 +39,10 @@ public class IdaStarSolver implements Solver {
     /**
      * Attempts to solve the current board with iterative deepening.
      *
-     * @param startState puzzle state to solve
-     * @return move sequence, or {@code null} when the time limit is reached
-     * @throws NullPointerException when {@code startState} is {@code null}
+     * @param startState non-null puzzle state to solve
+     * @return move sequence, or {@code null} if the search is interrupted,
+     *         reaches its fifteen-second limit, or finds no solution within
+     *         the iterative-deepening bounds
      */
     @Override
     public List<Direction> solve(GameModel startState) {

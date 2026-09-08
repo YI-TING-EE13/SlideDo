@@ -17,9 +17,9 @@ public interface Solver {
     /**
      * Attempts to solve the given game state.
      *
-     * @param startState the puzzle state to solve; implementations should not mutate it
-     * @return the ordered move list, or {@code null} when no solution is found before the solver's limit
-     * @throws NullPointerException when {@code startState} is {@code null}
+     * @param startState non-null puzzle state to solve; implementations should not mutate it
+     * @return the ordered move list, or {@code null} when the search is interrupted,
+     *         reaches its algorithm-specific limit, or finds no solution
      */
     List<Direction> solve(GameModel startState);
     
