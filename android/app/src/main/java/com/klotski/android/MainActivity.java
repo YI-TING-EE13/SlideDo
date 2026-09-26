@@ -1238,7 +1238,8 @@ public class MainActivity extends Activity implements GameObserver {
                 new AndroidResultsScreen.ResultsActions() {
                     @Override
                     public void onPlayAgain() {
-                        if (activeContinuousChallenge == null) {
+                        if (!currentResult.completionRecorded
+                                || activeContinuousChallenge == null) {
                             replayCurrentPuzzle();
                         } else if (activeContinuousChallenge.isComplete()) {
                             repeatContinuousChallenge();
@@ -2590,6 +2591,9 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private String resultRecordText(GameResult result) {
+        if (!result.completionRecorded) {
+            return getString(R.string.results_completion_not_recorded);
+        }
         if (result.favoriteId != null) {
             return getString(R.string.results_favorite_record);
         }
@@ -2732,32 +2736,59 @@ public class MainActivity extends Activity implements GameObserver {
         }
 
         PendingWin win = pendingWin;
-        pendingWin = null;
         AndroidGameStore.Best previousBest = getBest(win.size, win.difficulty);
         boolean recordEligible = win.favoriteId == null;
+        AndroidGameStore.DailyCompletionPlan dailyPlan = null;
+        AndroidGameStore.CompletionRecordUpdate completionUpdate = null;
+        ContinuousChallenge completedChallenge = activeContinuousChallenge;
+        try {
+            if (recordEligible) {
+                if (win.dailyDateId != null) {
+                    dailyPlan = store.prepareDailyCompletion(win.dailyDateId);
+                }
+                completionUpdate = store.prepareCompletionRecord(
+                        win.size, win.difficulty, win.moves, win.timeMs, win.assisted,
+                        System.currentTimeMillis());
+            }
+            if (completedChallenge != null) {
+                completedChallenge = completedChallenge.completePuzzle(
+                        win.moves, win.timeMs, win.assisted);
+            }
+        } catch (ArithmeticException exception) {
+            pendingWin = null;
+            currentResult = new GameResult(win.size, win.difficulty, win.moves,
+                    win.timeMs, win.assisted, false, previousBest,
+                    win.dailyDateId, win.favoriteId, false, false);
+            assistedSolveActive = win.assisted;
+            if (model != null) {
+                model.restartCurrentGame();
+            }
+            lastWinTimeMs = -1;
+            saveGame();
+            performBoardHaptic(HapticFeedbackConstants.LONG_PRESS);
+            updateStatus();
+            showResultsScreen();
+            return;
+        }
+
+        pendingWin = null;
         boolean dailyProgressSaved = true;
         if (recordEligible) {
-            if (win.dailyDateId != null) {
-                try {
-                    store.recordDailyCompletion(win.dailyDateId);
-                } catch (IllegalStateException exception) {
-                    dailyProgressSaved = false;
-                }
+            if (dailyPlan != null) {
+                dailyProgressSaved = store.recordDailyCompletion(dailyPlan)
+                        != AndroidGameStore.DailyCompletionResult.FAILED;
             }
-            store.recordCompletion(win.size, win.difficulty, win.moves, win.timeMs, win.assisted);
+            store.recordCompletion(completionUpdate);
         }
         boolean newBest = recordEligible && !win.assisted
                 && AndroidGameStore.isBetterRecord(previousBest, win.moves, win.timeMs);
         if (newBest) {
             recordBest(win.size, win.difficulty, win.moves, win.timeMs);
         }
-        if (activeContinuousChallenge != null) {
-            activeContinuousChallenge = activeContinuousChallenge.completePuzzle(
-                    win.moves, win.timeMs, win.assisted);
-        }
+        activeContinuousChallenge = completedChallenge;
         currentResult = new GameResult(win.size, win.difficulty, win.moves,
                 win.timeMs, win.assisted, newBest, previousBest,
-                win.dailyDateId, win.favoriteId, dailyProgressSaved);
+                win.dailyDateId, win.favoriteId, dailyProgressSaved, true);
         assistedSolveActive = win.assisted;
         saveGame();
         performBoardHaptic(HapticFeedbackConstants.LONG_PRESS);

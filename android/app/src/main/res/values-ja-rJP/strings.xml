@@ -210,6 +210,7 @@
     <string name="continuous_end_title">連続チャレンジを終了しますか？</string>
     <string name="continuous_end_message">現在のセッションと専用の問題を削除します。獲得済みの各クリア記録は残ります。</string>
     <string name="results_player_subtitle">パズルをクリアしました。</string>
+    <string name="results_completion_not_recorded_subtitle">クリアしましたが、個人統計を更新できませんでした。</string>
     <string name="results_assisted_subtitle">アシストを使ってクリアしました。</string>
     <string name="results_daily_subtitle">今日のチャレンジをクリアしました。</string>
     <string name="results_daily_progress_unsaved">デイリーチャレンジは完了しましたが、進捗を保存できませんでした。</string>
@@ -223,6 +224,7 @@
     <string name="results_no_new_best">最高記録：%1$s</string>
     <string name="results_assisted_record">アシスト結果は保存されません。プレイヤー最高：%1$s</string>
     <string name="results_daily_progress">連続記録：%1$d 日 · 最高：%2$d 日</string>
+    <string name="results_completion_not_recorded">今回のクリアは記録されていません。個人記録と統計は変更されていません。</string>
     <string name="results_favorite_record">練習結果のみです。個人記録と統計は変更されていません。</string>
     <string name="results_play_again">同じ問題を再挑戦</string>
     <string name="results_new_size">サイズ変更</string>

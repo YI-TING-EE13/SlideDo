@@ -1204,6 +1204,38 @@ public class MainActivityFlowTest {
     }
 
     @Test
+    public void continuousOverflowShowsUnrecordedResultWithoutPartialCompletionWrites()
+            throws Exception {
+        writeSavedGame(ONE_MOVE_WIN_GRID, ONE_MOVE_WIN_GRID, 0);
+        launchApp();
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+        setActivityField("activeContinuousChallenge",
+                ContinuousChallenge.restore(3, 0, Integer.MAX_VALUE, 0L, 0));
+
+        tapCell(3, 2, 2);
+
+        waitForId("results_root");
+        waitForText("Puzzle complete, but personal statistics could not be updated.");
+        waitForText("This completion was not recorded. Personal records and statistics remain unchanged.");
+        assertActivityTextContains(R.id.results_play_again_button, "Replay Puzzle");
+
+        AndroidGameStore store = new AndroidGameStore(targetContext);
+        assertEquals(0, store.getCompletionHistory().length);
+        assertEquals(0, store.getCompletionStats(3, PuzzleDifficulty.CLASSIC).playerCompletions);
+        assertNull(store.getBest(3, PuzzleDifficulty.CLASSIC));
+        AndroidGameStore.ContinuousGame saved = store.loadContinuousGame();
+        assertNotNull(saved);
+        assertEquals(0, saved.challenge.getCompletedPuzzles());
+        assertEquals(Integer.MAX_VALUE, saved.challenge.getTotalMoves());
+        assertFalse(saved.game.solved);
+
+        clickId(R.id.results_play_again_button);
+        waitForId("game_root");
+        waitForStatusContaining("0 moves");
+    }
+
+    @Test
     public void trendsCompareOneScopeAndWeeklyGoalCanBeChanged() throws Exception {
         markOnboardingSeen();
         AndroidGameStore store = new AndroidGameStore(targetContext);

@@ -28,6 +28,7 @@ final class AndroidActivityState {
     private static final String STATE_ACTIVE_FAVORITE_ID = "active_favorite_id";
     private static final String STATE_RESULT_FAVORITE_ID = "result_favorite_id";
     private static final String STATE_RESULT_DAILY_PROGRESS_SAVED = "result_daily_progress_saved";
+    private static final String STATE_RESULT_COMPLETION_RECORDED = "result_completion_recorded";
     private static final String STATE_PENDING_WIN_AVAILABLE = "pending_win_available";
     private static final String STATE_PENDING_WIN_SIZE = "pending_win_size";
     private static final String STATE_PENDING_WIN_DIFFICULTY = "pending_win_difficulty";
@@ -125,6 +126,8 @@ final class AndroidActivityState {
         outState.putString(STATE_RESULT_FAVORITE_ID, currentResult.favoriteId);
         outState.putBoolean(STATE_RESULT_DAILY_PROGRESS_SAVED,
                 currentResult.dailyProgressSaved);
+        outState.putBoolean(STATE_RESULT_COMPLETION_RECORDED,
+                currentResult.completionRecorded);
         if (currentResult.previousBest == null) {
             outState.putInt(STATE_RESULT_PREVIOUS_BEST_MOVES, -1);
             outState.putLong(STATE_RESULT_PREVIOUS_BEST_TIME, -1);
@@ -153,7 +156,8 @@ final class AndroidActivityState {
                 previousBest,
                 savedInstanceState.getString(STATE_RESULT_DAILY_DATE),
                 savedInstanceState.getString(STATE_RESULT_FAVORITE_ID),
-                savedInstanceState.getBoolean(STATE_RESULT_DAILY_PROGRESS_SAVED, true));
+                savedInstanceState.getBoolean(STATE_RESULT_DAILY_PROGRESS_SAVED, true),
+                savedInstanceState.getBoolean(STATE_RESULT_COMPLETION_RECORDED, true));
     }
 
     private static void savePendingWin(Bundle outState, PendingWin pendingWin) {

@@ -212,6 +212,7 @@
     <string name="continuous_end_title">End continuous challenge?</string>
     <string name="continuous_end_message">This removes the current session and its isolated puzzle. Individual completion records already earned remain available.</string>
     <string name="results_player_subtitle">Puzzle solved.</string>
+    <string name="results_completion_not_recorded_subtitle">Puzzle complete, but personal statistics could not be updated.</string>
     <string name="results_assisted_subtitle">Solved with assist.</string>
     <string name="results_daily_subtitle">Daily challenge complete.</string>
     <string name="results_daily_progress_unsaved">Daily challenge complete. Progress could not be saved.</string>
@@ -225,6 +226,7 @@
     <string name="results_no_new_best">Best remains: %1$s</string>
     <string name="results_assisted_record">Assist result not saved. Player best: %1$s</string>
     <string name="results_daily_progress">Daily streak: %1$d · Best: %2$d</string>
+    <string name="results_completion_not_recorded">This completion was not recorded. Personal records and statistics remain unchanged.</string>
     <string name="results_favorite_record">Practice result only. Personal records and statistics were not changed.</string>
     <string name="results_play_again">Replay Puzzle</string>
     <string name="results_new_size">New Size</string>

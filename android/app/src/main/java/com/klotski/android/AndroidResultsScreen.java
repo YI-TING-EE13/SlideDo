@@ -34,21 +34,24 @@ final class AndroidResultsScreen {
         ScreenLayout screen = ui.createScreenLayout();
         screen.root.setId(R.id.results_root);
         screen.content.setGravity(Gravity.CENTER_HORIZONTAL);
+        int subtitle = !result.completionRecorded
+                ? R.string.results_completion_not_recorded_subtitle
+                : continuousChallenge != null
+                ? (continuousChallenge.isComplete()
+                        ? R.string.continuous_session_complete_subtitle
+                        : R.string.continuous_results_subtitle)
+                : result.dailyDateId != null
+                ? result.dailyProgressSaved
+                        ? R.string.results_daily_subtitle
+                        : R.string.results_daily_progress_unsaved
+                : (result.favoriteId != null
+                        ? R.string.results_favorite_subtitle
+                        : result.assisted
+                        ? R.string.results_assisted_subtitle
+                        : R.string.results_player_subtitle);
         ui.addScreenHeader(screen.content,
                 activity.getString(R.string.results_title),
-                activity.getString(continuousChallenge != null
-                        ? (continuousChallenge.isComplete()
-                                ? R.string.continuous_session_complete_subtitle
-                                : R.string.continuous_results_subtitle)
-                        : result.dailyDateId != null
-                        ? result.dailyProgressSaved
-                                ? R.string.results_daily_subtitle
-                                : R.string.results_daily_progress_unsaved
-                        : (result.favoriteId != null
-                                ? R.string.results_favorite_subtitle
-                                : result.assisted
-                                ? R.string.results_assisted_subtitle
-                                : R.string.results_player_subtitle)));
+                activity.getString(subtitle));
 
         TextView completionMark = ui.createText(activity.getString(R.string.results_completion_mark),
                 30, COLOR_POSITIVE_TEXT, Typeface.BOLD);
@@ -111,7 +114,7 @@ final class AndroidResultsScreen {
         summaryParams.setMargins(0, 0, 0, ui.dp(18));
         screen.content.addView(summary, summaryParams);
 
-        int primaryLabel = continuousChallenge == null
+        int primaryLabel = !result.completionRecorded || continuousChallenge == null
                 ? R.string.results_play_again
                 : (continuousChallenge.isComplete()
                         ? R.string.continuous_repeat_session

@@ -209,12 +209,49 @@ final class AndroidGameStore {
      */
     void importPersonalData(String archive) {
         Map<String, Object> values = AndroidPersonalDataArchive.decode(archive);
+        AndroidSharedPreferencesSnapshot previous =
+                AndroidSharedPreferencesSnapshot.captureAll(prefs);
         SharedPreferences.Editor editor = prefs.edit().clear();
         for (Map.Entry<String, Object> entry : values.entrySet()) {
-            putPreference(editor, entry.getKey(), entry.getValue());
+            AndroidSharedPreferencesSnapshot.putPreference(
+                    editor, entry.getKey(), entry.getValue());
         }
-        if (!editor.commit()) {
-            throw new IllegalStateException("Android could not persist the restored SlideDo data.");
+        boolean persisted;
+        try {
+            persisted = editor.commit();
+        } catch (RuntimeException exception) {
+            boolean rollbackPersisted = restoreAfterFailedImport(previous, exception);
+            throw new IllegalStateException(
+                    "Android could not persist the restored SlideDo data."
+                            + importRecoveryMessage(previous, rollbackPersisted), exception);
+        }
+        if (!persisted) {
+            boolean rollbackPersisted = restoreAfterFailedImport(previous, null);
+            throw new IllegalStateException(
+                    "Android could not persist the restored SlideDo data."
+                            + importRecoveryMessage(previous, rollbackPersisted));
+        }
+    }
+
+    private String importRecoveryMessage(
+            AndroidSharedPreferencesSnapshot previous, boolean rollbackPersisted) {
+        if (!previous.matches(prefs)) {
+            return " Previous values could not be restored in memory.";
+        }
+        return rollbackPersisted
+                ? " Previous values were restored."
+                : " Previous values were restored in memory, but durable recovery could not be confirmed.";
+    }
+
+    private boolean restoreAfterFailedImport(
+            AndroidSharedPreferencesSnapshot previous, RuntimeException originalFailure) {
+        try {
+            return previous.restore(prefs);
+        } catch (RuntimeException rollbackFailure) {
+            if (originalFailure != null) {
+                originalFailure.addSuppressed(rollbackFailure);
+            }
+            return false;
         }
     }
 
@@ -440,16 +477,21 @@ final class AndroidGameStore {
                 && prefs.getBoolean(dailySavePrefix(challenge.getDateId()) + KEY_ASSISTED, false);
     }
 
-    boolean recordDailyCompletion(String dateId) {
+    DailyCompletionPlan prepareDailyCompletion(String dateId) {
+        Set<String> dailyKeys = Set.of(KEY_DAILY_COMPLETED_DATES,
+                KEY_DAILY_LAST_COMPLETED_DATE, KEY_DAILY_CURRENT_STREAK,
+                KEY_DAILY_BEST_STREAK);
+        AndroidSharedPreferencesSnapshot previous =
+                AndroidSharedPreferencesSnapshot.captureKeys(prefs, dailyKeys);
         DailyChallenge challenge = parseDailyChallenge(dateId);
         if (challenge == null) {
-            return false;
+            return DailyCompletionPlan.failed(previous);
         }
         String canonicalDateId = challenge.getDateId();
         Set<String> completedDates = new HashSet<>(prefs.getStringSet(
                 KEY_DAILY_COMPLETED_DATES, Collections.emptySet()));
         if (!completedDates.add(canonicalDateId)) {
-            return false;
+            return DailyCompletionPlan.alreadyCompleted();
         }
 
         LocalDate completedDate = LocalDate.parse(canonicalDateId);
@@ -460,21 +502,54 @@ final class AndroidGameStore {
         String lastCompletedDateId = storedLastId;
         if (storedLast == null || completedDate.isAfter(storedLast)) {
             currentStreak = storedLast != null && completedDate.equals(storedLast.plusDays(1))
-                    ? currentStreak + 1 : 1;
+                    ? Math.addExact(currentStreak, 1) : 1;
+            if (currentStreak == Integer.MAX_VALUE) {
+                throw new ArithmeticException("Daily streak counter cannot be incremented.");
+            }
             bestStreak = Math.max(bestStreak, currentStreak);
             lastCompletedDateId = canonicalDateId;
         }
 
-        boolean persisted = prefs.edit()
-                .putStringSet(KEY_DAILY_COMPLETED_DATES, completedDates)
-                .putString(KEY_DAILY_LAST_COMPLETED_DATE, lastCompletedDateId)
-                .putInt(KEY_DAILY_CURRENT_STREAK, currentStreak)
-                .putInt(KEY_DAILY_BEST_STREAK, bestStreak)
-                .commit();
-        if (!persisted) {
-            throw new IllegalStateException("Android could not persist the daily completion.");
+        return DailyCompletionPlan.ready(canonicalDateId, completedDates,
+                lastCompletedDateId, currentStreak, bestStreak, previous);
+    }
+
+    DailyCompletionResult recordDailyCompletion(String dateId) {
+        return recordDailyCompletion(prepareDailyCompletion(dateId));
+    }
+
+    DailyCompletionResult recordDailyCompletion(DailyCompletionPlan plan) {
+        if (plan == null || plan.failed) {
+            return DailyCompletionResult.FAILED;
         }
-        return true;
+        if (plan.alreadyCompleted) {
+            return DailyCompletionResult.ALREADY_COMPLETED;
+        }
+        boolean persisted;
+        try {
+            persisted = prefs.edit()
+                    .putStringSet(KEY_DAILY_COMPLETED_DATES, plan.completedDates)
+                    .putString(KEY_DAILY_LAST_COMPLETED_DATE, plan.lastCompletedDateId)
+                    .putInt(KEY_DAILY_CURRENT_STREAK, plan.currentStreak)
+                    .putInt(KEY_DAILY_BEST_STREAK, plan.bestStreak)
+                    .commit();
+        } catch (RuntimeException exception) {
+            restoreDailyProgress(plan.previous);
+            return DailyCompletionResult.FAILED;
+        }
+        if (!persisted) {
+            restoreDailyProgress(plan.previous);
+            return DailyCompletionResult.FAILED;
+        }
+        return DailyCompletionResult.PERSISTED;
+    }
+
+    private void restoreDailyProgress(AndroidSharedPreferencesSnapshot previous) {
+        try {
+            previous.restore(prefs);
+        } catch (RuntimeException ignored) {
+            // SharedPreferences commit updates its in-process view before a disk failure.
+        }
     }
 
     DailyProgress getDailyProgress(String dateId) {
@@ -688,8 +763,14 @@ final class AndroidGameStore {
 
     void recordCompletion(int size, PuzzleDifficulty difficulty, int moves, long timeMs,
             boolean assisted, long completedAt) {
+        recordCompletion(prepareCompletionRecord(size, difficulty, moves, timeMs,
+                assisted, completedAt));
+    }
+
+    CompletionRecordUpdate prepareCompletionRecord(int size, PuzzleDifficulty difficulty,
+            int moves, long timeMs, boolean assisted, long completedAt) {
         if (!isSupportedSize(size) || moves < 0 || timeMs < 0 || completedAt < 0) {
-            return;
+            return null;
         }
         PuzzleDifficulty selected = difficulty == null ? PuzzleDifficulty.CLASSIC : difficulty;
         CompletionRecord completion = new CompletionRecord(
@@ -702,18 +783,57 @@ final class AndroidGameStore {
         }
 
         String statsPrefix = completionStatsPrefix(size, selected);
+        CompletionStats current = getCompletionStats(size, selected);
+        CompletionStats next = assisted
+                ? new CompletionStats(current.playerCompletions,
+                        incrementSupportedCounter(current.assistedCompletions),
+                        current.playerMoves, current.playerTimeMs)
+                : new CompletionStats(incrementSupportedCounter(current.playerCompletions),
+                        current.assistedCompletions,
+                        Math.addExact(current.playerMoves, moves),
+                        Math.addExact(current.playerTimeMs, timeMs));
+        validateOverallCompletionStatsAfter(size, selected, next);
+        return new CompletionRecordUpdate(encodedHistory.toString(), statsPrefix, next, assisted);
+    }
+
+    private void validateOverallCompletionStatsAfter(int changedSize,
+            PuzzleDifficulty changedDifficulty, CompletionStats changedStats) {
+        CompletionStats total = CompletionStats.EMPTY;
+        for (int size = 3; size <= 5; size++) {
+            for (PuzzleDifficulty difficulty : PuzzleDifficulty.values()) {
+                CompletionStats scope = size == changedSize && difficulty == changedDifficulty
+                        ? changedStats : getCompletionStats(size, difficulty);
+                total = total.plus(scope);
+            }
+        }
+        if (total.playerCompletions == Integer.MAX_VALUE
+                || total.assistedCompletions == Integer.MAX_VALUE) {
+            throw new ArithmeticException("Overall completion counter cannot be incremented.");
+        }
+    }
+
+    private static int incrementSupportedCounter(int value) {
+        int next = Math.addExact(value, 1);
+        if (next == Integer.MAX_VALUE) {
+            throw new ArithmeticException("Completion counter cannot be incremented.");
+        }
+        return next;
+    }
+
+    void recordCompletion(CompletionRecordUpdate update) {
+        if (update == null) {
+            return;
+        }
         SharedPreferences.Editor editor = prefs.edit()
-                .putString(KEY_COMPLETION_HISTORY, encodedHistory.toString());
-        if (assisted) {
-            editor.putInt(statsPrefix + KEY_ASSISTED_COMPLETIONS,
-                    prefs.getInt(statsPrefix + KEY_ASSISTED_COMPLETIONS, 0) + 1);
+                .putString(KEY_COMPLETION_HISTORY, update.encodedHistory);
+        if (update.assisted) {
+            editor.putInt(update.statsPrefix + KEY_ASSISTED_COMPLETIONS,
+                    update.stats.assistedCompletions);
         } else {
-            editor.putInt(statsPrefix + KEY_PLAYER_COMPLETIONS,
-                    prefs.getInt(statsPrefix + KEY_PLAYER_COMPLETIONS, 0) + 1)
-                    .putLong(statsPrefix + KEY_PLAYER_MOVES,
-                            prefs.getLong(statsPrefix + KEY_PLAYER_MOVES, 0L) + moves)
-                    .putLong(statsPrefix + KEY_PLAYER_TIME,
-                            prefs.getLong(statsPrefix + KEY_PLAYER_TIME, 0L) + timeMs);
+            editor.putInt(update.statsPrefix + KEY_PLAYER_COMPLETIONS,
+                    update.stats.playerCompletions)
+                    .putLong(update.statsPrefix + KEY_PLAYER_MOVES, update.stats.playerMoves)
+                    .putLong(update.statsPrefix + KEY_PLAYER_TIME, update.stats.playerTimeMs);
         }
         editor.apply();
     }
@@ -1000,25 +1120,6 @@ final class AndroidGameStore {
                 .remove(prefix + KEY_ASSISTED);
     }
 
-    @SuppressWarnings("unchecked")
-    private static void putPreference(SharedPreferences.Editor editor, String key, Object value) {
-        if (value instanceof String stringValue) {
-            editor.putString(key, stringValue);
-        } else if (value instanceof Integer integerValue) {
-            editor.putInt(key, integerValue);
-        } else if (value instanceof Long longValue) {
-            editor.putLong(key, longValue);
-        } else if (value instanceof Float floatValue) {
-            editor.putFloat(key, floatValue);
-        } else if (value instanceof Boolean booleanValue) {
-            editor.putBoolean(key, booleanValue);
-        } else if (value instanceof Set<?>) {
-            editor.putStringSet(key, new HashSet<>((Set<String>) value));
-        } else {
-            throw new IllegalArgumentException("Unsupported restored preference type.");
-        }
-    }
-
     private static String difficultyBestPrefix(int size, PuzzleDifficulty difficulty) {
         PuzzleDifficulty selected = difficulty == null ? PuzzleDifficulty.CLASSIC : difficulty;
         return KEY_BEST_PREFIX + size + "_" + selected.getId();
@@ -1288,6 +1389,55 @@ final class AndroidGameStore {
     /**
      * Immutable local progress for the daily challenge shown on a selected date.
      */
+    enum DailyCompletionResult {
+        PERSISTED,
+        ALREADY_COMPLETED,
+        FAILED
+    }
+
+    static final class DailyCompletionPlan {
+        final String dateId;
+        final Set<String> completedDates;
+        final String lastCompletedDateId;
+        final int currentStreak;
+        final int bestStreak;
+        final AndroidSharedPreferencesSnapshot previous;
+        final boolean alreadyCompleted;
+        final boolean failed;
+
+        private DailyCompletionPlan(String dateId, Set<String> completedDates,
+                String lastCompletedDateId, int currentStreak, int bestStreak,
+                AndroidSharedPreferencesSnapshot previous,
+                boolean alreadyCompleted, boolean failed) {
+            this.dateId = dateId;
+            this.completedDates = completedDates == null
+                    ? Collections.emptySet() : new HashSet<>(completedDates);
+            this.lastCompletedDateId = lastCompletedDateId;
+            this.currentStreak = currentStreak;
+            this.bestStreak = bestStreak;
+            this.previous = previous;
+            this.alreadyCompleted = alreadyCompleted;
+            this.failed = failed;
+        }
+
+        static DailyCompletionPlan ready(String dateId, Set<String> completedDates,
+                String lastCompletedDateId, int currentStreak, int bestStreak,
+                AndroidSharedPreferencesSnapshot previous) {
+            return new DailyCompletionPlan(dateId, completedDates, lastCompletedDateId,
+                    currentStreak, bestStreak, previous, false, false);
+        }
+
+        static DailyCompletionPlan alreadyCompleted() {
+            return new DailyCompletionPlan(null, null, null, 0, 0,
+                    null, true, false);
+        }
+
+        static DailyCompletionPlan failed(AndroidSharedPreferencesSnapshot previous) {
+            return new DailyCompletionPlan(null, null, null, 0, 0,
+                    previous, false, true);
+        }
+    }
+
     static final class DailyProgress {
         private static final DailyProgress EMPTY = new DailyProgress(false, 0, 0, null);
 
@@ -1327,6 +1477,21 @@ final class AndroidGameStore {
         }
     }
 
+    static final class CompletionRecordUpdate {
+        final String encodedHistory;
+        final String statsPrefix;
+        final CompletionStats stats;
+        final boolean assisted;
+
+        CompletionRecordUpdate(String encodedHistory, String statsPrefix,
+                CompletionStats stats, boolean assisted) {
+            this.encodedHistory = encodedHistory;
+            this.statsPrefix = statsPrefix;
+            this.stats = stats;
+            this.assisted = assisted;
+        }
+    }
+
     /**
      * Lifetime completion counters for one scope or an aggregate of scopes.
      */
@@ -1348,10 +1513,10 @@ final class AndroidGameStore {
 
         private CompletionStats plus(CompletionStats other) {
             return new CompletionStats(
-                    playerCompletions + other.playerCompletions,
-                    assistedCompletions + other.assistedCompletions,
-                    playerMoves + other.playerMoves,
-                    playerTimeMs + other.playerTimeMs);
+                    Math.addExact(playerCompletions, other.playerCompletions),
+                    Math.addExact(assistedCompletions, other.assistedCompletions),
+                    Math.addExact(playerMoves, other.playerMoves),
+                    Math.addExact(playerTimeMs, other.playerTimeMs));
         }
     }
 

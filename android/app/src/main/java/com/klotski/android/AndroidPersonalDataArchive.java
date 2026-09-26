@@ -140,6 +140,7 @@ final class AndroidPersonalDataArchive {
                     expectedSizes.getOrDefault(entry.getKey(), 0));
         }
         validateDailyProgress(values);
+        validateCompletionStats(values);
         validateContinuousProgress(saveGroups.get("continuous_save_v1_"));
     }
 
@@ -308,6 +309,9 @@ final class AndroidPersonalDataArchive {
         if (expectedSize != 0 && size != expectedSize) {
             throw invalidArchive("Backup save size does not match its key namespace.");
         }
+        if (values.containsKey("grid") && !values.containsKey("initial_grid")) {
+            throw invalidArchive("Backup saved game is missing its initial board.");
+        }
         int[][] grid = validateGrid(values.get("grid"), size, prefix + "grid");
         int[][] initialGrid = validateGrid(values.get("initial_grid"), size,
                 prefix + "initial_grid");
@@ -411,8 +415,56 @@ final class AndroidPersonalDataArchive {
     private static void validateDailyProgress(Map<String, Object> values) {
         int current = (Integer) values.getOrDefault("daily_current_streak", 0);
         int best = (Integer) values.getOrDefault("daily_best_streak", 0);
-        if (current > best) {
-            throw invalidArchive("Backup current daily streak exceeds its best streak.");
+        if (current > best || current == Integer.MAX_VALUE) {
+            throw invalidArchive("Backup daily streak values are invalid or out of range.");
+        }
+    }
+
+    private static void validateCompletionStats(Map<String, Object> values) {
+        int playerCompletions = 0;
+        int assistedCompletions = 0;
+        long playerMoves = 0L;
+        long playerTime = 0L;
+        for (Map.Entry<String, Object> entry : values.entrySet()) {
+            Matcher stats = STATS_FIELD.matcher(entry.getKey());
+            if (!stats.matches()) {
+                continue;
+            }
+            String field = stats.group(3);
+            Number value = (Number) entry.getValue();
+            try {
+                switch (field) {
+                    case "player_completions" -> {
+                        if (value.intValue() == Integer.MAX_VALUE) {
+                            throw invalidArchive(
+                                    "Backup player completion counter cannot be incremented.");
+                        }
+                        playerCompletions = Math.addExact(playerCompletions, value.intValue());
+                    }
+                    case "assisted_completions" -> {
+                        if (value.intValue() == Integer.MAX_VALUE) {
+                            throw invalidArchive(
+                                    "Backup assisted completion counter cannot be incremented.");
+                        }
+                        assistedCompletions = Math.addExact(
+                                assistedCompletions, value.intValue());
+                    }
+                    case "player_moves" -> playerMoves = Math.addExact(
+                            playerMoves, value.longValue());
+                    case "player_time" -> playerTime = Math.addExact(
+                            playerTime, value.longValue());
+                    default -> throw new IllegalStateException("Unknown completion statistic.");
+                }
+            } catch (ArithmeticException exception) {
+                throw invalidArchive(
+                        "Backup aggregate completion statistics exceed supported numeric ranges.",
+                        exception);
+            }
+        }
+        if (playerCompletions == Integer.MAX_VALUE
+                || assistedCompletions == Integer.MAX_VALUE) {
+            throw invalidArchive(
+                    "Backup aggregate completion counters cannot be incremented.");
         }
     }
 

@@ -209,6 +209,7 @@
     <string name="continuous_end_title">結束連續挑戰？</string>
     <string name="continuous_end_message">這會移除目前挑戰及其獨立題目；已取得的單題完成紀錄會保留。</string>
     <string name="results_player_subtitle">拼圖完成。</string>
+    <string name="results_completion_not_recorded_subtitle">拼圖已完成，但個人統計無法更新。</string>
     <string name="results_assisted_subtitle">使用輔助完成。</string>
     <string name="results_daily_subtitle">今日挑戰完成。</string>
     <string name="results_daily_progress_unsaved">今日挑戰已完成，但進度未能儲存。</string>
@@ -222,6 +223,7 @@
     <string name="results_no_new_best">最佳紀錄仍為：%1$s</string>
     <string name="results_assisted_record">輔助結果未儲存。玩家最佳：%1$s</string>
     <string name="results_daily_progress">每日連勝：%1$d 天 · 最佳：%2$d 天</string>
+    <string name="results_completion_not_recorded">本次完成未記錄；個人紀錄與統計均未變更。</string>
     <string name="results_favorite_record">本次僅為練習，個人紀錄與統計均未變更。</string>
     <string name="results_play_again">重玩本盤</string>
     <string name="results_new_size">其他尺寸</string>

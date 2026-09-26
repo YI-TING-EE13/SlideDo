@@ -1331,6 +1331,28 @@ Priority: Low to Medium
   no `src/test` sources; instrumentation tests compiled but could not be run
   because no device or AVD was available.
 
+### 2026-09-26 Independent-review follow-up
+
+- Daily completion now distinguishes persisted, already-completed, and failed
+  outcomes. A failed commit restores the previous daily keys in the current
+  process, so a retry can persist the completion once without exposing the
+  failed attempt as progress.
+- Personal-data imports now snapshot every preference, including copied
+  string sets, and restore that snapshot after a failed replacement. A failed
+  rollback commit reports that in-memory recovery succeeded while durable
+  recovery remains unconfirmed.
+- Archive validation requires `initial_grid` whenever a saved namespace has a
+  `grid`, validates both boards, and rejects completion counters that cannot
+  be incremented or whose aggregate counters/totals overflow.
+- Daily streak, per-scope and overall completion statistics, and continuous
+  challenge totals are checked before completion writes. An arithmetic failure
+  leaves records and statistics unchanged and shows an explicit unrecorded
+  completion result.
+- `ci.bat` passed. On the `small_phone` AVD, all 45 `AndroidGameStoreTest`
+  cases, all 12 `AndroidActivityStateTest` cases, and the focused
+  `MainActivityFlowTest.continuousOverflowShowsUnrecordedResultWithoutPartialCompletionWrites`
+  case passed.
+
 ### 2026-09-08 Stage 9 professional Java documentation and final docs sync
 
 - Audited all 71 Java files under `src/com/klotski/core`, `src/com/klotski/ui`,

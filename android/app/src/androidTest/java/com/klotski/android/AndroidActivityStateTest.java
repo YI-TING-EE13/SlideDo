@@ -162,6 +162,20 @@ public class AndroidActivityStateTest {
     }
 
     @Test
+    public void resultStatePreservesCompletionThatWasNotRecorded() {
+        Bundle bundle = new Bundle();
+        GameResult result = new GameResult(3, PuzzleDifficulty.CLASSIC,
+                1, 1_000L, false, false, null, null, null, false, false);
+
+        AndroidActivityState.save(bundle, Screen.RESULTS, Screen.HOME, true,
+                0, 0, result);
+        AndroidActivityState.Snapshot snapshot = AndroidActivityState.restore(bundle, 0);
+
+        assertNotNull(snapshot.result);
+        assertFalse(snapshot.result.completionRecorded);
+    }
+
+    @Test
     public void solverRequestGuardRejectsInvalidatedAndOlderRequests() {
         SolverRequestGuard guard = new SolverRequestGuard();
         long first = guard.begin();

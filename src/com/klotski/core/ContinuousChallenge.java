@@ -77,6 +77,7 @@ public final class ContinuousChallenge {
      * @param assisted whether the puzzle used strategic or solver assistance
      * @return updated immutable aggregate
      * @throws IllegalStateException when the session is already complete
+     * @throws ArithmeticException when a cumulative total exceeds its numeric range
      */
     public ContinuousChallenge completePuzzle(int moves, long timeMs, boolean assisted) {
         if (isComplete()) {
