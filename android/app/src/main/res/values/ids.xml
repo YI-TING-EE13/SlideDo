@@ -113,4 +113,5 @@
     <item name="game_redo_button" type="id" />
     <item name="game_restart_button" type="id" />
     <item name="game_assist_button" type="id" />
+    <item name="game_cancel_solver_button" type="id" />
 </resources>

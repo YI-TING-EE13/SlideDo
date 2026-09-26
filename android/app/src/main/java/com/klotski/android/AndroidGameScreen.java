@@ -70,6 +70,13 @@ final class AndroidGameScreen {
         statusParams.setMargins(0, ui.dp(10), 0, ui.dp(8));
         root.addView(statusText, statusParams);
 
+        Button cancelSolverButton = ui.addWideButton(root, R.string.button_cancel_solver,
+                COLOR_PANEL, v -> actions.onCancelSolver());
+        cancelSolverButton.setId(R.id.game_cancel_solver_button);
+        cancelSolverButton.setContentDescription(
+                activity.getString(R.string.accessibility_cancel_solver));
+        cancelSolverButton.setVisibility(View.GONE);
+
         ViewParentRemover.removeFromParent(boardView);
         LinearLayout.LayoutParams boardParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f);
@@ -171,5 +178,7 @@ final class AndroidGameScreen {
         void onRestart();
 
         void onAssist();
+
+        void onCancelSolver();
     }
 }

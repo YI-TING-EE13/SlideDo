@@ -1316,6 +1316,23 @@ Priority: Low to Medium
 
 ## Development Log
 
+### 2026-09-26 Android solver cancellation and request ownership
+
+- Android exposes a localized, accessible Cancel Solver action while a search is
+  running. Cancellation invalidates and interrupts the request, restores controls
+  and timer state under the existing gameplay policy, and leaves puzzle progress,
+  assistance, records, and statistics unchanged.
+- Solver results are accepted only while the request id, Activity, Game screen,
+  captured model, and captured board still match. Leaving the game or replacing
+  its model abandons the request so a late result cannot affect a new screen.
+- Added Activity instrumentation for cancellation and late results, Back/Home,
+  tutorial model replacement, a subsequent solver request, successful playback,
+  and the existing recreation protections.
+- A latch-controlled production Activity test reproduced the stale Home dialog
+  before the fix. Afterward, all 12 focused solver/lifecycle tests and the full
+  137-test `small_phone` (Android 16 / API 36) connected suite passed with no
+  failures or skips.
+
 ### 2026-09-26 Behavioral review remediation
 
 - Repaired six bounded behavioral risks: seeded scrambles now restart from the
