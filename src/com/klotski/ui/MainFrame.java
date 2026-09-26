@@ -57,6 +57,10 @@ public class MainFrame extends JFrame implements GameObserver {
     /** Ensures duplicate observer callbacks cannot record one run twice. */
     private final DesktopCompletionTracker completionTracker = new DesktopCompletionTracker();
 
+    /** Defers game-leaving navigation until the board reaches a stable model state. */
+    private final DesktopDeferredNavigation deferredGameNavigation =
+            new DesktopDeferredNavigation();
+
     /** Active dated Daily Challenge namespace, or {@code null} for normal play. */
     private String activeDailyDateId;
 
@@ -186,6 +190,7 @@ public class MainFrame extends JFrame implements GameObserver {
         boardPanel.setTheme(desktopTheme);
         boardPanel.setLocale(desktopLocale);
         boardPanel.setReducedMotion(reducedMotionEnabled);
+        boardPanel.setIdleListener(this::resumeDeferredGameNavigation);
         boardPanel.setWinDialogHandler((parent, moves, timeMs) -> showResultsDialog(moves, timeMs));
 
         contentLayout = new CardLayout();
@@ -753,6 +758,10 @@ public class MainFrame extends JFrame implements GameObserver {
 
     private void showDailyCalendarDialog() {
         if (solverRunning) {
+            return;
+        }
+        if (showingGame && boardPanel != null && boardPanel.isBusy()) {
+            deferredGameNavigation.request(true, this::showDailyCalendarDialog);
             return;
         }
         if (showingGame) {
@@ -1627,6 +1636,10 @@ public class MainFrame extends JFrame implements GameObserver {
         if (rejectWhenRecoveryRequired()) {
             return;
         }
+        if (showingGame && boardPanel != null && boardPanel.isBusy()) {
+            deferredGameNavigation.request(true, this::endContinuousChallenge);
+            return;
+        }
         SaveManager.clearContinuousGame();
         activeContinuousChallenge = null;
         continuousDifficulty = null;
@@ -2054,6 +2067,13 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private void showHome() {
+        if (showingGame && boardPanel != null && boardPanel.isBusy()) {
+            deferredGameNavigation.request(true, this::showHome);
+            return;
+        }
+        if (!showingGame) {
+            deferredGameNavigation.clear();
+        }
         if (showingGame) {
             autosaveCurrentGameIfSafe();
             activeDailyDateId = null;
@@ -2074,6 +2094,14 @@ public class MainFrame extends JFrame implements GameObserver {
                 firstHomeButton.requestFocusInWindow();
             }
         });
+    }
+
+    private void resumeDeferredGameNavigation() {
+        if (!showingGame) {
+            deferredGameNavigation.clear();
+            return;
+        }
+        deferredGameNavigation.runIfIdle(boardPanel != null && boardPanel.isBusy());
     }
 
     private void showGame() {

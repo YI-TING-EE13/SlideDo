@@ -125,4 +125,53 @@ public class AndroidActivityStateTest {
         assertNotNull(snapshot.result);
         assertEquals("favorite-id", snapshot.result.favoriteId);
     }
+
+    @Test
+    public void activityStateRoundTripPreservesPendingDailyWin() {
+        Bundle bundle = new Bundle();
+        PendingWin pendingWin = new PendingWin(4, PuzzleDifficulty.CHALLENGE,
+                27, 63_000L, true, "2026-08-21", null);
+
+        AndroidActivityState.save(bundle, Screen.GAME, Screen.HOME, true, 0, 0,
+                null, "2026-08-21", null, null, pendingWin);
+        AndroidActivityState.Snapshot snapshot = AndroidActivityState.restore(bundle, 0);
+
+        assertNotNull(snapshot.pendingWin);
+        assertEquals(4, snapshot.pendingWin.size);
+        assertEquals(PuzzleDifficulty.CHALLENGE, snapshot.pendingWin.difficulty);
+        assertEquals(27, snapshot.pendingWin.moves);
+        assertEquals(63_000L, snapshot.pendingWin.timeMs);
+        assertTrue(snapshot.pendingWin.assisted);
+        assertEquals("2026-08-21", snapshot.pendingWin.dailyDateId);
+        assertNull(snapshot.pendingWin.favoriteId);
+    }
+
+    @Test
+    public void resultStatePreservesDailyPersistenceFailure() {
+        Bundle bundle = new Bundle();
+        GameResult result = new GameResult(4, PuzzleDifficulty.CLASSIC,
+                12, 24_000L, false, false, null, "2026-08-21", null, false);
+
+        AndroidActivityState.save(bundle, Screen.RESULTS, Screen.HOME, true,
+                0, 0, result, "2026-08-21", null, null);
+        AndroidActivityState.Snapshot snapshot = AndroidActivityState.restore(bundle, 0);
+
+        assertNotNull(snapshot.result);
+        assertEquals("2026-08-21", snapshot.result.dailyDateId);
+        assertFalse(snapshot.result.dailyProgressSaved);
+    }
+
+    @Test
+    public void solverRequestGuardRejectsInvalidatedAndOlderRequests() {
+        SolverRequestGuard guard = new SolverRequestGuard();
+        long first = guard.begin();
+        assertTrue(guard.isCurrent(first));
+
+        long second = guard.begin();
+
+        assertFalse(guard.isCurrent(first));
+        assertTrue(guard.isCurrent(second));
+        guard.invalidate();
+        assertFalse(guard.isCurrent(second));
+    }
 }

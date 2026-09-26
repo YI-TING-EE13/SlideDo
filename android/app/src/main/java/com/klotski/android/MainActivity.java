@@ -102,6 +102,8 @@ public class MainActivity extends Activity implements GameObserver {
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final List<Button> commandButtons = new ArrayList<>();
+    private final SolverRequestGuard solverRequests = new SolverRequestGuard();
+    private final Runnable winResultRunnable = this::showWinWhenReady;
 
     private AndroidUi ui;
     private AndroidMotion motion;
@@ -149,6 +151,8 @@ public class MainActivity extends Activity implements GameObserver {
     private boolean gameNavigationPending = true;
     private int timerPausingDialogCount;
     private long lastWinTimeMs = -1;
+    private Thread solverThread;
+    private boolean activityDestroyed;
 
     /**
      * Creates the Android activity instance used by the platform launcher.
@@ -227,7 +231,8 @@ public class MainActivity extends Activity implements GameObserver {
         AndroidActivityState.save(outState, currentScreen, infoReturnScreen, gameStarted,
                 onboardingPage, tutorialStep, currentResult, activeDailyDateId,
                 activeFavoriteId,
-                dailyCalendarMonth == null ? null : dailyCalendarMonth.getMonthId());
+                dailyCalendarMonth == null ? null : dailyCalendarMonth.getMonthId(),
+                pendingWin);
         outState.putBoolean(STATE_CONTINUOUS_MODE, activeContinuousChallenge != null);
         super.onSaveInstanceState(outState);
     }
@@ -238,6 +243,7 @@ public class MainActivity extends Activity implements GameObserver {
     @Override
     protected void onPause() {
         activityResumed = false;
+        handler.removeCallbacks(winResultRunnable);
         syncGameTimerState();
         super.onPause();
         saveGame();
@@ -251,6 +257,7 @@ public class MainActivity extends Activity implements GameObserver {
         super.onResume();
         activityResumed = true;
         syncGameTimerState();
+        schedulePendingWinProcessing(0L);
     }
 
     /**
@@ -290,8 +297,15 @@ public class MainActivity extends Activity implements GameObserver {
      */
     @Override
     protected void onDestroy() {
+        activityDestroyed = true;
+        solverRequests.invalidate();
+        if (solverThread != null) {
+            solverThread.interrupt();
+            solverThread = null;
+        }
         unregisterBackHandler();
         handler.removeCallbacks(ticker);
+        handler.removeCallbacks(winResultRunnable);
         if (soundFeedback != null) {
             soundFeedback.release();
         }
@@ -432,6 +446,7 @@ public class MainActivity extends Activity implements GameObserver {
     private boolean restoreAppScreen(Bundle savedInstanceState) {
         AndroidActivityState.Snapshot savedState =
                 AndroidActivityState.restore(savedInstanceState, TUTORIAL_FIRST_MOVE);
+        GameResult savedResult = savedState.result;
         Screen savedScreen = savedState.screen;
         Screen savedReturnScreen = savedState.infoReturnScreen;
         boolean savedGameStarted = savedState.gameStarted;
@@ -445,7 +460,13 @@ public class MainActivity extends Activity implements GameObserver {
         if (savedScreen == Screen.GAME) {
             if (savedGameStarted && (savedContinuousMode
                     ? loadContinuousGame() : loadGame())) {
-                showGameScreen();
+                pendingWin = savedState.pendingWin;
+                if (pendingWin == null && savedResult != null && model.isSolved()) {
+                    currentResult = savedResult;
+                    showResultsScreen();
+                } else {
+                    showGameScreen();
+                }
                 return true;
             }
             gameStarted = false;
@@ -2488,17 +2509,33 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private void startSolver(Solver solver) {
+        if (activityDestroyed || solverRunning || model == null || boardView == null) {
+            return;
+        }
+        long requestId = solverRequests.begin();
+        GameModel requestModel = model;
         solverRunning = true;
         boardView.setInputLocked(true);
         updateControlsEnabled();
         statusText.setText(getString(R.string.status_solving, solver.getName()));
-        new Thread(() -> {
-            List<Direction> solution = solver.solve(model);
-            handler.post(() -> finishSolver(solver, solution));
-        }, "SlideDoSolver").start();
+        solverThread = new Thread(() -> {
+            List<Direction> solution = solver.solve(requestModel);
+            handler.post(() -> {
+                if (activityDestroyed || isFinishing()
+                        || !solverRequests.isCurrent(requestId)) {
+                    return;
+                }
+                solverThread = null;
+                finishSolver(solver, solution);
+            });
+        }, "SlideDoSolver");
+        solverThread.start();
     }
 
     private void finishSolver(Solver solver, List<Direction> solution) {
+        if (activityDestroyed || isFinishing()) {
+            return;
+        }
         solverRunning = false;
         if (solution == null) {
             boardView.setInputLocked(false);
@@ -2663,6 +2700,9 @@ public class MainActivity extends Activity implements GameObserver {
      */
     @Override
     public void onGameWon(int moves, long timeMs) {
+        if (activityDestroyed) {
+            return;
+        }
         soundFeedback.playCompletion();
         if (currentScreen == Screen.TUTORIAL) {
             handleTutorialWin();
@@ -2671,15 +2711,23 @@ public class MainActivity extends Activity implements GameObserver {
         lastWinTimeMs = timeMs;
         pendingWin = new PendingWin(model.getSize(), model.getDifficulty(), moves, timeMs,
                 assistedSolveActive, activeDailyDateId, activeFavoriteId);
-        handler.postDelayed(this::showWinWhenReady, 180);
+        schedulePendingWinProcessing(180L);
+    }
+
+    private void schedulePendingWinProcessing(long delayMs) {
+        if (pendingWin == null || activityDestroyed || !activityResumed) {
+            return;
+        }
+        handler.removeCallbacks(winResultRunnable);
+        handler.postDelayed(winResultRunnable, delayMs);
     }
 
     private void showWinWhenReady() {
-        if (pendingWin == null) {
+        if (pendingWin == null || activityDestroyed || isFinishing() || !activityResumed) {
             return;
         }
         if (boardView != null && boardView.isBusy()) {
-            handler.postDelayed(this::showWinWhenReady, 80);
+            schedulePendingWinProcessing(80L);
             return;
         }
 
@@ -2687,11 +2735,16 @@ public class MainActivity extends Activity implements GameObserver {
         pendingWin = null;
         AndroidGameStore.Best previousBest = getBest(win.size, win.difficulty);
         boolean recordEligible = win.favoriteId == null;
+        boolean dailyProgressSaved = true;
         if (recordEligible) {
-            store.recordCompletion(win.size, win.difficulty, win.moves, win.timeMs, win.assisted);
             if (win.dailyDateId != null) {
-                store.recordDailyCompletion(win.dailyDateId);
+                try {
+                    store.recordDailyCompletion(win.dailyDateId);
+                } catch (IllegalStateException exception) {
+                    dailyProgressSaved = false;
+                }
             }
+            store.recordCompletion(win.size, win.difficulty, win.moves, win.timeMs, win.assisted);
         }
         boolean newBest = recordEligible && !win.assisted
                 && AndroidGameStore.isBetterRecord(previousBest, win.moves, win.timeMs);
@@ -2704,7 +2757,7 @@ public class MainActivity extends Activity implements GameObserver {
         }
         currentResult = new GameResult(win.size, win.difficulty, win.moves,
                 win.timeMs, win.assisted, newBest, previousBest,
-                win.dailyDateId, win.favoriteId);
+                win.dailyDateId, win.favoriteId, dailyProgressSaved);
         assistedSolveActive = win.assisted;
         saveGame();
         performBoardHaptic(HapticFeedbackConstants.LONG_PRESS);

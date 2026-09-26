@@ -27,6 +27,15 @@ final class AndroidActivityState {
     private static final String STATE_RESULT_DAILY_DATE = "result_daily_date";
     private static final String STATE_ACTIVE_FAVORITE_ID = "active_favorite_id";
     private static final String STATE_RESULT_FAVORITE_ID = "result_favorite_id";
+    private static final String STATE_RESULT_DAILY_PROGRESS_SAVED = "result_daily_progress_saved";
+    private static final String STATE_PENDING_WIN_AVAILABLE = "pending_win_available";
+    private static final String STATE_PENDING_WIN_SIZE = "pending_win_size";
+    private static final String STATE_PENDING_WIN_DIFFICULTY = "pending_win_difficulty";
+    private static final String STATE_PENDING_WIN_MOVES = "pending_win_moves";
+    private static final String STATE_PENDING_WIN_TIME = "pending_win_time";
+    private static final String STATE_PENDING_WIN_ASSISTED = "pending_win_assisted";
+    private static final String STATE_PENDING_WIN_DAILY_DATE = "pending_win_daily_date";
+    private static final String STATE_PENDING_WIN_FAVORITE_ID = "pending_win_favorite_id";
 
     private AndroidActivityState() {
     }
@@ -53,6 +62,15 @@ final class AndroidActivityState {
     static void save(Bundle outState, Screen currentScreen, Screen infoReturnScreen,
             boolean gameStarted, int onboardingPage, int tutorialStep, GameResult currentResult,
             String activeDailyDateId, String activeFavoriteId, String dailyCalendarMonthId) {
+        save(outState, currentScreen, infoReturnScreen, gameStarted, onboardingPage,
+                tutorialStep, currentResult, activeDailyDateId, activeFavoriteId,
+                dailyCalendarMonthId, null);
+    }
+
+    static void save(Bundle outState, Screen currentScreen, Screen infoReturnScreen,
+            boolean gameStarted, int onboardingPage, int tutorialStep, GameResult currentResult,
+            String activeDailyDateId, String activeFavoriteId, String dailyCalendarMonthId,
+            PendingWin pendingWin) {
         outState.putString(STATE_SCREEN, currentScreen.name());
         outState.putString(STATE_INFO_RETURN_SCREEN, infoReturnScreen.name());
         outState.putBoolean(STATE_GAME_STARTED, gameStarted);
@@ -62,6 +80,7 @@ final class AndroidActivityState {
         outState.putString(STATE_ACTIVE_FAVORITE_ID, activeFavoriteId);
         outState.putString(STATE_DAILY_CALENDAR_MONTH, dailyCalendarMonthId);
         saveResultState(outState, currentResult);
+        savePendingWin(outState, pendingWin);
     }
 
     static Snapshot restore(Bundle savedInstanceState, int fallbackTutorialStep) {
@@ -74,7 +93,8 @@ final class AndroidActivityState {
                 restoreResultState(savedInstanceState),
                 savedInstanceState.getString(STATE_ACTIVE_DAILY_DATE),
                 savedInstanceState.getString(STATE_ACTIVE_FAVORITE_ID),
-                savedInstanceState.getString(STATE_DAILY_CALENDAR_MONTH));
+                savedInstanceState.getString(STATE_DAILY_CALENDAR_MONTH),
+                restorePendingWin(savedInstanceState));
     }
 
     private static Screen readScreen(Bundle bundle, String key, Screen fallback) {
@@ -103,6 +123,8 @@ final class AndroidActivityState {
         outState.putBoolean(STATE_RESULT_NEW_BEST, currentResult.newBest);
         outState.putString(STATE_RESULT_DAILY_DATE, currentResult.dailyDateId);
         outState.putString(STATE_RESULT_FAVORITE_ID, currentResult.favoriteId);
+        outState.putBoolean(STATE_RESULT_DAILY_PROGRESS_SAVED,
+                currentResult.dailyProgressSaved);
         if (currentResult.previousBest == null) {
             outState.putInt(STATE_RESULT_PREVIOUS_BEST_MOVES, -1);
             outState.putLong(STATE_RESULT_PREVIOUS_BEST_TIME, -1);
@@ -130,7 +152,41 @@ final class AndroidActivityState {
                 savedInstanceState.getBoolean(STATE_RESULT_NEW_BEST, false),
                 previousBest,
                 savedInstanceState.getString(STATE_RESULT_DAILY_DATE),
-                savedInstanceState.getString(STATE_RESULT_FAVORITE_ID));
+                savedInstanceState.getString(STATE_RESULT_FAVORITE_ID),
+                savedInstanceState.getBoolean(STATE_RESULT_DAILY_PROGRESS_SAVED, true));
+    }
+
+    private static void savePendingWin(Bundle outState, PendingWin pendingWin) {
+        outState.putBoolean(STATE_PENDING_WIN_AVAILABLE, pendingWin != null);
+        if (pendingWin == null) {
+            return;
+        }
+        outState.putInt(STATE_PENDING_WIN_SIZE, pendingWin.size);
+        outState.putString(STATE_PENDING_WIN_DIFFICULTY, pendingWin.difficulty.getId());
+        outState.putInt(STATE_PENDING_WIN_MOVES, pendingWin.moves);
+        outState.putLong(STATE_PENDING_WIN_TIME, pendingWin.timeMs);
+        outState.putBoolean(STATE_PENDING_WIN_ASSISTED, pendingWin.assisted);
+        outState.putString(STATE_PENDING_WIN_DAILY_DATE, pendingWin.dailyDateId);
+        outState.putString(STATE_PENDING_WIN_FAVORITE_ID, pendingWin.favoriteId);
+    }
+
+    private static PendingWin restorePendingWin(Bundle savedInstanceState) {
+        if (!savedInstanceState.getBoolean(STATE_PENDING_WIN_AVAILABLE, false)) {
+            return null;
+        }
+        int size = savedInstanceState.getInt(STATE_PENDING_WIN_SIZE, 0);
+        int moves = savedInstanceState.getInt(STATE_PENDING_WIN_MOVES, -1);
+        long timeMs = savedInstanceState.getLong(STATE_PENDING_WIN_TIME, -1L);
+        if (size < 3 || size > 5 || moves < 0 || timeMs < 0) {
+            return null;
+        }
+        return new PendingWin(size,
+                PuzzleDifficulty.fromId(savedInstanceState.getString(
+                        STATE_PENDING_WIN_DIFFICULTY)),
+                moves, timeMs,
+                savedInstanceState.getBoolean(STATE_PENDING_WIN_ASSISTED, false),
+                savedInstanceState.getString(STATE_PENDING_WIN_DAILY_DATE),
+                savedInstanceState.getString(STATE_PENDING_WIN_FAVORITE_ID));
     }
 
     static final class Snapshot {
@@ -143,11 +199,12 @@ final class AndroidActivityState {
         final String activeDailyDateId;
         final String activeFavoriteId;
         final String dailyCalendarMonthId;
+        final PendingWin pendingWin;
 
         Snapshot(Screen screen, Screen infoReturnScreen, boolean gameStarted, int onboardingPage,
                 int tutorialStep, GameResult result, String activeDailyDateId,
                 String activeFavoriteId,
-                String dailyCalendarMonthId) {
+                String dailyCalendarMonthId, PendingWin pendingWin) {
             this.screen = screen;
             this.infoReturnScreen = infoReturnScreen;
             this.gameStarted = gameStarted;
@@ -157,6 +214,7 @@ final class AndroidActivityState {
             this.activeDailyDateId = activeDailyDateId;
             this.activeFavoriteId = activeFavoriteId;
             this.dailyCalendarMonthId = dailyCalendarMonthId;
+            this.pendingWin = pendingWin;
         }
     }
 }

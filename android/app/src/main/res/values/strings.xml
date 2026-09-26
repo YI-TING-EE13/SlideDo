@@ -214,6 +214,7 @@
     <string name="results_player_subtitle">Puzzle solved.</string>
     <string name="results_assisted_subtitle">Solved with assist.</string>
     <string name="results_daily_subtitle">Daily challenge complete.</string>
+    <string name="results_daily_progress_unsaved">Daily challenge complete. Progress could not be saved.</string>
     <string name="results_favorite_subtitle">Favorite practice complete.</string>
     <string name="results_completion_mark">✓</string>
     <string name="results_completion_description">Puzzle complete</string>

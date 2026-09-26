@@ -211,6 +211,7 @@
     <string name="results_player_subtitle">拼圖完成。</string>
     <string name="results_assisted_subtitle">使用輔助完成。</string>
     <string name="results_daily_subtitle">今日挑戰完成。</string>
+    <string name="results_daily_progress_unsaved">今日挑戰已完成，但進度未能儲存。</string>
     <string name="results_favorite_subtitle">收藏練習完成。</string>
     <string name="results_completion_mark">✓</string>
     <string name="results_completion_description">拼圖完成</string>

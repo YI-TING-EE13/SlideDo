@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -105,7 +106,12 @@ final class AndroidGameStore {
     private final SharedPreferences prefs;
 
     AndroidGameStore(Context context) {
-        prefs = context.getApplicationContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        this(Objects.requireNonNull(context, "context").getApplicationContext()
+                .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE));
+    }
+
+    AndroidGameStore(SharedPreferences prefs) {
+        this.prefs = Objects.requireNonNull(prefs, "prefs");
     }
 
     int getLastSize(int fallback) {
@@ -459,12 +465,15 @@ final class AndroidGameStore {
             lastCompletedDateId = canonicalDateId;
         }
 
-        prefs.edit()
+        boolean persisted = prefs.edit()
                 .putStringSet(KEY_DAILY_COMPLETED_DATES, completedDates)
                 .putString(KEY_DAILY_LAST_COMPLETED_DATE, lastCompletedDateId)
                 .putInt(KEY_DAILY_CURRENT_STREAK, currentStreak)
                 .putInt(KEY_DAILY_BEST_STREAK, bestStreak)
                 .commit();
+        if (!persisted) {
+            throw new IllegalStateException("Android could not persist the daily completion.");
+        }
         return true;
     }
 
@@ -1060,6 +1069,24 @@ final class AndroidGameStore {
                     .append(flatten(favorite.initialGrid));
         }
         return encoded.toString();
+    }
+
+    static boolean isValidFavoriteArchiveValue(String encoded) {
+        if (encoded == null || encoded.isEmpty()) {
+            return true;
+        }
+        String[] rows = encoded.split("\\n", -1);
+        if (rows.length > MAX_FAVORITE_PUZZLES) {
+            return false;
+        }
+        Set<String> favoriteIds = new HashSet<>();
+        for (String row : rows) {
+            FavoritePuzzle favorite = parseFavorite(row);
+            if (favorite == null || !favoriteIds.add(favorite.id)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static FavoritePuzzle parseFavorite(String encoded) {

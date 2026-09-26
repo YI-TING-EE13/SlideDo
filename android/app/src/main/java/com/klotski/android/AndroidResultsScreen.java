@@ -41,7 +41,9 @@ final class AndroidResultsScreen {
                                 ? R.string.continuous_session_complete_subtitle
                                 : R.string.continuous_results_subtitle)
                         : result.dailyDateId != null
-                        ? R.string.results_daily_subtitle
+                        ? result.dailyProgressSaved
+                                ? R.string.results_daily_subtitle
+                                : R.string.results_daily_progress_unsaved
                         : (result.favoriteId != null
                                 ? R.string.results_favorite_subtitle
                                 : result.assisted

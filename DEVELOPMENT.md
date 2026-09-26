@@ -1316,6 +1316,21 @@ Priority: Low to Medium
 
 ## Development Log
 
+### 2026-09-26 Behavioral review remediation
+
+- Repaired six bounded behavioral risks: seeded scrambles now restart from the
+  solved state; Android daily completion reports failed persistence; backup
+  imports validate recognized preference types and domain constraints before
+  replacement; solver callbacks reject invalidated Activity requests; pending
+  wins survive Activity recreation; and desktop game navigation waits for the
+  board to become idle before autosaving and leaving the current mode.
+- Added focused shared-core, desktop, and Android instrumentation regression
+  coverage. `ci.bat` passed, including 151 shared/core and desktop tests,
+  desktop compilation/Javadocs, Android app and instrumentation APK assembly,
+  lint, toolchain checks, and release-readiness checks. Android unit tests have
+  no `src/test` sources; instrumentation tests compiled but could not be run
+  because no device or AVD was available.
+
 ### 2026-09-08 Stage 9 professional Java documentation and final docs sync
 
 - Audited all 71 Java files under `src/com/klotski/core`, `src/com/klotski/ui`,

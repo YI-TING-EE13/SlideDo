@@ -9,6 +9,8 @@ import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.SharedPreferences.Editor;
+import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.content.res.Configuration;
 import android.os.LocaleList;
 
@@ -30,6 +32,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
 import java.util.Locale;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -831,11 +836,19 @@ public class AndroidGameStoreTest {
         String unsupportedType = "{\"format\":\"slidedo-personal-data\",\"version\":1,"
                 + "\"createdAt\":1,\"entries\":[{\"key\":\"value\",\"type\":\"bytes\","
                 + "\"value\":\"AA==\"}]}";
+        String wrongKnownType = "{\"format\":\"slidedo-personal-data\",\"version\":1,"
+                + "\"createdAt\":1,\"entries\":[{\"key\":\"last_size\","
+                + "\"type\":\"string\",\"value\":\"4\"}]}";
+        String invalidKnownValue = "{\"format\":\"slidedo-personal-data\",\"version\":1,"
+                + "\"createdAt\":1,\"entries\":[{\"key\":\"weekly_goal_target_v1\","
+                + "\"type\":\"int\",\"value\":0}]}";
         String[] invalidBackups = {
                 "{}",
                 "{\"format\":\"slidedo-personal-data\",\"version\":99,\"entries\":[]}",
                 duplicateKey,
                 unsupportedType,
+                wrongKnownType,
+                invalidKnownValue,
                 "x".repeat(AndroidPersonalDataArchive.MAX_ARCHIVE_CHARS + 1)
         };
 
@@ -861,11 +874,32 @@ public class AndroidGameStoreTest {
 
         store.importPersonalData("{\"format\":\"slidedo-personal-data\",\"version\":1,"
                 + "\"createdAt\":123,\"entries\":[{\"key\":\"onboarding_seen\","
-                + "\"type\":\"boolean\",\"value\":true}]}");
+                + "\"type\":\"boolean\",\"value\":true},{\"key\":\"future_extension\","
+                + "\"type\":\"string-set\",\"value\":[\"preserved\"]}]}");
 
         AndroidGameStore restored = new AndroidGameStore(targetContext);
         assertTrue(restored.isOnboardingSeen());
         assertFalse(restored.isSoundEnabled());
+        assertEquals(Collections.singleton("preserved"),
+                prefs.getStringSet("future_extension", Collections.emptySet()));
+    }
+
+    @Test
+    public void dailyCompletionCommitFailureIsPropagatedWithoutReportingSuccess() {
+        AndroidGameStore failingStore = new AndroidGameStore(
+                new CommitFailingSharedPreferences(prefs));
+
+        boolean failed = false;
+        try {
+            failingStore.recordDailyCompletion("2026-08-20");
+        } catch (IllegalStateException expected) {
+            failed = true;
+        }
+
+        assertTrue(failed);
+        assertFalse(prefs.getStringSet("daily_completed_dates_v1", Collections.emptySet())
+                .contains("2026-08-20"));
+        assertFalse(prefs.contains("daily_last_completed_date"));
     }
 
     @Test
@@ -920,5 +954,136 @@ public class AndroidGameStoreTest {
             }
         }
         return flattened.toString();
+    }
+
+    private static final class CommitFailingSharedPreferences implements SharedPreferences {
+        private final SharedPreferences delegate;
+
+        CommitFailingSharedPreferences(SharedPreferences delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public Map<String, ?> getAll() {
+            return delegate.getAll();
+        }
+
+        @Override
+        public String getString(String key, String defValue) {
+            return delegate.getString(key, defValue);
+        }
+
+        @Override
+        public Set<String> getStringSet(String key, Set<String> defValues) {
+            return delegate.getStringSet(key, defValues);
+        }
+
+        @Override
+        public int getInt(String key, int defValue) {
+            return delegate.getInt(key, defValue);
+        }
+
+        @Override
+        public long getLong(String key, long defValue) {
+            return delegate.getLong(key, defValue);
+        }
+
+        @Override
+        public float getFloat(String key, float defValue) {
+            return delegate.getFloat(key, defValue);
+        }
+
+        @Override
+        public boolean getBoolean(String key, boolean defValue) {
+            return delegate.getBoolean(key, defValue);
+        }
+
+        @Override
+        public boolean contains(String key) {
+            return delegate.contains(key);
+        }
+
+        @Override
+        public Editor edit() {
+            return new CommitFailingEditor(delegate.edit());
+        }
+
+        @Override
+        public void registerOnSharedPreferenceChangeListener(
+                OnSharedPreferenceChangeListener listener) {
+            delegate.registerOnSharedPreferenceChangeListener(listener);
+        }
+
+        @Override
+        public void unregisterOnSharedPreferenceChangeListener(
+                OnSharedPreferenceChangeListener listener) {
+            delegate.unregisterOnSharedPreferenceChangeListener(listener);
+        }
+    }
+
+    private static final class CommitFailingEditor implements SharedPreferences.Editor {
+        private final SharedPreferences.Editor delegate;
+
+        CommitFailingEditor(SharedPreferences.Editor delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public Editor putString(String key, String value) {
+            delegate.putString(key, value);
+            return this;
+        }
+
+        @Override
+        public Editor putStringSet(String key, Set<String> values) {
+            delegate.putStringSet(key, values);
+            return this;
+        }
+
+        @Override
+        public Editor putInt(String key, int value) {
+            delegate.putInt(key, value);
+            return this;
+        }
+
+        @Override
+        public Editor putLong(String key, long value) {
+            delegate.putLong(key, value);
+            return this;
+        }
+
+        @Override
+        public Editor putFloat(String key, float value) {
+            delegate.putFloat(key, value);
+            return this;
+        }
+
+        @Override
+        public Editor putBoolean(String key, boolean value) {
+            delegate.putBoolean(key, value);
+            return this;
+        }
+
+        @Override
+        public Editor remove(String key) {
+            delegate.remove(key);
+            return this;
+        }
+
+        @Override
+        public Editor clear() {
+            delegate.clear();
+            return this;
+        }
+
+        @Override
+        public boolean commit() {
+            return false;
+        }
+
+        @Override
+        public void apply() {
+            delegate.apply();
+        }
     }
 }

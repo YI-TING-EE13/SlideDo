@@ -212,6 +212,7 @@
     <string name="results_player_subtitle">パズルをクリアしました。</string>
     <string name="results_assisted_subtitle">アシストを使ってクリアしました。</string>
     <string name="results_daily_subtitle">今日のチャレンジをクリアしました。</string>
+    <string name="results_daily_progress_unsaved">デイリーチャレンジは完了しましたが、進捗を保存できませんでした。</string>
     <string name="results_favorite_subtitle">お気に入りの練習をクリアしました。</string>
     <string name="results_completion_mark">✓</string>
     <string name="results_completion_description">パズルクリア</string>
