@@ -236,12 +236,14 @@
     <string name="game_favorite_title_format">%1$s · %2$dx%3$d · %4$s</string>
     <string name="game_menu">Menu</string>
     <string name="game_assist">Assist</string>
+    <string name="button_cancel_solver">Cancel Solver</string>
     <string name="accessibility_game_home">Save the current puzzle and return Home</string>
     <string name="accessibility_game_menu">Open game menu for save, load, settings, records, and Home</string>
     <string name="accessibility_game_undo">Undo the previous move</string>
     <string name="accessibility_game_redo">Redo the next undone move</string>
     <string name="accessibility_game_restart">Restart this puzzle from its starting board</string>
     <string name="accessibility_game_assist">Open Assist for strategic and movable-tile hints or advanced Solver Tools</string>
+    <string name="accessibility_cancel_solver">Cancel the current solver search without changing this puzzle</string>
     <string name="accessibility_settings_switch">%1$s. %2$s</string>
     <string name="menu_title">Game Menu</string>
     <string name="menu_resume">Resume</string>

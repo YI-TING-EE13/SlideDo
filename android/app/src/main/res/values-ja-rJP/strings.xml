@@ -234,12 +234,14 @@
     <string name="game_favorite_title_format">%1$s · %2$dx%3$d · %4$s</string>
     <string name="game_menu">メニュー</string>
     <string name="game_assist">ヒント</string>
+    <string name="button_cancel_solver">解答をキャンセル</string>
     <string name="accessibility_game_home">現在のパズルを保存してホームへ戻ります</string>
     <string name="accessibility_game_menu">保存、読み込み、設定、記録、ホームを含むゲームメニューを開きます</string>
     <string name="accessibility_game_undo">直前の1手を元に戻します</string>
     <string name="accessibility_game_redo">元に戻した次の1手をやり直します</string>
     <string name="accessibility_game_restart">このパズルを開始盤面からやり直します</string>
     <string name="accessibility_game_assist">戦略ヒント、動かせるタイルの表示、高度なソルバーツールを使うためにアシストを開きます</string>
+    <string name="accessibility_cancel_solver">パズルを変更せずに現在の解答検索をキャンセルします</string>
     <string name="accessibility_settings_switch">%1$s。%2$s</string>
     <string name="menu_title">ゲームメニュー</string>
     <string name="menu_resume">再開</string>

@@ -400,6 +400,9 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private void attachModel(GameModel newModel) {
+        if (model != newModel) {
+            abandonSolverContext();
+        }
         if (model != null) {
             model.removeObserver(this);
         }
@@ -413,6 +416,7 @@ public class MainActivity extends Activity implements GameObserver {
     private void pauseGameForNavigation() {
         gameNavigationPending = true;
         syncGameTimerState();
+        abandonSolverContext();
     }
 
     private void syncGameTimerState() {
@@ -1423,6 +1427,11 @@ public class MainActivity extends Activity implements GameObserver {
                     showAssistMenu();
                 }
             }
+
+            @Override
+            public void onCancelSolver() {
+                cancelSolver();
+            }
         });
         gameTitleText = views.titleText;
         statusText = views.statusText;
@@ -2333,6 +2342,40 @@ public class MainActivity extends Activity implements GameObserver {
         }
         updateActionButtonState(R.id.game_undo_button, enabled && model != null && model.canUndo());
         updateActionButtonState(R.id.game_redo_button, enabled && model != null && model.canRedo());
+        updateSolverCancelButton();
+    }
+
+    private void updateSolverCancelButton() {
+        Button button = findViewById(R.id.game_cancel_solver_button);
+        if (button == null) {
+            return;
+        }
+        boolean visible = currentScreen == Screen.GAME && solverRunning;
+        button.setVisibility(visible ? View.VISIBLE : View.GONE);
+        button.setEnabled(visible);
+        button.setAlpha(visible ? 1f : 0.45f);
+        if (visible) {
+            ui.setAccessibilityTraversalOrder(
+                    findViewById(R.id.game_home_button),
+                    findViewById(R.id.game_menu_button),
+                    findViewById(R.id.game_status_text),
+                    button,
+                    findViewById(R.id.game_board),
+                    findViewById(R.id.game_undo_button),
+                    findViewById(R.id.game_redo_button),
+                    findViewById(R.id.game_restart_button),
+                    findViewById(R.id.game_assist_button));
+        } else {
+            ui.setAccessibilityTraversalOrder(
+                    findViewById(R.id.game_home_button),
+                    findViewById(R.id.game_menu_button),
+                    findViewById(R.id.game_status_text),
+                    findViewById(R.id.game_board),
+                    findViewById(R.id.game_undo_button),
+                    findViewById(R.id.game_redo_button),
+                    findViewById(R.id.game_restart_button),
+                    findViewById(R.id.game_assist_button));
+        }
     }
 
     private void updateActionButtonState(int viewId, boolean enabled) {
@@ -2525,36 +2568,53 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private void startSolver(Solver solver) {
-        if (activityDestroyed || solverRunning || model == null || boardView == null) {
+        if (activityDestroyed || solverRunning || model == null || boardView == null
+                || statusText == null || currentScreen != Screen.GAME || !gameStarted) {
             return;
         }
         long requestId = solverRequests.begin();
         GameModel requestModel = model;
+        KlotskiView requestBoard = boardView;
         solverRunning = true;
-        boardView.setInputLocked(true);
+        requestBoard.setInputLocked(true);
         updateControlsEnabled();
         statusText.setText(getString(R.string.status_solving, solver.getName()));
-        solverThread = new Thread(() -> {
+        Thread requestThread = new Thread(() -> {
             List<Direction> solution = solver.solve(requestModel);
             handler.post(() -> {
-                if (activityDestroyed || isFinishing()
-                        || !solverRequests.isCurrent(requestId)) {
+                if (!ownsActiveSolverRequest(requestId, requestModel, requestBoard)) {
                     return;
                 }
                 solverThread = null;
-                finishSolver(solver, solution);
+                finishSolver(requestId, requestModel, requestBoard, solution);
             });
         }, "SlideDoSolver");
-        solverThread.start();
+        solverThread = requestThread;
+        requestThread.start();
     }
 
-    private void finishSolver(Solver solver, List<Direction> solution) {
-        if (activityDestroyed || isFinishing()) {
+    private boolean hasSolverContext(long requestId, GameModel requestModel,
+            KlotskiView requestBoard) {
+        return !activityDestroyed && !isFinishing()
+                && solverRequests.isCurrent(requestId)
+                && currentScreen == Screen.GAME && gameStarted
+                && model == requestModel && boardView == requestBoard;
+    }
+
+    private boolean ownsActiveSolverRequest(long requestId, GameModel requestModel,
+            KlotskiView requestBoard) {
+        return solverRunning && hasSolverContext(requestId, requestModel, requestBoard);
+    }
+
+    private void finishSolver(long requestId, GameModel requestModel, KlotskiView requestBoard,
+            List<Direction> solution) {
+        if (!ownsActiveSolverRequest(requestId, requestModel, requestBoard)) {
             return;
         }
         solverRunning = false;
+        updateSolverCancelButton();
         if (solution == null) {
-            boardView.setInputLocked(false);
+            requestBoard.setInputLocked(false);
             updateStatus();
             AlertDialog failedDialog = new AlertDialog.Builder(this)
                     .setTitle(R.string.dialog_solver_result_title)
@@ -2569,21 +2629,61 @@ public class MainActivity extends Activity implements GameObserver {
                 .setTitle(R.string.dialog_solver_result_title)
                 .setMessage(getString(R.string.dialog_solver_found, solution.size()))
                 .setPositiveButton(R.string.dialog_animate, (dialog, which) -> {
+                    if (!hasSolverContext(requestId, requestModel, requestBoard)) {
+                        return;
+                    }
                     assistedSolveActive = true;
-                    boardView.enqueueMoves(solution);
-                    boardView.setInputLocked(false);
+                    requestBoard.enqueueMoves(solution);
+                    requestBoard.setInputLocked(false);
                     updateStatus();
                 })
                 .setNegativeButton(R.string.dialog_close, (dialog, which) -> {
-                    boardView.setInputLocked(false);
-                    updateStatus();
+                    restoreSolverResultControls(requestId, requestModel, requestBoard);
                 })
                 .setOnCancelListener(dialog -> {
-                    boardView.setInputLocked(false);
-                    updateStatus();
+                    restoreSolverResultControls(requestId, requestModel, requestBoard);
                 })
                 .create();
         showTimerPausingDialog(solutionDialog);
+    }
+
+    private void restoreSolverResultControls(long requestId, GameModel requestModel,
+            KlotskiView requestBoard) {
+        if (!hasSolverContext(requestId, requestModel, requestBoard)) {
+            return;
+        }
+        requestBoard.setInputLocked(false);
+        updateStatus();
+    }
+
+    private void cancelSolver() {
+        if (!solverRunning) {
+            return;
+        }
+        solverRequests.invalidate();
+        Thread canceledThread = solverThread;
+        solverThread = null;
+        solverRunning = false;
+        if (canceledThread != null) {
+            canceledThread.interrupt();
+        }
+        if (boardView != null) {
+            boardView.setInputLocked(false);
+        }
+        if (currentScreen == Screen.GAME && statusText != null) {
+            updateStatus();
+        } else {
+            updateSolverCancelButton();
+        }
+        syncGameTimerState();
+    }
+
+    private void abandonSolverContext() {
+        if (solverRunning) {
+            cancelSolver();
+        } else {
+            solverRequests.invalidate();
+        }
     }
 
     private String formatBestForCard(int size) {

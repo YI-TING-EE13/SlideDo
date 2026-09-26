@@ -18,6 +18,8 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.SystemClock;
 import android.view.View;
+import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.accessibility.AccessibilityNodeProvider;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -44,6 +46,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -136,6 +139,204 @@ public class AndroidLifecycleRuntimeTest {
         assertFalse((Boolean) readField(recreatedActivity, "solverRunning"));
         assertNull(device.findObject(By.text(solverResultMessage(1))));
         assertNull(device.findObject(By.res(PACKAGE_NAME, "results_root")));
+    }
+
+    @Test
+    public void lateSolverResultAfterBackNavigationCannotPresentOnHome() throws Exception {
+        seedNormalGame(NON_WIN_GRID);
+        launchApp();
+        openNormalGame();
+
+        ControlledSolver solver = new ControlledSolver("Held navigation solver", true);
+        Thread worker = startSolver(activity, solver);
+        assertTrue(solver.started.await(TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        assertTrue(solver.isWaiting.await(TIMEOUT_MS, TimeUnit.MILLISECONDS));
+
+        device.pressBack();
+        waitForId("home_root");
+        assertFalse("Back navigation destroyed the Activity", isDestroyed(activity));
+
+        solver.release.countDown();
+        worker.join(TIMEOUT_MS);
+        assertFalse("The held solver worker did not finish", worker.isAlive());
+        instrumentation.waitForIdleSync();
+
+        assertEquals(Screen.HOME, readField(activity, "currentScreen"));
+        assertNull("A result from the abandoned Game screen appeared on Home",
+                device.findObject(By.text(solverResultMessage(1))));
+    }
+
+    @Test
+    public void userCanCancelSolverWithoutChangingPuzzleAndContinuePlaying() throws Exception {
+        seedNormalGame(NON_WIN_GRID);
+        launchApp();
+        openNormalGame();
+
+        GameModel model = (GameModel) readField(activity, "model");
+        int[][] gridBefore = model.getGridCopy();
+        List<?> actionsBefore = model.getActionHistory();
+        List<?> redoBefore = model.getRedoHistory();
+        int moveCountBefore = model.getMoveCount();
+        boolean assistedBefore = (Boolean) readField(activity, "assistedSolveActive");
+        assertTrue("The active game timer was not running", model.isTimerRunning());
+
+        AndroidGameStore storeBefore = new AndroidGameStore(targetContext);
+        int historySizeBefore = storeBefore.getCompletionHistory().length;
+        AndroidGameStore.Best bestBefore = storeBefore.getBest(3, PuzzleDifficulty.CLASSIC);
+        AndroidGameStore.OverallCompletionStats statsBefore =
+                storeBefore.getOverallCompletionStats();
+
+        ControlledSolver solver = new ControlledSolver("Cancelable runtime solver", true);
+        Thread worker = startSolver(activity, solver);
+        assertTrue(solver.started.await(TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        assertTrue(solver.isWaiting.await(TIMEOUT_MS, TimeUnit.MILLISECONDS));
+
+        UiObject2 cancelButton = device.wait(
+                Until.findObject(By.res(PACKAGE_NAME, "game_cancel_solver_button")), TIMEOUT_MS);
+        assertNotNull("The running solver has no visible Cancel Solver action", cancelButton);
+        assertEquals(activity.getString(R.string.accessibility_cancel_solver),
+                cancelButton.getContentDescription());
+        cancelButton.click();
+
+        assertTrue("Cancel did not interrupt the solver worker",
+                solver.interrupted.await(TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        assertFalse((Boolean) readField(activity, "solverRunning"));
+        assertNull(readField(activity, "solverThread"));
+        assertNull(device.findObject(By.res(PACKAGE_NAME, "game_cancel_solver_button")));
+        assertTrue("Game controls were not restored after cancellation",
+                device.findObject(By.res(PACKAGE_NAME, "game_restart_button")).isEnabled());
+        assertTrue("The game timer did not resume after cancellation",
+                model.isTimerRunning());
+        assertTrue(Arrays.deepEquals(gridBefore, model.getGridCopy()));
+        assertEquals(moveCountBefore, model.getMoveCount());
+        assertEquals(actionsBefore, model.getActionHistory());
+        assertEquals(redoBefore, model.getRedoHistory());
+        assertEquals(assistedBefore, readField(activity, "assistedSolveActive"));
+        assertNull(device.findObject(By.text(solverResultMessage(1))));
+
+        solver.release.countDown();
+        worker.join(TIMEOUT_MS);
+        assertFalse("The canceled solver worker did not finish", worker.isAlive());
+        instrumentation.waitForIdleSync();
+
+        assertEquals(Screen.GAME, readField(activity, "currentScreen"));
+        assertTrue(Arrays.deepEquals(gridBefore, model.getGridCopy()));
+        assertEquals(moveCountBefore, model.getMoveCount());
+        assertNull("The late canceled result appeared after release",
+                device.findObject(By.text(solverResultMessage(1))));
+
+        AndroidGameStore storeAfter = new AndroidGameStore(targetContext);
+        assertEquals(historySizeBefore, storeAfter.getCompletionHistory().length);
+        assertEquals(bestBefore, storeAfter.getBest(3, PuzzleDifficulty.CLASSIC));
+        AndroidGameStore.OverallCompletionStats statsAfter =
+                storeAfter.getOverallCompletionStats();
+        assertEquals(statsBefore.available, statsAfter.available);
+        if (statsBefore.available) {
+            assertEquals(statsBefore.stats.playerCompletions,
+                    statsAfter.stats.playerCompletions);
+            assertEquals(statsBefore.stats.assistedCompletions,
+                    statsAfter.stats.assistedCompletions);
+            assertEquals(statsBefore.stats.playerMoves, statsAfter.stats.playerMoves);
+            assertEquals(statsBefore.stats.playerTimeMs, statsAfter.stats.playerTimeMs);
+        }
+
+        clickBoardCell(2, 1, 3);
+        assertEquals("The game did not accept a move after cancellation",
+                moveCountBefore + 1, model.getMoveCount());
+    }
+
+    @Test
+    public void lateSolverResultCannotMutateTutorialModelAfterRealNavigation() throws Exception {
+        seedNormalGame(NON_WIN_GRID);
+        launchApp();
+        openNormalGame();
+
+        GameModel gameModel = (GameModel) readField(activity, "model");
+        ControlledSolver solver = new ControlledSolver("Held model replacement solver", true);
+        Thread worker = startSolver(activity, solver);
+        assertTrue(solver.started.await(TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        assertTrue(solver.isWaiting.await(TIMEOUT_MS, TimeUnit.MILLISECONDS));
+
+        device.pressBack();
+        waitForId("home_root");
+        assertTrue(solver.interrupted.await(TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        clickActivityView(R.id.home_tutorial_button);
+        waitForId("tutorial_root");
+
+        GameModel tutorialModel = (GameModel) readField(activity, "model");
+        assertNotSame(gameModel, tutorialModel);
+        int[][] tutorialGridBefore = tutorialModel.getGridCopy();
+        solver.release.countDown();
+        worker.join(TIMEOUT_MS);
+        assertFalse("The obsolete solver worker did not finish", worker.isAlive());
+        instrumentation.waitForIdleSync();
+
+        assertEquals(Screen.TUTORIAL, readField(activity, "currentScreen"));
+        assertTrue(Arrays.deepEquals(tutorialGridBefore, tutorialModel.getGridCopy()));
+        assertNull("The abandoned game solver showed a result on Tutorial",
+                device.findObject(By.text(solverResultMessage(1))));
+    }
+
+    @Test
+    public void canceledSolverCannotReplaceALaterSolverResult() throws Exception {
+        seedNormalGame(NON_WIN_GRID);
+        launchApp();
+        openNormalGame();
+
+        ControlledSolver obsoleteSolver = new ControlledSolver("Obsolete request", true,
+                Arrays.asList(Direction.UP, Direction.DOWN));
+        Thread obsoleteWorker = startSolver(activity, obsoleteSolver);
+        assertTrue(obsoleteSolver.started.await(TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        assertTrue(obsoleteSolver.isWaiting.await(TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        UiObject2 cancelButton = device.wait(
+                Until.findObject(By.res(PACKAGE_NAME, "game_cancel_solver_button")),
+                TIMEOUT_MS);
+        assertNotNull(cancelButton);
+        cancelButton.click();
+        assertTrue(obsoleteSolver.interrupted.await(TIMEOUT_MS, TimeUnit.MILLISECONDS));
+
+        ControlledSolver currentSolver = new ControlledSolver("Current request", false);
+        Thread currentWorker = startSolver(activity, currentSolver);
+        assertTrue(currentSolver.started.await(TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        currentWorker.join(TIMEOUT_MS);
+        assertFalse("The current solver worker did not finish", currentWorker.isAlive());
+        waitForText(solverResultMessage(1));
+
+        obsoleteSolver.release.countDown();
+        obsoleteWorker.join(TIMEOUT_MS);
+        assertFalse("The obsolete solver worker did not finish", obsoleteWorker.isAlive());
+        instrumentation.waitForIdleSync();
+
+        assertEquals(Screen.GAME, readField(activity, "currentScreen"));
+        assertNotNull(device.findObject(By.text(solverResultMessage(1))));
+        assertNull("The obsolete result replaced the current solver result",
+                device.findObject(By.text(solverResultMessage(2))));
+    }
+
+    @Test
+    public void successfulSolverStillShowsConfirmationAndPlaysSolution() throws Exception {
+        seedNormalGame(NORMAL_WIN_GRID);
+        launchApp();
+        openNormalGame();
+
+        ControlledSolver solver = new ControlledSolver("Successful runtime solver", false,
+                Collections.singletonList(Direction.RIGHT));
+        Thread worker = startSolver(activity, solver);
+        assertTrue(solver.started.await(TIMEOUT_MS, TimeUnit.MILLISECONDS));
+        worker.join(TIMEOUT_MS);
+        assertFalse("The successful solver worker did not finish", worker.isAlive());
+        waitForText(solverResultMessage(1));
+
+        UiObject2 animateButton = device.wait(
+                Until.findObject(By.res("android", "button1")), TIMEOUT_MS);
+        assertNotNull("The normal solver confirmation action is missing", animateButton);
+        animateButton.click();
+        waitForId("results_root");
+
+        GameModel model = (GameModel) readField(activity, "model");
+        assertTrue(model.isSolved());
+        assertEquals(1, model.getMoveCount());
+        assertTrue((Boolean) readField(activity, "assistedSolveActive"));
     }
 
     @Test
@@ -358,6 +559,22 @@ public class AndroidLifecycleRuntimeTest {
             assertNotNull("Missing Activity view " + resourceId, view);
             assertTrue("Activity view did not handle click " + resourceId, view.performClick());
         });
+    }
+
+    private void clickBoardCell(int row, int col, int size) {
+        AtomicReference<Boolean> clicked = new AtomicReference<>(false);
+        instrumentation.runOnMainSync(() -> {
+            View view = activity.findViewById(R.id.game_board);
+            assertTrue(view instanceof KlotskiView);
+            AccessibilityNodeProvider provider =
+                    ((KlotskiView) view).getAccessibilityNodeProvider();
+            assertNotNull(provider);
+            int virtualId = KlotskiView.virtualIdForCell(row, col, size);
+            clicked.set(provider.performAction(virtualId,
+                    AccessibilityNodeInfo.ACTION_CLICK, null));
+        });
+        assertTrue("The movable tile did not accept its accessibility click", clicked.get());
+        instrumentation.waitForIdleSync();
     }
 
     private MainActivity recreateActivity(MainActivity previous) throws Exception {
@@ -619,14 +836,21 @@ public class AndroidLifecycleRuntimeTest {
     private static final class ControlledSolver implements Solver {
         private final String name;
         private final boolean waitForRelease;
+        private final List<Direction> solution;
         private final CountDownLatch started = new CountDownLatch(1);
         private final CountDownLatch isWaiting = new CountDownLatch(1);
         private final CountDownLatch interrupted = new CountDownLatch(1);
         private final CountDownLatch release = new CountDownLatch(1);
 
         private ControlledSolver(String name, boolean waitForRelease) {
+            this(name, waitForRelease, Collections.singletonList(Direction.UP));
+        }
+
+        private ControlledSolver(String name, boolean waitForRelease,
+                List<Direction> solution) {
             this.name = name;
             this.waitForRelease = waitForRelease;
+            this.solution = new ArrayList<>(solution);
         }
 
         @Override
@@ -644,7 +868,7 @@ public class AndroidLifecycleRuntimeTest {
                     }
                 }
             }
-            return Collections.singletonList(Direction.UP);
+            return new ArrayList<>(solution);
         }
 
         @Override
