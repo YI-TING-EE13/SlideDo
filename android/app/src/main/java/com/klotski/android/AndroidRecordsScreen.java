@@ -78,8 +78,21 @@ final class AndroidRecordsScreen {
         parent.addView(title, params);
     }
 
-    private void addOverallSummary(LinearLayout parent, AndroidGameStore.CompletionStats stats) {
+    private void addOverallSummary(
+            LinearLayout parent, AndroidGameStore.OverallCompletionStats overall) {
         LinearLayout panel = createPanel();
+        if (!overall.available) {
+            TextView unavailable = ui.createText(
+                    activity.getString(R.string.records_overall_unavailable),
+                    15, COLOR_MUTED_TEXT, Typeface.NORMAL);
+            unavailable.setId(R.id.records_overall_unavailable_text);
+            unavailable.setLineSpacing(0, 1.12f);
+            panel.addView(unavailable, ui.fullWidthParams());
+            addPanel(parent, panel);
+            return;
+        }
+
+        AndroidGameStore.CompletionStats stats = overall.stats;
         TextView player = ui.createText(formatPlayerCompletions(stats.playerCompletions),
                 20, COLOR_POSITIVE_TEXT, Typeface.BOLD);
         player.setId(R.id.records_overall_player_text);
@@ -230,7 +243,7 @@ final class AndroidRecordsScreen {
 
         AndroidGameStore.CompletionStats getStats(int size, PuzzleDifficulty difficulty);
 
-        AndroidGameStore.CompletionStats getOverallStats();
+        AndroidGameStore.OverallCompletionStats getOverallStats();
 
         AndroidGameStore.CompletionRecord[] getHistory();
     }

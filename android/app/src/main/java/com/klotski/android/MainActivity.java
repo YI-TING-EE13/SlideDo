@@ -1033,7 +1033,7 @@ public class MainActivity extends Activity implements GameObserver {
             }
 
             @Override
-            public AndroidGameStore.CompletionStats getOverallStats() {
+            public AndroidGameStore.OverallCompletionStats getOverallStats() {
                 return store.getOverallCompletionStats();
             }
 
@@ -1781,6 +1781,8 @@ public class MainActivity extends Activity implements GameObserver {
                         store.importPersonalData(archive);
                         Toast.makeText(this, R.string.toast_backup_restored, Toast.LENGTH_SHORT).show();
                         recreate();
+                    } catch (AndroidGameStore.PersonalDataImportException exception) {
+                        showBackupRecoveryWarning(exception.failure);
                     } catch (IllegalArgumentException | IllegalStateException exception) {
                         showBackupError();
                     }
@@ -1793,6 +1795,19 @@ public class MainActivity extends Activity implements GameObserver {
         new AlertDialog.Builder(this)
                 .setTitle(R.string.dialog_backup_error_title)
                 .setMessage(R.string.dialog_backup_error_message)
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
+    }
+
+    private void showBackupRecoveryWarning(
+            AndroidGameStore.PersonalDataImportFailure failure) {
+        int message = failure
+                == AndroidGameStore.PersonalDataImportFailure.RECOVERY_DURABILITY_UNCONFIRMED
+                ? R.string.dialog_backup_recovery_durability_message
+                : R.string.dialog_backup_recovery_state_message;
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.dialog_backup_recovery_title)
+                .setMessage(message)
                 .setPositiveButton(android.R.string.ok, null)
                 .show();
     }

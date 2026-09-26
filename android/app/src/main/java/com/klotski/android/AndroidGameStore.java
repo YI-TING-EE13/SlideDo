@@ -205,6 +205,7 @@ final class AndroidGameStore {
      *
      * @param archive versioned backup JSON
      * @throws IllegalArgumentException when the document is malformed or unsupported
+     * @throws PersonalDataImportException when rollback cannot be fully confirmed
      * @throws IllegalStateException when Android cannot persist the restored state
      */
     void importPersonalData(String archive) {
@@ -221,26 +222,28 @@ final class AndroidGameStore {
             persisted = editor.commit();
         } catch (RuntimeException exception) {
             boolean rollbackPersisted = restoreAfterFailedImport(previous, exception);
-            throw new IllegalStateException(
-                    "Android could not persist the restored SlideDo data."
-                            + importRecoveryMessage(previous, rollbackPersisted), exception);
+            throw importFailure(previous, rollbackPersisted, exception);
         }
         if (!persisted) {
             boolean rollbackPersisted = restoreAfterFailedImport(previous, null);
-            throw new IllegalStateException(
-                    "Android could not persist the restored SlideDo data."
-                            + importRecoveryMessage(previous, rollbackPersisted));
+            throw importFailure(previous, rollbackPersisted, null);
         }
     }
 
-    private String importRecoveryMessage(
-            AndroidSharedPreferencesSnapshot previous, boolean rollbackPersisted) {
+    private IllegalStateException importFailure(
+            AndroidSharedPreferencesSnapshot previous, boolean rollbackPersisted,
+            RuntimeException originalFailure) {
         if (!previous.matches(prefs)) {
-            return " Previous values could not be restored in memory.";
+            return new PersonalDataImportException(
+                    PersonalDataImportFailure.RECOVERY_STATE_UNCONFIRMED, originalFailure);
         }
-        return rollbackPersisted
-                ? " Previous values were restored."
-                : " Previous values were restored in memory, but durable recovery could not be confirmed.";
+        if (!rollbackPersisted) {
+            return new PersonalDataImportException(
+                    PersonalDataImportFailure.RECOVERY_DURABILITY_UNCONFIRMED,
+                    originalFailure);
+        }
+        return new IllegalStateException(
+                "Android could not persist the restored SlideDo data.", originalFailure);
     }
 
     private boolean restoreAfterFailedImport(
@@ -930,14 +933,18 @@ final class AndroidGameStore {
                 prefs.getLong(prefix + KEY_PLAYER_TIME, 0L));
     }
 
-    CompletionStats getOverallCompletionStats() {
+    OverallCompletionStats getOverallCompletionStats() {
         CompletionStats total = CompletionStats.EMPTY;
-        for (int size = 3; size <= 5; size++) {
-            for (PuzzleDifficulty difficulty : PuzzleDifficulty.values()) {
-                total = total.plus(getCompletionStats(size, difficulty));
+        try {
+            for (int size = 3; size <= 5; size++) {
+                for (PuzzleDifficulty difficulty : PuzzleDifficulty.values()) {
+                    total = total.plus(getCompletionStats(size, difficulty));
+                }
             }
+        } catch (ArithmeticException overflow) {
+            return OverallCompletionStats.unavailable();
         }
-        return total;
+        return OverallCompletionStats.available(total);
     }
 
     void clearRecords() {
@@ -1517,6 +1524,42 @@ final class AndroidGameStore {
                     Math.addExact(assistedCompletions, other.assistedCompletions),
                     Math.addExact(playerMoves, other.playerMoves),
                     Math.addExact(playerTimeMs, other.playerTimeMs));
+        }
+    }
+
+    /**
+     * Checked result for the cross-size and cross-difficulty personal totals.
+     */
+    static final class OverallCompletionStats {
+        final boolean available;
+        final CompletionStats stats;
+
+        private OverallCompletionStats(boolean available, CompletionStats stats) {
+            this.available = available;
+            this.stats = stats;
+        }
+
+        static OverallCompletionStats available(CompletionStats stats) {
+            return new OverallCompletionStats(true, stats);
+        }
+
+        static OverallCompletionStats unavailable() {
+            return new OverallCompletionStats(false, null);
+        }
+    }
+
+    enum PersonalDataImportFailure {
+        RECOVERY_DURABILITY_UNCONFIRMED,
+        RECOVERY_STATE_UNCONFIRMED
+    }
+
+    /** Typed import failure for which the current-session or durable rollback is uncertain. */
+    static final class PersonalDataImportException extends IllegalStateException {
+        final PersonalDataImportFailure failure;
+
+        PersonalDataImportException(PersonalDataImportFailure failure, Throwable cause) {
+            super("Android could not confirm recovery of the previous SlideDo data.", cause);
+            this.failure = failure;
         }
     }
 

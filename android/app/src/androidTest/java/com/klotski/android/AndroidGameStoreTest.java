@@ -552,11 +552,50 @@ public class AndroidGameStoreTest {
         assertEquals(40L, challenge.playerMoves);
         assertEquals(8_000L, challenge.playerTimeMs);
 
-        AndroidGameStore.CompletionStats overall = store.getOverallCompletionStats();
+        AndroidGameStore.OverallCompletionStats result = store.getOverallCompletionStats();
+        assertTrue(result.available);
+        AndroidGameStore.CompletionStats overall = result.stats;
         assertEquals(3, overall.playerCompletions);
         assertEquals(1, overall.assistedCompletions);
         assertEquals(70L, overall.playerMoves);
         assertEquals(12_000L, overall.playerTimeMs);
+    }
+
+    @Test
+    public void overallCompletionStatsReportLegacyOverflowWithoutChangingValues() {
+        assertTrue(prefs.edit()
+                .putInt("stats_3_classic_player_completions", Integer.MAX_VALUE)
+                .putInt("stats_4_classic_player_completions", 1)
+                .commit());
+        Map<String, ?> beforeCounterOverflow = new HashMap<>(prefs.getAll());
+
+        AndroidGameStore.OverallCompletionStats counterResult =
+                store.getOverallCompletionStats();
+
+        assertFalse(counterResult.available);
+        assertNull(counterResult.stats);
+        assertEquals(beforeCounterOverflow, prefs.getAll());
+        assertEquals(Integer.MAX_VALUE, store.getCompletionStats(
+                3, PuzzleDifficulty.CLASSIC).playerCompletions);
+        assertEquals(1, store.getCompletionStats(
+                4, PuzzleDifficulty.CLASSIC).playerCompletions);
+
+        assertTrue(prefs.edit().clear()
+                .putLong("stats_3_classic_player_moves", Long.MAX_VALUE)
+                .putLong("stats_4_classic_player_moves", 1L)
+                .commit());
+        Map<String, ?> beforeLongOverflow = new HashMap<>(prefs.getAll());
+
+        AndroidGameStore.OverallCompletionStats moveResult =
+                store.getOverallCompletionStats();
+
+        assertFalse(moveResult.available);
+        assertNull(moveResult.stats);
+        assertEquals(beforeLongOverflow, prefs.getAll());
+        assertEquals(Long.MAX_VALUE, store.getCompletionStats(
+                3, PuzzleDifficulty.CLASSIC).playerMoves);
+        assertEquals(1L, store.getCompletionStats(
+                4, PuzzleDifficulty.CLASSIC).playerMoves);
     }
 
     @Test
@@ -1060,7 +1099,7 @@ public class AndroidGameStoreTest {
             failingStore.importPersonalData(archive);
         } catch (IllegalStateException expected) {
             failed = true;
-            assertTrue(expected.getMessage().contains("Previous values were restored"));
+            assertFalse(expected instanceof AndroidGameStore.PersonalDataImportException);
         }
 
         assertTrue(failed);
@@ -1089,9 +1128,9 @@ public class AndroidGameStoreTest {
         boolean warned = false;
         try {
             failingStore.importPersonalData(archive);
-        } catch (IllegalStateException expected) {
-            warned = expected.getMessage().contains(
-                    "restored in memory, but durable recovery could not be confirmed");
+        } catch (AndroidGameStore.PersonalDataImportException expected) {
+            warned = expected.failure == AndroidGameStore.PersonalDataImportFailure
+                    .RECOVERY_DURABILITY_UNCONFIRMED;
         }
 
         assertTrue(warned);
@@ -1190,7 +1229,7 @@ public class AndroidGameStoreTest {
         return flattened.toString();
     }
 
-    private static final class CommitFailingSharedPreferences implements SharedPreferences {
+    static final class CommitFailingSharedPreferences implements SharedPreferences {
         private final SharedPreferences delegate;
         private int failingCommitsRemaining;
 

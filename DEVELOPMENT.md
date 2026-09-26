@@ -1353,6 +1353,23 @@ Priority: Low to Medium
   `MainActivityFlowTest.continuousOverflowShowsUnrecordedResultWithoutPartialCompletionWrites`
   case passed.
 
+### 2026-09-26 Legacy statistics and import recovery follow-up
+
+- Overall Records totals now return an explicit unavailable result when legacy
+  per-scope completion counters or long totals overflow. The Records screen
+  explains the unavailable aggregate while continuing to show individual
+  size/difficulty records; reading the screen does not alter saved values.
+- Personal-data import rollback uncertainty now has typed failure statuses.
+  MainActivity shows a localized recovery warning that distinguishes restored
+  in-memory data with unconfirmed durability from an unconfirmed restoration;
+  malformed archives and ordinary import failures keep the generic backup
+  error.
+- Added store and Activity regression coverage for integer and long aggregate
+  overflow, the production Records flow, mutation-before-false candidate and
+  rollback commits, localized recovery copy, and malformed-archive handling.
+- `ci.bat` passed. The complete connected Android instrumentation suite passed
+  all 125 tests on `small_phone` with no skips or failures.
+
 ### 2026-09-08 Stage 9 professional Java documentation and final docs sync
 
 - Audited all 71 Java files under `src/com/klotski/core`, `src/com/klotski/ui`,

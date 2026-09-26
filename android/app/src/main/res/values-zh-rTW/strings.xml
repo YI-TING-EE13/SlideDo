@@ -127,6 +127,7 @@
     <string name="records_row_title">%1$dx%2$d %3$s</string>
     <string name="records_empty">尚無紀錄</string>
     <string name="records_totals_title">個人總計</string>
+    <string name="records_overall_unavailable">已儲存的統計數值超出可支援的總計範圍，因此無法顯示整體總計。下方各項個別紀錄仍可查看。</string>
     <string name="records_player_average">玩家平均：%1$s · %2$d 秒</string>
     <string name="records_player_average_empty">玩家平均：—</string>
     <string name="records_recent_title">近期完成</string>
@@ -312,6 +313,9 @@
     <string name="dialog_restore">還原</string>
     <string name="dialog_backup_error_title">無法使用備份</string>
     <string name="dialog_backup_error_message">SlideDo 無法完成這次備份操作。請檢查所選檔案後再試一次。</string>
+    <string name="dialog_backup_recovery_title">需要確認個人資料還原狀態</string>
+    <string name="dialog_backup_recovery_durability_message">匯入失敗。先前的個人資料已在目前工作階段還原，但 SlideDo 無法確認資料是否已儲存。重新啟動或再次匯入前，請先檢查個人資料。</string>
+    <string name="dialog_backup_recovery_state_message">匯入失敗。SlideDo 無法確認先前的個人資料是否已在目前工作階段還原或儲存。重新啟動或再次匯入前，請先檢查個人資料。</string>
     <string name="toast_records_reset">紀錄已重設。</string>
     <string name="dialog_close">關閉</string>
     <string name="dialog_continue">繼續</string>

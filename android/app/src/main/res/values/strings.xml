@@ -128,6 +128,7 @@
     <string name="records_row_title">%1$dx%2$d %3$s</string>
     <string name="records_empty">No record yet</string>
     <string name="records_totals_title">PERSONAL TOTALS</string>
+    <string name="records_overall_unavailable">Overall totals are unavailable because saved statistics exceed supported totals. Individual records below are still available.</string>
     <string name="records_player_average">Player avg: %1$s · %2$ds</string>
     <string name="records_player_average_empty">Player avg: —</string>
     <string name="records_recent_title">RECENT COMPLETIONS</string>
@@ -315,6 +316,9 @@
     <string name="dialog_restore">RESTORE</string>
     <string name="dialog_backup_error_title">Backup unavailable</string>
     <string name="dialog_backup_error_message">SlideDo could not complete this backup operation. Review the selected file and try again.</string>
+    <string name="dialog_backup_recovery_title">Personal data recovery needs attention</string>
+    <string name="dialog_backup_recovery_durability_message">Import failed. Your previous personal data is restored for this session, but SlideDo cannot confirm it was saved. Check your personal data before restarting or trying the import again.</string>
+    <string name="dialog_backup_recovery_state_message">Import failed. SlideDo cannot confirm that your previous personal data was restored for this session or saved. Check your personal data before restarting or trying the import again.</string>
     <string name="toast_records_reset">Records reset.</string>
     <string name="dialog_close">Close</string>
     <string name="dialog_continue">Continue</string>
