@@ -40,4 +40,21 @@ class ContinuousChallengeTest {
         assertThrows(IllegalArgumentException.class,
                 () -> ContinuousChallenge.restore(3, 2, 0, 0L, 3));
     }
+
+    @Test
+    void aggregateOverflowIsRejectedWithoutChangingTheExistingSession() {
+        ContinuousChallenge moveOverflow = ContinuousChallenge.restore(
+                3, 0, Integer.MAX_VALUE, 0L, 0);
+        assertThrows(ArithmeticException.class,
+                () -> moveOverflow.completePuzzle(1, 0L, false));
+        assertEquals(0, moveOverflow.getCompletedPuzzles());
+        assertEquals(Integer.MAX_VALUE, moveOverflow.getTotalMoves());
+
+        ContinuousChallenge timeOverflow = ContinuousChallenge.restore(
+                3, 0, 0, Long.MAX_VALUE, 0);
+        assertThrows(ArithmeticException.class,
+                () -> timeOverflow.completePuzzle(0, 1L, false));
+        assertEquals(0, timeOverflow.getCompletedPuzzles());
+        assertEquals(Long.MAX_VALUE, timeOverflow.getTotalTimeMs());
+    }
 }

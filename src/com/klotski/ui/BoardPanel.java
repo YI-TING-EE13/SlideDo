@@ -99,6 +99,9 @@ public class BoardPanel extends JPanel implements GameObserver {
     /** Optional desktop-specific result dialog callback. */
     private WinDialogHandler winDialogHandler;
 
+    /** Callback used to resume navigation after queued board animation settles. */
+    private Runnable idleListener;
+
     /** Queued empty-tile moves used for keyboard and solver playback. */
     private final Deque<Direction> moveQueue = new ArrayDeque<>();
 
@@ -612,6 +615,15 @@ public class BoardPanel extends JPanel implements GameObserver {
         this.winDialogHandler = winDialogHandler;
     }
 
+    /**
+     * Registers a callback for the transition from busy board to stable board.
+     *
+     * @param idleListener callback invoked on the Swing event-dispatch thread
+     */
+    public void setIdleListener(Runnable idleListener) {
+        this.idleListener = idleListener;
+    }
+
     private void handleMouseClick(int x, int y) {
         Point tilePoint = getTileAt(x, y);
         if (tilePoint == null) {
@@ -744,6 +756,7 @@ public class BoardPanel extends JPanel implements GameObserver {
     public void setInputLocked(boolean inputLocked) {
         this.inputLocked = inputLocked;
         repaint();
+        notifyIdleIfNeeded();
     }
 
     private void playQueuedMove() {
@@ -760,6 +773,21 @@ public class BoardPanel extends JPanel implements GameObserver {
                 + " moves=" + model.getMoveCount());
         if (!moved) {
             playQueuedMove();
+        }
+    }
+
+    private void finishAnimationStep() {
+        isAnimating = false;
+        onGridChanged();
+        if (!showPendingWinIfNeeded()) {
+            playQueuedMove();
+        }
+        notifyIdleIfNeeded();
+    }
+
+    private void notifyIdleIfNeeded() {
+        if (!isBusy() && idleListener != null) {
+            idleListener.run();
         }
     }
 
@@ -848,19 +876,14 @@ public class BoardPanel extends JPanel implements GameObserver {
         int oldEmptyC = newEmptyC - dir.dCol;
 
         Tile tile = tiles[newEmptyR][newEmptyC];
-        tile.animate(oldEmptyR, oldEmptyC, () -> {
-            isAnimating = false;
-            onGridChanged();
-            if (!showPendingWinIfNeeded()) {
-                playQueuedMove();
-            }
-        });
+        tile.animate(oldEmptyR, oldEmptyC, this::finishAnimationStep);
     }
 
     @Override
     public void onLineMove(Direction dir, int steps) {
         if (steps <= 0) {
             onGridChanged();
+            notifyIdleIfNeeded();
             return;
         }
 
@@ -870,6 +893,13 @@ public class BoardPanel extends JPanel implements GameObserver {
         int oldEmptyR = newEmptyR - dir.dRow * steps;
         int oldEmptyC = newEmptyC - dir.dCol * steps;
         int[] remaining = {steps};
+        boolean[] finished = {false};
+        Runnable finishLineMove = () -> {
+            if (!finished[0]) {
+                finished[0] = true;
+                finishAnimationStep();
+            }
+        };
 
         log("onLineMove dir=" + dir + " steps=" + steps
                 + " oldEmpty=(" + oldEmptyR + "," + oldEmptyC + ")"
@@ -890,21 +920,13 @@ public class BoardPanel extends JPanel implements GameObserver {
             tile.animate(targetR, targetC, () -> {
                 remaining[0]--;
                 if (remaining[0] == 0) {
-                    isAnimating = false;
-                    onGridChanged();
-                    if (!showPendingWinIfNeeded()) {
-                        playQueuedMove();
-                    }
+                    finishLineMove.run();
                 }
             });
         }
 
         if (remaining[0] == 0) {
-            isAnimating = false;
-            onGridChanged();
-            if (!showPendingWinIfNeeded()) {
-                playQueuedMove();
-            }
+            finishLineMove.run();
         }
     }
 

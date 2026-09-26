@@ -64,6 +64,11 @@ public class GameModel {
      * Resets the board to the solved state and stops active gameplay.
      */
     public void reset() {
+        resetToSolvedState();
+        notifyGridChanged();
+    }
+
+    private void resetToSolvedState() {
         grid = new int[size][size];
         int value = 1;
         for (int r = 0; r < size; r++) {
@@ -84,7 +89,6 @@ public class GameModel {
         initialGrid = copyGrid(grid);
         undoStack.clear();
         redoStack.clear();
-        notifyGridChanged();
     }
 
     /**
@@ -123,6 +127,7 @@ public class GameModel {
     }
 
     private void scramble(int moves, Random scrambleRandom, PuzzleDifficulty selectedDifficulty) {
+        resetToSolvedState();
         Direction lastDir = null;
         for (int i = 0; i < moves; i++) {
             List<Direction> validMoves = getValidMoves();

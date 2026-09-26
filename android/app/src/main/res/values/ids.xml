@@ -69,6 +69,7 @@
     <item name="records_overall_player_text" type="id" />
     <item name="records_overall_assisted_text" type="id" />
     <item name="records_overall_average_text" type="id" />
+    <item name="records_overall_unavailable_text" type="id" />
     <item name="records_history_empty_text" type="id" />
     <item name="records_back_button" type="id" />
     <item name="trends_root" type="id" />

@@ -128,6 +128,7 @@
     <string name="records_row_title">%1$dx%2$d %3$s</string>
     <string name="records_empty">記録はまだありません</string>
     <string name="records_totals_title">個人合計</string>
+    <string name="records_overall_unavailable">保存された統計値が合計の対応範囲を超えているため、全体の合計を表示できません。以下の個別記録は引き続き確認できます。</string>
     <string name="records_player_average">自力平均：%1$s・%2$d秒</string>
     <string name="records_player_average_empty">自力平均：—</string>
     <string name="records_recent_title">最近のクリア</string>
@@ -210,8 +211,10 @@
     <string name="continuous_end_title">連続チャレンジを終了しますか？</string>
     <string name="continuous_end_message">現在のセッションと専用の問題を削除します。獲得済みの各クリア記録は残ります。</string>
     <string name="results_player_subtitle">パズルをクリアしました。</string>
+    <string name="results_completion_not_recorded_subtitle">クリアしましたが、個人統計を更新できませんでした。</string>
     <string name="results_assisted_subtitle">アシストを使ってクリアしました。</string>
     <string name="results_daily_subtitle">今日のチャレンジをクリアしました。</string>
+    <string name="results_daily_progress_unsaved">デイリーチャレンジは完了しましたが、進捗を保存できませんでした。</string>
     <string name="results_favorite_subtitle">お気に入りの練習をクリアしました。</string>
     <string name="results_completion_mark">✓</string>
     <string name="results_completion_description">パズルクリア</string>
@@ -222,6 +225,7 @@
     <string name="results_no_new_best">最高記録：%1$s</string>
     <string name="results_assisted_record">アシスト結果は保存されません。プレイヤー最高：%1$s</string>
     <string name="results_daily_progress">連続記録：%1$d 日 · 最高：%2$d 日</string>
+    <string name="results_completion_not_recorded">今回のクリアは記録されていません。個人記録と統計は変更されていません。</string>
     <string name="results_favorite_record">練習結果のみです。個人記録と統計は変更されていません。</string>
     <string name="results_play_again">同じ問題を再挑戦</string>
     <string name="results_new_size">サイズ変更</string>
@@ -310,6 +314,9 @@
     <string name="dialog_restore">復元</string>
     <string name="dialog_backup_error_title">バックアップを使用できません</string>
     <string name="dialog_backup_error_message">SlideDo はバックアップ操作を完了できませんでした。選択したファイルを確認して、もう一度お試しください。</string>
+    <string name="dialog_backup_recovery_title">個人データの復元状態を確認してください</string>
+    <string name="dialog_backup_recovery_durability_message">インポートに失敗しました。以前の個人データは現在のセッションに復元されましたが、SlideDo は保存できたことを確認できません。再起動または再インポートの前に、個人データを確認してください。</string>
+    <string name="dialog_backup_recovery_state_message">インポートに失敗しました。以前の個人データが現在のセッションに復元されたか、保存されたかを SlideDo は確認できません。再起動または再インポートの前に、個人データを確認してください。</string>
     <string name="toast_records_reset">記録をリセットしました。</string>
     <string name="dialog_close">閉じる</string>
     <string name="dialog_continue">続ける</string>

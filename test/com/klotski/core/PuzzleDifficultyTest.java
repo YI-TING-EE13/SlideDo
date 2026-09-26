@@ -3,6 +3,7 @@ package com.klotski.core;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -37,5 +38,25 @@ class PuzzleDifficultyTest {
         assertArrayEquals(first.getGridCopy(), second.getGridCopy());
         assertEquals(PuzzleDifficulty.CHALLENGE, first.getDifficulty());
         assertFalse(first.isSolved());
+    }
+
+    @Test
+    void seededScrambleRestartsFromSolvedStateAfterModelWasMutated() {
+        GameModel fresh = new GameModel(4);
+        GameModel reused = new GameModel(4);
+        reused.scramble(PuzzleDifficulty.RELAXED, 18L);
+        Direction mutation = reused.getEmptyRow() == 0 ? Direction.DOWN : Direction.UP;
+        assertTrue(reused.move(mutation));
+
+        fresh.scramble(PuzzleDifficulty.CHALLENGE, 42L);
+        reused.scramble(PuzzleDifficulty.CHALLENGE, 42L);
+
+        assertArrayEquals(fresh.getGridCopy(), reused.getGridCopy());
+        assertArrayEquals(fresh.getInitialGridCopy(), reused.getInitialGridCopy());
+        assertEquals(fresh.getMoveCount(), reused.getMoveCount());
+        assertEquals(fresh.isGameRunning(), reused.isGameRunning());
+        assertEquals(fresh.getDifficulty(), reused.getDifficulty());
+        assertEquals(fresh.getEncodedActionHistory(), reused.getEncodedActionHistory());
+        assertEquals(fresh.getEncodedRedoHistory(), reused.getEncodedRedoHistory());
     }
 }

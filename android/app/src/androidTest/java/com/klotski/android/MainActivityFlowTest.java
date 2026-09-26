@@ -54,7 +54,9 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * End-to-end Android smoke coverage for the app-level SlideDo flow.
@@ -912,7 +914,7 @@ public class MainActivityFlowTest {
 
         assertEquals(4, store.loadSavedGame(3).moveCount);
         assertEquals(0, store.getCompletionHistory().length);
-        assertEquals(0, store.getOverallCompletionStats().playerCompletions);
+        assertEquals(0, store.getOverallCompletionStats().stats.playerCompletions);
     }
 
     @Test
@@ -944,8 +946,106 @@ public class MainActivityFlowTest {
         assertActivityContainsText("No record yet");
         assertActivityContainsText("No completed puzzles yet");
         assertEquals(0, store.getCompletionHistory().length);
-        assertEquals(0, store.getOverallCompletionStats().playerCompletions);
-        assertEquals(0, store.getOverallCompletionStats().assistedCompletions);
+        assertEquals(0, store.getOverallCompletionStats().stats.playerCompletions);
+        assertEquals(0, store.getOverallCompletionStats().stats.assistedCompletions);
+    }
+
+    @Test
+    public void recordsStayUsableWhenLegacyOverallTotalsOverflow() throws Exception {
+        markOnboardingSeen();
+        SharedPreferences prefs = targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        assertTrue(prefs.edit()
+                .putInt("stats_3_classic_player_completions", 1)
+                .putLong("stats_3_classic_player_moves", Long.MAX_VALUE)
+                .putInt("stats_4_classic_player_completions", 1)
+                .putLong("stats_4_classic_player_moves", 1L)
+                .commit());
+        Map<String, ?> before = new HashMap<>(prefs.getAll());
+        launchApp();
+
+        clickId(R.id.home_records_button);
+        waitForId("records_root");
+
+        assertActivityHasView(R.id.records_overall_unavailable_text);
+        assertActivityContainsText("saved statistics exceed supported totals");
+        assertActivityMissingView(R.id.records_overall_player_text);
+        assertActivityContainsText("3x3 Classic");
+        assertActivityContainsText("4x4 Classic");
+        assertEquals(before, prefs.getAll());
+        assertEquals(Long.MAX_VALUE, prefs.getLong("stats_3_classic_player_moves", 0L));
+        assertEquals(1L, prefs.getLong("stats_4_classic_player_moves", 0L));
+    }
+
+    @Test
+    public void failedImportWithUnconfirmedRollbackShowsRecoveryWarning() throws Exception {
+        markOnboardingSeen();
+        SharedPreferences prefs = targetContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        assertTrue(prefs.edit()
+                .putString("language_tag", AndroidAppLocale.DEFAULT_LANGUAGE_TAG)
+                .putBoolean("sound_enabled", false)
+                .commit());
+        Map<String, ?> previousData = new HashMap<>(prefs.getAll());
+        launchApp();
+
+        AndroidGameStoreTest.CommitFailingSharedPreferences failingPreferences =
+                new AndroidGameStoreTest.CommitFailingSharedPreferences(prefs, 2);
+        setActivityField("store", new AndroidGameStore(failingPreferences));
+        Map<String, Object> replacement = new HashMap<>();
+        replacement.put("language_tag", AndroidAppLocale.JAPANESE_LANGUAGE_TAG);
+        replacement.put("sound_enabled", true);
+        String archive = AndroidPersonalDataArchive.encode(replacement, 123L);
+        Activity activityBeforeImport = activity;
+        invokeActivityMethod("confirmImportPersonalData", new Class<?>[] {String.class}, archive);
+        waitForText("Restore backup?");
+        waitForText("RESTORE").click();
+
+        waitForText("Personal data recovery needs attention");
+        waitForText("Import failed. Your previous personal data is restored for this session, but SlideDo cannot confirm it was saved. Check your personal data before restarting or trying the import again.");
+        assertNull(device.findObject(By.text(targetContext.getString(
+                R.string.dialog_backup_error_message))));
+        assertNull(device.findObject(By.text(targetContext.getString(
+                R.string.toast_backup_restored))));
+        assertEquals(activityBeforeImport, activity);
+        assertEquals(previousData, prefs.getAll());
+        assertEquals(AndroidAppLocale.DEFAULT_LANGUAGE_TAG,
+                prefs.getString("language_tag", null));
+        assertFalse(prefs.getBoolean("sound_enabled", true));
+    }
+
+    @Test
+    public void malformedImportStillShowsGenericBackupError() throws Exception {
+        markOnboardingSeen();
+        launchApp();
+        Activity activityBeforeImport = activity;
+
+        invokeActivityMethod("confirmImportPersonalData", new Class<?>[] {String.class},
+                "not a personal data archive");
+        waitForText("Restore backup?");
+        waitForText("RESTORE").click();
+
+        waitForText("Backup unavailable");
+        waitForText("SlideDo could not complete this backup operation. Review the selected file and try again.");
+        assertNull(device.findObject(By.text("Personal data recovery needs attention")));
+        assertEquals(activityBeforeImport, activity);
+    }
+
+    @Test
+    public void importRecoveryWarningIsLocalizedForSupportedLanguages() {
+        assertEquals(
+                "Import failed. Your previous personal data is restored for this session, but SlideDo cannot confirm it was saved. Check your personal data before restarting or trying the import again.",
+                AndroidAppLocale.wrap(targetContext,
+                        AndroidAppLocale.DEFAULT_LANGUAGE_TAG).getString(
+                                R.string.dialog_backup_recovery_durability_message));
+        assertEquals(
+                "匯入失敗。先前的個人資料已在目前工作階段還原，但 SlideDo 無法確認資料是否已儲存。重新啟動或再次匯入前，請先檢查個人資料。",
+                AndroidAppLocale.wrap(targetContext,
+                        AndroidAppLocale.TRADITIONAL_CHINESE_LANGUAGE_TAG).getString(
+                                R.string.dialog_backup_recovery_durability_message));
+        assertEquals(
+                "インポートに失敗しました。以前の個人データは現在のセッションに復元されましたが、SlideDo は保存できたことを確認できません。再起動または再インポートの前に、個人データを確認してください。",
+                AndroidAppLocale.wrap(targetContext,
+                        AndroidAppLocale.JAPANESE_LANGUAGE_TAG).getString(
+                                R.string.dialog_backup_recovery_durability_message));
     }
 
     @Test
@@ -1204,6 +1304,38 @@ public class MainActivityFlowTest {
     }
 
     @Test
+    public void continuousOverflowShowsUnrecordedResultWithoutPartialCompletionWrites()
+            throws Exception {
+        writeSavedGame(ONE_MOVE_WIN_GRID, ONE_MOVE_WIN_GRID, 0);
+        launchApp();
+        clickId(R.id.home_continue_button);
+        waitForId("game_root");
+        setActivityField("activeContinuousChallenge",
+                ContinuousChallenge.restore(3, 0, Integer.MAX_VALUE, 0L, 0));
+
+        tapCell(3, 2, 2);
+
+        waitForId("results_root");
+        waitForText("Puzzle complete, but personal statistics could not be updated.");
+        waitForText("This completion was not recorded. Personal records and statistics remain unchanged.");
+        assertActivityTextContains(R.id.results_play_again_button, "Replay Puzzle");
+
+        AndroidGameStore store = new AndroidGameStore(targetContext);
+        assertEquals(0, store.getCompletionHistory().length);
+        assertEquals(0, store.getCompletionStats(3, PuzzleDifficulty.CLASSIC).playerCompletions);
+        assertNull(store.getBest(3, PuzzleDifficulty.CLASSIC));
+        AndroidGameStore.ContinuousGame saved = store.loadContinuousGame();
+        assertNotNull(saved);
+        assertEquals(0, saved.challenge.getCompletedPuzzles());
+        assertEquals(Integer.MAX_VALUE, saved.challenge.getTotalMoves());
+        assertFalse(saved.game.solved);
+
+        clickId(R.id.results_play_again_button);
+        waitForId("game_root");
+        waitForStatusContaining("0 moves");
+    }
+
+    @Test
     public void trendsCompareOneScopeAndWeeklyGoalCanBeChanged() throws Exception {
         markOnboardingSeen();
         AndroidGameStore store = new AndroidGameStore(targetContext);
@@ -1447,8 +1579,8 @@ public class MainActivityFlowTest {
                 + Math.round(history[1].timeMs / 1000.0) + "s");
         assertActivityContainsText("Assisted · 1 move · " + history[0].timeMs / 1000 + "s");
         assertActivityContainsText("Player · 1 move · " + history[1].timeMs / 1000 + "s");
-        assertEquals(1, store.getOverallCompletionStats().playerCompletions);
-        assertEquals(1, store.getOverallCompletionStats().assistedCompletions);
+        assertEquals(1, store.getOverallCompletionStats().stats.playerCompletions);
+        assertEquals(1, store.getOverallCompletionStats().stats.assistedCompletions);
         assertEquals(1, store.getBest(3, PuzzleDifficulty.CLASSIC).moves);
     }
 

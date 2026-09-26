@@ -9,6 +9,8 @@ import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.SharedPreferences.Editor;
+import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.content.res.Configuration;
 import android.os.LocaleList;
 
@@ -30,6 +32,11 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.Locale;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -430,15 +437,18 @@ public class AndroidGameStoreTest {
 
     @Test
     public void dailyCompletionsAreIdempotentAndAdvanceConsecutiveStreak() {
-        assertTrue(store.recordDailyCompletion("2026-08-20"));
-        assertFalse(store.recordDailyCompletion("2026-08-20"));
+        assertEquals(AndroidGameStore.DailyCompletionResult.PERSISTED,
+                store.recordDailyCompletion("2026-08-20"));
+        assertEquals(AndroidGameStore.DailyCompletionResult.ALREADY_COMPLETED,
+                store.recordDailyCompletion("2026-08-20"));
 
         AndroidGameStore.DailyProgress first = store.getDailyProgress("2026-08-20");
         assertTrue(first.completedToday);
         assertEquals(1, first.currentStreak);
         assertEquals(1, first.bestStreak);
 
-        assertTrue(store.recordDailyCompletion("2026-08-21"));
+        assertEquals(AndroidGameStore.DailyCompletionResult.PERSISTED,
+                store.recordDailyCompletion("2026-08-21"));
         AndroidGameStore.DailyProgress second = store.getDailyProgress("2026-08-21");
         assertTrue(second.completedToday);
         assertEquals(2, second.currentStreak);
@@ -470,7 +480,8 @@ public class AndroidGameStoreTest {
         store.recordDailyCompletion("2026-08-22");
         store.recordDailyCompletion("2026-08-23");
 
-        assertTrue(store.recordDailyCompletion("2026-07-10"));
+        assertEquals(AndroidGameStore.DailyCompletionResult.PERSISTED,
+                store.recordDailyCompletion("2026-07-10"));
 
         AndroidGameStore.DailyProgress current = store.getDailyProgress("2026-08-23");
         assertEquals(2, current.currentStreak);
@@ -504,7 +515,8 @@ public class AndroidGameStoreTest {
         store.saveDailyGame("not-a-date", model, 1_000L);
 
         assertNull(store.loadDailyGame("not-a-date"));
-        assertFalse(store.recordDailyCompletion("not-a-date"));
+        assertEquals(AndroidGameStore.DailyCompletionResult.FAILED,
+                store.recordDailyCompletion("not-a-date"));
         AndroidGameStore.DailyProgress progress = store.getDailyProgress("not-a-date");
         assertFalse(progress.completedToday);
         assertEquals(0, progress.currentStreak);
@@ -540,11 +552,50 @@ public class AndroidGameStoreTest {
         assertEquals(40L, challenge.playerMoves);
         assertEquals(8_000L, challenge.playerTimeMs);
 
-        AndroidGameStore.CompletionStats overall = store.getOverallCompletionStats();
+        AndroidGameStore.OverallCompletionStats result = store.getOverallCompletionStats();
+        assertTrue(result.available);
+        AndroidGameStore.CompletionStats overall = result.stats;
         assertEquals(3, overall.playerCompletions);
         assertEquals(1, overall.assistedCompletions);
         assertEquals(70L, overall.playerMoves);
         assertEquals(12_000L, overall.playerTimeMs);
+    }
+
+    @Test
+    public void overallCompletionStatsReportLegacyOverflowWithoutChangingValues() {
+        assertTrue(prefs.edit()
+                .putInt("stats_3_classic_player_completions", Integer.MAX_VALUE)
+                .putInt("stats_4_classic_player_completions", 1)
+                .commit());
+        Map<String, ?> beforeCounterOverflow = new HashMap<>(prefs.getAll());
+
+        AndroidGameStore.OverallCompletionStats counterResult =
+                store.getOverallCompletionStats();
+
+        assertFalse(counterResult.available);
+        assertNull(counterResult.stats);
+        assertEquals(beforeCounterOverflow, prefs.getAll());
+        assertEquals(Integer.MAX_VALUE, store.getCompletionStats(
+                3, PuzzleDifficulty.CLASSIC).playerCompletions);
+        assertEquals(1, store.getCompletionStats(
+                4, PuzzleDifficulty.CLASSIC).playerCompletions);
+
+        assertTrue(prefs.edit().clear()
+                .putLong("stats_3_classic_player_moves", Long.MAX_VALUE)
+                .putLong("stats_4_classic_player_moves", 1L)
+                .commit());
+        Map<String, ?> beforeLongOverflow = new HashMap<>(prefs.getAll());
+
+        AndroidGameStore.OverallCompletionStats moveResult =
+                store.getOverallCompletionStats();
+
+        assertFalse(moveResult.available);
+        assertNull(moveResult.stats);
+        assertEquals(beforeLongOverflow, prefs.getAll());
+        assertEquals(Long.MAX_VALUE, store.getCompletionStats(
+                3, PuzzleDifficulty.CLASSIC).playerMoves);
+        assertEquals(1L, store.getCompletionStats(
+                4, PuzzleDifficulty.CLASSIC).playerMoves);
     }
 
     @Test
@@ -831,11 +882,19 @@ public class AndroidGameStoreTest {
         String unsupportedType = "{\"format\":\"slidedo-personal-data\",\"version\":1,"
                 + "\"createdAt\":1,\"entries\":[{\"key\":\"value\",\"type\":\"bytes\","
                 + "\"value\":\"AA==\"}]}";
+        String wrongKnownType = "{\"format\":\"slidedo-personal-data\",\"version\":1,"
+                + "\"createdAt\":1,\"entries\":[{\"key\":\"last_size\","
+                + "\"type\":\"string\",\"value\":\"4\"}]}";
+        String invalidKnownValue = "{\"format\":\"slidedo-personal-data\",\"version\":1,"
+                + "\"createdAt\":1,\"entries\":[{\"key\":\"weekly_goal_target_v1\","
+                + "\"type\":\"int\",\"value\":0}]}";
         String[] invalidBackups = {
                 "{}",
                 "{\"format\":\"slidedo-personal-data\",\"version\":99,\"entries\":[]}",
                 duplicateKey,
                 unsupportedType,
+                wrongKnownType,
+                invalidKnownValue,
                 "x".repeat(AndroidPersonalDataArchive.MAX_ARCHIVE_CHARS + 1)
         };
 
@@ -861,11 +920,224 @@ public class AndroidGameStoreTest {
 
         store.importPersonalData("{\"format\":\"slidedo-personal-data\",\"version\":1,"
                 + "\"createdAt\":123,\"entries\":[{\"key\":\"onboarding_seen\","
-                + "\"type\":\"boolean\",\"value\":true}]}");
+                + "\"type\":\"boolean\",\"value\":true},{\"key\":\"future_extension\","
+                + "\"type\":\"string-set\",\"value\":[\"preserved\"]}]}");
 
         AndroidGameStore restored = new AndroidGameStore(targetContext);
         assertTrue(restored.isOnboardingSeen());
         assertFalse(restored.isSoundEnabled());
+        assertEquals(Collections.singleton("preserved"),
+                prefs.getStringSet("future_extension", Collections.emptySet()));
+    }
+
+    @Test
+    public void personalDataArchiveRequiresAValidInitialGridForSavedBoards() {
+        Map<String, Object> missingInitial = new HashMap<>();
+        missingInitial.put("save_3_grid", "1,2,3,4,5,6,7,8,0");
+        assertArchiveRejected(missingInitial);
+
+        Map<String, Object> wrongDimensions = new HashMap<>();
+        wrongDimensions.put("save_3_grid", "1,2,3,4,5,6,7,8,0");
+        wrongDimensions.put("save_3_initial_grid", "1,2,3,4,5,0,7,8");
+        assertArchiveRejected(wrongDimensions);
+
+        Map<String, Object> invalidTiles = new HashMap<>();
+        invalidTiles.put("save_3_grid", "1,2,3,4,5,6,7,8,0");
+        invalidTiles.put("save_3_initial_grid", "1,2,3,4,5,6,7,7,0");
+        assertArchiveRejected(invalidTiles);
+
+        Map<String, Object> validLegacySave = new HashMap<>();
+        validLegacySave.put("save_3_grid", "1,2,3,4,5,6,7,8,0");
+        validLegacySave.put("save_3_initial_grid", "1,2,3,4,5,6,7,8,0");
+        Map<String, Object> decoded = AndroidPersonalDataArchive.decode(
+                AndroidPersonalDataArchive.encode(validLegacySave, 123L));
+        assertEquals(validLegacySave, decoded);
+    }
+
+    @Test
+    public void personalDataArchiveRejectsUnincrementableCountersAndAggregateOverflow() {
+        Map<String, Object> incrementableCounter = new HashMap<>();
+        incrementableCounter.put("stats_3_classic_player_completions", Integer.MAX_VALUE);
+        assertArchiveRejected(incrementableCounter);
+
+        Map<String, Object> currentStreak = new HashMap<>();
+        currentStreak.put("daily_current_streak", Integer.MAX_VALUE);
+        currentStreak.put("daily_best_streak", Integer.MAX_VALUE);
+        assertArchiveRejected(currentStreak);
+
+        Map<String, Object> aggregateCounterOverflow = new HashMap<>();
+        aggregateCounterOverflow.put("stats_3_classic_assisted_completions",
+                Integer.MAX_VALUE - 1);
+        aggregateCounterOverflow.put("stats_4_classic_assisted_completions", 2);
+        assertArchiveRejected(aggregateCounterOverflow);
+
+        Map<String, Object> unincrementableAggregateCounter = new HashMap<>();
+        unincrementableAggregateCounter.put("stats_3_classic_player_completions",
+                Integer.MAX_VALUE - 1);
+        unincrementableAggregateCounter.put("stats_4_classic_player_completions", 1);
+        assertArchiveRejected(unincrementableAggregateCounter);
+
+        Map<String, Object> aggregateTotalOverflow = new HashMap<>();
+        aggregateTotalOverflow.put("stats_3_classic_player_moves", Long.MAX_VALUE);
+        aggregateTotalOverflow.put("stats_4_classic_player_moves", 1L);
+        assertArchiveRejected(aggregateTotalOverflow);
+
+        Map<String, Object> maximumVariableTotals = new HashMap<>();
+        maximumVariableTotals.put("stats_3_classic_player_moves", Long.MAX_VALUE);
+        maximumVariableTotals.put("stats_3_classic_player_time", Long.MAX_VALUE);
+        assertEquals(maximumVariableTotals, AndroidPersonalDataArchive.decode(
+                AndroidPersonalDataArchive.encode(maximumVariableTotals, 123L)));
+    }
+
+    @Test
+    public void completionOverflowIsRejectedBeforeHistoryOrAnyStatisticChanges() {
+        Map<String, Object> counterOverflow = new HashMap<>();
+        counterOverflow.put("stats_3_classic_player_completions", Integer.MAX_VALUE);
+        assertCompletionArithmeticFailure(counterOverflow);
+
+        Map<String, Object> assistedCounterOverflow = new HashMap<>();
+        assistedCounterOverflow.put("stats_3_classic_assisted_completions",
+                Integer.MAX_VALUE);
+        assertCompletionArithmeticFailure(assistedCounterOverflow);
+
+        Map<String, Object> movesOverflow = new HashMap<>();
+        movesOverflow.put("stats_3_classic_player_moves", Long.MAX_VALUE);
+        assertCompletionArithmeticFailure(movesOverflow);
+
+        Map<String, Object> timeOverflow = new HashMap<>();
+        timeOverflow.put("stats_3_classic_player_time", Long.MAX_VALUE);
+        assertCompletionArithmeticFailure(timeOverflow);
+
+        Map<String, Object> overallCounterOverflow = new HashMap<>();
+        overallCounterOverflow.put("stats_4_classic_player_completions",
+                Integer.MAX_VALUE);
+        assertCompletionArithmeticFailure(overallCounterOverflow);
+
+        Map<String, Object> overallMovesOverflow = new HashMap<>();
+        overallMovesOverflow.put("stats_4_classic_player_moves", Long.MAX_VALUE);
+        assertCompletionArithmeticFailure(overallMovesOverflow);
+
+        Map<String, Object> overallTimeOverflow = new HashMap<>();
+        overallTimeOverflow.put("stats_4_classic_player_time", Long.MAX_VALUE);
+        assertCompletionArithmeticFailure(overallTimeOverflow);
+    }
+
+    @Test
+    public void dailyStreakOverflowIsDetectedBeforeDailyProgressChanges() {
+        assertTrue(prefs.edit()
+                .putStringSet("daily_completed_dates_v1", Collections.singleton("2026-08-19"))
+                .putString("daily_last_completed_date", "2026-08-19")
+                .putInt("daily_current_streak", Integer.MAX_VALUE)
+                .putInt("daily_best_streak", Integer.MAX_VALUE)
+                .commit());
+        Map<String, ?> before = new HashMap<>(prefs.getAll());
+
+        boolean overflowed = false;
+        try {
+            store.recordDailyCompletion("2026-08-20");
+        } catch (ArithmeticException expected) {
+            overflowed = true;
+        }
+
+        assertTrue(overflowed);
+        assertEquals(before, prefs.getAll());
+        assertFalse(store.getDailyProgress("2026-08-20").completedToday);
+    }
+
+    @Test
+    public void dailyCompletionFailureRestoresProgressAndCanBeRetriedExactlyOnce() {
+        Set<String> previousDates = Collections.singleton("2026-08-19");
+        assertTrue(prefs.edit()
+                .putStringSet("daily_completed_dates_v1", previousDates)
+                .putString("daily_last_completed_date", "2026-08-19")
+                .putInt("daily_current_streak", 1)
+                .putInt("daily_best_streak", 1)
+                .commit());
+        CommitFailingSharedPreferences failingPreferences =
+                new CommitFailingSharedPreferences(prefs, 1);
+        AndroidGameStore failingStore = new AndroidGameStore(failingPreferences);
+
+        assertEquals(AndroidGameStore.DailyCompletionResult.FAILED,
+                failingStore.recordDailyCompletion("2026-08-20"));
+        assertEquals(previousDates, prefs.getStringSet(
+                "daily_completed_dates_v1", Collections.emptySet()));
+        assertEquals("2026-08-19", prefs.getString("daily_last_completed_date", null));
+        assertEquals(1, prefs.getInt("daily_current_streak", 0));
+        assertEquals(1, prefs.getInt("daily_best_streak", 0));
+        assertFalse(failingStore.getDailyProgress("2026-08-20").completedToday);
+
+        assertEquals(AndroidGameStore.DailyCompletionResult.PERSISTED,
+                failingStore.recordDailyCompletion("2026-08-20"));
+        assertEquals(AndroidGameStore.DailyCompletionResult.ALREADY_COMPLETED,
+                failingStore.recordDailyCompletion("2026-08-20"));
+        AndroidGameStore.DailyProgress recovered =
+                failingStore.getDailyProgress("2026-08-20");
+        assertTrue(recovered.completedToday);
+        assertEquals(2, recovered.currentStreak);
+        assertEquals(2, recovered.bestStreak);
+    }
+
+    @Test
+    public void failedPersonalDataImportRestoresScalarsAndStringSets() {
+        Set<String> oldExtensions = Collections.singleton("old");
+        assertTrue(prefs.edit()
+                .putString("language_tag", AndroidAppLocale.DEFAULT_LANGUAGE_TAG)
+                .putBoolean("sound_enabled", false)
+                .putStringSet("future_extension", oldExtensions)
+                .commit());
+        CommitFailingSharedPreferences failingPreferences =
+                new CommitFailingSharedPreferences(prefs, 1);
+        AndroidGameStore failingStore = new AndroidGameStore(failingPreferences);
+        Map<String, Object> replacement = new HashMap<>();
+        replacement.put("language_tag", AndroidAppLocale.JAPANESE_LANGUAGE_TAG);
+        replacement.put("sound_enabled", true);
+        replacement.put("future_extension", new HashSet<>(Collections.singleton("new")));
+        String archive = AndroidPersonalDataArchive.encode(replacement, 123L);
+
+        boolean failed = false;
+        try {
+            failingStore.importPersonalData(archive);
+        } catch (IllegalStateException expected) {
+            failed = true;
+            assertFalse(expected instanceof AndroidGameStore.PersonalDataImportException);
+        }
+
+        assertTrue(failed);
+        assertEquals(AndroidAppLocale.DEFAULT_LANGUAGE_TAG,
+                prefs.getString("language_tag", null));
+        assertFalse(prefs.getBoolean("sound_enabled", true));
+        assertEquals(oldExtensions, prefs.getStringSet(
+                "future_extension", Collections.emptySet()));
+    }
+
+    @Test
+    public void failedImportWithFailedRollbackReportsDurabilityUncertainty() {
+        Set<String> oldExtensions = Collections.singleton("old");
+        assertTrue(prefs.edit()
+                .putString("language_tag", AndroidAppLocale.DEFAULT_LANGUAGE_TAG)
+                .putStringSet("future_extension", oldExtensions)
+                .commit());
+        CommitFailingSharedPreferences failingPreferences =
+                new CommitFailingSharedPreferences(prefs, 2);
+        AndroidGameStore failingStore = new AndroidGameStore(failingPreferences);
+        Map<String, Object> replacement = new HashMap<>();
+        replacement.put("language_tag", AndroidAppLocale.JAPANESE_LANGUAGE_TAG);
+        replacement.put("future_extension", new HashSet<>(Collections.singleton("new")));
+        String archive = AndroidPersonalDataArchive.encode(replacement, 123L);
+
+        boolean warned = false;
+        try {
+            failingStore.importPersonalData(archive);
+        } catch (AndroidGameStore.PersonalDataImportException expected) {
+            warned = expected.failure == AndroidGameStore.PersonalDataImportFailure
+                    .RECOVERY_DURABILITY_UNCONFIRMED;
+        }
+
+        assertTrue(warned);
+        assertEquals(AndroidAppLocale.DEFAULT_LANGUAGE_TAG,
+                prefs.getString("language_tag", null));
+        assertEquals(oldExtensions, prefs.getStringSet(
+                "future_extension", Collections.emptySet()));
     }
 
     @Test
@@ -909,6 +1181,41 @@ public class AndroidGameStoreTest {
         return model;
     }
 
+    private static void assertArchiveRejected(Map<String, Object> values) {
+        boolean rejected = false;
+        try {
+            AndroidPersonalDataArchive.decode(
+                    AndroidPersonalDataArchive.encode(values, 123L));
+        } catch (IllegalArgumentException expected) {
+            rejected = true;
+        }
+        assertTrue("Archive with invalid saved data was accepted: " + values, rejected);
+    }
+
+    private void assertCompletionArithmeticFailure(Map<String, Object> existingValues) {
+        SharedPreferences.Editor editor = prefs.edit().clear();
+        for (Map.Entry<String, Object> entry : existingValues.entrySet()) {
+            AndroidSharedPreferencesSnapshot.putPreference(
+                    editor, entry.getKey(), entry.getValue());
+        }
+        assertTrue(editor.commit());
+        Map<String, ?> before = new HashMap<>(prefs.getAll());
+        AndroidGameStore currentStore = new AndroidGameStore(targetContext);
+
+        boolean overflowed = false;
+        try {
+            currentStore.recordCompletion(
+                    3, PuzzleDifficulty.CLASSIC, 1, 1L, false, 1L);
+        } catch (ArithmeticException expected) {
+            overflowed = true;
+        }
+
+        assertTrue("Expected checked completion arithmetic to reject " + existingValues,
+                overflowed);
+        assertEquals(before, prefs.getAll());
+        assertEquals(0, currentStore.getCompletionHistory().length);
+    }
+
     private static String flattenGrid(int[][] grid) {
         StringBuilder flattened = new StringBuilder();
         for (int[] row : grid) {
@@ -920,5 +1227,150 @@ public class AndroidGameStoreTest {
             }
         }
         return flattened.toString();
+    }
+
+    static final class CommitFailingSharedPreferences implements SharedPreferences {
+        private final SharedPreferences delegate;
+        private int failingCommitsRemaining;
+
+        CommitFailingSharedPreferences(SharedPreferences delegate, int failingCommits) {
+            this.delegate = delegate;
+            this.failingCommitsRemaining = failingCommits;
+        }
+
+        @Override
+        public Map<String, ?> getAll() {
+            return delegate.getAll();
+        }
+
+        @Override
+        public String getString(String key, String defValue) {
+            return delegate.getString(key, defValue);
+        }
+
+        @Override
+        public Set<String> getStringSet(String key, Set<String> defValues) {
+            return delegate.getStringSet(key, defValues);
+        }
+
+        @Override
+        public int getInt(String key, int defValue) {
+            return delegate.getInt(key, defValue);
+        }
+
+        @Override
+        public long getLong(String key, long defValue) {
+            return delegate.getLong(key, defValue);
+        }
+
+        @Override
+        public float getFloat(String key, float defValue) {
+            return delegate.getFloat(key, defValue);
+        }
+
+        @Override
+        public boolean getBoolean(String key, boolean defValue) {
+            return delegate.getBoolean(key, defValue);
+        }
+
+        @Override
+        public boolean contains(String key) {
+            return delegate.contains(key);
+        }
+
+        @Override
+        public Editor edit() {
+            return new CommitFailingEditor(delegate.edit(), this);
+        }
+
+        boolean reportCommitResult(boolean persisted) {
+            if (failingCommitsRemaining > 0) {
+                failingCommitsRemaining--;
+                return false;
+            }
+            return persisted;
+        }
+
+        @Override
+        public void registerOnSharedPreferenceChangeListener(
+                OnSharedPreferenceChangeListener listener) {
+            delegate.registerOnSharedPreferenceChangeListener(listener);
+        }
+
+        @Override
+        public void unregisterOnSharedPreferenceChangeListener(
+                OnSharedPreferenceChangeListener listener) {
+            delegate.unregisterOnSharedPreferenceChangeListener(listener);
+        }
+    }
+
+    private static final class CommitFailingEditor implements SharedPreferences.Editor {
+        private final SharedPreferences.Editor delegate;
+        private final CommitFailingSharedPreferences owner;
+
+        CommitFailingEditor(SharedPreferences.Editor delegate,
+                CommitFailingSharedPreferences owner) {
+            this.delegate = delegate;
+            this.owner = owner;
+        }
+
+        @Override
+        public Editor putString(String key, String value) {
+            delegate.putString(key, value);
+            return this;
+        }
+
+        @Override
+        public Editor putStringSet(String key, Set<String> values) {
+            delegate.putStringSet(key, values);
+            return this;
+        }
+
+        @Override
+        public Editor putInt(String key, int value) {
+            delegate.putInt(key, value);
+            return this;
+        }
+
+        @Override
+        public Editor putLong(String key, long value) {
+            delegate.putLong(key, value);
+            return this;
+        }
+
+        @Override
+        public Editor putFloat(String key, float value) {
+            delegate.putFloat(key, value);
+            return this;
+        }
+
+        @Override
+        public Editor putBoolean(String key, boolean value) {
+            delegate.putBoolean(key, value);
+            return this;
+        }
+
+        @Override
+        public Editor remove(String key) {
+            delegate.remove(key);
+            return this;
+        }
+
+        @Override
+        public Editor clear() {
+            delegate.clear();
+            return this;
+        }
+
+        @Override
+        public boolean commit() {
+            boolean persisted = delegate.commit();
+            return owner.reportCommitResult(persisted);
+        }
+
+        @Override
+        public void apply() {
+            delegate.apply();
+        }
     }
 }

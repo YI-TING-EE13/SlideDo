@@ -1316,6 +1316,60 @@ Priority: Low to Medium
 
 ## Development Log
 
+### 2026-09-26 Behavioral review remediation
+
+- Repaired six bounded behavioral risks: seeded scrambles now restart from the
+  solved state; Android daily completion reports failed persistence; backup
+  imports validate recognized preference types and domain constraints before
+  replacement; solver callbacks reject invalidated Activity requests; pending
+  wins survive Activity recreation; and desktop game navigation waits for the
+  board to become idle before autosaving and leaving the current mode.
+- Added focused shared-core, desktop, and Android instrumentation regression
+  coverage. `ci.bat` passed, including 151 shared/core and desktop tests,
+  desktop compilation/Javadocs, Android app and instrumentation APK assembly,
+  lint, toolchain checks, and release-readiness checks. Android unit tests have
+  no `src/test` sources; instrumentation tests compiled but could not be run
+  because no device or AVD was available.
+
+### 2026-09-26 Independent-review follow-up
+
+- Daily completion now distinguishes persisted, already-completed, and failed
+  outcomes. A failed commit restores the previous daily keys in the current
+  process, so a retry can persist the completion once without exposing the
+  failed attempt as progress.
+- Personal-data imports now snapshot every preference, including copied
+  string sets, and restore that snapshot after a failed replacement. A failed
+  rollback commit reports that in-memory recovery succeeded while durable
+  recovery remains unconfirmed.
+- Archive validation requires `initial_grid` whenever a saved namespace has a
+  `grid`, validates both boards, and rejects completion counters that cannot
+  be incremented or whose aggregate counters/totals overflow.
+- Daily streak, per-scope and overall completion statistics, and continuous
+  challenge totals are checked before completion writes. An arithmetic failure
+  leaves records and statistics unchanged and shows an explicit unrecorded
+  completion result.
+- `ci.bat` passed. On the `small_phone` AVD, all 45 `AndroidGameStoreTest`
+  cases, all 12 `AndroidActivityStateTest` cases, and the focused
+  `MainActivityFlowTest.continuousOverflowShowsUnrecordedResultWithoutPartialCompletionWrites`
+  case passed.
+
+### 2026-09-26 Legacy statistics and import recovery follow-up
+
+- Overall Records totals now return an explicit unavailable result when legacy
+  per-scope completion counters or long totals overflow. The Records screen
+  explains the unavailable aggregate while continuing to show individual
+  size/difficulty records; reading the screen does not alter saved values.
+- Personal-data import rollback uncertainty now has typed failure statuses.
+  MainActivity shows a localized recovery warning that distinguishes restored
+  in-memory data with unconfirmed durability from an unconfirmed restoration;
+  malformed archives and ordinary import failures keep the generic backup
+  error.
+- Added store and Activity regression coverage for integer and long aggregate
+  overflow, the production Records flow, mutation-before-false candidate and
+  rollback commits, localized recovery copy, and malformed-archive handling.
+- `ci.bat` passed. The complete connected Android instrumentation suite passed
+  all 125 tests on `small_phone` with no skips or failures.
+
 ### 2026-09-08 Stage 9 professional Java documentation and final docs sync
 
 - Audited all 71 Java files under `src/com/klotski/core`, `src/com/klotski/ui`,

@@ -127,6 +127,7 @@
     <string name="records_row_title">%1$dx%2$d %3$s</string>
     <string name="records_empty">尚無紀錄</string>
     <string name="records_totals_title">個人總計</string>
+    <string name="records_overall_unavailable">已儲存的統計數值超出可支援的總計範圍，因此無法顯示整體總計。下方各項個別紀錄仍可查看。</string>
     <string name="records_player_average">玩家平均：%1$s · %2$d 秒</string>
     <string name="records_player_average_empty">玩家平均：—</string>
     <string name="records_recent_title">近期完成</string>
@@ -209,8 +210,10 @@
     <string name="continuous_end_title">結束連續挑戰？</string>
     <string name="continuous_end_message">這會移除目前挑戰及其獨立題目；已取得的單題完成紀錄會保留。</string>
     <string name="results_player_subtitle">拼圖完成。</string>
+    <string name="results_completion_not_recorded_subtitle">拼圖已完成，但個人統計無法更新。</string>
     <string name="results_assisted_subtitle">使用輔助完成。</string>
     <string name="results_daily_subtitle">今日挑戰完成。</string>
+    <string name="results_daily_progress_unsaved">今日挑戰已完成，但進度未能儲存。</string>
     <string name="results_favorite_subtitle">收藏練習完成。</string>
     <string name="results_completion_mark">✓</string>
     <string name="results_completion_description">拼圖完成</string>
@@ -221,6 +224,7 @@
     <string name="results_no_new_best">最佳紀錄仍為：%1$s</string>
     <string name="results_assisted_record">輔助結果未儲存。玩家最佳：%1$s</string>
     <string name="results_daily_progress">每日連勝：%1$d 天 · 最佳：%2$d 天</string>
+    <string name="results_completion_not_recorded">本次完成未記錄；個人紀錄與統計均未變更。</string>
     <string name="results_favorite_record">本次僅為練習，個人紀錄與統計均未變更。</string>
     <string name="results_play_again">重玩本盤</string>
     <string name="results_new_size">其他尺寸</string>
@@ -309,6 +313,9 @@
     <string name="dialog_restore">還原</string>
     <string name="dialog_backup_error_title">無法使用備份</string>
     <string name="dialog_backup_error_message">SlideDo 無法完成這次備份操作。請檢查所選檔案後再試一次。</string>
+    <string name="dialog_backup_recovery_title">需要確認個人資料還原狀態</string>
+    <string name="dialog_backup_recovery_durability_message">匯入失敗。先前的個人資料已在目前工作階段還原，但 SlideDo 無法確認資料是否已儲存。重新啟動或再次匯入前，請先檢查個人資料。</string>
+    <string name="dialog_backup_recovery_state_message">匯入失敗。SlideDo 無法確認先前的個人資料是否已在目前工作階段還原或儲存。重新啟動或再次匯入前，請先檢查個人資料。</string>
     <string name="toast_records_reset">紀錄已重設。</string>
     <string name="dialog_close">關閉</string>
     <string name="dialog_continue">繼續</string>
