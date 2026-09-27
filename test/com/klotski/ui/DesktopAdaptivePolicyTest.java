@@ -21,6 +21,20 @@ class DesktopAdaptivePolicyTest {
     }
 
     @Test
+    void compactHomeUsesTwoColumnsOnlyWhenLocalizedButtonsFit() {
+        assertEquals(2, DesktopAdaptivePolicy.compactHomeActionColumns(430, 210, 10));
+        assertEquals(1, DesktopAdaptivePolicy.compactHomeActionColumns(429, 210, 10));
+        assertEquals(1, DesktopAdaptivePolicy.compactHomeActionColumns(500, 260, 10));
+    }
+
+    @Test
+    void compactHomeFallsBackToOneColumnForInvalidMeasurements() {
+        assertEquals(1, DesktopAdaptivePolicy.compactHomeActionColumns(0, 100, 10));
+        assertEquals(1, DesktopAdaptivePolicy.compactHomeActionColumns(500, 0, 10));
+        assertEquals(1, DesktopAdaptivePolicy.compactHomeActionColumns(500, 100, -1));
+    }
+
+    @Test
     void themesMeetNormalTextAndFocusContrastTargets() {
         for (DesktopTheme theme : DesktopTheme.values()) {
             assertTrue(DesktopAdaptivePolicy.meetsTextContrast(

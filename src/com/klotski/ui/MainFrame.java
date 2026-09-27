@@ -5,6 +5,8 @@ import com.klotski.core.*;
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -397,57 +399,66 @@ public class MainFrame extends JFrame implements GameObserver {
     }
 
     private JComponent createHomePanel() {
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBorder(BorderFactory.createEmptyBorder(36, 48, 36, 48));
+        HomeViewportPanel panel = new HomeViewportPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 24, 20, 24));
         panel.setBackground(desktopTheme.getHomeBackground());
         panel.getAccessibleContext().setAccessibleName(text("homeAccessibleName"));
         panel.getAccessibleContext().setAccessibleDescription(text("homeAccessibleDescription"));
 
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.weightx = 1.0;
-
         JLabel title = new JLabel("SlideDo", SwingConstants.CENTER);
         title.setFont(new Font("SansSerif", Font.BOLD, 42));
         title.setForeground(desktopTheme.getHomeTitle());
-        gbc.gridy = 0;
-        gbc.insets = new Insets(0, 0, 6, 0);
-        panel.add(title, gbc);
+        boundHomeComponent(title);
+        panel.add(title);
+        panel.add(Box.createVerticalStrut(6));
 
         JLabel subtitle = new JLabel(text("firstRunSubtitle"),
                 SwingConstants.CENTER);
         subtitle.setFont(new Font("SansSerif", Font.PLAIN, 15));
         subtitle.setForeground(desktopTheme.getHomeSecondary());
-        gbc.gridy++;
-        gbc.insets = new Insets(0, 0, 24, 0);
-        panel.add(subtitle, gbc);
+        boundHomeComponent(subtitle);
+        panel.add(subtitle);
+        panel.add(Box.createVerticalStrut(12));
 
-        JPanel sizePanel = new JPanel(new GridLayout(0, 1, 10, 8));
+        JPanel sizePanel = new JPanel(new GridLayout(1, 3, 10, 8));
         sizePanel.setOpaque(false);
         firstHomeButton = createHomeButton("3x3", () -> startNewGame(3));
         sizePanel.add(firstHomeButton);
         sizePanel.add(createHomeButton("4x4", () -> startNewGame(4)));
         sizePanel.add(createHomeButton("5x5", () -> startNewGame(5)));
-        gbc.gridy++;
-        gbc.insets = new Insets(0, 0, 12, 0);
-        panel.add(sizePanel, gbc);
+        boundHomeComponent(sizePanel);
+        panel.add(sizePanel);
+        panel.add(Box.createVerticalStrut(12));
 
-        panel.add(createHomeButton(text("continueLoad"), this::loadGame), nextHomeRow(gbc));
+        JPanel primaryActions = new JPanel(new GridLayout(0, 2, 10, 8));
+        primaryActions.setOpaque(false);
+        primaryActions.add(createHomeButton(text("continueLoad"), this::loadGame));
+        primaryActions.add(createHomeButton(text("daily"), this::showDailyCalendarDialog));
+        boundHomeComponent(primaryActions);
+        panel.add(primaryActions);
+        panel.add(Box.createVerticalStrut(4));
+
         continueSummaryLabel = new JLabel("", SwingConstants.CENTER);
         continueSummaryLabel.setFont(new Font("SansSerif", Font.PLAIN, 13));
         continueSummaryLabel.setForeground(desktopTheme.getHomeSecondary());
-        panel.add(continueSummaryLabel, nextHomeRow(gbc));
-        panel.add(createHomeButton(text("daily"), this::showDailyCalendarDialog), nextHomeRow(gbc));
-        panel.add(createHomeButton(text("favorites"), this::showFavoritesDialog), nextHomeRow(gbc));
-        panel.add(createHomeButton(text("trends"), this::showTrendsDialog), nextHomeRow(gbc));
-        panel.add(createHomeButton(text("continuous"), this::showContinuousDialog), nextHomeRow(gbc));
-        panel.add(createHomeButton(text("howToPlay"), () -> showHelpDialog(text("howToPlay"), DesktopHelpContent.howToPlay(desktopLocale))),
-                nextHomeRow(gbc));
-        panel.add(createHomeButton(text("practiceTutorial"), this::showPracticeTutorialDialog), nextHomeRow(gbc));
-        panel.add(createHomeButton(text("beginnerGuide"), this::showOnboardingDialog), nextHomeRow(gbc));
-        panel.add(createHomeButton(text("records"), this::showRecordsDialog), nextHomeRow(gbc));
-        panel.add(createHomeButton(text("preferences"), this::showPreferencesDialog), nextHomeRow(gbc));
+        boundHomeComponent(continueSummaryLabel);
+        panel.add(continueSummaryLabel);
+        panel.add(Box.createVerticalStrut(12));
+
+        JPanel secondaryActions = new JPanel(new GridLayout(0, 2, 10, 8));
+        secondaryActions.setOpaque(false);
+        secondaryActions.add(createHomeButton(text("favorites"), this::showFavoritesDialog));
+        secondaryActions.add(createHomeButton(text("trends"), this::showTrendsDialog));
+        secondaryActions.add(createHomeButton(text("continuous"), this::showContinuousDialog));
+        secondaryActions.add(createHomeButton(text("howToPlay"), () -> showHelpDialog(
+                text("howToPlay"), DesktopHelpContent.howToPlay(desktopLocale))));
+        secondaryActions.add(createHomeButton(text("practiceTutorial"), this::showPracticeTutorialDialog));
+        secondaryActions.add(createHomeButton(text("beginnerGuide"), this::showOnboardingDialog));
+        secondaryActions.add(createHomeButton(text("records"), this::showRecordsDialog));
+        secondaryActions.add(createHomeButton(text("preferences"), this::showPreferencesDialog));
+        boundHomeComponent(secondaryActions);
+        panel.add(secondaryActions);
 
         JScrollPane scroll = new JScrollPane(panel,
                 ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
@@ -456,15 +467,76 @@ public class MainFrame extends JFrame implements GameObserver {
         scroll.getViewport().setBackground(desktopTheme.getHomeBackground());
         scroll.getAccessibleContext().setAccessibleName(text("homeAccessibleName"));
         scroll.getAccessibleContext().setAccessibleDescription(text("homeScrollAccessibleDescription"));
+        scroll.getVerticalScrollBar().setUnitIncrement(28);
+
+        int widestActionWidth = widestPreferredButtonWidth(primaryActions, secondaryActions);
+        Runnable updateActionColumns = () -> {
+            Insets insets = panel.getInsets();
+            int availableWidth = scroll.getViewport().getExtentSize().width
+                    - insets.left - insets.right;
+            int columns = DesktopAdaptivePolicy.compactHomeActionColumns(
+                    availableWidth, widestActionWidth, 10);
+            ((GridLayout) primaryActions.getLayout()).setColumns(columns);
+            ((GridLayout) secondaryActions.getLayout()).setColumns(columns);
+            boundHomeComponent(primaryActions);
+            boundHomeComponent(secondaryActions);
+            primaryActions.revalidate();
+            secondaryActions.revalidate();
+            panel.revalidate();
+        };
+        scroll.getViewport().addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent event) {
+                updateActionColumns.run();
+            }
+        });
+        SwingUtilities.invokeLater(updateActionColumns);
         return scroll;
     }
 
-    private GridBagConstraints nextHomeRow(GridBagConstraints gbc) {
-        GridBagConstraints row = (GridBagConstraints) gbc.clone();
-        row.gridy++;
-        row.insets = new Insets(0, 0, 10, 0);
-        gbc.gridy = row.gridy;
-        return row;
+    private static int widestPreferredButtonWidth(JPanel... panels) {
+        int widest = 0;
+        for (JPanel panel : panels) {
+            for (Component component : panel.getComponents()) {
+                widest = Math.max(widest, component.getPreferredSize().width);
+            }
+        }
+        return widest;
+    }
+
+    private static void boundHomeComponent(JComponent component) {
+        Dimension preferred = component.getPreferredSize();
+        component.setMaximumSize(new Dimension(Math.max(680, preferred.width), preferred.height));
+        component.setAlignmentX(Component.CENTER_ALIGNMENT);
+    }
+
+    private static final class HomeViewportPanel extends JPanel implements Scrollable {
+        @Override
+        public Dimension getPreferredScrollableViewportSize() {
+            return getPreferredSize();
+        }
+
+        @Override
+        public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation,
+                int direction) {
+            return 28;
+        }
+
+        @Override
+        public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation,
+                int direction) {
+            return Math.max(28, visibleRect.height - 28);
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportWidth() {
+            return true;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportHeight() {
+            return false;
+        }
     }
 
     private JButton createHomeButton(String text, Runnable action) {

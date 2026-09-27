@@ -6,9 +6,10 @@ import java.awt.Dimension;
 /**
  * Pure desktop presentation policies used by the Swing UI and its tests.
  *
- * <p>The policy deliberately contains no Swing components.  It records the
- * minimum window target, focus-target sizing, and WCAG-style contrast checks
- * that the desktop UI can enforce without changing puzzle rules.</p>
+ * <p>The policy deliberately contains no Swing components. It records the
+ * minimum window target, compact Home grid sizing, focus-target sizing, and
+ * WCAG-style contrast checks that the desktop UI can enforce without changing
+ * puzzle rules.</p>
  */
 public final class DesktopAdaptivePolicy {
     /** Minimum usable desktop window target before a user resizes the frame. */
@@ -43,6 +44,24 @@ public final class DesktopAdaptivePolicy {
      */
     public static boolean supportsPrimaryWindow(int width, int height) {
         return width >= MINIMUM_WINDOW_WIDTH && height >= MINIMUM_WINDOW_HEIGHT;
+    }
+
+    /**
+     * Selects a compact Home action-grid column count from the available width
+     * and the widest localized action button.
+     *
+     * @param availableWidth width left after Home content insets
+     * @param widestActionWidth preferred width of the widest action button
+     * @param horizontalGap gap between two action columns
+     * @return two columns when both localized buttons fit, otherwise one
+     */
+    public static int compactHomeActionColumns(int availableWidth,
+            int widestActionWidth, int horizontalGap) {
+        if (availableWidth <= 0 || widestActionWidth <= 0 || horizontalGap < 0) {
+            return 1;
+        }
+        long twoColumnWidth = 2L * widestActionWidth + horizontalGap;
+        return availableWidth >= twoColumnWidth ? 2 : 1;
     }
 
     /**
