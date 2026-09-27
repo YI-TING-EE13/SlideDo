@@ -1316,6 +1316,29 @@ Priority: Low to Medium
 
 ## Development Log
 
+### 2026-09-27 M11 Desktop compact Home layout
+
+- Desktop Home groups the three new-game sizes in one row and places the
+  remaining destinations in measured two-column groups. Localized button widths
+  choose a one-column fallback on narrower windows; the Home viewport keeps
+  vertical scrolling available, uses a predictable scroll increment, and caps
+  action groups at 680 pixels so maximized windows do not stretch buttons
+  across the screen.
+- Added deterministic adaptive-policy coverage for the localized-width
+  breakpoint and invalid measurements. The accepted `main` baseline CI passed
+  before implementation, and post-change `ci.bat` passed. The `small_phone`
+  Android 16 / API 36 Home → 3x3 → Home → 5x5 smoke passed, then its original
+  `shared_prefs/slidedo.xml` was restored byte-for-byte. A real Swing run
+  launched from File Explorer reproduced a compact Home layout defect: the
+  default FlowLayout arranged the action groups horizontally and clipped lower
+  destinations. Giving the Home panel a vertical BoxLayout corrected the
+  layout. Computer Use then confirmed all Home destinations at 586x693 and
+  460x693; English, Traditional Chinese, and Japanese labels remained legible,
+  with only the Japanese subtitle ellipsized at 460 pixels. The Home stayed
+  centered and balanced at 957x693 and maximized 1920x1032, then returned to
+  586x693. A 3x3 game accepted a legal move and returned to Home through Daily
+  Calendar; the Home layout remained intact afterward.
+
 ### 2026-09-26 Android solver cancellation and request ownership
 
 - Android exposes a localized, accessible Cancel Solver action while a search is
