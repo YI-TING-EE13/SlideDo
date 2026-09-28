@@ -22,6 +22,8 @@ import com.klotski.core.DailyChallenge;
 import com.klotski.core.Direction;
 import com.klotski.core.GameModel;
 import com.klotski.core.PuzzleDifficulty;
+import com.klotski.core.RelayChallengeSpec;
+import com.klotski.core.RelayCodeCodec;
 import com.klotski.core.PersonalTrend;
 import com.klotski.core.SaveManager;
 import com.klotski.core.WeeklyGoalProgress;
@@ -148,6 +150,48 @@ public class AndroidGameStoreTest {
         assertEquals(3, saves[0].size);
         assertEquals(4, saves[1].size);
         assertEquals(5, saves[2].size);
+    }
+
+    @Test
+    public void relaySaveAndArchiveStayIsolatedAndInvalidArchiveIsTransactional() {
+        String code = "SLD-R1-AwIABQECAwQFBgcACA-A1947A39";
+        RelayChallengeSpec spec = RelayCodeCodec.decode(code);
+        GameModel normal = createSavedModel(3, PuzzleDifficulty.RELAXED, 3);
+        store.saveGame(normal, 3_000L);
+
+        GameModel relay = spec.createGame();
+        assertTrue(relay.move(Direction.RIGHT));
+        assertTrue(store.saveRelayGame(relay, 1_234L, true, code));
+        AndroidGameStore.RelayGame saved = store.loadRelayGame();
+        assertNotNull(saved);
+        assertEquals(code, RelayCodeCodec.encode(saved.spec));
+        assertEquals(1, saved.game.moveCount);
+        assertEquals(1_234L, saved.game.elapsedTime);
+        assertTrue(saved.assisted);
+        assertEquals(3_000L, store.loadSavedGame(3).elapsedTime);
+        assertFalse(prefs.contains("completion_history_v1"));
+        assertFalse(prefs.contains("daily_completed_dates_v1"));
+        store.clearContinuousGame();
+        assertNotNull(store.loadRelayGame());
+
+        String archive = store.exportPersonalData();
+        Map<String, ?> before = new HashMap<>(prefs.getAll());
+        String corruptedCode = code.substring(0, code.length() - 1) + "0";
+        String invalidArchive = archive.replace(code, corruptedCode);
+        try {
+            store.importPersonalData(invalidArchive);
+            throw new AssertionError("Corrupt Relay code should reject the archive.");
+        } catch (IllegalArgumentException expected) {
+            assertEquals(before, prefs.getAll());
+        }
+
+        prefs.edit().clear().commit();
+        store.importPersonalData(archive);
+        assertNotNull(store.loadRelayGame());
+        assertEquals(3_000L, store.loadSavedGame(3).elapsedTime);
+        store.clearSavedGame();
+        assertNull(store.loadRelayGame());
+        assertNull(store.loadSavedGame(3));
     }
 
     @Test

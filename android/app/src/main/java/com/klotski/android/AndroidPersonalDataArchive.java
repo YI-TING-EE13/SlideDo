@@ -7,6 +7,9 @@ import org.json.JSONObject;
 import com.klotski.core.ContinuousChallenge;
 import com.klotski.core.GameModel;
 import com.klotski.core.PuzzleDifficulty;
+import com.klotski.core.PuzzleSolvability;
+import com.klotski.core.RelayChallengeSpec;
+import com.klotski.core.RelayCodeCodec;
 import com.klotski.core.SaveManager;
 import com.klotski.core.WeeklyGoalProgress;
 
@@ -47,6 +50,8 @@ final class AndroidPersonalDataArchive {
             "^(daily_save_)(size|grid|initial_grid|moves|elapsed|updated_at|active|solved|difficulty|action_history|redo_history|assisted)$");
     private static final Pattern CONTINUOUS_SAVE_FIELD = Pattern.compile(
             "^(continuous_save_v1_)(size|grid|initial_grid|moves|elapsed|updated_at|active|solved|difficulty|action_history|redo_history|assisted|challenge_target|challenge_completed|challenge_total_moves|challenge_total_time|challenge_assisted)$");
+    private static final Pattern RELAY_SAVE_FIELD = Pattern.compile(
+            "^(relay_save_v1_)(size|grid|initial_grid|moves|elapsed|updated_at|active|solved|difficulty|action_history|redo_history|assisted|code)$");
     private static final Pattern BEST_FIELD = Pattern.compile(
             "^best_([345])_(?:(relaxed|classic|challenge)_)?(moves|time)$");
     private static final Pattern STATS_FIELD = Pattern.compile(
@@ -142,6 +147,7 @@ final class AndroidPersonalDataArchive {
         validateDailyProgress(values);
         validateCompletionStats(values);
         validateContinuousProgress(saveGroups.get("continuous_save_v1_"));
+        validateRelaySave(saveGroups.get("relay_save_v1_"));
     }
 
     private static Class<?> expectedPreferenceType(String key) {
@@ -193,6 +199,10 @@ final class AndroidPersonalDataArchive {
             return new SaveKey(matcher.group(1), matcher.group(2), 4);
         }
         matcher = CONTINUOUS_SAVE_FIELD.matcher(key);
+        if (matcher.matches()) {
+            return new SaveKey(matcher.group(1), matcher.group(2), 0);
+        }
+        matcher = RELAY_SAVE_FIELD.matcher(key);
         if (matcher.matches()) {
             return new SaveKey(matcher.group(1), matcher.group(2), 0);
         }
@@ -315,11 +325,40 @@ final class AndroidPersonalDataArchive {
         int[][] grid = validateGrid(values.get("grid"), size, prefix + "grid");
         int[][] initialGrid = validateGrid(values.get("initial_grid"), size,
                 prefix + "initial_grid");
-        if ((grid != null && !isSolvable(grid))
-                || (initialGrid != null && !isSolvable(initialGrid))) {
+        if ((grid != null && !PuzzleSolvability.isSolvable(grid, size))
+                || (initialGrid != null && !PuzzleSolvability.isSolvable(initialGrid, size))) {
             throw invalidArchive("Backup contains an unreachable saved board.");
         }
         validateActionHistory(prefix, values, size, grid, initialGrid);
+    }
+
+    private static void validateRelaySave(Map<String, Object> values) {
+        if (values == null || values.isEmpty()) {
+            return;
+        }
+        String[] required = {"size", "grid", "initial_grid", "moves", "elapsed",
+                "updated_at", "active", "solved", "difficulty", "action_history",
+                "redo_history", "assisted", "code"};
+        for (String field : required) {
+            if (!values.containsKey(field)) {
+                throw invalidArchive("Backup Relay save is incomplete.");
+            }
+        }
+        int size = (Integer) values.get("size");
+        int[][] initialGrid = validateGrid(values.get("initial_grid"), size,
+                "relay initial_grid");
+        RelayChallengeSpec spec;
+        try {
+            spec = RelayCodeCodec.decode((String) values.get("code"));
+        } catch (RuntimeException exception) {
+            throw invalidArchive("Backup Relay code is invalid.", exception);
+        }
+        PuzzleDifficulty difficulty = PuzzleDifficulty.fromId(
+                (String) values.get("difficulty"));
+        if (spec.getSize() != size || spec.getDifficulty() != difficulty
+                || !java.util.Arrays.deepEquals(spec.getInitialGridCopy(), initialGrid)) {
+            throw invalidArchive("Backup Relay save does not match its challenge code.");
+        }
     }
 
     private static void validateActionHistory(String prefix, Map<String, Object> values,
@@ -383,33 +422,6 @@ final class AndroidPersonalDataArchive {
             throw invalidArchive("Backup grid contains an invalid tile.", exception);
         }
         return grid;
-    }
-
-    private static boolean isSolvable(int[][] grid) {
-        int size = grid.length;
-        int[] tiles = new int[size * size - 1];
-        int count = 0;
-        int emptyRow = -1;
-        for (int row = 0; row < size; row++) {
-            for (int col = 0; col < size; col++) {
-                int tile = grid[row][col];
-                if (tile == 0) {
-                    emptyRow = row;
-                } else {
-                    tiles[count++] = tile;
-                }
-            }
-        }
-        int inversions = 0;
-        for (int left = 0; left < tiles.length; left++) {
-            for (int right = left + 1; right < tiles.length; right++) {
-                if (tiles[left] > tiles[right]) {
-                    inversions++;
-                }
-            }
-        }
-        return size % 2 == 1 ? inversions % 2 == 0
-                : (inversions + size - emptyRow) % 2 == 1;
     }
 
     private static void validateDailyProgress(Map<String, Object> values) {

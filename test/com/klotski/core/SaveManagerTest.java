@@ -23,6 +23,57 @@ class SaveManagerTest {
     File tempDir;
 
     @Test
+    void relaySaveIsIsolatedFromNormalSaveAndResetDomains() {
+        String old = System.getProperty(SaveManager.DATA_DIR_PROPERTY);
+        System.setProperty(SaveManager.DATA_DIR_PROPERTY, tempDir.getAbsolutePath());
+        try {
+            String code = "SLD-R1-AwIABQECAwQFBgcACA-A1947A39";
+            RelayChallengeSpec spec = RelayCodeCodec.decode(code);
+            GameModel relay = spec.createGame();
+            assertTrue(relay.move(Direction.UP));
+            assertTrue(relay.move(Direction.LEFT));
+            relay.pauseTimer();
+            int[][] relayCurrentGrid = relay.getGridCopy();
+            long relayElapsedTime = relay.getElapsedTime();
+            assertTrue(SaveManager.saveRelayGame(relay, code, true));
+
+            assertNull(SaveManager.loadGame(3),
+                    "normal Continue must not read the Relay namespace");
+            GameModel normal = new GameModel(3);
+            normal.scramble(PuzzleDifficulty.RELAXED, 9L);
+            int[][] normalGrid = normal.getGridCopy();
+            assertTrue(SaveManager.saveGame(normal, false));
+            assertArrayEquals(normalGrid, SaveManager.loadGame(3).grid);
+            SaveManager.RelayGame restored = SaveManager.loadRelayGame();
+            assertNotNull(restored);
+            assertEquals(code, restored.game.relayCode);
+            assertEquals(spec.getTargetMoves(), restored.spec.getTargetMoves());
+            assertTrue(restored.game.assisted);
+            assertEquals(2, restored.game.moveCount);
+            assertArrayEquals(relayCurrentGrid, restored.game.grid);
+            assertArrayEquals(spec.getInitialGridCopy(), restored.game.initialGrid);
+            assertEquals(relay.getEncodedActionHistory(), restored.game.actionHistory);
+            assertEquals(relayElapsedTime, restored.game.elapsedTime);
+            assertArrayEquals(normalGrid, SaveManager.loadGame(3).grid,
+                    "Relay restore must not replace normal Continue");
+
+            assertTrue(SaveManager.clearRecords());
+            assertNotNull(SaveManager.loadRelayGame());
+            assertTrue(SaveManager.clearContinuousGame());
+            assertNotNull(SaveManager.loadRelayGame());
+            assertTrue(SaveManager.clearSavedGames());
+            assertNull(SaveManager.loadRelayGame());
+            assertNull(SaveManager.loadGame(3));
+        } finally {
+            if (old == null) {
+                System.clearProperty(SaveManager.DATA_DIR_PROPERTY);
+            } else {
+                System.setProperty(SaveManager.DATA_DIR_PROPERTY, old);
+            }
+        }
+    }
+
+    @Test
     void saveAndLoadRoundTripsJsonDataThroughSpecifiedFiles() {
         int[][] initial = {
                 { 1, 2, 3 },

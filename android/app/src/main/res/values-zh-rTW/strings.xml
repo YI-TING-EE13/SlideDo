@@ -9,6 +9,9 @@
     <string name="home_continuous">連續挑戰</string>
     <string name="home_continuous_ready">串連 3、5 或 10 題，並可隨時繼續。</string>
     <string name="home_continuous_active">繼續第 %1$d / %2$d 題 · %3$dx%4$d · %5$s</string>
+    <string name="home_relay">接力題目</string>
+    <string name="home_relay_ready">匯入離線代碼，或繼續目前題目。</string>
+    <string name="home_relay_active">有一題已儲存的接力題目可繼續，也可匯入代碼。</string>
     <string name="daily_calendar_title">每日月曆</string>
     <string name="daily_calendar_subtitle">選擇今天，或重玩過去的離線題目。</string>
     <string name="daily_calendar_previous">上個月</string>
@@ -361,4 +364,30 @@
     <plurals name="board_accessibility_highlight_count">
         <item quantity="other">%d 個醒目的方塊可以滑入空格。</item>
     </plurals>
+    <string name="relay_results_subtitle">接力結果不會影響個人進度。</string>
+    <string name="game_relay_title_format">接力 · %1$dx%2$d · %3$s</string>
+    <string name="relay_status_format">接力目標：%1$d 步</string>
+    <string name="relay_status_solved_format">接力完成 · %1$d 步 · %2$d 秒 · 目標 %3$d</string>
+    <string name="relay_title">接力題目</string>
+    <string name="relay_resume">繼續已儲存的接力</string>
+    <string name="relay_import">匯入接力代碼</string>
+    <string name="relay_paste_prompt">在下方貼上接力代碼。確認有效並檢視前，已儲存的接力題目不會更動。</string>
+    <string name="relay_paste_clipboard">從剪貼簿貼上</string>
+    <string name="relay_invalid">代碼無效或使用不支援的接力版本。</string>
+    <string name="relay_details">%1$dx%2$d · %3$s · 目標 %4$d 步。要開始這個指定題目嗎？</string>
+    <string name="relay_replace_title">取代已儲存的接力？</string>
+    <string name="relay_replace_message">確認後會取代目前的接力題目。</string>
+    <string name="relay_create_normal_only">只能從一般遊戲建立接力代碼。</string>
+    <string name="relay_favorite_unavailable">接力題目不能儲存為最愛。</string>
+    <string name="relay_target_hint">1–9999</string>
+    <string name="relay_target_prompt">選擇 1 到 9999 步的目標。</string>
+    <string name="relay_target_invalid">請輸入 1 到 9999 的整數。</string>
+    <string name="relay_create">建立接力代碼</string>
+    <string name="relay_code_ready">接力代碼</string>
+    <string name="relay_code_manual_copy">複製代碼，或選取文字手動分享。</string>
+    <string name="relay_copy">複製代碼</string>
+    <string name="relay_copied">接力代碼已複製。</string>
+    <string name="relay_result_passed">已通過 · %1$s · 目標 %2$d 步 · %3$d 秒。%4$s</string>
+    <string name="relay_result_missed">未達目標 · %1$s · 目標 %2$d 步 · %3$d 秒。%4$s</string>
+    <string name="relay_result_isolated">接力不會更動一般紀錄或統計。</string>
 </resources>

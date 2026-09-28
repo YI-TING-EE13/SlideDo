@@ -85,6 +85,7 @@ public final class DesktopPersonalDataArchive {
     private static final String PREFERENCES = "klotski_personal_preferences.json";
     private static final String CONTINUOUS_META = "klotski_continuous_meta.json";
     private static final String CONTINUOUS_CURRENT = "klotski_continuous_current.json";
+    private static final String RELAY_SAVE = "klotski_relay_save.json";
     private static final String[] LEGACY_FALLBACK_NAMES = {
             "klotski_save_3.json", "klotski_save_4.json", "klotski_save_5.json",
             LEGACY_JSON, LEGACY_SERIALIZED, RECORDS, SCOPED_RECORDS
@@ -1011,7 +1012,8 @@ public final class DesktopPersonalDataArchive {
                 || name.equals(STATISTICS) || name.equals(DAILY_PROGRESS)
                 || name.equals(FAVORITES) || name.equals(PREFERENCES)
                 || name.equals(CONTINUOUS_META) || name.equals(CONTINUOUS_CURRENT)
-                || name.equals(CONTINUOUS_CURRENT + ".assisted")) {
+                || name.equals(CONTINUOUS_CURRENT + ".assisted")
+                || name.equals(RELAY_SAVE)) {
             return true;
         }
         return SAVE_PATTERN.matcher(name).matches()

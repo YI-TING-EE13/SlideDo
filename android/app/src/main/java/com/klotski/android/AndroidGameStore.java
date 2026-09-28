@@ -10,6 +10,8 @@ import com.klotski.core.GameModel;
 import com.klotski.core.PersonalTrend;
 import com.klotski.core.PuzzleIdentity;
 import com.klotski.core.PuzzleDifficulty;
+import com.klotski.core.RelayChallengeSpec;
+import com.klotski.core.RelayCodeCodec;
 import com.klotski.core.SaveManager;
 import com.klotski.core.WeeklyGoalProgress;
 
@@ -83,6 +85,8 @@ final class AndroidGameStore {
     private static final String KEY_FAVORITE_PUZZLES = "favorite_puzzles_v1";
     private static final String KEY_FAVORITE_RUN_PREFIX = "favorite_run_v1_";
     private static final String KEY_CONTINUOUS_SAVE_PREFIX = "continuous_save_v1_";
+    private static final String KEY_RELAY_SAVE_PREFIX = "relay_save_v1_";
+    private static final String KEY_RELAY_CODE = "code";
     private static final String KEY_CONTINUOUS_TARGET = "challenge_target";
     private static final String KEY_CONTINUOUS_COMPLETED = "challenge_completed";
     private static final String KEY_CONTINUOUS_TOTAL_MOVES = "challenge_total_moves";
@@ -669,6 +673,73 @@ final class AndroidGameStore {
                 .apply();
     }
 
+    boolean saveRelayGame(GameModel model, long elapsedMs, boolean assisted,
+            String relayCode) {
+        RelayChallengeSpec spec = decodeRelayIdentity(relayCode);
+        if (model == null || spec == null || model.getSize() != spec.getSize()
+                || model.getDifficulty() != spec.getDifficulty()
+                || !Arrays.deepEquals(model.getInitialGridCopy(), spec.getInitialGridCopy())) {
+            return false;
+        }
+        SharedPreferences.Editor editor = prefs.edit();
+        putSave(editor, KEY_RELAY_SAVE_PREFIX, model.getSize(), model.getGridCopy(),
+                model.getInitialGridCopy(), model.getMoveCount(), Math.max(0, elapsedMs),
+                System.currentTimeMillis(), model.isGameRunning(), model.isSolved(),
+                model.getDifficulty(), model.getEncodedActionHistory(),
+                model.getEncodedRedoHistory());
+        editor.putBoolean(KEY_RELAY_SAVE_PREFIX + KEY_ASSISTED, assisted)
+                .putString(KEY_RELAY_SAVE_PREFIX + KEY_RELAY_CODE,
+                        RelayCodeCodec.encode(spec));
+        try {
+            return editor.commit();
+        } catch (RuntimeException exception) {
+            return false;
+        }
+    }
+
+    RelayGame loadRelayGame() {
+        String code = prefs.getString(KEY_RELAY_SAVE_PREFIX + KEY_RELAY_CODE, null);
+        RelayChallengeSpec spec = decodeRelayIdentity(code);
+        SaveManager.SaveData data = readSavedGame(KEY_RELAY_SAVE_PREFIX, 0);
+        if (spec == null || data == null || data.size != spec.getSize()
+                || data.difficulty != spec.getDifficulty()
+                || !Arrays.deepEquals(data.initialGrid, spec.getInitialGridCopy())) {
+            return null;
+        }
+        return new RelayGame(data, spec,
+                prefs.getBoolean(KEY_RELAY_SAVE_PREFIX + KEY_ASSISTED, false));
+    }
+
+    boolean clearRelayGame() {
+        SharedPreferences.Editor editor = prefs.edit();
+        removeRelayGame(editor);
+        try {
+            return editor.commit();
+        } catch (RuntimeException exception) {
+            return false;
+        }
+    }
+
+    private static RelayChallengeSpec decodeRelayIdentity(String code) {
+        try {
+            return RelayCodeCodec.decode(code);
+        } catch (RuntimeException exception) {
+            return null;
+        }
+    }
+
+    static final class RelayGame {
+        final SaveManager.SaveData game;
+        final RelayChallengeSpec spec;
+        final boolean assisted;
+
+        RelayGame(SaveManager.SaveData game, RelayChallengeSpec spec, boolean assisted) {
+            this.game = game;
+            this.spec = spec;
+            this.assisted = assisted;
+        }
+    }
+
     ContinuousGame loadContinuousGame() {
         SaveManager.SaveData game = readSavedGame(KEY_CONTINUOUS_SAVE_PREFIX, 0);
         if (game == null) {
@@ -701,6 +772,7 @@ final class AndroidGameStore {
             removeSave(editor, savePrefix(size));
         }
         removeContinuousGame(editor);
+        removeRelayGame(editor);
         removeSave(editor, KEY_DAILY_SAVE_PREFIX);
         editor.remove(KEY_DAILY_SAVE_DATE);
         for (String key : prefs.getAll().keySet()) {
@@ -720,6 +792,11 @@ final class AndroidGameStore {
                 .remove(KEY_CONTINUOUS_SAVE_PREFIX + KEY_CONTINUOUS_TOTAL_MOVES)
                 .remove(KEY_CONTINUOUS_SAVE_PREFIX + KEY_CONTINUOUS_TOTAL_TIME)
                 .remove(KEY_CONTINUOUS_SAVE_PREFIX + KEY_CONTINUOUS_ASSISTED);
+    }
+
+    private static void removeRelayGame(SharedPreferences.Editor editor) {
+        removeSave(editor, KEY_RELAY_SAVE_PREFIX);
+        editor.remove(KEY_RELAY_SAVE_PREFIX + KEY_RELAY_CODE);
     }
 
     Best getBest(int size) {

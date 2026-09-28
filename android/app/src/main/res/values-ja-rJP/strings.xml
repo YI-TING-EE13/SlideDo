@@ -10,6 +10,9 @@
     <string name="home_continuous">連続チャレンジ</string>
     <string name="home_continuous_ready">3・5・10問をつなげて遊び、いつでも再開できます。</string>
     <string name="home_continuous_active">第 %1$d / %2$d 問を再開 · %3$dx%4$d · %5$s</string>
+    <string name="home_relay">パズルリレー</string>
+    <string name="home_relay_ready">オフラインコードを読み込むか、進行中の問題を再開できます。</string>
+    <string name="home_relay_active">保存済みリレーを再開できます。別のコードも読み込めます。</string>
     <string name="daily_calendar_title">デイリーカレンダー</string>
     <string name="daily_calendar_subtitle">今日を選ぶか、過去のオフライン問題をもう一度遊べます。</string>
     <string name="daily_calendar_previous">前の月</string>
@@ -362,4 +365,30 @@
     <plurals name="board_accessibility_highlight_count">
         <item quantity="other">%d個の強調表示されたタイルを空きマスへ動かせます。</item>
     </plurals>
+    <string name="relay_results_subtitle">リレー結果は個人の進行状況に影響しません。</string>
+    <string name="game_relay_title_format">リレー · %1$dx%2$d · %3$s</string>
+    <string name="relay_status_format">リレー目標：%1$d 手</string>
+    <string name="relay_status_solved_format">リレー完了 · %1$d 手 · %2$d 秒 · 目標 %3$d</string>
+    <string name="relay_title">パズルリレー</string>
+    <string name="relay_resume">保存したリレーを再開</string>
+    <string name="relay_import">リレーコードを読み込む</string>
+    <string name="relay_paste_prompt">下にリレーコードを貼り付けてください。有効性を確認して内容を確認するまで、保存済みリレーは変更されません。</string>
+    <string name="relay_paste_clipboard">クリップボードから貼り付け</string>
+    <string name="relay_invalid">コードが無効か、未対応のリレーバージョンです。</string>
+    <string name="relay_details">%1$dx%2$d · %3$s · 目標 %4$d 手。この盤面を開始しますか？</string>
+    <string name="relay_replace_title">保存済みリレーを置き換えますか？</string>
+    <string name="relay_replace_message">確認後、現在のリレー問題を置き換えます。</string>
+    <string name="relay_create_normal_only">リレーコードは通常プレイからのみ作成できます。</string>
+    <string name="relay_favorite_unavailable">リレーの問題はお気に入りに保存できません。</string>
+    <string name="relay_target_hint">1～9999</string>
+    <string name="relay_target_prompt">1～9999 手の目標を設定します。</string>
+    <string name="relay_target_invalid">1～9999 の整数を入力してください。</string>
+    <string name="relay_create">リレーコードを作成</string>
+    <string name="relay_code_ready">リレーコード</string>
+    <string name="relay_code_manual_copy">コードをコピーするか、テキストを選択して手動で共有してください。</string>
+    <string name="relay_copy">コードをコピー</string>
+    <string name="relay_copied">リレーコードをコピーしました。</string>
+    <string name="relay_result_passed">達成 · %1$s · 目標 %2$d 手 · %3$d 秒。%4$s</string>
+    <string name="relay_result_missed">目標未達 · %1$s · 目標 %2$d 手 · %3$d 秒。%4$s</string>
+    <string name="relay_result_isolated">リレーは通常の記録や統計を変更しません。</string>
 </resources>

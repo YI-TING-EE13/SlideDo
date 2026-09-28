@@ -12,7 +12,7 @@ contract, and solver interfaces. Each platform owns its persistence container:
 desktop uses JSON files, while Android uses app preferences plus versioned JSON
 backup and restore.
 
-The design goal is simple: make sliding numbered tiles feel fast, clear, and satisfying. The desktop version now opens on Home and supports mouse, keyboard, undo/redo, move history, restart, save/load, local records, Daily/Favorite/Trend/Continuous personal-play modes, Android-style Results, solver playback, a persisted Beginner Guide and interactive Practice Tutorial, Quick Reminder, localized critical controls, themes, sound, and movable-tile and strategic next-move assist hints. The Android edition adds touch-first onboarding, tutorial, modes, settings, results, records, and compact game controls. Both editions use the same deterministic strategic-hint behavior: it recommends a legal next move without moving the board and marks the run assisted. Both editions explain that player records prefer fewer moves, break ties by faster time, and exclude assisted completions.
+The design goal is simple: make sliding numbered tiles feel fast, clear, and satisfying. The desktop version opens on Home and supports mouse, keyboard, undo/redo, move history, restart, save/load, local records, Daily/Favorite/Trend/Continuous personal-play modes, offline Puzzle Relay codes, Android-style Results, solver playback, a persisted Beginner Guide and interactive Practice Tutorial, Quick Reminder, localized critical controls, themes, sound, and movable-tile and strategic next-move assist hints. The Android edition adds touch-first onboarding, tutorial, modes, settings, results, records, compact game controls, and the same offline Relay code contract. Both editions use the same deterministic strategic-hint behavior: it recommends a legal next move without moving the board and marks the run assisted. Both editions explain that player records prefer fewer moves, break ties by faster time, and exclude assisted completions.
 
 ---
 
@@ -22,7 +22,7 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
   difficulty, action history, personal trend calculations, and solvers remain
   independent from Swing and Android.
 - **Fluid Desktop Controls**:
-  - Desktop opens on Home with 3x3, 4x4, 5x5, Continue/Load, Daily, Favorites, Trends, Continuous Challenge, Beginner Guide, How to Play, Practice Tutorial, Records, and Preferences.
+  - Desktop opens on Home with 3x3, 4x4, 5x5, Continue/Load, Daily, Favorites, Trends, Continuous Challenge, Puzzle Relay, Beginner Guide, How to Play, Practice Tutorial, Records, and Preferences.
   - Click a tile in the same row or column as the empty space.
   - Non-adjacent clicks slide the whole row or column in one synchronized animation.
   - Arrow keys move the empty space one step.
@@ -39,6 +39,7 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
     isolated dated saves, historical replay, future-date blocking, and current/best streak copy.
   - Favorites stores up to 50 exact starting puzzles with local labels; Favorite Practice has its own save and never changes normal/Daily records or statistics.
   - Trends / Weekly Goal compares player-only completions in one persisted size/difficulty scope, and Continuous Challenge supports isolated 3/5/10-puzzle sessions with resume and aggregate totals.
+  - Puzzle Relay creates a versioned offline code from the exact starting board, size, difficulty, and a user-selected 1–9999 move target. Import validates the code and shows its details before replacing the single isolated Relay save. Relay results never change personal records, completion history/statistics, Daily state, Favorites, or Continuous progress.
 - **Mobile-Ready Interaction Model**:
   - Android opens on Home with Continue, New Game, Beginner Guide, Practice Tutorial, How to Play, Settings, and Records.
   - First-run onboarding introduces the goal, tap/swipe input, whole-line slides, undo/restart, and record rules.
@@ -65,6 +66,7 @@ The design goal is simple: make sliding numbered tiles feel fast, clear, and sat
     puzzle separately, protects player bests from assisted results, and shows
     aggregate move/time progress without changing normal, daily, or favorite
     practice saves.
+  - Puzzle Relay shares the same exact-board code format and move-target rule as Desktop. Home can resume the isolated active Relay or import a pasted code; game state, action/Redo history, elapsed time, and assistance survive Android recreation and relaunch. Relay wins and misses stay outside all personal-progress namespaces.
   - Whole-line tap behavior maps naturally to touch screens.
   - One user gesture counts as one move.
   - Undo restores the entire previous user action.
@@ -222,6 +224,7 @@ klotski_favorite_<identity>.json     (isolated Favorite Practice save)
 klotski_personal_preferences.json    (trend scope and weekly goal)
 klotski_continuous_meta.json         (Continuous aggregate)
 klotski_continuous_current.json      (Continuous current puzzle)
+klotski_relay_save.json              (isolated Relay game and code)
 klotski_project_root_fallback_suppressed.marker
                                       (post-restore project-root legacy boundary)
 ```

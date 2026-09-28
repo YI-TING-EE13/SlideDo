@@ -13,6 +13,7 @@ final class PendingWin {
     final boolean assisted;
     final String dailyDateId;
     final String favoriteId;
+    final String relayCode;
 
     PendingWin(int size, PuzzleDifficulty difficulty, int moves, long timeMs, boolean assisted) {
         this(size, difficulty, moves, timeMs, assisted, null, null);
@@ -25,6 +26,11 @@ final class PendingWin {
 
     PendingWin(int size, PuzzleDifficulty difficulty, int moves, long timeMs, boolean assisted,
             String dailyDateId, String favoriteId) {
+        this(size, difficulty, moves, timeMs, assisted, dailyDateId, favoriteId, null);
+    }
+
+    PendingWin(int size, PuzzleDifficulty difficulty, int moves, long timeMs, boolean assisted,
+            String dailyDateId, String favoriteId, String relayCode) {
         this.size = size;
         this.difficulty = difficulty;
         this.moves = moves;
@@ -32,5 +38,6 @@ final class PendingWin {
         this.assisted = assisted;
         this.dailyDateId = dailyDateId;
         this.favoriteId = favoriteId;
+        this.relayCode = relayCode;
     }
 }

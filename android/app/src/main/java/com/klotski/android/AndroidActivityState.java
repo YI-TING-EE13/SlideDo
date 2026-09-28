@@ -29,6 +29,7 @@ final class AndroidActivityState {
     private static final String STATE_RESULT_FAVORITE_ID = "result_favorite_id";
     private static final String STATE_RESULT_DAILY_PROGRESS_SAVED = "result_daily_progress_saved";
     private static final String STATE_RESULT_COMPLETION_RECORDED = "result_completion_recorded";
+    private static final String STATE_RESULT_RELAY_CODE = "result_relay_code";
     private static final String STATE_PENDING_WIN_AVAILABLE = "pending_win_available";
     private static final String STATE_PENDING_WIN_SIZE = "pending_win_size";
     private static final String STATE_PENDING_WIN_DIFFICULTY = "pending_win_difficulty";
@@ -37,6 +38,7 @@ final class AndroidActivityState {
     private static final String STATE_PENDING_WIN_ASSISTED = "pending_win_assisted";
     private static final String STATE_PENDING_WIN_DAILY_DATE = "pending_win_daily_date";
     private static final String STATE_PENDING_WIN_FAVORITE_ID = "pending_win_favorite_id";
+    private static final String STATE_PENDING_WIN_RELAY_CODE = "pending_win_relay_code";
 
     private AndroidActivityState() {
     }
@@ -128,6 +130,7 @@ final class AndroidActivityState {
                 currentResult.dailyProgressSaved);
         outState.putBoolean(STATE_RESULT_COMPLETION_RECORDED,
                 currentResult.completionRecorded);
+        outState.putString(STATE_RESULT_RELAY_CODE, currentResult.relayCode);
         if (currentResult.previousBest == null) {
             outState.putInt(STATE_RESULT_PREVIOUS_BEST_MOVES, -1);
             outState.putLong(STATE_RESULT_PREVIOUS_BEST_TIME, -1);
@@ -157,7 +160,8 @@ final class AndroidActivityState {
                 savedInstanceState.getString(STATE_RESULT_DAILY_DATE),
                 savedInstanceState.getString(STATE_RESULT_FAVORITE_ID),
                 savedInstanceState.getBoolean(STATE_RESULT_DAILY_PROGRESS_SAVED, true),
-                savedInstanceState.getBoolean(STATE_RESULT_COMPLETION_RECORDED, true));
+                savedInstanceState.getBoolean(STATE_RESULT_COMPLETION_RECORDED, true),
+                savedInstanceState.getString(STATE_RESULT_RELAY_CODE));
     }
 
     private static void savePendingWin(Bundle outState, PendingWin pendingWin) {
@@ -172,6 +176,7 @@ final class AndroidActivityState {
         outState.putBoolean(STATE_PENDING_WIN_ASSISTED, pendingWin.assisted);
         outState.putString(STATE_PENDING_WIN_DAILY_DATE, pendingWin.dailyDateId);
         outState.putString(STATE_PENDING_WIN_FAVORITE_ID, pendingWin.favoriteId);
+        outState.putString(STATE_PENDING_WIN_RELAY_CODE, pendingWin.relayCode);
     }
 
     private static PendingWin restorePendingWin(Bundle savedInstanceState) {
@@ -190,7 +195,8 @@ final class AndroidActivityState {
                 moves, timeMs,
                 savedInstanceState.getBoolean(STATE_PENDING_WIN_ASSISTED, false),
                 savedInstanceState.getString(STATE_PENDING_WIN_DAILY_DATE),
-                savedInstanceState.getString(STATE_PENDING_WIN_FAVORITE_ID));
+                savedInstanceState.getString(STATE_PENDING_WIN_FAVORITE_ID),
+                savedInstanceState.getString(STATE_PENDING_WIN_RELAY_CODE));
     }
 
     static final class Snapshot {

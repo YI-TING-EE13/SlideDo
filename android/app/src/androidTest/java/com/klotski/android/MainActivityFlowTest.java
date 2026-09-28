@@ -15,6 +15,7 @@ import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.graphics.drawable.ColorDrawable;
 import android.os.SystemClock;
+import android.text.InputType;
 import android.text.Layout;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,6 +23,7 @@ import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.accessibility.AccessibilityNodeProvider;
 import android.widget.Button;
 import android.widget.CompoundButton;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -41,6 +43,8 @@ import com.klotski.core.ContinuousChallenge;
 import com.klotski.core.DailyChallenge;
 import com.klotski.core.GameModel;
 import com.klotski.core.PuzzleDifficulty;
+import com.klotski.core.RelayChallengeSpec;
+import com.klotski.core.RelayCodeCodec;
 import com.klotski.core.SaveManager;
 
 import org.junit.After;
@@ -68,6 +72,8 @@ public class MainActivityFlowTest {
     private static final long TIMEOUT_MS = 15000;
     private static final String LINE_SLIDE_GRID = "1,2,3,0,4,5,7,8,6";
     private static final String ONE_MOVE_WIN_GRID = "1,2,3,4,5,0,7,8,6";
+    private static final String RELAY_FIXTURE_3X3 =
+            "SLD-R1-AwIABQECAwQFBgcACA-A1947A39";
     private static final int[][] ONE_MOVE_WIN_GRID_4 = {
             {1, 2, 3, 4},
             {5, 6, 7, 8},
@@ -915,6 +921,196 @@ public class MainActivityFlowTest {
         assertEquals(4, store.loadSavedGame(3).moveCount);
         assertEquals(0, store.getCompletionHistory().length);
         assertEquals(0, store.getOverallCompletionStats().stats.playerCompletions);
+    }
+
+    @Test
+    public void relayGameCannotBeSavedAsFavoriteFromGameMenu() throws Exception {
+        markOnboardingSeen();
+        launchApp();
+        RelayChallengeSpec relay = RelayCodeCodec.decode(
+                "SLD-R1-AwIABQECAwQFBgcACA-A1947A39");
+        invokeActivityMethod("startRelay", new Class<?>[] {RelayChallengeSpec.class}, relay);
+        waitForId("game_root");
+
+        clickId(R.id.game_menu_button);
+        scrollToText("Save Favorite").click();
+        device.waitForIdle();
+        instrumentation.waitForIdleSync();
+        assertNull(device.findObject(By.clazz("android.widget.EditText")));
+        AndroidGameStore store = new AndroidGameStore(targetContext);
+        assertEquals(0, store.getFavoritePuzzles().length);
+        assertNotNull(store.loadRelayGame());
+    }
+
+    @Test
+    public void completedRelayCanReplayButIsNotResumableAfterHomeOrRelaunch() throws Exception {
+        markOnboardingSeen();
+        setLanguage(Locale.ENGLISH.toLanguageTag());
+        launchApp();
+        RelayChallengeSpec relay = RelayCodeCodec.decode(RELAY_FIXTURE_3X3);
+        invokeActivityMethod("startRelay", new Class<?>[] {RelayChallengeSpec.class}, relay);
+        waitForId("game_root");
+
+        tapCell(3, 2, 2);
+        waitForId("results_root");
+        AndroidGameStore store = new AndroidGameStore(targetContext);
+        assertNotNull(store.loadRelayGame());
+        assertTrue(store.loadRelayGame().game.solved);
+        assertActivityTextContains(R.id.results_record_text, "Passed");
+
+        clickId(R.id.results_play_again_button);
+        waitForId("game_root");
+        waitForStatusContaining("0 moves");
+        assertActivityTextContains(R.id.game_status_text,
+                targetContext.getString(R.string.relay_status_format, 5));
+        clickId(R.id.game_home_button);
+        waitForId("home_root");
+        AndroidGameStore.RelayGame replay = store.loadRelayGame();
+        assertNotNull("Replay should remain resumable before leaving its game", replay);
+        assertEquals(0, replay.game.moveCount);
+        assertEquals(RELAY_FIXTURE_3X3, RelayCodeCodec.encode(replay.spec));
+        assertTrue("Replay should retain the exact original Relay board",
+                java.util.Arrays.deepEquals(relay.getInitialGridCopy(), replay.game.grid));
+
+        clickId(R.id.home_relay_button);
+        waitForText(targetContext.getString(R.string.relay_resume)).click();
+        waitForId("game_root");
+        waitForStatusContaining("0 moves");
+
+        tapCell(3, 2, 2);
+        waitForId("results_root");
+        clickId(R.id.results_home_button);
+        waitForId("home_root");
+        assertNull("Completed Relay should be cleared after leaving Results",
+                store.loadRelayGame());
+        assertEquals(targetContext.getString(R.string.home_relay_ready),
+                findById("home_relay_summary_text").getText());
+        assertNull("Relay completion must not create a normal game save",
+                store.loadSavedGame(3));
+
+        clickId(R.id.home_relay_button);
+        assertNotNull("Without an active Relay, Home should open Import",
+                device.wait(Until.findObject(By.clazz("android.widget.EditText")), TIMEOUT_MS));
+        assertNull("Home must not offer Resume for a completed Relay",
+                device.findObject(By.text(targetContext.getString(R.string.relay_resume))));
+    }
+
+    @Test
+    public void unfinishedRelayResumesFromHomeWithBoardHistoryAndTarget() throws Exception {
+        markOnboardingSeen();
+        setLanguage(Locale.ENGLISH.toLanguageTag());
+        launchApp();
+        RelayChallengeSpec relay = RelayCodeCodec.decode(RELAY_FIXTURE_3X3);
+        invokeActivityMethod("startRelay", new Class<?>[] {RelayChallengeSpec.class}, relay);
+        waitForId("game_root");
+        tapCell(3, 1, 1);
+        tapCell(3, 1, 0);
+        waitForStatusContaining("2 moves");
+
+        clickId(R.id.game_home_button);
+        waitForId("home_root");
+        AndroidGameStore store = new AndroidGameStore(targetContext);
+        AndroidGameStore.RelayGame saved = store.loadRelayGame();
+        assertNotNull(saved);
+        assertEquals(2, saved.game.moveCount);
+        assertFalse(saved.game.actionHistory.isEmpty());
+        assertEquals(RELAY_FIXTURE_3X3, RelayCodeCodec.encode(saved.spec));
+        assertTrue(java.util.Arrays.deepEquals(relay.getInitialGridCopy(),
+                saved.game.initialGrid));
+
+        clickId(R.id.home_relay_button);
+        waitForText(targetContext.getString(R.string.relay_resume)).click();
+        waitForId("game_root");
+        waitForStatusContaining("2 moves");
+        assertActivityTextContains(R.id.game_status_text,
+                targetContext.getString(R.string.relay_status_format, 5));
+        assertActivityTextContains(R.id.game_title_text, "Relay");
+        AndroidGameStore.RelayGame resumed = store.loadRelayGame();
+        assertNotNull(resumed);
+        assertEquals(2, resumed.game.moveCount);
+        assertEquals(saved.game.actionHistory, resumed.game.actionHistory);
+        assertEquals(RELAY_FIXTURE_3X3, RelayCodeCodec.encode(resumed.spec));
+    }
+
+    @Test
+    public void relayImportFieldPreservesMixedCaseFixture() throws Exception {
+        markOnboardingSeen();
+        setLanguage(Locale.ENGLISH.toLanguageTag());
+        launchApp();
+
+        instrumentation.runOnMainSync(() -> {
+            EditText configured = new EditText(activity);
+            MainActivity.configureRelayCodeInput(configured);
+            assertEquals(0, configured.getInputType() & InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
+            configured.setText(RELAY_FIXTURE_3X3);
+            assertEquals(RELAY_FIXTURE_3X3, configured.getText().toString());
+        });
+
+        clickId(R.id.home_relay_button);
+        UiObject2 input = device.wait(
+                Until.findObject(By.clazz("android.widget.EditText")), TIMEOUT_MS);
+        assertNotNull("Relay import should show its code input", input);
+        input.click();
+        input.setText(RELAY_FIXTURE_3X3);
+        assertEquals(RELAY_FIXTURE_3X3, input.getText());
+        device.pressBack();
+        device.waitForIdle();
+        UiObject2 importButton = waitForDialogButton(
+                targetContext.getString(R.string.relay_import));
+        assertNotNull("Relay import confirmation button is missing", importButton);
+        importButton.click();
+        UiObject2 confirmButton = waitForDialogButton(
+                targetContext.getString(android.R.string.ok));
+        assertNotNull("Relay details confirmation button is missing", confirmButton);
+        confirmButton.click();
+        waitForId("game_root");
+        assertEquals(RELAY_FIXTURE_3X3, RelayCodeCodec.encode(
+                new AndroidGameStore(targetContext).loadRelayGame().spec));
+    }
+
+    private UiObject2 waitForDialogButton(String label) {
+        long deadline = SystemClock.uptimeMillis() + TIMEOUT_MS;
+        do {
+            for (UiObject2 button : device.findObjects(By.clazz("android.widget.Button"))) {
+                if (label.equalsIgnoreCase(button.getText())) {
+                    return button;
+                }
+            }
+            SystemClock.sleep(100L);
+        } while (SystemClock.uptimeMillis() < deadline);
+        return null;
+    }
+
+    @Test
+    public void relayTargetAppearsOnceWithoutChangingNormalBestPresentation() throws Exception {
+        markOnboardingSeen();
+        setLanguage(Locale.ENGLISH.toLanguageTag());
+        writeBestRecords();
+        launchApp();
+
+        invokeActivityMethod("beginNewGame",
+                new Class<?>[] {int.class, PuzzleDifficulty.class},
+                3, PuzzleDifficulty.CLASSIC);
+        waitForId("game_root");
+        String normalStatus = waitForId("game_status_text").getText();
+        String normalBest = targetContext.getString(R.string.best_format,
+                targetContext.getResources().getQuantityString(R.plurals.moves_count, 20, 20), 30);
+        assertTrue("Normal game should keep its Best label and saved record: " + normalStatus,
+                normalStatus.contains("Best: " + normalBest));
+
+        RelayChallengeSpec relay = RelayCodeCodec.decode(
+                "SLD-R1-AwIABQECAwQFBgcACA-A1947A39");
+        invokeActivityMethod("startRelay", new Class<?>[] {RelayChallengeSpec.class}, relay);
+        String relayStatus = waitForId("game_status_text").getText();
+        String relayTarget = targetContext.getString(R.string.relay_status_format, 5);
+        int targetIndex = relayStatus.indexOf(relayTarget);
+        assertTrue("Relay-specific target should be visible: " + relayStatus, targetIndex >= 0);
+        assertEquals("Relay target should appear exactly once: " + relayStatus,
+                targetIndex, relayStatus.lastIndexOf(relayTarget));
+        assertTrue("Relay should use the existing unavailable Best value: " + relayStatus,
+                relayStatus.contains("Best: " + targetContext.getString(R.string.best_empty)));
+        assertFalse("Relay target must not be presented as the Best value: " + relayStatus,
+                relayStatus.contains("Best: " + relayTarget));
     }
 
     @Test

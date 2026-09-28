@@ -78,6 +78,7 @@ public class SaveManager {
     private static final String PERSONAL_PREFERENCES_FILE = "klotski_personal_preferences.json";
     private static final String CONTINUOUS_META_FILE = "klotski_continuous_meta.json";
     private static final String CONTINUOUS_CURRENT_FILE = "klotski_continuous_current.json";
+    private static final String RELAY_SAVE_FILE = "klotski_relay_save.json";
     private static final String CONTINUOUS_ASSISTED_SUFFIX = ".assisted";
     private static final int MAX_COMPLETION_HISTORY = 50;
     private static final int MAX_FAVORITE_PUZZLES = 50;
@@ -191,6 +192,11 @@ public class SaveManager {
     }
 
     static boolean saveGame(GameModel model, File saveFile, boolean assisted) {
+        return saveGame(model, saveFile, assisted, null);
+    }
+
+    private static boolean saveGame(GameModel model, File saveFile, boolean assisted,
+            String relayCode) {
         if (model == null || saveFile == null) {
             return false;
         }
@@ -209,6 +215,7 @@ public class SaveManager {
         data.difficulty = model.getDifficulty();
         data.actionHistory = model.getEncodedActionHistory();
         data.redoHistory = model.getEncodedRedoHistory();
+        data.relayCode = relayCode;
 
         try {
             writeTextAtomic(saveFile, toJson(data));
@@ -216,6 +223,76 @@ public class SaveManager {
         } catch (IOException e) {
             return false;
         }
+    }
+
+    /**
+     * Saves the active Relay run in its isolated slot.
+     *
+     * @param model current Relay model
+     * @param relayCode canonical challenge identity
+     * @param assisted whether solver assistance has been used
+     * @return true when the isolated save was persisted
+     */
+    public static synchronized boolean saveRelayGame(GameModel model, String relayCode,
+            boolean assisted) {
+        RelayChallengeSpec spec = decodeRelayIdentity(relayCode);
+        if (model == null || spec == null || !matchesRelayIdentity(model.getSize(),
+                model.getDifficulty(), model.getInitialGridCopy(), spec)) {
+            return false;
+        }
+        return saveGame(model, new File(getDataDirectory(), RELAY_SAVE_FILE), assisted,
+                RelayCodeCodec.encode(spec));
+    }
+
+    /**
+     * Loads the isolated active Relay run.
+     *
+     * @return the isolated active Relay run, or null when absent or invalid
+     */
+    public static synchronized RelayGame loadRelayGame() {
+        SaveData data = readJsonWithRecovery(new File(getDataDirectory(), RELAY_SAVE_FILE));
+        if (data == null || data.relayCode == null) {
+            return null;
+        }
+        RelayChallengeSpec spec = decodeRelayIdentity(data.relayCode);
+        if (spec == null || !matchesRelayIdentity(data.size, data.difficulty,
+                data.initialGrid, spec)) {
+            return null;
+        }
+        return new RelayGame(data, spec);
+    }
+
+    /**
+     * Checks whether a valid isolated Relay run can be loaded.
+     *
+     * @return true when an isolated active Relay run can be loaded
+     */
+    public static synchronized boolean hasRelayGame() {
+        return loadRelayGame() != null;
+    }
+
+    /**
+     * Clears only the isolated Relay run.
+     *
+     * @return true when the isolated Relay save is absent or was deleted
+     */
+    public static synchronized boolean clearRelayGame() {
+        return deleteAtomicFile(new File(getDataDirectory(), RELAY_SAVE_FILE));
+    }
+
+    private static RelayChallengeSpec decodeRelayIdentity(String code) {
+        try {
+            return RelayCodeCodec.decode(code);
+        } catch (RuntimeException exception) {
+            return null;
+        }
+    }
+
+    private static boolean matchesRelayIdentity(int size, PuzzleDifficulty difficulty,
+            int[][] initialGrid, RelayChallengeSpec spec) {
+        return spec != null && size == spec.getSize() && difficulty == spec.getDifficulty()
+                && initialGrid != null && Arrays.deepEquals(initialGrid,
+                        spec.getInitialGridCopy());
     }
 
     /**
@@ -920,6 +997,7 @@ public class SaveManager {
             }
         }
         success &= clearContinuousGame();
+        success &= clearRelayGame();
         try {
             writeTextAtomic(new File(dataDirectory, SAVED_GAMES_RESET_FILE), "reset\n");
             return success;
@@ -1403,6 +1481,10 @@ public class SaveManager {
             File continuousCurrent = new File(directory, CONTINUOUS_CURRENT_FILE);
             File continuousAssisted = new File(directory,
                     CONTINUOUS_CURRENT_FILE + CONTINUOUS_ASSISTED_SUFFIX);
+            File relaySave = new File(directory, RELAY_SAVE_FILE);
+            if (relaySave.exists() && !isValidRelaySaveFile(relaySave)) {
+                return false;
+            }
             if (continuousMeta.exists() != continuousCurrent.exists()) {
                 return false;
             }
@@ -1434,6 +1516,9 @@ public class SaveManager {
             if (data == null || !isSupportedSize(data.size)) {
                 return false;
             }
+            if (data.relayCode != null) {
+                return false;
+            }
             long version = optionalLongField(json, "version", -1);
             if (!legacy && (version < 1 || version > CURRENT_SAVE_VERSION)) {
                 return false;
@@ -1457,6 +1542,30 @@ public class SaveManager {
                 return false;
             }
             return true;
+        } catch (IOException | RuntimeException exception) {
+            return false;
+        }
+    }
+
+    private static boolean isValidRelaySaveFile(File file) {
+        try {
+            String json = readText(file);
+            SaveData data = normalizeSaveData(fromJson(json));
+            if (data == null || data.relayCode == null || !isSupportedSize(data.size)) {
+                return false;
+            }
+            RelayChallengeSpec spec = decodeRelayIdentity(data.relayCode);
+            if (!matchesRelayIdentity(data.size, data.difficulty, data.initialGrid, spec)) {
+                return false;
+            }
+            if (!PuzzleSolvability.isSolvable(data.grid, data.size)
+                    || !PuzzleSolvability.isSolvable(data.initialGrid, data.size)) {
+                return false;
+            }
+            GameModel reconstructed = new GameModel(data.size);
+            reconstructed.loadState(data);
+            return data.actionHistory.equals(reconstructed.getEncodedActionHistory())
+                    && data.redoHistory.equals(reconstructed.getEncodedRedoHistory());
         } catch (IOException | RuntimeException exception) {
             return false;
         }
@@ -2410,6 +2519,9 @@ public class SaveManager {
         sb.append("  \"active\": ").append(data.active).append(",\n");
         sb.append("  \"solved\": ").append(data.solved).append(",\n");
         sb.append("  \"assisted\": ").append(data.assisted).append(",\n");
+        if (data.relayCode != null) {
+            sb.append("  \"relayCode\": \"").append(data.relayCode).append("\",\n");
+        }
         sb.append("  \"difficulty\": \"").append(data.difficulty.getId()).append("\",\n");
         sb.append("  \"grid\": ").append(gridToJson(data.grid)).append(",\n");
         sb.append("  \"initialGrid\": ").append(gridToJson(data.initialGrid)).append(",\n");
@@ -2438,6 +2550,7 @@ public class SaveManager {
         data.initialGrid = optionalGridField(json, "initialGrid", data.size);
         data.actionHistory = optionalStringField(json, "actionHistory", "");
         data.redoHistory = optionalStringField(json, "redoHistory", "");
+        data.relayCode = optionalStringField(json, "relayCode", null);
         return data;
     }
 
@@ -3129,6 +3242,22 @@ public class SaveManager {
 
         /** Next-redo-first undone action history in compact core format. */
         public String redoHistory = "";
+
+        /** Canonical Relay identity present only in the isolated Relay save. */
+        public String relayCode;
+    }
+
+    /** Restored isolated Relay game and its immutable challenge identity. */
+    public static final class RelayGame {
+        /** Current saved model state. */
+        public final SaveData game;
+        /** Exact challenge identity from the canonical code. */
+        public final RelayChallengeSpec spec;
+
+        private RelayGame(SaveData game, RelayChallengeSpec spec) {
+            this.game = game;
+            this.spec = spec;
+        }
     }
 
     private static final class CompletionStore {
