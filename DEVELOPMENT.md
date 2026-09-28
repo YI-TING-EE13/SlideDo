@@ -73,18 +73,20 @@ Current handoff status:
   player/solver-assisted separation, action-history persistence, Redo,
   adaptive-layout policy, contrast, headings, traversal order, touch targets,
   and actionable board accessibility nodes.
-- M12 Offline Puzzle Relay Codes implementation and its automated/runtime
-  qualification gates have passed; final independent re-review is pending. Its
+- M12 Offline Puzzle Relay Codes is complete and merged through PR #36. Its
   shared v1 code identifies the exact solvable board, size, stable difficulty
   id, and owner-selected 1–9999 move target. Relay runs use one isolated save
   per platform, are included in each platform's existing archive, and do not
   write normal records, completion statistics/history, Daily state, Favorites,
-  Trends/Weekly Goal, or Continuous progress. `cmd.exe /c ci.bat` passed, and
-  connected instrumentation passed 144/144 tests on Android 16 / API 36
-  `small_phone`. Android runtime scenarios A0–A14 and AR1–AR6 passed; Desktop
-  Swing scenarios D0–D12 and R1–R6 passed. The frozen cross-platform Relay
-  fixture matched exactly. The feature branch remains local, unpushed, and
-  unmerged.
+  Trends/Weekly Goal, or Continuous progress. Final independent re-review was
+  accepted. PR CI run #59 passed on feature commit
+  `16d22ce92645339711cb10369b532bc40158c456`; post-merge CI run #60 passed on
+  merge commit `6b8a5b494f373652fc1d58c9a35135e04c2bd132`. Automated
+  qualification passed: `cmd.exe /c ci.bat` and 144/144 connected Android 16 /
+  API 36 `small_phone` instrumentation tests. Android scenarios A0–A14 and
+  AR1–AR6 passed; Desktop scenarios D0–D12 and R1–R6 passed. The frozen
+  cross-platform Relay fixture matched exactly. Feature branch cleanup is
+  complete.
 
 Start a new implementation session by checking:
 
@@ -1338,7 +1340,7 @@ Priority: Low to Medium
 
 ## Development Log
 
-### 2026-09-28 M12 Offline Puzzle Relay Codes (final independent re-review pending)
+### 2026-09-28 M12 Offline Puzzle Relay Codes (pre-merge qualification record)
 
 - Added the platform-neutral immutable Relay specification, solvability checks,
   deterministic version-1 codec, and frozen 3x3, 4x4, and 5x5 fixtures. The
@@ -1370,8 +1372,18 @@ Priority: Low to Medium
   isolation, completed-Relay cleanup/relaunch, mixed-case import, and
   English/Traditional Chinese/Japanese flows behaved as expected. Desktop
   runtime scenarios D0–D12 and R1–R6 passed in the accepted qualification; the
-  frozen cross-platform Relay fixture matched exactly. Implementation and
-  runtime qualification are complete; final independent re-review is pending.
+  frozen cross-platform Relay fixture matched exactly. At that pre-merge
+  qualification point, implementation and runtime qualification were complete;
+  final independent re-review was pending.
+
+### 2026-09-28 M12 Integration
+
+- Final independent re-review accepted M12. PR #36 merged through a normal merge
+  commit, `6b8a5b494f373652fc1d58c9a35135e04c2bd132`, with feature commit
+  `16d22ce92645339711cb10369b532bc40158c456` as its second parent.
+- PR CI run #59 passed on the feature commit; post-merge CI run #60 passed on the
+  merge commit. The local and remote feature branches were deleted after CI
+  passed. M12 is complete.
 
 ### 2026-09-27 M11 Desktop compact Home layout
 
