@@ -9,6 +9,9 @@
     <string name="home_continuous">Continuous Challenge</string>
     <string name="home_continuous_ready">Chain 3, 5, or 10 puzzles in one resumable session.</string>
     <string name="home_continuous_active">Resume puzzle %1$d of %2$d · %3$dx%4$d · %5$s</string>
+    <string name="home_relay">Puzzle Relay</string>
+    <string name="home_relay_ready">Import an offline code or resume your active puzzle.</string>
+    <string name="home_relay_active">An offline Relay puzzle is ready to resume. Import is available.</string>
     <string name="daily_calendar_title">Daily Calendar</string>
     <string name="daily_calendar_subtitle">Choose today or replay an earlier offline puzzle.</string>
     <string name="daily_calendar_previous">Previous</string>
@@ -218,6 +221,7 @@
     <string name="results_daily_subtitle">Daily challenge complete.</string>
     <string name="results_daily_progress_unsaved">Daily challenge complete. Progress could not be saved.</string>
     <string name="results_favorite_subtitle">Favorite practice complete.</string>
+    <string name="relay_results_subtitle">Relay result. This run does not affect personal progress.</string>
     <string name="results_completion_mark">✓</string>
     <string name="results_completion_description">Puzzle complete</string>
     <string name="results_size_format">Puzzle %1$dx%2$d · %3$s</string>
@@ -232,6 +236,9 @@
     <string name="results_play_again">Replay Puzzle</string>
     <string name="results_new_size">New Size</string>
     <string name="game_title_format">%1$dx%2$d · %3$s</string>
+    <string name="game_relay_title_format">Relay · %1$dx%2$d · %3$s</string>
+    <string name="relay_status_format">Relay target: %1$d</string>
+    <string name="relay_status_solved_format">Relay complete · moves (%1$d) · %2$ds · target %3$d</string>
     <string name="game_daily_title_format">Daily %1$s · %2$dx%3$d · %4$s</string>
     <string name="game_favorite_title_format">%1$s · %2$dx%3$d · %4$s</string>
     <string name="game_menu">Menu</string>
@@ -262,6 +269,29 @@
     <string name="status_hint_strategic">Strategic hint: try tile %1$d.</string>
     <string name="status_hint_movable">Hint: highlighted tiles can slide into the empty cell.</string>
     <string name="status_assisted_run">Hint used. This run will not update player best.</string>
+    <string name="relay_title">Puzzle Relay</string>
+    <string name="relay_resume">Resume saved Relay</string>
+    <string name="relay_import">Import Relay code</string>
+    <string name="relay_paste_prompt">Paste a Relay code below. The saved Relay stays unchanged until a valid code is reviewed and confirmed.</string>
+    <string name="relay_paste_clipboard">Paste from clipboard</string>
+    <string name="relay_invalid">This code is invalid or uses an unsupported Relay version.</string>
+    <string name="relay_details">%1$dx%2$d · %3$s · target (%4$d). Start this exact puzzle?</string>
+    <string name="relay_replace_title">Replace saved Relay?</string>
+    <string name="relay_replace_message">This replaces the current Relay puzzle after confirmation.</string>
+    <string name="relay_create_normal_only">Relay codes can be created from normal play only.</string>
+    <string name="relay_favorite_unavailable">Relay puzzles cannot be saved as favorites.</string>
+    <string name="relay_target_hint">1–9999</string>
+    <string name="relay_target_default" translatable="false">20</string>
+    <string name="relay_target_prompt">Choose a move target from 1 to 9999.</string>
+    <string name="relay_target_invalid">Enter a whole number from 1 to 9999.</string>
+    <string name="relay_create">Create Relay code</string>
+    <string name="relay_code_ready">Relay code</string>
+    <string name="relay_code_manual_copy">Copy the code or select its text to share it manually.</string>
+    <string name="relay_copy">Copy code</string>
+    <string name="relay_copied">Relay code copied.</string>
+    <string name="relay_result_passed">Passed · %1$s · target (%2$d) · time (%3$d s). %4$s</string>
+    <string name="relay_result_missed">Target missed · %1$s · target (%2$d) · time (%3$d s). %4$s</string>
+    <string name="relay_result_isolated">Relay does not change regular records or statistics.</string>
     <string name="status_favorite_practice">Favorite practice does not change personal records or regular saves.</string>
     <string name="status_first_move_hint">Tap a tile aligned with the outlined empty cell.</string>
     <string name="status_solving">Solving with %1$s…</string>

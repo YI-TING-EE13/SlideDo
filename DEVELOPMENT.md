@@ -73,6 +73,18 @@ Current handoff status:
   player/solver-assisted separation, action-history persistence, Redo,
   adaptive-layout policy, contrast, headings, traversal order, touch targets,
   and actionable board accessibility nodes.
+- M12 Offline Puzzle Relay Codes implementation and its automated/runtime
+  qualification gates have passed; final independent re-review is pending. Its
+  shared v1 code identifies the exact solvable board, size, stable difficulty
+  id, and owner-selected 1–9999 move target. Relay runs use one isolated save
+  per platform, are included in each platform's existing archive, and do not
+  write normal records, completion statistics/history, Daily state, Favorites,
+  Trends/Weekly Goal, or Continuous progress. `cmd.exe /c ci.bat` passed, and
+  connected instrumentation passed 144/144 tests on Android 16 / API 36
+  `small_phone`. Android runtime scenarios A0–A14 and AR1–AR6 passed; Desktop
+  Swing scenarios D0–D12 and R1–R6 passed. The frozen cross-platform Relay
+  fixture matched exactly. The feature branch remains local, unpushed, and
+  unmerged.
 
 Start a new implementation session by checking:
 
@@ -133,6 +145,9 @@ Desktop currently supports:
   Daily Challenge/calendar saves with current/best streak state.
 - Up to 50 exact Favorite Puzzles with isolated practice saves, personal Trends
   and Weekly Goal scope, and isolated 3/5/10-puzzle Continuous Challenge.
+- Offline Puzzle Relay code creation/import, one isolated active-run save that
+  Home resumes only while unfinished, and player-action target results without
+  personal-progress writes.
 - First-run Beginner Guide, interactive Practice Tutorial, localized How to Play
   and Quick Reminder learning surfaces.
 - Persisted Desktop preferences for reduced motion, optional sound, Midnight or
@@ -154,6 +169,13 @@ Android currently supports:
   private Monday-to-Sunday completion target.
 - Resumable Continuous Challenge sessions of 3, 5, or 10 puzzles in one fixed
   size and difficulty, isolated from normal, daily, and favorite saves.
+- Offline Puzzle Relay codes encode the exact initial grid instead of a seed.
+  The versioned `SLD-R1-` payload has explicit stable difficulty ids and a
+  checksum; target moves are user-defined and never solver/par counts. Relay
+  save slots preserve current board, initial board, action/Redo history, elapsed
+  time, and assistance. Reset Saved Games clears Relay; Reset Records preserves
+  the active Relay session. Home offers Resume only for an unfinished Relay;
+  completed runs stay on Results for Replay and are removed from the active slot.
 - First-run onboarding before normal play, with Skip and Start 3x3 actions.
 - Interactive Practice Tutorial entry from Home and onboarding, using a guided
   first move plus a whole-line slide lesson.
@@ -1315,6 +1337,41 @@ Priority: Low to Medium
 - Run the final desktop accessibility review.
 
 ## Development Log
+
+### 2026-09-28 M12 Offline Puzzle Relay Codes (final independent re-review pending)
+
+- Added the platform-neutral immutable Relay specification, solvability checks,
+  deterministic version-1 codec, and frozen 3x3, 4x4, and 5x5 fixtures. The
+  target is a player-selected maximum from 1 through 9999; a run passes when its
+  actual completed action count is at most that value.
+- Added separate Desktop JSON and Android SharedPreferences Relay save slots,
+  including the canonical code, current/initial board, action and Redo histories,
+  elapsed time, and assistance. The existing Desktop archive name allowlist and
+  Android preference archive schema validate Relay identity and state while
+  accepting older archives with no Relay data.
+- Added Home resume/import and normal-game code creation flows on both
+  platforms. Relay completion branches before the regular completion/statistics
+  writers; Replay Puzzle retains the exact board and target.
+- Fixed Android Relay status composition so the target appears only in its
+  Relay-specific label while normal Best remains `--`; a focused UI regression
+  test also preserves normal-game Best presentation. The independent review's
+  completed-Relay lifecycle finding was repaired: only unfinished Relay state
+  remains resumable after Home or relaunch, while Results Replay preserves the
+  exact initial board. Both Android Relay import fields now share one
+  case-preserving configuration. Focused Relay regression tests passed (4/4).
+- Final automated qualification passed on 2026-09-28: all 144 connected Android
+  16 / API 36 `small_phone` instrumentation tests (0 failures, errors, or
+  skips), `cmd.exe /c ci.bat`, and `git diff --check`.
+- Android hands-on scenarios A0–A14 and the Relay repair paths AR1–AR6 passed
+  on `small_phone`. The frozen 3x3
+  Classic fixture reconstructed its exact board and target 5; Save/Resume,
+  rotation, foreground/relaunch, target-met (1 move), target-missed (13 moves),
+  replay, invalid-code rejection, replacement, Relay isolation, Favorite
+  isolation, completed-Relay cleanup/relaunch, mixed-case import, and
+  English/Traditional Chinese/Japanese flows behaved as expected. Desktop
+  runtime scenarios D0–D12 and R1–R6 passed in the accepted qualification; the
+  frozen cross-platform Relay fixture matched exactly. Implementation and
+  runtime qualification are complete; final independent re-review is pending.
 
 ### 2026-09-27 M11 Desktop compact Home layout
 

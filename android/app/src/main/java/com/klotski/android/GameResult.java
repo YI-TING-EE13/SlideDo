@@ -17,6 +17,7 @@ final class GameResult {
     final String favoriteId;
     final boolean dailyProgressSaved;
     final boolean completionRecorded;
+    final String relayCode;
 
     GameResult(int size, PuzzleDifficulty difficulty, int moves, long timeMs, boolean assisted, boolean newBest,
             AndroidGameStore.Best previousBest) {
@@ -45,6 +46,14 @@ final class GameResult {
     GameResult(int size, PuzzleDifficulty difficulty, int moves, long timeMs, boolean assisted,
             boolean newBest, AndroidGameStore.Best previousBest, String dailyDateId,
             String favoriteId, boolean dailyProgressSaved, boolean completionRecorded) {
+        this(size, difficulty, moves, timeMs, assisted, newBest, previousBest,
+                dailyDateId, favoriteId, dailyProgressSaved, completionRecorded, null);
+    }
+
+    GameResult(int size, PuzzleDifficulty difficulty, int moves, long timeMs, boolean assisted,
+            boolean newBest, AndroidGameStore.Best previousBest, String dailyDateId,
+            String favoriteId, boolean dailyProgressSaved, boolean completionRecorded,
+            String relayCode) {
         this.size = size;
         this.difficulty = difficulty;
         this.moves = moves;
@@ -56,5 +65,6 @@ final class GameResult {
         this.favoriteId = favoriteId;
         this.dailyProgressSaved = dailyProgressSaved;
         this.completionRecorded = completionRecorded;
+        this.relayCode = relayCode;
     }
 }

@@ -34,7 +34,9 @@ final class AndroidResultsScreen {
         ScreenLayout screen = ui.createScreenLayout();
         screen.root.setId(R.id.results_root);
         screen.content.setGravity(Gravity.CENTER_HORIZONTAL);
-        int subtitle = !result.completionRecorded
+        int subtitle = result.relayCode != null
+                ? R.string.relay_results_subtitle
+                : !result.completionRecorded
                 ? R.string.results_completion_not_recorded_subtitle
                 : continuousChallenge != null
                 ? (continuousChallenge.isComplete()
@@ -123,10 +125,12 @@ final class AndroidResultsScreen {
                 R.drawable.ic_action_play, COLOR_PRIMARY,
                 v -> actions.onPlayAgain());
         playAgainButton.setId(R.id.results_play_again_button);
-        Button favoriteButton = ui.addWideButton(screen.content, R.string.favorite_save_action,
-                R.drawable.ic_action_records, COLOR_PANEL_HIGHLIGHT,
-                v -> actions.onFavorite());
-        favoriteButton.setId(R.id.results_favorite_button);
+        if (result.relayCode == null) {
+            Button favoriteButton = ui.addWideButton(screen.content, R.string.favorite_save_action,
+                    R.drawable.ic_action_records, COLOR_PANEL_HIGHLIGHT,
+                    v -> actions.onFavorite());
+            favoriteButton.setId(R.id.results_favorite_button);
+        }
         Button newSizeButton = ui.addWideButton(screen.content,
                 continuousChallenge == null
                         ? R.string.results_new_size : R.string.continuous_end_session,

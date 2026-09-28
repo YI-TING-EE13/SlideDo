@@ -10,6 +10,7 @@ import java.awt.event.ComponentEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.datatransfer.StringSelection;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -76,6 +77,9 @@ public class MainFrame extends JFrame implements GameObserver {
     private int continuousSize;
     /** Difficulty fixed for the active Continuous Challenge session. */
     private PuzzleDifficulty continuousDifficulty;
+
+    /** Canonical identity for the isolated Relay run, or null outside Relay mode. */
+    private String activeRelayCode;
 
     /** Last selected month shown by the Desktop Daily Calendar. */
     private YearMonth dailyCalendarMonth;
@@ -317,6 +321,10 @@ public class MainFrame extends JFrame implements GameObserver {
         continuousItem.addActionListener(e -> showContinuousDialog());
         gameMenu.add(continuousItem);
 
+        JMenuItem createRelayItem = new JMenuItem(text("relayCreate"));
+        createRelayItem.addActionListener(e -> createRelayFromCurrentPuzzle());
+        gameMenu.add(createRelayItem);
+
         JMenuItem quickReminderItem = new JMenuItem(text("quickReminder"));
         quickReminderItem.addActionListener(e -> showQuickReminderDialog());
         gameMenu.add(quickReminderItem);
@@ -451,6 +459,7 @@ public class MainFrame extends JFrame implements GameObserver {
         secondaryActions.add(createHomeButton(text("favorites"), this::showFavoritesDialog));
         secondaryActions.add(createHomeButton(text("trends"), this::showTrendsDialog));
         secondaryActions.add(createHomeButton(text("continuous"), this::showContinuousDialog));
+        secondaryActions.add(createHomeButton(text("relay"), this::showRelayDialog));
         secondaryActions.add(createHomeButton(text("howToPlay"), () -> showHelpDialog(
                 text("howToPlay"), DesktopHelpContent.howToPlay(desktopLocale))));
         secondaryActions.add(createHomeButton(text("practiceTutorial"), this::showPracticeTutorialDialog));
@@ -623,6 +632,7 @@ public class MainFrame extends JFrame implements GameObserver {
         activeFavoriteId = null;
         activeContinuousChallenge = null;
         continuousDifficulty = null;
+        activeRelayCode = null;
         assistedSolveActive = false;
         completedAssisted = false;
         completionTracker.reset();
@@ -685,6 +695,7 @@ public class MainFrame extends JFrame implements GameObserver {
         completionTracker.reset();
         pendingResultMessage = null;
         solverRunning = false;
+        saveCurrentGame();
         showGame();
     }
 
@@ -796,6 +807,7 @@ public class MainFrame extends JFrame implements GameObserver {
             activeFavoriteId = null;
             activeContinuousChallenge = null;
             continuousDifficulty = null;
+            activeRelayCode = null;
             assistedSolveActive = data.assisted;
             completedAssisted = data.solved && data.assisted;
             completionTracker.reset();
@@ -816,6 +828,12 @@ public class MainFrame extends JFrame implements GameObserver {
             boolean assisted = assistedSolveActive || (model.isSolved() && completedAssisted);
             return SaveManager.saveContinuousGame(model, activeContinuousChallenge, assisted);
         }
+        if (activeRelayCode != null) {
+            if (model.isSolved()) {
+                return SaveManager.clearRelayGame();
+            }
+            return SaveManager.saveRelayGame(model, activeRelayCode, assistedSolveActive);
+        }
         if (activeFavoriteId != null) {
             boolean assisted = assistedSolveActive || (model.isSolved() && completedAssisted);
             return SaveManager.saveFavoriteRun(activeFavoriteId, model, assisted);
@@ -826,6 +844,181 @@ public class MainFrame extends JFrame implements GameObserver {
         }
         boolean assisted = assistedSolveActive || (model.isSolved() && completedAssisted);
         return SaveManager.saveGame(model, assisted);
+    }
+
+    private void showRelayDialog() {
+        if (solverRunning) {
+            return;
+        }
+        if (showingGame && boardPanel != null && boardPanel.isBusy()) {
+            deferredGameNavigation.request(true, this::showRelayDialog);
+            return;
+        }
+        SaveManager.RelayGame saved = SaveManager.loadRelayGame();
+        if (!canResumeRelay(saved)) {
+            if (saved != null) {
+                SaveManager.clearRelayGame();
+            }
+            importRelayCode();
+            return;
+        }
+        Object[] options = relayHomeOptions(desktopLocale);
+        int choice = showOptionDialog(text("relayHomePrompt"), text("relay"),
+                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE,
+                null, options, options[0]);
+        if (choice == 0) {
+            resumeRelay(saved);
+        } else if (choice == 1) {
+            importRelayCode();
+        }
+    }
+
+    static boolean canResumeRelay(SaveManager.RelayGame saved) {
+        return saved != null && !saved.game.solved;
+    }
+
+    static Object[] relayHomeOptions(DesktopLocale locale) {
+        return new Object[] {locale.text("relayResume"), locale.text("relayImport"),
+                locale.text("favoriteCancel")};
+    }
+
+    static Object[] relayConfirmOptions(DesktopLocale locale, String confirmKey) {
+        return new Object[] {locale.text(confirmKey), locale.text("favoriteCancel")};
+    }
+
+    private void importRelayCode() {
+        JTextArea input = new JTextArea(4, 34);
+        input.setLineWrap(true);
+        input.setWrapStyleWord(true);
+        JScrollPane scroll = new JScrollPane(input);
+        JPanel pastePanel = new JPanel(new BorderLayout(8, 8));
+        pastePanel.add(new JLabel(text("relayPastePrompt")), BorderLayout.NORTH);
+        pastePanel.add(scroll, BorderLayout.CENTER);
+        int choice = showRelayConfirmDialog(pastePanel, text("relayImport"),
+                JOptionPane.QUESTION_MESSAGE, "relayImport");
+        if (choice != JOptionPane.OK_OPTION) {
+            return;
+        }
+        RelayChallengeSpec spec;
+        try {
+            spec = RelayCodeCodec.decode(input.getText());
+        } catch (RuntimeException exception) {
+            showMessageDialog(text("relayInvalid"), text("relay"), JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        String details = desktopLocale.format("relayDetails", spec.getSize(), spec.getSize(),
+                difficultyLabel(spec.getDifficulty()), spec.getTargetMoves());
+        int start = showRelayConfirmDialog(details, text("relayImport"),
+                JOptionPane.QUESTION_MESSAGE, "relayStart");
+        if (start != JOptionPane.OK_OPTION) {
+            return;
+        }
+        if (SaveManager.hasRelayGame()) {
+            int replace = showRelayConfirmDialog(text("relayReplacePrompt"), text("relay"),
+                    JOptionPane.WARNING_MESSAGE, "relayReplace");
+            if (replace != JOptionPane.OK_OPTION) {
+                return;
+            }
+        }
+        startRelay(spec, null, false);
+    }
+
+    private void createRelayFromCurrentPuzzle() {
+        if (!showingGame || model == null || solverRunning || boardPanel.isBusy()
+                || activeDailyDateId != null || activeFavoriteId != null
+                || activeContinuousChallenge != null || activeRelayCode != null) {
+            showMessageDialog(text("relayCreateNormalOnly"), text("relay"),
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        JSpinner target = new JSpinner(new SpinnerNumberModel(20, 1, 9999, 1));
+        JPanel prompt = new JPanel(new BorderLayout(8, 8));
+        prompt.add(new JLabel(text("relayTargetPrompt")), BorderLayout.NORTH);
+        prompt.add(target, BorderLayout.CENTER);
+        int choice = showRelayConfirmDialog(prompt, text("relayCreate"),
+                JOptionPane.QUESTION_MESSAGE, "relayCreate");
+        if (choice != JOptionPane.OK_OPTION) {
+            return;
+        }
+        RelayChallengeSpec spec;
+        try {
+            spec = new RelayChallengeSpec(model.getSize(), model.getDifficulty(),
+                    model.getInitialGridCopy(), (Integer) target.getValue());
+        } catch (IllegalArgumentException exception) {
+            showMessageDialog(text("relayInvalid"), text("relay"), JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        String code = RelayCodeCodec.encode(spec);
+        JTextArea codeView = new JTextArea(code, 3, 36);
+        codeView.setLineWrap(true);
+        codeView.setWrapStyleWord(true);
+        codeView.setEditable(false);
+        Object[] options = {text("relayCopy"), text("close")};
+        int action = showOptionDialog(new JScrollPane(codeView), text("relayCodeReady"),
+                JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE,
+                null, options, options[0]);
+        if (action == 0) {
+            try {
+                Toolkit.getDefaultToolkit().getSystemClipboard()
+                        .setContents(new StringSelection(code), null);
+                showMessageDialog(text("relayCopied"), text("relay"),
+                        JOptionPane.INFORMATION_MESSAGE);
+            } catch (HeadlessException | IllegalStateException exception) {
+                showMessageDialog(text("relayCopyUnavailable"), text("relay"),
+                        JOptionPane.INFORMATION_MESSAGE);
+            }
+        }
+    }
+
+    private void resumeRelay(SaveManager.RelayGame saved) {
+        if (saved == null || !gameplayAllowed()) {
+            return;
+        }
+        activeRelayCode = RelayCodeCodec.encode(saved.spec);
+        model.removeObserver(this);
+        model = new GameModel(saved.game.size);
+        model.addObserver(this);
+        model.loadState(saved.game);
+        boardPanel.setModel(model);
+        activeDailyDateId = null;
+        activeFavoriteId = null;
+        activeContinuousChallenge = null;
+        continuousDifficulty = null;
+        assistedSolveActive = saved.game.assisted;
+        completedAssisted = saved.game.solved && saved.game.assisted;
+        completionTracker.reset();
+        pendingResultMessage = null;
+        solverRunning = false;
+        savedGamesReset = false;
+        showGame();
+    }
+
+    private void startRelay(RelayChallengeSpec spec, SaveManager.SaveData saved,
+            boolean assisted) {
+        if (!gameplayAllowed() || spec == null) {
+            return;
+        }
+        clearMovableHint();
+        model.removeObserver(this);
+        model = saved == null ? spec.createGame() : new GameModel(spec.getSize());
+        if (saved != null) {
+            model.loadState(saved);
+        }
+        model.addObserver(this);
+        boardPanel.setModel(model);
+        activeRelayCode = RelayCodeCodec.encode(spec);
+        activeDailyDateId = null;
+        activeFavoriteId = null;
+        activeContinuousChallenge = null;
+        continuousDifficulty = null;
+        assistedSolveActive = assisted;
+        completedAssisted = saved != null && saved.solved && assisted;
+        completionTracker.reset();
+        pendingResultMessage = null;
+        solverRunning = false;
+        savedGamesReset = false;
+        saveCurrentGame();
+        showGame();
     }
 
     private void showDailyCalendarDialog() {
@@ -1377,7 +1570,7 @@ public class MainFrame extends JFrame implements GameObserver {
         }
         SaveManager.FavoritePuzzle[] favorites = SaveManager.getFavoritePuzzles();
         boolean canSaveCurrent = showingGame && activeFavoriteId == null
-                && activeContinuousChallenge == null && model != null;
+                && activeContinuousChallenge == null && activeRelayCode == null && model != null;
         Object[] options = new Object[favorites.length + (canSaveCurrent ? 1 : 0)];
         int offset = canSaveCurrent ? 1 : 0;
         if (canSaveCurrent) {
@@ -1424,17 +1617,20 @@ public class MainFrame extends JFrame implements GameObserver {
         if (rejectWhenRecoveryRequired()) {
             return;
         }
-        Object[] options = {text("favoriteReplay"), text("favoriteRename"),
-                text("favoriteDelete"), text("favoriteCancel")};
+        boolean relayActive = showingGame && activeRelayCode != null;
+        Object[] options = relayActive
+                ? new Object[] {text("favoriteReplay"), text("favoriteCancel")}
+                : new Object[] {text("favoriteReplay"), text("favoriteRename"),
+                        text("favoriteDelete"), text("favoriteCancel")};
         int choice = showOptionDialog(DesktopFavoriteContent.optionLabel(favorite, desktopLocale) + "\n\n"
                         + DesktopFavoriteContent.practiceSummary(desktopLocale), text("favorites"),
                 JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE, null,
                 options, options[0]);
         if (choice == 0) {
             startFavoritePractice(favorite);
-        } else if (choice == 1) {
+        } else if (!relayActive && choice == 1) {
             renameFavorite(favorite);
-        } else if (choice == 2) {
+        } else if (!relayActive && choice == 2) {
             int confirm = showConfirmDialog(text("favoriteDeletePrompt"),
                     text("favoriteDeleteTitle"), JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
             if (confirm == JOptionPane.YES_OPTION) {
@@ -1751,6 +1947,22 @@ public class MainFrame extends JFrame implements GameObserver {
                 return;
             }
             showContinuousResultsDialog(moves, timeMs);
+            return;
+        }
+        if (activeRelayCode != null) {
+            saveCurrentGame();
+            String message = pendingResultMessage == null
+                    ? text("relayResultUnknown") : pendingResultMessage;
+            pendingResultMessage = null;
+            Object[] relayOptions = {text("relayReplay"), text("home")};
+            int relayChoice = showOptionDialog(message, text("relayResultsTitle"),
+                    JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE,
+                    null, relayOptions, relayOptions[0]);
+            if (relayChoice == 0) {
+                replayCurrentPuzzle();
+            } else if (relayChoice == 1) {
+                showHome();
+            }
             return;
         }
         String message = pendingResultMessage == null
@@ -2152,6 +2364,7 @@ public class MainFrame extends JFrame implements GameObserver {
             activeFavoriteId = null;
             activeContinuousChallenge = null;
             continuousDifficulty = null;
+            activeRelayCode = null;
             completedAssisted = false;
             assistedSolveActive = false;
         }
@@ -2275,6 +2488,14 @@ public class MainFrame extends JFrame implements GameObserver {
                 this, message, title, optionType, messageType));
     }
 
+    private int showRelayConfirmDialog(Object message, String title, int messageType,
+            String confirmKey) {
+        Object[] options = relayConfirmOptions(desktopLocale, confirmKey);
+        int choice = showOptionDialog(message, title, JOptionPane.DEFAULT_OPTION,
+                messageType, null, options, options[0]);
+        return choice == 0 ? JOptionPane.OK_OPTION : JOptionPane.CANCEL_OPTION;
+    }
+
     private int showOptionDialog(Object message, String title, int optionType,
             int messageType, Icon icon, Object[] options, Object initialValue) {
         return runWithPausedTimer(() -> JOptionPane.showOptionDialog(
@@ -2302,7 +2523,11 @@ public class MainFrame extends JFrame implements GameObserver {
             String favoriteText = activeFavoriteId == null ? "" : text("statusFavorite");
             String continuousText = activeContinuousChallenge == null ? ""
                     : separator + DesktopContinuousContent.status(activeContinuousChallenge, desktopLocale);
-            String assistedText = assistedSolveActive ? separator + text("assistedRun") : "";
+            String relayText = activeRelayCode == null ? ""
+                    : separator + desktopLocale.format("relayStatus", RelayCodeCodec.decode(
+                            activeRelayCode).getTargetMoves());
+            String assistedText = (assistedSolveActive ? separator + text("assistedRun") : "")
+                    + relayText;
             statusLabel.setText(desktopLocale.format("statusRunning", model.getMoveCount(), elapsed,
                     difficultyLabel(model.getDifficulty()), bestText, hintText, motionText,
                     dailyText, favoriteText, continuousText, assistedText));
@@ -2356,6 +2581,18 @@ public class MainFrame extends JFrame implements GameObserver {
         int size = model.getSize();
         PuzzleDifficulty difficulty = model.getDifficulty();
         boolean assisted = assistedSolveActive;
+        if (activeRelayCode != null) {
+            RelayChallengeSpec spec = RelayCodeCodec.decode(activeRelayCode);
+            completedAssisted = assisted;
+            assistedSolveActive = false;
+            boolean passed = spec.isTargetMet(moves);
+            pendingResultMessage = desktopLocale.format(passed ? "relayPassed" : "relayMissed",
+                    moves, spec.getTargetMoves(), timeMs / 1000,
+                    assisted ? text("assistedResult") : text("relayIsolation"));
+            saveCurrentGame();
+            statusLabel.setText(pendingResultMessage);
+            return;
+        }
         if (activeFavoriteId != null) {
             assistedSolveActive = false;
             completedAssisted = assisted;

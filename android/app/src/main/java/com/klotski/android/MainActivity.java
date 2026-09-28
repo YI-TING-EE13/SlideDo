@@ -9,6 +9,8 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Intent;
 import android.graphics.Typeface;
 import android.net.Uri;
@@ -42,6 +44,8 @@ import com.klotski.core.IdaStarSolver;
 import com.klotski.core.MoveAction;
 import com.klotski.core.PuzzleIdentity;
 import com.klotski.core.PuzzleDifficulty;
+import com.klotski.core.RelayChallengeSpec;
+import com.klotski.core.RelayCodeCodec;
 import com.klotski.core.SaveManager;
 import com.klotski.core.Solver;
 import com.klotski.core.StrategicHint;
@@ -77,6 +81,8 @@ public class MainActivity extends Activity implements GameObserver {
     private static final int REQUEST_EXPORT_BACKUP = 1401;
     private static final int REQUEST_IMPORT_BACKUP = 1402;
     private static final String STATE_CONTINUOUS_MODE = "continuous_mode";
+    private static final String STATE_RELAY_MODE = "relay_mode";
+    private static final String STATE_RELAY_CODE = "relay_code";
     private static final DateTimeFormatter BACKUP_FILE_TIME =
             DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
     private static final int ONBOARDING_PAGE_COUNT = 4;
@@ -131,6 +137,7 @@ public class MainActivity extends Activity implements GameObserver {
     private GameResult currentResult;
     private String activeDailyDateId;
     private String activeFavoriteId;
+    private String activeRelayCode;
     private ContinuousChallenge activeContinuousChallenge;
     private DailyCalendarMonth dailyCalendarMonth;
     private OnBackInvokedCallback backCallback;
@@ -234,6 +241,8 @@ public class MainActivity extends Activity implements GameObserver {
                 dailyCalendarMonth == null ? null : dailyCalendarMonth.getMonthId(),
                 pendingWin);
         outState.putBoolean(STATE_CONTINUOUS_MODE, activeContinuousChallenge != null);
+        outState.putBoolean(STATE_RELAY_MODE, activeRelayCode != null);
+        outState.putString(STATE_RELAY_CODE, activeRelayCode);
         super.onSaveInstanceState(outState);
     }
 
@@ -457,13 +466,17 @@ public class MainActivity extends Activity implements GameObserver {
         currentResult = savedState.result;
         activeDailyDateId = savedState.activeDailyDateId;
         activeFavoriteId = savedState.activeFavoriteId;
+        activeRelayCode = savedInstanceState.getString(STATE_RELAY_CODE);
         dailyCalendarMonth = restoreDailyCalendarMonth(savedState.dailyCalendarMonthId);
         boolean savedContinuousMode = savedInstanceState.getBoolean(
                 STATE_CONTINUOUS_MODE, false);
+        boolean savedRelayMode = savedInstanceState.getBoolean(STATE_RELAY_MODE,
+                activeRelayCode != null);
 
         if (savedScreen == Screen.GAME) {
             if (savedGameStarted && (savedContinuousMode
-                    ? loadContinuousGame() : loadGame())) {
+                    ? loadContinuousGame() : savedRelayMode
+                    ? loadRelayGame() : loadGame())) {
                 pendingWin = savedState.pendingWin;
                 if (pendingWin == null && savedResult != null && model.isSolved()) {
                     currentResult = savedResult;
@@ -482,6 +495,8 @@ public class MainActivity extends Activity implements GameObserver {
             boolean loaded = restoredResult != null && savedGameStarted
                     && (savedContinuousMode
                             ? loadContinuousGame()
+                            : restoredResult.relayCode != null
+                            ? loadRelayGame()
                             : restoredResult.favoriteId != null
                             ? loadFavoriteGame(restoredResult.favoriteId)
                             : restoredResult.dailyDateId != null
@@ -499,7 +514,8 @@ public class MainActivity extends Activity implements GameObserver {
                 || savedScreen == Screen.TRENDS
                 || savedScreen == Screen.SETTINGS)
                 && savedReturnScreen == Screen.GAME && savedGameStarted
-                && !(savedContinuousMode ? loadContinuousGame() : loadGame())) {
+                && !(savedContinuousMode ? loadContinuousGame()
+                        : savedRelayMode ? loadRelayGame() : loadGame())) {
             savedReturnScreen = Screen.HOME;
             gameStarted = false;
         }
@@ -527,6 +543,7 @@ public class MainActivity extends Activity implements GameObserver {
         if (deferScreenChange(this::showHomeScreen)) {
             return;
         }
+        retireCompletedRelayForNavigation();
         currentScreen = Screen.HOME;
         infoReturnScreen = Screen.HOME;
         tutorialAdvancePending = false;
@@ -556,9 +573,16 @@ public class MainActivity extends Activity implements GameObserver {
                         continuousGame.challenge.getCurrentPuzzleNumber(),
                         continuousGame.challenge.getTargetPuzzles(),
                         continuousGame.game.size, continuousGame.game.difficulty);
+        AndroidGameStore.RelayGame savedRelay = store.loadRelayGame();
+        boolean relayResumable = savedRelay != null && !savedRelay.game.solved;
         ScreenLayout screen = homeScreen.build(store.getAllSaveMetadata(), dailyStatus,
-                continuousStatus, store.getFavoritePuzzles().length,
+                continuousStatus, relayResumable,
+                store.getFavoritePuzzles().length,
                 new AndroidHomeScreen.HomeActions() {
+            @Override
+            public void onRelay() {
+                showRelayChallengeDialog();
+            }
             @Override
             public void onDailyChallenge() {
                 LocalDate today = LocalDate.now();
@@ -656,6 +680,243 @@ public class MainActivity extends Activity implements GameObserver {
                 .setNegativeButton(R.string.dialog_cancel, null)
                 .create();
         showTimerPausingDialog(dialog);
+    }
+
+    private void showRelayChallengeDialog() {
+        AndroidGameStore.RelayGame saved = store.loadRelayGame();
+        if (saved == null || saved.game.solved) {
+            if (saved != null) {
+                store.clearRelayGame();
+            }
+            showImportRelayCodeDialog();
+            return;
+        }
+        String[] choices = {getString(R.string.relay_resume), getString(R.string.relay_import)};
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.relay_title)
+                .setItems(choices, (selected, which) -> {
+                    if (which == 0) {
+                        resumeRelayGame();
+                    } else {
+                        showImportRelayCodeDialog();
+                    }
+                })
+                .setNegativeButton(R.string.dialog_cancel, null)
+                .create();
+        showTimerPausingDialog(dialog);
+    }
+
+    static void configureRelayCodeInput(EditText input) {
+        input.setSingleLine(false);
+        input.setMinLines(3);
+        input.setMaxLines(5);
+        input.setInputType(InputType.TYPE_CLASS_TEXT
+                | InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        input.setFilters(new InputFilter[] {new InputFilter.LengthFilter(256)});
+    }
+
+    private void showImportRelayCodeDialog() {
+        EditText codeInput = new EditText(this);
+        configureRelayCodeInput(codeInput);
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(ui.dp(20), ui.dp(8), ui.dp(20), 0);
+        TextView instructions = ui.createText(getString(R.string.relay_paste_prompt),
+                14, AndroidUi.COLOR_MUTED_TEXT, Typeface.NORMAL);
+        content.addView(instructions, ui.fullWidthParams());
+        content.addView(codeInput, ui.fullWidthParams());
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.relay_import)
+                .setView(content)
+                .setPositiveButton(R.string.relay_import, (selected, which) ->
+                        validateRelayImport(codeInput.getText().toString()))
+                .setNeutralButton(R.string.relay_paste_clipboard, (selected, which) -> {
+                    ClipboardManager clipboard = (ClipboardManager)
+                            getSystemService(Context.CLIPBOARD_SERVICE);
+                    if (clipboard != null && clipboard.hasPrimaryClip()
+                            && clipboard.getPrimaryClip().getItemCount() > 0) {
+                        codeInput.setText(clipboard.getPrimaryClip().getItemAt(0)
+                                .coerceToText(this));
+                    }
+                    showImportRelayCodeDialogWithText(codeInput.getText().toString());
+                })
+                .setNegativeButton(R.string.dialog_cancel, null)
+                .create();
+        showTimerPausingDialog(dialog);
+    }
+
+    private void showImportRelayCodeDialogWithText(String text) {
+        // Reopen the editor with the pasted value so the owner can review it first.
+        EditText input = new EditText(this);
+        configureRelayCodeInput(input);
+        input.setText(text);
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.relay_import)
+                .setMessage(R.string.relay_paste_prompt)
+                .setView(input)
+                .setPositiveButton(R.string.relay_import, (selected, which) ->
+                        validateRelayImport(input.getText().toString()))
+                .setNegativeButton(R.string.dialog_cancel, null)
+                .create();
+        showTimerPausingDialog(dialog);
+    }
+
+    private void validateRelayImport(String code) {
+        final RelayChallengeSpec spec;
+        try {
+            spec = RelayCodeCodec.decode(code);
+        } catch (RuntimeException exception) {
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.relay_title)
+                    .setMessage(R.string.relay_invalid)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show();
+            return;
+        }
+        String details = getString(R.string.relay_details, spec.getSize(), spec.getSize(),
+                difficultyName(spec.getDifficulty()), spec.getTargetMoves());
+        AlertDialog detailsDialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.relay_import)
+                .setMessage(details)
+                .setPositiveButton(android.R.string.ok, (selected, which) -> {
+                    if (store.loadRelayGame() != null) {
+                        new AlertDialog.Builder(this)
+                                .setTitle(R.string.relay_replace_title)
+                                .setMessage(R.string.relay_replace_message)
+                                .setPositiveButton(android.R.string.ok, (replace, ignored) ->
+                                        startRelay(spec))
+                                .setNegativeButton(R.string.dialog_cancel, null)
+                                .show();
+                    } else {
+                        startRelay(spec);
+                    }
+                })
+                .setNegativeButton(R.string.dialog_cancel, null)
+                .create();
+        showTimerPausingDialog(detailsDialog);
+    }
+
+    private void startRelay(RelayChallengeSpec spec) {
+        if (spec == null || solverRunning) {
+            return;
+        }
+        attachModel(spec.createGame());
+        activeRelayCode = RelayCodeCodec.encode(spec);
+        activeDailyDateId = null;
+        activeFavoriteId = null;
+        activeContinuousChallenge = null;
+        gameStarted = true;
+        pendingWin = null;
+        currentResult = null;
+        assistedSolveActive = false;
+        hintActive = false;
+        strategicHintTile = -1;
+        lastWinTimeMs = -1;
+        saveSuppressedAfterReset = false;
+        store.setLastSize(spec.getSize());
+        store.setLastDifficulty(spec.getDifficulty());
+        saveGame();
+        syncGameTimerState();
+        showGameScreen();
+    }
+
+    private boolean loadRelayGame() {
+        AndroidGameStore.RelayGame saved = store.loadRelayGame();
+        if (saved == null) {
+            return false;
+        }
+        attachModel(new GameModel(saved.game.size));
+        model.loadState(saved.game);
+        activeRelayCode = RelayCodeCodec.encode(saved.spec);
+        activeDailyDateId = null;
+        activeFavoriteId = null;
+        activeContinuousChallenge = null;
+        lastWinTimeMs = model.isSolved() ? saved.game.elapsedTime : -1;
+        assistedSolveActive = saved.assisted;
+        currentResult = null;
+        pendingWin = null;
+        saveSuppressedAfterReset = false;
+        hintActive = false;
+        strategicHintTile = -1;
+        gameStarted = true;
+        syncGameTimerState();
+        return true;
+    }
+
+    private void resumeRelayGame() {
+        if (!loadRelayGame()) {
+            showHomeScreen();
+            return;
+        }
+        if (model.isSolved()) {
+            store.clearRelayGame();
+            activeRelayCode = null;
+            gameStarted = false;
+            showHomeScreen();
+            return;
+        }
+        showGameScreen();
+    }
+
+    private void showCreateRelayCodeDialog() {
+        if (model == null || activeRelayCode != null || activeDailyDateId != null
+                || activeFavoriteId != null || activeContinuousChallenge != null) {
+            Toast.makeText(this, R.string.relay_create_normal_only, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        EditText targetInput = new EditText(this);
+        targetInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+        targetInput.setText(R.string.relay_target_default);
+        targetInput.setHint(R.string.relay_target_hint);
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.relay_create)
+                .setMessage(R.string.relay_target_prompt)
+                .setView(targetInput)
+                .setPositiveButton(R.string.relay_create, (dialog, which) -> {
+                    int target;
+                    try {
+                        target = Integer.parseInt(targetInput.getText().toString());
+                        if (target < RelayChallengeSpec.MIN_TARGET_MOVES
+                                || target > RelayChallengeSpec.MAX_TARGET_MOVES) {
+                            throw new NumberFormatException();
+                        }
+                    } catch (NumberFormatException exception) {
+                        Toast.makeText(this, R.string.relay_target_invalid,
+                                Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    RelayChallengeSpec spec;
+                    try {
+                        spec = new RelayChallengeSpec(model.getSize(), model.getDifficulty(),
+                                model.getInitialGridCopy(), target);
+                    } catch (IllegalArgumentException exception) {
+                        Toast.makeText(this, R.string.relay_invalid, Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    showRelayCodeDialog(RelayCodeCodec.encode(spec));
+                })
+                .setNegativeButton(R.string.dialog_cancel, null)
+                .show();
+    }
+
+    private void showRelayCodeDialog(String code) {
+        TextView codeText = ui.createText(code, 16, AndroidUi.COLOR_PRIMARY, Typeface.BOLD);
+        codeText.setTextIsSelectable(true);
+        codeText.setPadding(ui.dp(20), ui.dp(16), ui.dp(20), ui.dp(16));
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.relay_code_ready)
+                .setMessage(R.string.relay_code_manual_copy)
+                .setView(codeText)
+                .setPositiveButton(R.string.relay_copy, (dialog, which) -> {
+                    ClipboardManager clipboard = (ClipboardManager)
+                            getSystemService(Context.CLIPBOARD_SERVICE);
+                    if (clipboard != null) {
+                        clipboard.setPrimaryClip(ClipData.newPlainText("SlideDo Relay", code));
+                        Toast.makeText(this, R.string.relay_copied, Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton(R.string.dialog_cancel, null)
+                .show();
     }
 
     private void confirmReplaceContinuousChallenge(int target) {
@@ -759,6 +1020,11 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private void showFavoriteNameDialog(AndroidGameStore.FavoritePuzzle existing) {
+        if (currentScreen == Screen.GAME && activeRelayCode != null) {
+            Toast.makeText(this, R.string.relay_favorite_unavailable,
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
         if (model == null && existing == null) {
             return;
         }
@@ -960,6 +1226,7 @@ public class MainActivity extends Activity implements GameObserver {
         if (deferScreenChange(this::showModeSelectScreen)) {
             return;
         }
+        retireCompletedRelayForNavigation();
         currentScreen = Screen.MODE_SELECT;
         statusText = null;
         gameTitleText = null;
@@ -1487,6 +1754,7 @@ public class MainActivity extends Activity implements GameObserver {
                 getString(R.string.move_history_title),
                 getString(R.string.favorite_save_action),
                 getString(R.string.menu_new_size),
+                getString(R.string.relay_create),
                 getString(R.string.menu_quick_reminder),
                 getString(R.string.home_how_to_play),
                 getString(R.string.home_settings),
@@ -1520,11 +1788,12 @@ public class MainActivity extends Activity implements GameObserver {
                             saveGame();
                             showModeSelectScreen();
                         }
-                        case 7 -> showQuickReminder();
-                        case 8 -> showHowToScreen(Screen.GAME);
-                        case 9 -> showSettingsScreen(Screen.GAME);
-                        case 10 -> showRecordsScreen(Screen.GAME);
-                        case 11 -> {
+                        case 7 -> showCreateRelayCodeDialog();
+                        case 8 -> showQuickReminder();
+                        case 9 -> showHowToScreen(Screen.GAME);
+                        case 10 -> showSettingsScreen(Screen.GAME);
+                        case 11 -> showRecordsScreen(Screen.GAME);
+                        case 12 -> {
                             saveGame();
                             showHomeScreen();
                         }
@@ -1954,6 +2223,24 @@ public class MainActivity extends Activity implements GameObserver {
         beginNewGame(3);
     }
 
+    private void retireCompletedRelayForNavigation() {
+        boolean completedRelayResult = currentScreen == Screen.RESULTS
+                && currentResult != null && currentResult.relayCode != null
+                && model != null && model.isSolved();
+        AndroidGameStore.RelayGame savedRelay = store.loadRelayGame();
+        if (completedRelayResult || (savedRelay != null && savedRelay.game.solved)) {
+            store.clearRelayGame();
+        }
+        if (completedRelayResult) {
+            activeRelayCode = null;
+            currentResult = null;
+            pendingWin = null;
+            gameStarted = false;
+            lastWinTimeMs = -1;
+            assistedSolveActive = false;
+        }
+    }
+
     private void skipOnboarding() {
         markOnboardingSeen();
         showHomeScreen();
@@ -2032,6 +2319,7 @@ public class MainActivity extends Activity implements GameObserver {
         activeDailyDateId = null;
         activeFavoriteId = null;
         activeContinuousChallenge = null;
+        activeRelayCode = null;
         saveSuppressedAfterReset = false;
         gameStarted = true;
         pendingWin = null;
@@ -2057,6 +2345,7 @@ public class MainActivity extends Activity implements GameObserver {
         model.scramble(difficulty);
         activeDailyDateId = null;
         activeFavoriteId = null;
+        activeRelayCode = null;
         saveSuppressedAfterReset = false;
         gameStarted = true;
         pendingWin = null;
@@ -2105,6 +2394,7 @@ public class MainActivity extends Activity implements GameObserver {
         model.scramble(difficulty);
         activeDailyDateId = null;
         activeFavoriteId = null;
+        activeRelayCode = null;
         saveSuppressedAfterReset = false;
         gameStarted = true;
         pendingWin = null;
@@ -2179,6 +2469,7 @@ public class MainActivity extends Activity implements GameObserver {
         activeDailyDateId = challenge.getDateId();
         activeFavoriteId = null;
         activeContinuousChallenge = null;
+        activeRelayCode = null;
         saveSuppressedAfterReset = false;
         gameStarted = true;
         pendingWin = null;
@@ -2200,6 +2491,7 @@ public class MainActivity extends Activity implements GameObserver {
         activeDailyDateId = null;
         activeFavoriteId = favorite.id;
         activeContinuousChallenge = null;
+        activeRelayCode = null;
         saveSuppressedAfterReset = false;
         gameStarted = true;
         pendingWin = null;
@@ -2234,7 +2526,10 @@ public class MainActivity extends Activity implements GameObserver {
         }
 
         if (gameTitleText != null) {
-            if (activeContinuousChallenge != null) {
+            if (activeRelayCode != null) {
+                gameTitleText.setText(getString(R.string.game_relay_title_format,
+                        model.getSize(), model.getSize(), difficultyName(model.getDifficulty())));
+            } else if (activeContinuousChallenge != null) {
                 gameTitleText.setText(getString(R.string.continuous_game_title,
                         activeContinuousChallenge.getCurrentPuzzleNumber(),
                         activeContinuousChallenge.getTargetPuzzles(),
@@ -2258,15 +2553,18 @@ public class MainActivity extends Activity implements GameObserver {
             }
         }
 
-        AndroidGameStore.Best best = getBest(model.getSize(), model.getDifficulty());
-        String bestText = best == null
-                ? getString(R.string.best_empty)
+        AndroidGameStore.Best best = activeRelayCode == null
+                ? getBest(model.getSize(), model.getDifficulty()) : null;
+        String bestText = best == null ? getString(R.string.best_empty)
                 : getString(R.string.best_format, formatMoves(best.moves), best.timeMs / 1000);
         if (!model.isGameRunning() && model.isSolved()) {
             long elapsed = lastWinTimeMs >= 0
                     ? lastWinTimeMs / 1000
                     : model.getElapsedTime() / 1000;
-            statusText.setText(getString(R.string.status_solved_format, model.getMoveCount(), elapsed, bestText));
+            statusText.setText(activeRelayCode == null
+                    ? getString(R.string.status_solved_format, model.getMoveCount(), elapsed, bestText)
+                    : getString(R.string.relay_status_solved_format, model.getMoveCount(), elapsed,
+                            RelayCodeCodec.decode(activeRelayCode).getTargetMoves()));
             updateControlsEnabled();
             return;
         }
@@ -2285,6 +2583,10 @@ public class MainActivity extends Activity implements GameObserver {
         }
         if (activeFavoriteId != null) {
             status += "\n" + getString(R.string.status_favorite_practice);
+        }
+        if (activeRelayCode != null) {
+            status += "\n" + getString(R.string.relay_status_format,
+                    RelayCodeCodec.decode(activeRelayCode).getTargetMoves());
         }
         if (activeContinuousChallenge != null) {
             status += "\n" + getString(R.string.continuous_status,
@@ -2401,7 +2703,9 @@ public class MainActivity extends Activity implements GameObserver {
         long elapsed = model.isSolved() && lastWinTimeMs >= 0
                 ? lastWinTimeMs
                 : model.getElapsedTime();
-        if (activeContinuousChallenge != null) {
+        if (activeRelayCode != null) {
+            store.saveRelayGame(model, elapsed, assistedSolveActive, activeRelayCode);
+        } else if (activeContinuousChallenge != null) {
             store.saveContinuousGame(model, elapsed, assistedSolveActive,
                     activeContinuousChallenge);
         } else if (activeFavoriteId != null) {
@@ -2441,6 +2745,7 @@ public class MainActivity extends Activity implements GameObserver {
         activeDailyDateId = null;
         activeFavoriteId = null;
         activeContinuousChallenge = null;
+        activeRelayCode = null;
         saveSuppressedAfterReset = false;
         hintActive = false;
         strategicHintTile = -1;
@@ -2463,6 +2768,7 @@ public class MainActivity extends Activity implements GameObserver {
         activeDailyDateId = dateId;
         activeFavoriteId = null;
         activeContinuousChallenge = null;
+        activeRelayCode = null;
         saveSuppressedAfterReset = false;
         hintActive = false;
         strategicHintTile = -1;
@@ -2484,6 +2790,7 @@ public class MainActivity extends Activity implements GameObserver {
         activeDailyDateId = null;
         activeFavoriteId = favoriteId;
         activeContinuousChallenge = null;
+        activeRelayCode = null;
         saveSuppressedAfterReset = false;
         hintActive = false;
         strategicHintTile = -1;
@@ -2505,6 +2812,7 @@ public class MainActivity extends Activity implements GameObserver {
         currentResult = null;
         activeDailyDateId = null;
         activeFavoriteId = null;
+        activeRelayCode = null;
         saveSuppressedAfterReset = false;
         hintActive = false;
         strategicHintTile = -1;
@@ -2706,6 +3014,14 @@ public class MainActivity extends Activity implements GameObserver {
     }
 
     private String resultRecordText(GameResult result) {
+        if (result.relayCode != null) {
+            RelayChallengeSpec relay = RelayCodeCodec.decode(result.relayCode);
+            return getString(relay.isTargetMet(result.moves)
+                    ? R.string.relay_result_passed : R.string.relay_result_missed,
+                    formatMoves(result.moves), relay.getTargetMoves(), result.timeMs / 1000,
+                    result.assisted ? getString(R.string.status_assisted_run)
+                            : getString(R.string.relay_result_isolated));
+        }
         if (!result.completionRecorded) {
             return getString(R.string.results_completion_not_recorded);
         }
@@ -2829,7 +3145,7 @@ public class MainActivity extends Activity implements GameObserver {
         }
         lastWinTimeMs = timeMs;
         pendingWin = new PendingWin(model.getSize(), model.getDifficulty(), moves, timeMs,
-                assistedSolveActive, activeDailyDateId, activeFavoriteId);
+                assistedSolveActive, activeDailyDateId, activeFavoriteId, activeRelayCode);
         schedulePendingWinProcessing(180L);
     }
 
@@ -2851,6 +3167,25 @@ public class MainActivity extends Activity implements GameObserver {
         }
 
         PendingWin win = pendingWin;
+        if (win.relayCode != null) {
+            RelayChallengeSpec relay;
+            try {
+                relay = RelayCodeCodec.decode(win.relayCode);
+            } catch (RuntimeException exception) {
+                pendingWin = null;
+                showHomeScreen();
+                return;
+            }
+            pendingWin = null;
+            currentResult = new GameResult(win.size, win.difficulty, win.moves, win.timeMs,
+                    win.assisted, false, null, null, null, true, false, win.relayCode);
+            assistedSolveActive = win.assisted;
+            saveGame();
+            updateStatus();
+            performBoardHaptic(HapticFeedbackConstants.LONG_PRESS);
+            showResultsScreen();
+            return;
+        }
         AndroidGameStore.Best previousBest = getBest(win.size, win.difficulty);
         boolean recordEligible = win.favoriteId == null;
         AndroidGameStore.DailyCompletionPlan dailyPlan = null;

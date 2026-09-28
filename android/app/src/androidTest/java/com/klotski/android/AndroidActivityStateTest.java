@@ -9,6 +9,8 @@ import static org.junit.Assert.assertTrue;
 import android.os.Bundle;
 
 import com.klotski.core.PuzzleDifficulty;
+import com.klotski.core.RelayChallengeSpec;
+import com.klotski.core.RelayCodeCodec;
 
 import org.junit.Test;
 
@@ -124,6 +126,26 @@ public class AndroidActivityStateTest {
         assertEquals("favorite-id", snapshot.activeFavoriteId);
         assertNotNull(snapshot.result);
         assertEquals("favorite-id", snapshot.result.favoriteId);
+    }
+
+    @Test
+    public void activityStateRoundTripPreservesRelayIdentityAcrossPendingWinAndResults() {
+        String code = RelayCodeCodec.encode(new RelayChallengeSpec(3,
+                PuzzleDifficulty.CLASSIC,
+                new int[][] {{1, 2, 3}, {4, 5, 6}, {7, 0, 8}}, 5));
+        Bundle bundle = new Bundle();
+        GameResult result = new GameResult(3, PuzzleDifficulty.CLASSIC,
+                1, 1_000L, false, false, null, null, null, true, false, code);
+        PendingWin pending = new PendingWin(3, PuzzleDifficulty.CLASSIC,
+                1, 1_000L, false, null, null, code);
+
+        AndroidActivityState.save(bundle, Screen.RESULTS, Screen.GAME, true,
+                0, 0, result, null, null, null, pending);
+        AndroidActivityState.Snapshot snapshot = AndroidActivityState.restore(bundle, 0);
+
+        assertEquals(code, snapshot.result.relayCode);
+        assertNotNull(snapshot.pendingWin);
+        assertEquals(code, snapshot.pendingWin.relayCode);
     }
 
     @Test

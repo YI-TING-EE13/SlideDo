@@ -72,6 +72,10 @@ class DesktopPersonalDataArchiveTest {
             assertTrue(SaveManager.saveFavoriteRun(favorite.id, favorite.createGame(), true));
             ContinuousChallenge challenge = ContinuousChallenge.start(3).completePuzzle(2, 40L, true);
             assertTrue(SaveManager.saveContinuousGame(normal, challenge, true));
+            String relayCode = "SLD-R1-AwIABQECAwQFBgcACA-A1947A39";
+            RelayChallengeSpec relaySpec = RelayCodeCodec.decode(relayCode);
+            assertTrue(SaveManager.saveRelayGame(relaySpec.createGame(),
+                    relayCode, true));
             assertTrue(SaveManager.setDesktopTheme("ocean"));
             assertTrue(SaveManager.setDesktopLanguageTag("zh-TW"));
             assertTrue(SaveManager.setTrendSize(5));
@@ -103,6 +107,10 @@ class DesktopPersonalDataArchiveTest {
             assertTrue(SaveManager.isDailyGameAssisted(date.toString()));
             assertTrue(SaveManager.isFavoriteRunAssisted(favorite.id));
             assertTrue(SaveManager.loadContinuousGame().assisted);
+            SaveManager.RelayGame relay = SaveManager.loadRelayGame();
+            assertNotNull(relay);
+            assertEquals(relayCode, relay.game.relayCode);
+            assertTrue(relay.game.assisted);
             assertEquals(2, SaveManager.getCompletionHistory().length);
             assertTrue(new File(target, "klotski_save.json").isFile());
         } finally {

@@ -28,7 +28,7 @@ final class AndroidHomeScreen {
     }
 
     ScreenLayout build(AndroidGameStore.SaveMetadata[] saves, DailyStatus dailyStatus,
-            ContinuousStatus continuousStatus, int favoriteCount,
+            ContinuousStatus continuousStatus, boolean relayActive, int favoriteCount,
             HomeActions actions) {
         AndroidGameStore.SaveMetadata[] availableSaves = saves == null
                 ? new AndroidGameStore.SaveMetadata[0]
@@ -79,6 +79,19 @@ final class AndroidHomeScreen {
                 hasSave ? COLOR_PANEL_LIGHT : COLOR_PRIMARY,
                 v -> actions.onPlay());
         newGameButton.setId(R.id.home_new_game_button);
+
+        Button relayButton = ui.addWideButton(screen.content,
+                R.string.home_relay, R.drawable.ic_action_play, COLOR_PANEL_LIGHT,
+                v -> actions.onRelay());
+        relayButton.setId(R.id.home_relay_button);
+        TextView relaySummary = ui.createText(activity.getString(relayActive
+                        ? R.string.home_relay_active : R.string.home_relay_ready),
+                14, COLOR_MUTED_TEXT, Typeface.NORMAL);
+        relaySummary.setId(R.id.home_relay_summary_text);
+        relaySummary.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams relayParams = ui.fullWidthParams();
+        relayParams.setMargins(0, 0, 0, ui.dp(14));
+        screen.content.addView(relaySummary, relayParams);
 
         ui.addSectionLabel(screen.content, R.string.home_section_learn);
         LinearLayout learningRow = createActionRow(screen.content);
@@ -258,6 +271,8 @@ final class AndroidHomeScreen {
     }
 
     interface HomeActions {
+        void onRelay();
+
         void onDailyChallenge();
 
         void onContinuousChallenge();

@@ -44,6 +44,52 @@ Existing Android behavior remains protected: valid-move scrambles, whole-line
 one-action history, active-only elapsed time, exact initial-grid replay,
 namespace isolation, and solver-assisted record protection.
 
+## M12 Offline Puzzle Relay Codes
+
+M12 adds a shared, deterministic `SLD-R1-` code for one exact solvable starting
+board, board size, stable difficulty wire id, and owner-selected target from 1
+through 9999 player actions. The compact Base64URL payload is protected by a
+CRC32 transcription check; it contains the board itself rather than a random
+seed. The target is never described or derived as an optimal/par/solver move
+count. A Relay passes when the actual completed action count is at most the
+target.
+
+Desktop and Android each own one isolated resumable Relay save. It preserves the
+canonical code, current and initial boards, difficulty, completed and Redo
+histories, elapsed time, and assistance state. The Desktop file
+`klotski_relay_save.json` is added to the existing managed archive allowlist;
+Android uses the `relay_save_v1_` SharedPreferences namespace and validates it
+through the existing preference archive. Older archives without Relay entries
+remain valid and restore with no active Relay. Both import paths validate the
+whole candidate before replacing existing data.
+
+Home offers one Relay entry that resumes the active challenge or imports a code.
+Imports show validated size/difficulty/target details before the explicit start
+and replacement confirmations; invalid codes do not mutate current Relay data.
+Normal play can create a code from its original `initialGrid`, choose a target,
+and copy or manually share the complete code. Android exposes clipboard paste
+and manual entry. Relay completion reports pass/miss and assistance, replays the
+same exact puzzle, and branches before all normal completion writers. Relay
+does not change best records, completion history or statistics, Trends/Weekly
+Goal, Daily saves or streaks, Favorites, or Continuous progress. Reset Saved
+Games clears Relay; Reset Records preserves it.
+
+Frozen code fixtures cover 3x3, 4x4, and 5x5 on both platforms. Automated
+qualification covers malformed codes, checksum/version/bounds, solvability,
+target boundaries, whole-line action counts, isolated saves and archives,
+legacy archives, and Android Activity state restoration. The Android lifecycle
+qualification also verifies that only unfinished Relay state is resumable,
+that completed Results can replay the exact initial board, and that both
+case-sensitive code entry routes preserve mixed-case text.
+
+On 2026-09-28, `cmd.exe /c ci.bat` passed; all 144 connected Android 16 / API 36
+`small_phone` instrumentation tests passed with 0 failures, errors, or skips;
+focused Relay regressions passed (4/4); and `git diff --check` passed. Android
+hands-on qualification A0–A14 and repair paths AR1–AR6 passed. Desktop runtime
+qualification D0–D12 and R1–R6 passed, and the frozen cross-platform fixture
+matched exactly. M12 implementation and runtime qualification are complete;
+the final independent re-review is pending.
+
 ## Qualification snapshot
 
 - The required fetch and identity checks completed before editing. Stage 9

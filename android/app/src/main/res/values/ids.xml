@@ -3,6 +3,8 @@
     <item name="home_root" type="id" />
     <item name="home_daily_button" type="id" />
     <item name="home_daily_summary_text" type="id" />
+    <item name="home_relay_button" type="id" />
+    <item name="home_relay_summary_text" type="id" />
     <item name="home_continuous_button" type="id" />
     <item name="home_continuous_summary_text" type="id" />
     <item name="daily_calendar_root" type="id" />

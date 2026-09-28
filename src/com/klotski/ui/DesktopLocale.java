@@ -38,7 +38,13 @@ public final class DesktopLocale {
             "continueLoad", "reduceMotion", "sound", "language", "theme", "close", "back", "next",
             "previous", "skip", "start", "resetLesson", "startTutorialPuzzle", "resetSavedConfirm",
             "resetRecordsConfirm", "homeSummary", "noSaves", "firstRunSubtitle",
-            "records", "daily", "favorites", "trends", "continuous",
+            "records", "daily", "favorites", "trends", "continuous", "relay",
+            "relayCreate", "relayResume", "relayImport", "relayStart", "relayReplace", "relayHomePrompt",
+            "relayPastePrompt", "relayInvalid", "relayDetails", "relayReplacePrompt",
+            "relayTargetPrompt", "relayCodeReady", "relayCopy", "relayCopied",
+            "relayCopyUnavailable", "relayCreateNormalOnly", "relayStatus",
+            "relayResultsTitle", "relayPassed", "relayMissed", "relayResultUnknown",
+            "relayReplay", "relayIsolation",
             "preferences", "resetSaved", "resetRecords", "quickReminder",
             "cellEmptyName", "cellTileName", "cellEmptyDescription",
             "cellMovableDescription", "cellNotAlignedDescription",
@@ -225,6 +231,30 @@ public final class DesktopLocale {
         values.put("favorites", "Favorites");
         values.put("trends", "Trends / Weekly Goal");
         values.put("continuous", "Continuous Challenge");
+        values.put("relay", "Puzzle Relay");
+        values.put("relayCreate", "Create Relay Code");
+        values.put("relayResume", "Resume Relay");
+        values.put("relayImport", "Import Code");
+        values.put("relayStart", "Start Relay");
+        values.put("relayReplace", "Replace Relay");
+        values.put("relayHomePrompt", "Resume the saved Relay or import a different code?");
+        values.put("relayPastePrompt", "Paste a Relay code. The current Relay is unchanged until the code is valid and confirmed.");
+        values.put("relayInvalid", "This Relay code is invalid or uses an unsupported version.");
+        values.put("relayDetails", "%dx%d · %s · target %d moves. Start this exact puzzle?");
+        values.put("relayReplacePrompt", "Replace the currently saved Relay puzzle?");
+        values.put("relayTargetPrompt", "Set the maximum move target (1–9999):");
+        values.put("relayCodeReady", "Share this exact puzzle code. Copy it or select the text to copy manually.");
+        values.put("relayCopy", "Copy Code");
+        values.put("relayCopied", "Relay code copied to the clipboard.");
+        values.put("relayCopyUnavailable", "Clipboard is unavailable. Select and copy the code manually.");
+        values.put("relayCreateNormalOnly", "Relay codes can be created from a normal puzzle only.");
+        values.put("relayStatus", "Relay target: %d moves");
+        values.put("relayResultsTitle", "Relay Result");
+        values.put("relayPassed", "Relay passed: %d moves against a target of %d in %ds. %s");
+        values.put("relayMissed", "Relay target missed: %d moves against a target of %d in %ds. %s");
+        values.put("relayResultUnknown", "Relay completed.");
+        values.put("relayReplay", "Replay Same Puzzle");
+        values.put("relayIsolation", "Relay does not change regular records or completion statistics.");
         values.put("preferences", "Preferences");
         values.put("quickReminder", "Quick Reminder");
         values.put("exit", "Exit");
@@ -455,6 +485,9 @@ public final class DesktopLocale {
         values.put("restart", "重新開始本題"); values.put("undo", "復原"); values.put("redo", "重做"); values.put("history", "移動記錄");
         values.put("save", "儲存遊戲"); values.put("load", "載入遊戲"); values.put("records", "紀錄"); values.put("daily", "每日挑戰日曆");
         values.put("favorites", "收藏題目"); values.put("trends", "趨勢／每週目標"); values.put("continuous", "連續挑戰"); values.put("preferences", "偏好設定");
+        values.put("relay", "接力題目"); values.put("relayCreate", "建立接力代碼"); values.put("relayResume", "繼續接力題目"); values.put("relayImport", "匯入代碼");
+        values.put("relayHomePrompt", "要繼續已儲存的接力題目，還是匯入其他代碼？"); values.put("relayPastePrompt", "貼上接力代碼。代碼有效並確認前，不會更動目前的接力題目。"); values.put("relayInvalid", "接力代碼無效或使用不支援的版本。"); values.put("relayDetails", "%dx%d · %s · 目標 %d 步。要開始這個指定題目嗎？"); values.put("relayReplacePrompt", "要取代目前已儲存的接力題目嗎？");
+        values.put("relayTargetPrompt", "設定步數上限（1–9999）："); values.put("relayCodeReady", "分享這個指定題目的代碼。可複製，或選取文字手動複製。"); values.put("relayCopy", "複製代碼"); values.put("relayCopied", "接力代碼已複製到剪貼簿。"); values.put("relayCopyUnavailable", "剪貼簿無法使用。請選取代碼並手動複製。"); values.put("relayCreateNormalOnly", "只能從一般題目建立接力代碼。"); values.put("relayStatus", "接力目標：%d 步"); values.put("relayResultsTitle", "接力結果"); values.put("relayPassed", "接力通過：%d 步，目標 %d 步，耗時 %d 秒。%s"); values.put("relayMissed", "未達接力目標：%d 步，目標 %d 步，耗時 %d 秒。%s"); values.put("relayResultUnknown", "接力題目已完成。"); values.put("relayReplay", "重玩相同題目"); values.put("relayIsolation", "接力結果不會更動一般紀錄或完成統計。");
         values.put("quickReminder", "快速提醒"); values.put("exit", "離開"); values.put("showMovable", "顯示可移動方塊");
         values.put("howToPlay", "玩法說明"); values.put("beginnerGuide", "新手指南"); values.put("practiceTutorial", "練習教學"); values.put("continueLoad", "繼續／載入");
         values.put("resetSaved", "重置已儲存遊戲"); values.put("resetRecords", "重置紀錄與統計"); values.put("reduceMotion", "減少動態效果"); values.put("sound", "音效提示");
@@ -579,6 +612,8 @@ public final class DesktopLocale {
         values.put("bestNone", "--"); values.put("lastPuzzleSummary", "最後一題：%s · %d 秒"); values.put("puzzleSolved", "拼圖完成。");
         values.put("puzzleTitle", "%dx%d 拼圖"); values.put("difficultyLabel", "難度：%s"); values.put("timeLabel", "%s   時間：%d 秒"); values.put("noRecord", "尚無紀錄");
         values.put("favoritePuzzleTitle", "%dx%d 拼圖"); values.put("favoriteResultIsolation", "練習結果不會寫入紀錄、歷史、統計或每日連勝。"); values.put("homeIndependentSaves", "有 %d 個獨立的已儲存遊戲可用。");
+        values.put("relayStart", "開始接力");
+        values.put("relayReplace", "取代接力");
         return Collections.unmodifiableMap(values);
     }
 
@@ -588,6 +623,7 @@ public final class DesktopLocale {
         values.put("new3", "3x3を開始"); values.put("new4", "4x4を開始"); values.put("new5", "5x5を開始"); values.put("restart", "このパズルを再開");
         values.put("undo", "元に戻す"); values.put("redo", "やり直す"); values.put("history", "手順履歴"); values.put("save", "ゲームを保存"); values.put("load", "ゲームを読み込む");
         values.put("records", "記録"); values.put("daily", "デイリーカレンダー"); values.put("favorites", "お気に入り"); values.put("trends", "傾向／週間目標"); values.put("continuous", "連続チャレンジ"); values.put("preferences", "設定"); values.put("quickReminder", "クイックリマインダー"); values.put("exit", "終了");
+        values.put("relay", "パズルリレー"); values.put("relayCreate", "リレーコードを作成"); values.put("relayResume", "リレーを再開"); values.put("relayImport", "コードを読み込む"); values.put("relayHomePrompt", "保存したリレーを再開するか、別のコードを読み込みますか？"); values.put("relayPastePrompt", "リレーコードを貼り付けてください。有効なコードを確認するまで現在のリレーは変更されません。"); values.put("relayInvalid", "リレーコードが無効か、未対応のバージョンです。"); values.put("relayDetails", "%dx%d · %s · 目標 %d 手。この盤面を開始しますか？"); values.put("relayReplacePrompt", "保存済みのリレーを置き換えますか？"); values.put("relayTargetPrompt", "目標手数を設定（1～9999）："); values.put("relayCodeReady", "この盤面のコードを共有できます。コピーするか、文字列を選択して手動でコピーしてください。"); values.put("relayCopy", "コードをコピー"); values.put("relayCopied", "リレーコードをクリップボードにコピーしました。"); values.put("relayCopyUnavailable", "クリップボードを利用できません。コードを選択して手動でコピーしてください。"); values.put("relayCreateNormalOnly", "リレーコードは通常のパズルからのみ作成できます。"); values.put("relayStatus", "リレー目標：%d 手"); values.put("relayResultsTitle", "リレー結果"); values.put("relayPassed", "リレー達成：%d 手、目標 %d 手、%d 秒。%s"); values.put("relayMissed", "リレー未達：%d 手、目標 %d 手、%d 秒。%s"); values.put("relayResultUnknown", "リレーを完了しました。"); values.put("relayReplay", "同じ盤面をもう一度"); values.put("relayIsolation", "リレー結果は通常の記録や完了統計に影響しません。");
         values.put("showMovable", "動かせるタイルを表示"); values.put("howToPlay", "遊び方"); values.put("beginnerGuide", "初心者ガイド"); values.put("practiceTutorial", "練習チュートリアル"); values.put("continueLoad", "続き／読み込み");
         values.put("resetSaved", "保存ゲームをリセット"); values.put("resetRecords", "記録と統計をリセット"); values.put("reduceMotion", "動きを減らす"); values.put("sound", "サウンド通知"); values.put("theme", "テーマ"); values.put("language", "言語");
         values.put("close", "閉じる"); values.put("back", "戻る"); values.put("next", "次へ"); values.put("previous", "前へ"); values.put("skip", "スキップ"); values.put("start", "3x3を開始"); values.put("resetLesson", "レッスンをリセット"); values.put("startTutorialPuzzle", "3x3パズルを開始"); values.put("resetSavedConfirm", "通常、デイリー、お気に入り練習、連続チャレンジの保存を消去しますか？\nお気に入り名、記録、統計、デイリー履歴、設定は保持されます。"); values.put("resetRecordsConfirm", "ベスト記録、完了履歴／統計、デイリー連勝を消去しますか？\n進行中の連続チャレンジと設定は保持されます。"); values.put("homeSummary", "ホーム｜新規、続き、デイリー、お気に入り、傾向、連続、記録"); values.put("noSaves", "保存されたゲームはありません。"); values.put("firstRunSubtitle", "ルールを学び、ガイド付きの一手を試してから始めましょう。");
@@ -666,6 +702,8 @@ public final class DesktopLocale {
         values.put("statusRunning", "手数：%d | 時間：%d秒 | 難易度：%s | %s%s%s%s%s%s%s"); values.put("statusBest", "記録：%s"); values.put("statusReducedMotion", " | 動きを減らす"); values.put("statusDaily", " | デイリー：%s"); values.put("statusFavorite", " | お気に入り練習");
         values.put("statusSolved", "クリア！手数：%d | 時間：%d秒 | 難易度：%s | 記録：%s"); values.put("statusFavoriteSolved", "お気に入りをクリア！手数：%d | 時間：%d秒 | 難易度：%s"); values.put("bestNone", "--"); values.put("lastPuzzleSummary", "最後のパズル：%s · %d秒"); values.put("puzzleSolved", "パズルをクリア。");
         values.put("puzzleTitle", "%dx%d パズル"); values.put("difficultyLabel", "難易度：%s"); values.put("timeLabel", "%s   時間：%d秒"); values.put("noRecord", "記録なし"); values.put("favoritePuzzleTitle", "%dx%d パズル"); values.put("favoriteResultIsolation", "練習結果は記録、履歴、統計、デイリー連勝に保存されません。"); values.put("homeIndependentSaves", "独立した保存ゲームが%d件あります。");
+        values.put("relayStart", "リレーを開始");
+        values.put("relayReplace", "リレーを置き換え");
         return Collections.unmodifiableMap(values);
     }
 }
